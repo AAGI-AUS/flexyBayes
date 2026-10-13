@@ -1,22 +1,13 @@
 # =============================================================================
-# Claim-surface parity (audit 2026-09-11, F09 + F13).
+# Claim-surface parity.
 #
-# The audit found four numbers and names that had drifted apart: the package
-# help said eight vignettes ship, `cran-comments.md` said eleven, four
-# actually ship; the package help and the startup banner still called the
-# cross-engine comparison the signature feature after it was unexported at
-# 0.10.0.9000; and `vpredict()` was exported but absent from both the pkgdown
-# reference index and API_STABILITY.md.
-#
-# Correcting the four was the easy half. This file is the other half: the
-# project's own standing rule is that every claim surface gets a generator, a
-# parity check or a grep-gate, and these had none. A count written into prose
-# is the first thing to drift.
+# Counts and names stated in prose must match the package: the number of
+# vignettes, the exported functions named on landing pages, and the exports
+# listed in the pkgdown reference index and API_STABILITY.md.
 #
 # These gates read the source tree, which is not present when the tests run
 # from an installed package (`_pkgdown.yml` and `cran-comments.md` are
-# .Rbuildignore'd). They skip with a named reason there rather than passing
-# vacuously -- a gate's silence is not a pass.
+# .Rbuildignore'd). They skip there with a named reason.
 # =============================================================================
 
 .cs_root <- function() {
@@ -91,16 +82,9 @@ test_that("the vignette count in cran-comments matches the vignettes that ship",
 })
 
 test_that("the landing surfaces do not offer a verb the user cannot call", {
-  # The cross-engine comparison was unexported at 0.10.0.9000 on the R
-  # Journal review's objection. It kept its help page, so a cross-reference
-  # to it still resolved -- but the package-level help went on calling it
-  # "the package's signature feature" and listing it among the entry points,
-  # and a reader
-  # following that finds a function they cannot call. The defect is a
-  # landing surface offering an uncallable verb, not a dangling link.
-  #
-  # Scope is deliberate: the package landing page and the README are what a
-  # new user reads first. Internal documentation may name internal functions.
+  # An unexported function may keep its help page, so a link to it still
+  # resolves. The landing page and the README must not offer it as an entry
+  # point. Internal documentation may name internal functions.
   root <- .cs_skip_if_no_source()
   ns <- .cs_read(root, "NAMESPACE")
   exported <- sub("^export\\((.*)\\)$", "\\1", grep("^export\\(", ns, value = TRUE))
@@ -227,7 +211,7 @@ test_that("the 0.12.0 bound wording in NEWS carries its 0.12.1 correction", {
     perl = TRUE
   ))
   # The 0.12.0 heading ends its bold span with a full stop, so the pattern
-  # allows one; without it the check could not see the heading it guards.
+  # allows one.
   expect_false(grepl(
     "\\*\\*A tight uniform bound binds on INLA\\.?\\*\\*(?! \\(corrected in 0\\.12\\.1)",
     news,

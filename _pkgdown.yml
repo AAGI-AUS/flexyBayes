@@ -13,7 +13,7 @@ home:
     Specify mixed models using ASReml-style or brms-style formula syntax
     and estimate them via INLA or brms (Stan). The ASReml grammar reaches
     INLA natively, so multi-stratum designs, per-environment residuals and
-    factor-analytic covariance fit by approximation rather than by MCMC.
+    factor-analytic covariance fit by approximation instead of MCMC.
 
 navbar:
   structure:
@@ -211,8 +211,8 @@ redirects:
   - ["articles/flexyBayes-09-triangulation.html", "articles/flexyBayes-07-after-the-fit.html"]
   - ["articles/flexyBayes-11-big-data-streaming.html", "articles/flexyBayes-08-big-data.html"]
   # Historical URLs from the 0.9.x renumbers. Pointed straight at the
-  # current page rather than at the intermediate that replaced them, so
-  # no old link takes two hops -- and so they survive a clean CI build,
+  # current page, not at the intermediate that replaced them, so no old
+  # link takes two hops, and so they survive a clean CI build,
   # which regenerates docs/ from this file alone.
   - ["articles/flexyBayes-00-from-asreml.html", "articles/flexyBayes-07-from-asreml.html"]
   - ["articles/flexyBayes-06-priors.html", "articles/flexyBayes-04-priors.html"]

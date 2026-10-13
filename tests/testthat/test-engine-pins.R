@@ -1,11 +1,11 @@
-# Engine pins (ADR 0031 Phase 3 + 3.6).
+# Engine pins.
 #
 # fb_inla() and fb_brms() are the two active single-engine pins, each
 # sugar over fb(backend = "<engine>"). A third pin, for the native
 # engine withdrawn entirely in 0.9.3 (see NEWS.md), no longer exists.
 # At v0.5.0 the v0.4.1 deprecation windows are closed: fb_brms() no
 # longer carries its old multi-backend signature, so a conflicting
-# `backend` is a structured refusal rather than a deprecation warning.
+# `backend` is a structured refusal instead of a deprecation warning.
 
 mk_pin_df <- function(n = 40) {
   set.seed(7)
@@ -93,7 +93,7 @@ test_that(".fb_engine_pin() rewrites the call with the backend pinned", {
 test_that("an engine pin refuses a conflicting backend argument", {
   df <- mk_pin_df()
   # fb_inla() pins INLA; backend = "brms" is a contradiction. Refuse
-  # structurally rather than silently overwrite (the pre-v0.5.0 bug).
+  # structurally instead of silently overwrite (the pre-v0.5.0 bug).
   expect_error(
     suppressWarnings(
       fb_inla(yield ~ env, data = df, backend = "brms"),

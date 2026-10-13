@@ -1,8 +1,8 @@
-# fb_complete_grid.R -- reinstating design cells that are absent from the
+# fb_complete_grid.R, reinstating design cells that are absent from the
 # data.
 #
 # One implementation, two entry points. `fb_complete_grid()` is the
-# user-facing helper for padding a field book before a fit;
+# user-facing helper for padding a field book before a fit.
 # `.fb_complete_design_grid()` (R/na_action.R) is what
 # `na_action = "augment"` calls on the way into dispatch. Both run
 # `.fb_grid_complete()`, so the helper and the automatic path cannot
@@ -10,19 +10,19 @@
 #
 # The rule both enforce is the same one: a design cell absent from the
 # data can be reinstated when every model column at that cell is
-# determined -- it is one of the index variables, or it takes a single
+# determined: it is one of the index variables, or it takes a single
 # value across the trial. A column that varies is a real quantity nobody
 # recorded there, and writing one in fabricates an observation. ASReml's
 # nin89 example codes such plots as LANCER, a variety name standing in
-# for "nothing was sown here"; this package makes that an explicit,
-# named choice (`unused_level =`) rather than a default.
+# for "nothing was sown here". This package makes that an explicit,
+# named choice (`unused_level =`) instead of a default.
 
 
 # ---------------------------------------------------------------- #
 # The shared core                                                   #
 # ---------------------------------------------------------------- #
 
-# .fb_grid_varies() --- which candidate columns take more than one value.
+# .fb_grid_varies(): which candidate columns take more than one value.
 #
 # @noRd
 # @keywords internal
@@ -40,7 +40,7 @@
   )]
 }
 
-# .fb_grid_fillable() --- can a column take a named unused level?
+# .fb_grid_fillable(): can a column take a named unused level?
 #
 # The hatch is for design factors. A measured covariate has no level to
 # name, so a varying numeric column refuses whatever `unused_level` says.
@@ -55,7 +55,7 @@
   )]
 }
 
-# .fb_grid_absent_rows() --- the index-variable combinations with no row.
+# .fb_grid_absent_rows(): the index-variable combinations with no row.
 #
 # @noRd
 # @keywords internal
@@ -76,7 +76,7 @@
   list(full = full, absent = which(!key(full) %in% key(data)))
 }
 
-# .fb_grid_complete() --- the one completion both entry points run.
+# .fb_grid_complete(): the one completion both entry points run.
 #
 # Returns `list(data = <possibly extended>, added = <int>, filled =
 # <character>)`. `filled` names the columns an explicit `unused_level`
@@ -175,7 +175,7 @@
   list(data = out, added = length(absent), filled = filled)
 }
 
-# .fb_grid_refusal() --- the shared condition, with the caller's remedy.
+# .fb_grid_refusal(): the shared condition, with the caller's remedy.
 #
 # @noRd
 # @keywords internal
@@ -190,7 +190,7 @@
     n_absent, " cell(s) of the ", paste(index_vars, collapse = " x "),
     " grid are absent from the data altogether, and ",
     paste(undetermined, collapse = ", "),
-    " is not constant across the trial -- so completing the grid would ",
+    " is not constant across the trial, so completing the grid would ",
     "mean inventing a level of it for a plot nobody recorded. ASReml's ",
     "own nin89 example codes such plots as LANCER, a variety name ",
     "standing in for \"nothing was sown here\"; flexyBayes will not write ",
@@ -222,8 +222,8 @@
 #' Reinstates the design cells that are absent from a data frame,
 #' returning the Cartesian product of the index variables with the
 #' response set to `NA` on every cell that was added. A field book
-#' already records a lost plot this way -- one row per sown plot, with
-#' the design columns filled in and the yield missing -- so this helper
+#' already records a lost plot this way (one row per sown plot, with
+#' the design columns filled in and the yield missing) so this helper
 #' is for the trials where the plot is missing from the file altogether.
 #'
 #' The completed frame is what `na_action = "augment"` (the default) then
@@ -234,18 +234,18 @@
 #'
 #' A cell can only be reinstated when every other model column at it is
 #' determined: it is one of the index variables, or it takes one value
-#' across the whole trial. A column that varies -- a variety label, a
-#' block -- is a real quantity nobody recorded at the absent cell, and
-#' the default is to refuse rather than write one in. `unused_level`
+#' across the whole trial. A column that varies (a variety label, a
+#' block) is a real quantity nobody recorded at the absent cell, and
+#' the default is to refuse instead of write one in. `unused_level`
 #' opens that door explicitly, filling the varying design factors with a
 #' level of your naming and warning with every column it wrote to. It is
-#' ASReml's nin89 LANCER coding, made a decision with a name on it rather
-#' than a default. A varying *numeric* column is refused whatever
+#' ASReml's nin89 LANCER coding, made a decision with a name on it, not
+#' a default. A varying *numeric* column is refused whatever
 #' `unused_level` says: a measured covariate has no level to name.
 #'
 #' @param data A data frame holding one row per recorded design cell.
 #' @param index A one-sided formula naming the design index variables,
-#'   for example `~ row * col`. The operators are ignored; what is read
+#'   for example `~ row * col`. The operators are ignored. What is read
 #'   is the set of variables, whose observed levels are crossed.
 #' @param response Name of the response column, as a single string. The
 #'   reinstated cells carry `NA` there.
@@ -293,8 +293,8 @@ fb_complete_grid <- function(
     candidate_vars = names(data),
     unused_level = unused_level,
     remedy = paste0(
-      "Supply the field-book rows instead -- one row per sown plot, with ",
-      "the design columns filled in and the response set to NA -- or name ",
+      "Supply the field-book rows instead (one row per sown plot, with ",
+      "the design columns filled in and the response set to NA) or name ",
       "the level the empty cells should carry, ",
       "fb_complete_grid(..., unused_level = \"UNSOWN\")."
     )
@@ -302,7 +302,7 @@ fb_complete_grid <- function(
   out$data
 }
 
-# .check_complete_grid_args() --- argument contract for the helper.
+# .check_complete_grid_args(): argument contract for the helper.
 #
 # @noRd
 # @keywords internal

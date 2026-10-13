@@ -1,4 +1,4 @@
-# testthat setup -- runs once before the suite.
+# testthat setup: runs once before the suite.
 #
 # Silence the fit-time convergence warning across the suite. Almost every
 # fit here uses a deliberately tiny MCMC budget for speed, not for

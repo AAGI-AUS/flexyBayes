@@ -1,14 +1,14 @@
-# Tests for the C4 producer: fb_log_posterior().
+# Tests for fb_log_posterior().
 #
-# The native engine that produced a real C4 log-density was withdrawn
+# The native engine that produced a real log-density was withdrawn
 # entirely in 0.9.3 (see NEWS.md), and neither active engine (INLA,
-# brms) can produce a faithful one either -- INLA's posterior is a
+# brms) can produce a faithful one either. INLA's posterior is a
 # deterministic Laplace/grid approximation with no evaluable natural-
 # scale log-density, and brms's Stan log-density lives on a version-
 # fragile unconstrained scale. fb_log_posterior() therefore abstains
 # unconditionally with a classed `fb_c4_unavailable` condition
-# regardless of what `fit` carries; these tests pin that abstention
-# for every reachable dispatch path. Run everywhere; no backend
+# regardless of what `fit` carries. These tests pin that abstention
+# for every reachable dispatch path. Run everywhere. No backend
 # required.
 
 # ---- abstain paths (no backend required) ------------------------------------
@@ -36,10 +36,10 @@ test_that("a non-flexyBayes object abstains via the default method", {
 })
 
 test_that("a bare flexybayes-classed fit with no engine-specific method abstains via the default", {
-  # fb_log_posterior() has no bare `flexybayes` method -- only `.default`,
-  # `.flexybayes_brms`, and `.flexybayes_inla` -- so an object carrying
+  # fb_log_posterior() has no bare `flexybayes` method, only `.default`,
+  # `.flexybayes_brms`, and `.flexybayes_inla`, so an object carrying
   # only the parent class (e.g. an engine class this version does not
-  # recognise) falls through to `.default` rather than crashing.
+  # recognise) falls through to `.default` instead of crashing.
   unrecognised <- structure(list(), class = c("flexybayes", "list"))
   cnd <- tryCatch(fb_log_posterior(unrecognised), error = function(e) e)
   expect_s3_class(cnd, "fb_c4_unavailable")

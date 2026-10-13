@@ -29,7 +29,7 @@ variety comparison.</dd>
 -- the field moves to the random side, for the reason in Section 2.</dd>
 <dt>What the posterior adds</dt>
 <dd>The two correlations and the field standard deviation arrive with
-intervals, so a field that has not identified is visible rather than
+intervals, so a field that has not identified is visible instead of
 inferred from a converged flag.</dd>
 <dt>What it costs</dt>
 <dd>INLA only, a complete grid, and a four-parameter model where ASReml
@@ -52,11 +52,11 @@ degrees-of-freedom count suggests.
 # 2. Three parameters or four
 
 ASReml writes the field as a *residual*: `residual = ~ ar1(row):ar1(col)`
-is a single correlated residual with no independent plot error -- three
+is a single correlated residual with no independent plot error, so three
 parameters.
 
 INLA represents a separable autoregressive process as a latent field
-*plus* observation noise -- four parameters. The two coincide only as
+*plus* observation noise, so four parameters. The two coincide only as
 the nugget goes to zero. flexyBayes will not fit the four-parameter
 model under the three-parameter name, so the residual spelling is
 refused and the field is written on the random side instead.
@@ -116,7 +116,7 @@ spatial structure, which is why it is the textbook example.
 Printing all four is how a *failed* field shows up. When a field does
 not identify, `sd_spatial` collapses toward zero and the correlations
 revert to their prior, spanning almost the whole interval. The package
-raises a warning when that happens rather than leaving it to be noticed.
+raises a warning when that happens instead of leaving it to be noticed.
 
 # 4. Adding a smooth trend: does it earn its place?
 
@@ -174,8 +174,8 @@ offered the same variation there is nothing left for them to explain.
 
 That is a result about `stroup.nin`, not about splines. On a trial with
 a strong monotone gradient and weak short-range correlation the split
-goes the other way. The point is that the fit says which, rather than
-leaving the composite as an untested recommendation -- and a collapsed
+goes the other way. The point is that the fit says which, instead of
+leaving the composite as an untested recommendation, and a collapsed
 component here raises the boundary warning, so it cannot be read as
 "the trend is zero" when it means "the trend is not separable from the
 field".
@@ -213,7 +213,7 @@ A long-term trial measures the same plots season after season. The
 covariance Verbyla and Cullis (1992) wrote for that design is separable:
 an AR1 correlation along the occasions, and independence (or a block
 structure) across the plots. On the random side it is `ar1(t):g`, or
-`g:ar1(t)` in ASReml's usual order -- one AR1 series per level of `g`,
+`g:ar1(t)` in ASReml's usual order, with one AR1 series per level of `g`,
 with the correlation and the field SD shared by every level, plus the
 observation nugget. An occasion a plot missed is left in the data as a
 row with the response `NA`, which the default `na_action = "augment"`
@@ -288,7 +288,7 @@ fit through the `fb_as_draws_simple()` interface.
 # 7. Pitfalls
 
 **Row and column must be factors, in field order.** Correlation is read
-along the stored level order. Labels that sort lexically rather than
+along the stored level order. Labels that sort lexically instead of
 numerically give the wrong neighbour structure. Set the levels
 explicitly when in doubt.
 
@@ -302,7 +302,7 @@ every sown plot with the response set to `NA`, or pad with
 correlations, a field variance and a plot variance at once. The
 symptom is a collapsed field with correlations at their prior width.
 
-**`backend = "auto"` refuses rather than substituting.** brms has no
+**`backend = "auto"` refuses instead of substituting.** brms has no
 lowering for a Kronecker autoregressive precision, so a field model
 under `auto` raises `auto_no_active_route` instead of quietly fitting
 something else.

@@ -28,7 +28,7 @@ carried no variance-component table at all.
 }
 \details{
 Two things are aggregated-specific and both appear in the printed
-header rather than as extra slots. The banner names the representation
+header, not as extra slots. The banner names the representation
 (\code{aggregated-gaussian}, \code{aggregated-binomial}, \code{aggregated-poisson})
 where a per-row fit names its engine, and the \code{aggregation} line gives
 the row-to-cell compression the fit ran under. The \code{model} slot
@@ -45,8 +45,8 @@ mean. A route that recorded posterior means alone reports the means
 with the three interval columns \code{NA} and the row's \code{note} cell
 reading \code{"no interval recorded"}.
 
-The raw aggregated pieces this method used to return -- \code{beta_means},
-\code{beta_vcov}, \code{sigma_means}, \code{tau_means} -- are unchanged at
+The raw aggregated pieces this method used to return, \code{beta_means},
+\code{beta_vcov}, \code{sigma_means}, \code{tau_means}, are unchanged at
 \code{fit$extras$summary}.
 }
 \seealso{

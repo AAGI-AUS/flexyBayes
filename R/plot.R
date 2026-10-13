@@ -4,9 +4,9 @@
 #'
 #' Draws one of eight standard displays for a fitted model, chosen by
 #' `type`. Every backend reaches the same method, and a display that needs
-#' a slot a given engine does not populate -- posterior draws on an INLA
-#' fit, for instance -- prints a message naming what
-#' is missing and returns invisibly rather than erroring or drawing an
+#' a slot a given engine does not populate (posterior draws on an INLA
+#' fit, for instance) prints a message naming what
+#' is missing and returns invisibly instead of erroring or drawing an
 #' empty panel. The one exception is `"pp_check"`, which raises the
 #' refusal [pp_check.flexybayes()] raises, so a caller can catch it by
 #' class.
@@ -22,18 +22,18 @@
 #'   through their own registrations.
 #' @param type A single string naming the display to draw. One of:
 #'   `"diagnostics"`, trace plots and marginal densities per parameter
-#'   (needs a sampled posterior); `"residuals"`, residuals against
-#'   fitted values beside a normal quantile-quantile plot; `"effects"`, a
+#'   (needs a sampled posterior), `"residuals"`, residuals against
+#'   fitted values beside a normal quantile-quantile plot, `"effects"`, a
 #'   forest plot of the fixed effects with their credible intervals,
-#'   available on every backend that supplies [coef()] and [confint()];
+#'   available on every backend that supplies [coef()] and [confint()].
 #'   `"variance"`, a bar chart of the variance components with credible
-#'   intervals; `"blups"`, a caterpillar plot of the random-effect
-#'   predictions ordered by magnitude; `"pp_check"`, a posterior
+#'   intervals, `"blups"`, a caterpillar plot of the random-effect
+#'   predictions ordered by magnitude, `"pp_check"`, a posterior
 #'   predictive check overlaying replicated datasets on the observed
 #'   response, which needs predictive draws and so refuses by name on a
-#'   fit that carries none (see [pp_check.flexybayes()]); and
+#'   fit that carries none (see [pp_check.flexybayes()]), and
 #'   `"variogram"`, the empirical semivariance of the residuals over the
-#'   design index; and `"spatial_field"`, the posterior mean of a separable
+#'   design index, and `"spatial_field"`, the posterior mean of a separable
 #'   autoregressive field, `random = ~ ar1(row):ar1(col)`, drawn on the
 #'   row-by-column array of the trial on the response scale. `NULL` (the
 #'   default) resolves to `"diagnostics"` on a sampled fit and
@@ -42,10 +42,10 @@
 #'   for example `variable` to restrict which parameters a diagnostic
 #'   display covers, or `type` and `ndraws` for `"pp_check"`. The spatial
 #'   field takes `trial`, the identifier printed in its title and the only
-#'   label it adds to the array's own row and column labels; on a fit with
+#'   label it adds to the array's own row and column labels. On a fit with
 #'   one field per trial, `random = ~ id(trial):ar1(row):ar1(col)`, it names
 #'   the level whose field is drawn.
-#' @returns Invisibly, the object the underlying plotting call returns --
+#' @returns Invisibly, the object the underlying plotting call returns:
 #'   a \pkg{ggplot2} object for the displays built with it, the
 #'   semivariance table for `"variogram"`, for `"spatial_field"` a list
 #'   holding `values` (the field, one row per row level and one column per
@@ -90,9 +90,9 @@ plot.flexybayes <- function(x, type = NULL, ...) {
   "spatial_field"
 )
 
-# .fb_has_sampler_draws() --- did an engine draw samples for this fit?
+# .fb_has_sampler_draws(): did an engine draw samples for this fit?
 #
-# A brms fit keeps its draws inside the brmsfit at `$brms`; a nested
+# A brms fit keeps its draws inside the brmsfit at `$brms`. A nested
 # Laplace approximation has none at all.
 #
 # @noRd
@@ -101,7 +101,7 @@ plot.flexybayes <- function(x, type = NULL, ...) {
   inherits(x$brms, "brmsfit")
 }
 
-# .fb_default_plot_type() --- the display a fit earns by what it holds.
+# .fb_default_plot_type(): the display a fit earns by what it holds.
 #
 # @noRd
 # @keywords internal
@@ -112,7 +112,7 @@ plot.flexybayes <- function(x, type = NULL, ...) {
   "residuals"
 }
 
-# Registered for each fit class rather than relying on inheritance. The
+# Registered for each fit class instead of relying on inheritance. The
 # brms and INLA fits do share the "flexybayes" parent as of 0.9.0, so the
 # parent registration would reach them, but the aggregated and glm
 # classes carry their own dispatch order and an explicit
@@ -141,9 +141,9 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # Emit a non-silent, non-erroring notice that a plot type is not
 # available for this fit's backend, then return invisibly. Backends
 # differ in which slots they expose (brms carries MCMC draws inside its
-# brmsfit; INLA does not), so a plot type
+# brmsfit, INLA does not), so a plot type
 # that reads a slot the backend never populates degrades to a message
-# rather than crashing through to graphics::plot.default().
+# instead of crashing through to graphics::plot.default().
 .plot_unavailable <- function(type, reason) {
   message("plot(type = \"", type, "\") is not available for this fit: ", reason)
   invisible(NULL)
@@ -157,8 +157,8 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
       paste0(
         "trace and density plots describe a sampler, and this fit carries ",
         "no sampler draws. A nested Laplace approximation reports mode ",
-        "status and a Kullback-Leibler divergence instead -- see ",
-        "summary(fit)$converge -- and plot(fit) defaults to the residual ",
+        "status and a Kullback-Leibler divergence instead (see ",
+        "summary(fit)$converge) and plot(fit) defaults to the residual ",
         "panels on such a fit."
       )
     ))
@@ -301,7 +301,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # Variance components plot
 .plot_variance <- function(x, ...) {
   # Through the shared reader, because the aggregated emits record the
-  # field as a list of posterior means rather than the five-column table
+  # field as a list of posterior means instead of the five-column table
   # this panel needs, and `nrow()` of that list is NULL.
   vc <- .fb_variance_comps(x)
   if (is.null(vc) || nrow(vc) == 0) {
@@ -316,7 +316,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   on.exit(par(old_par))
 
   # The estimates join the upper bounds in the range so a table that
-  # carries no intervals still gets an axis, rather than -Inf.
+  # carries no intervals still gets an axis, instead of -Inf.
   x_upper <- suppressWarnings(
     max(c(vc$q97.5, vc$estimate), na.rm = TRUE)
   )
@@ -382,7 +382,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 #
 # The display this type names is a check of the model against its own
 # replicated data, and it is drawn wherever the fit carries predictive
-# draws to replicate from -- which is the brms engine. The seam is
+# draws to replicate from: which is the brms engine. The seam is
 # pp_check.flexybayes() (R/pp_check_support.R), so the plot() entry
 # point and the bayesplot generic cannot disagree about what a check
 # is, and a fit with no predictive draws refuses by name here too.
@@ -390,7 +390,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # Before 0.9.1 this drew observed values against fitted values, plus a
 # density of the fitted values labelled Posterior Predictive, on every
 # backend that carried a response and a fitted vector. No replicated
-# dataset was ever involved. The panel is gone rather than retitled:
+# dataset was ever involved. The panel is gone instead of retitled:
 # what it showed, residuals against fitted values, is
 # plot(fit, type = "residuals").
 .plot_pp_check <- function(x, ...) {
@@ -406,18 +406,18 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 #
 # The display a field trialist reaches for after fitting a spatial
 # model: how the residual semivariance behaves with separation along the
-# design index. It is an EMPIRICAL variogram of the residuals -- no
+# design index. It is an EMPIRICAL variogram of the residuals, no
 # fitted variogram is overlaid and none is claimed, so a flat surface
 # here says the fitted structure absorbed what was there and nothing
 # stronger.
 #
 # Observed rows only. A row carried as a latent design cell has no
 # observed response and therefore no residual, and pairing an NA into a
-# squared difference would silently drop whole lags rather than one
+# squared difference would silently drop whole lags instead of one
 # pair. The subtitle prints both counts so the reader can see how much
 # of the array the picture rests on.
 
-# .fb_variogram_index() --- the design index a fit is built over.
+# .fb_variogram_index(): the design index a fit is built over.
 #
 # @noRd
 # @keywords internal
@@ -429,7 +429,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   unique(vars[!is.na(vars) & nzchar(vars)])
 }
 
-# .fb_variogram_position() --- one index column as an ordinal position.
+# .fb_variogram_position(): one index column as an ordinal position.
 #
 # A design index is a lattice: what a lag counts is steps along the
 # array, not the distance between two label strings. A factor is coded
@@ -444,7 +444,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   as.numeric(factor(as.character(v), levels = sort(unique(as.character(v)))))
 }
 
-# .fb_variogram_table() --- semivariance by lag.
+# .fb_variogram_table(): semivariance by lag.
 #
 # gamma(h) = mean over pairs at separation h of half the squared
 # residual difference. Returned as a data frame so a caller can read the
@@ -482,11 +482,11 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   out
 }
 
-# .fb_variogram_draw() --- the picture, on the base device this file uses.
+# .fb_variogram_draw(): the picture, on the base device this file uses.
 #
 # The bottom margin is five lines, not the four this file's other panels
 # use, because `sub =` is drawn at line `par("mgp")[1] + 1` of the bottom
-# margin -- line 4 with the default mgp -- and a four-line margin does not
+# margin, line 4 with the default mgp, and a four-line margin does not
 # reach it. The counts were computed, carried on the returned table, and
 # drawn outside the device, so the caption never appeared for a reader.
 #
@@ -550,7 +550,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   invisible(tab)
 }
 
-# .plot_variogram() --- the type = "variogram" entry point.
+# .plot_variogram(): the type = "variogram" entry point.
 #
 # @noRd
 # @keywords internal
@@ -577,7 +577,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
         },
         ". A residual variogram is a picture of how far apart two plots ",
         "are, so a model with no such array has no lag to plot against. ",
-        "Fit a spatial term -- random = ~ ar1(row):ar1(col) -- or use ",
+        "Fit a spatial term (random = ~ ar1(row):ar1(col)) or use ",
         "plot(fit, type = \"residuals\") for the fitted-value diagnostics."
       ),
       family_class = "flexybayes_variogram_requires_design_index"
@@ -632,7 +632,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # of random = ~ ar1(row):ar1(col), which INLA writes as
 # f(<row>_id, model = "ar1", group = <col>_id) (R/emit_inla.R). The field's
 # posterior mean is stored node by node in summary.random[["<row>_id"]],
-# mapped back to the response scale when the fit was built; node k holds
+# mapped back to the response scale when the fit was built. Node k holds
 # row index ((k - 1) mod n_row) + 1 and column index
 # floor((k - 1) / n_row) + 1, and with one field per trial,
 # id(trial):ar1(row):ar1(col), each trial's nodes follow the previous
@@ -640,7 +640,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # factor(), as the emitter builds them, so the display is labelled with the
 # array's own labels and with nothing read from any other column.
 
-# .fb_spatial_field() --- the field of one trial as a row x column matrix.
+# .fb_spatial_field(): the field of one trial as a row x column matrix.
 #
 # @noRd
 # @keywords internal
@@ -731,7 +731,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   "#00B28A", "#00C475", "#7ED357", "#C2DE34", "#FDE333"
 )
 
-# .plot_spatial_field() --- the type = "spatial_field" entry point.
+# .plot_spatial_field(): the type = "spatial_field" entry point.
 #
 # The palette is .FB_HEAT_COLOURS, ordered in lightness, so it reads in grey
 # and to the common colour-vision deficiencies.

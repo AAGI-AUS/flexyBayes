@@ -9,9 +9,8 @@
 #
 # The oracle for every shape assertion here is helper-asreml-shapes.R,
 # recorded once from the live licensed asreml 4.2.0.392 install. asreml
-# is deliberately absent from DESCRIPTION -- it is commercial and
-# licensed per seat -- so every block below runs with asreml uninstalled
-# and never calls it.
+# is commercial and absent from DESCRIPTION, so every block below runs
+# without it.
 #
 # Two recorded properties drive the normaliser, and neither is in the
 # ASReml-R manual:
@@ -132,8 +131,8 @@ test_that("native strings normalise to themselves", {
       label = word
     )
   }
-  # The unsupplied default -- flexybayes()'s own `c("augment", "omit",
-  # "fail")` formal -- reduces the way match.arg() would.
+  # The unsupplied default, flexybayes()'s own `c("augment", "omit",
+  # "fail")` formal, reduces the way match.arg() would.
   expect_identical(
     flexyBayes:::.fb_normalise_na_action(c("augment", "omit", "fail")),
     list(y = "augment", x = "fail")
@@ -330,10 +329,8 @@ test_that("the covariate policy is a no-op when no covariate is missing", {
 })
 
 test_that("the recorded policy echoes what was asked for", {
-  # Before 0.9.1 `fail` on complete data fell through into the augment
-  # branch and recorded itself as `augment`, so the record was not a
-  # faithful echo of the argument -- and anything reading it to repeat
-  # the fit would have repeated a different one.
+  # `fail` on complete data must record `fail`, not `augment`, so that a
+  # re-fit from the record repeats the same call.
   g <- .na_method_grid()
   ir <- .na_method_ir()
   for (word in c("augment", "omit", "fail")) {

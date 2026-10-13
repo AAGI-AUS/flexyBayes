@@ -6,7 +6,7 @@
 # field extends (a:b:cc carries `vars` and no `var`), every S3 method and
 # fb_* accessor of those fits, the brms prior and code builders, fb_plan()
 # and lgm_gate(). A partial-match warning raised in a flexyBayes function
-# fails the guard; one raised inside another package is not counted
+# fails the guard. One raised inside another package is not counted
 # (DEF-198: term$var returned a three-way term's `vars`).
 
 .g13_data <- function() {
@@ -32,7 +32,7 @@
 
 # The flexyBayes function that raised a warning, or "" when another
 # package's code raised it. A C-level warning reaches its handler through
-# .signalSimpleWarning(); the frames below it are searched for the first
+# .signalSimpleWarning(). The frames below it are searched for the first
 # one outside base R, because `x$a` passed as an argument is evaluated
 # inside the base function that receives it, such as paste().
 .g13_raised_in_package <- function(calls) {

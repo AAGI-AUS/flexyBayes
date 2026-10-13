@@ -1,4 +1,4 @@
-# fb_as_draws_simple -- per-fit posterior extraction as a plain named list.
+# fb_as_draws_simple: per-fit posterior extraction as a plain named list.
 #
 # The generic returns a named list whose values are numeric vectors of
 # posterior draws, keyed by the engine's own parameter names, with methods

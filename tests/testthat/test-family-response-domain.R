@@ -3,7 +3,7 @@
 # Before this fix, family = "lognormal" on a response with values at or
 # below zero passed .resolve_family() (b979c5d admitted lognormal to the
 # roster) and reached brms::brm(), which stopped with the untyped
-# condition "Family 'lognormal' requires response greater than 0." --
+# condition "Family 'lognormal' requires response greater than 0.",
 # a plain simpleError, not a flexyBayes refusal. gamma, hurdle_gamma and
 # beta carry the same restricted-domain likelihoods and reached the same
 # unrefused failure, on brms as an untyped stop() and on INLA as an
@@ -13,7 +13,7 @@
 # .fb_refuse_family_response_domain() (R/na_action.R) now checks the
 # observed response against .fb_family_response_domain()
 # (R/family_traits.R) inside .fb_apply_na_action(), before any engine
-# runs and before the plan / review_code / return_code short-circuits --
+# runs and before the plan / review_code / return_code short-circuits,
 # so every route through flexybayes() (and its sugar: fb(), fb_brms(),
 # fb_inla()) gets the same typed refusal (family_response_domain_violation).
 
@@ -139,7 +139,7 @@ test_that(".fb_refuse_family_response_domain() finds the violation, ignoring NA 
 })
 
 # ---------------------------------------------------------------- #
-# 2. Live entry points -- refuses before .dispatch_backend() runs    #
+# 2. Live entry points, refuses before .dispatch_backend() runs    #
 # ---------------------------------------------------------------- #
 
 .domain_case_data <- function(family, seed = 20260916L, n = 20L) {
@@ -288,7 +288,7 @@ test_that("flexybayes_stream() cannot reach the domain check: its family roster 
     error = function(e) e
   )
   # Refused by the existing family-roster gate, never reaching
-  # .fb_refuse_family_response_domain() -- flexybayes_stream() only
+  # .fb_refuse_family_response_domain(), flexybayes_stream() only
   # aggregates gaussian / binomial / poisson, none of which carries a
   # restricted response domain.
   expect_s3_class(err, "flexybayes_refusal_aggregation_route_unavailable")
@@ -296,10 +296,10 @@ test_that("flexybayes_stream() cannot reach the domain check: its family roster 
 })
 
 test_that("fb_from_brms() and fb_from_asreml() build the IR without checking the response domain", {
-  # Ingest adapters build the intermediate representation only; they
+  # Ingest adapters build the intermediate representation only. They
   # never reach an engine on their own (no exported verb fits an fb_terms
-  # IR directly), so the response-domain check -- like the analogous
-  # .refuse_non_binary_binomial_response() -- lives downstream, at
+  # IR directly), so the response-domain check, like the analogous
+  # .refuse_non_binary_binomial_response(), lives downstream, at
   # .fb_apply_na_action() inside flexybayes(), not in the ingest layer.
   d <- data.frame(y = c(stats::rlnorm(19L), -0.5), x = stats::rnorm(20L))
 

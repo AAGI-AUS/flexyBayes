@@ -1,14 +1,14 @@
-# capability_matrix.R -- the single source of truth for the per-engine
+# capability_matrix.R, the single source of truth for the per-engine
 # capability table shown on every public surface.
 #
 # One R-level table, rendered to Markdown by
 # tools/generate_capability_matrix.R and spliced between the
 # <!-- capability-matrix:begin --> / <!-- capability-matrix:end -->
 # markers in README.md and inst/KNOWN_ISSUES.md. README.md carries the rows
-# at least one engine fits, without notes; inst/KNOWN_ISSUES.md carries every
+# at least one engine fits, without notes. inst/KNOWN_ISSUES.md carries every
 # row with its note. A staleness test (tests/testthat/test-capability-matrix.R)
 # fails when a committed block drifts from a fresh render, and a behaviour
-# anchor per row asserts the verdict against the emit / gate code rather than
+# anchor per row asserts the verdict against the emit / gate code instead of
 # against this table.
 #
 # The verdict vocabulary is closed:
@@ -17,7 +17,7 @@
 #   emits    the engine generates the structure, and no live fit has yet
 #            confirmed it samples acceptably. Used where the emit is
 #            asserted but the inference is not.
-#   refuses  the request raises rather than fitting something else.
+#   refuses  the request raises instead of fitting something else.
 #   n/a      the class does not apply to that engine's interface.
 #
 # Every row carries the anchor field naming the test that grounds it, so a
@@ -41,7 +41,7 @@
 #' Per-engine capability table
 #'
 #' The declared capability of each active engine by model class. This is
-#' the only place the capability verdicts are written down; README.md and
+#' the only place the capability verdicts are written down. README.md and
 #' `inst/KNOWN_ISSUES.md` carry a generated copy, and
 #' `tests/testthat/test-capability-matrix.R` re-derives every verdict from
 #' the gate and emit code.
@@ -325,7 +325,7 @@
       brms = "fits",
       note = "Precision weights, Var(y_i) = sigma^2 / w_i, as in ASReml,
         lme4 and `glm(weights = )`: INLA's `scale = w`, and on brms a known
-        offset on sigma rather than brms's own `weights()` term, which
+        offset on sigma instead of brms's own `weights()` term, which
         multiplies each observation's log-likelihood instead. Both engines
         match `lme4::lmer(weights = )` closely on a shared simulated
         fixture. Any other family, or a non-identity link on the Gaussian,
@@ -382,7 +382,7 @@
 # --- rendering ----------------------------------------------------- #
 
 # The closed verdict vocabulary. Any value outside it is a typo, and the
-# renderer refuses rather than printing it onto a public surface.
+# renderer refuses instead of printing it onto a public surface.
 .FB_CAPABILITY_VERDICTS <- c("fits", "emits", "refuses", "n/a")
 
 # What each verdict means, in the words the rendered legend uses.
@@ -397,7 +397,7 @@
 )
 
 # Which surface carries which layout. README.md shows only the rows at least
-# one engine fits, without notes; inst/KNOWN_ISSUES.md shows every row with
+# one engine fits, without notes. inst/KNOWN_ISSUES.md shows every row with
 # its note. The generator and the staleness test both read this.
 .fb_capability_targets <- function() {
   c("README.md" = "fits", "inst/KNOWN_ISSUES.md" = "full")
@@ -405,7 +405,7 @@
 
 # Collapse the source table's wrapped string literals to one line. The
 # table is written with line breaks so it stays inside the 80-character
-# budget; the rendered cell must be a single Markdown line.
+# budget. The rendered cell must be a single Markdown line.
 .fb_squish <- function(x) {
   gsub("[[:space:]]+", " ", trimws(x))
 }
@@ -548,13 +548,13 @@
 #'
 #' Replaces whatever currently sits between the begin and end markers with
 #' a fresh render. Errors when either marker is missing or duplicated,
-#' rather than appending a second copy of the table.
+#' instead of appending a second copy of the table.
 #'
 #' @param path Path to the Markdown file carrying the marker pair.
-#' @param write Logical. When `TRUE` the file is rewritten in place; when
+#' @param write Logical. When `TRUE` the file is rewritten in place. When
 #'   `FALSE` the would-be contents are returned without touching the file
 #'   (the staleness test uses this).
-#' @param layout Passed to `.fb_capability_markdown()`; see
+#' @param layout Passed to `.fb_capability_markdown()`. See
 #'   `.fb_capability_targets()` for the layout each surface uses.
 #'
 #' @returns The full file contents as a character vector of lines,

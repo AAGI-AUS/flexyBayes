@@ -1,9 +1,6 @@
-# Tests for fb_from_asreml() — phase 0.B of deliverable 0.
-#
-# Verifies that the existing asreml-format call shapes accepted by
-# flexybayes() produce a valid fb_terms object via the new IR
-# (intermediate representation) wrapper, with the parsed information
-# preserved exactly. Round-trip transparency is the contract.
+# fb_from_asreml(): the asreml-format call shapes flexybayes() accepts
+# produce a valid fb_terms object, with the parsed information preserved
+# exactly.
 #
 # Internal helpers accessed via `flexyBayes:::` (matches the pattern
 # used in test-parse.R).
@@ -249,8 +246,7 @@ test_that("fb_from_asreml() preserves parse_formula.R term descriptors verbatim"
     data = d
   )
 
-  # Compare against direct parse_formula calls — they should match
-  # exactly (round-trip transparency).
+  # Direct parse_formula calls must give the same result.
   fixed_direct <- flexyBayes:::.parse_fixed(yield ~ env, d)
   random_direct <- flexyBayes:::.parse_formula(~geno, d)
 

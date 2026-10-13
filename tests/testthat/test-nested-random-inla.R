@@ -88,7 +88,7 @@ test_that("INLA recovers the same variance components as lme4 REML", {
   # on the same data, and never sees flexyBayes's parser or emit. Posterior
   # means of variance components sit a little above REML point estimates
   # because the posteriors are right-skewed, so the tolerance is on the
-  # ratio rather than the difference.
+  # ratio, not the difference.
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_if_not_installed("agridat")

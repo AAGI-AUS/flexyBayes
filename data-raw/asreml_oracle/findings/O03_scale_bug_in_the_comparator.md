@@ -1,4 +1,4 @@
-# O03 -- the comparator read sectioned residuals on the wrong scale
+# O03: the comparator read sectioned residuals on the wrong scale
 
 **Found** 2026-09-11, in the oracle suite's own code, while reading scenario
 05's output. Recorded because it changed a published-looking result and
@@ -25,7 +25,7 @@ Two things, and the second is the one that matters.
 
 **It faked a catastrophe.** Scenario 05's residual sections read 17.88
 against ASReml's 299.2, which looks like a system returning answers an order
-of magnitude wrong. Squared, 17.88^2 = 319.7 against 299.2 -- close
+of magnitude wrong. Squared, 17.88^2 = 319.7 against 299.2, close
 agreement, and a good result for the sectioned-residual translation.
 
 **It corrupted a tolerance check.** A variance ratio is a component over the
@@ -48,7 +48,7 @@ residuals first and genotype components second, and that the two vectors were
 not aligned at all.
 
 That is the third time in this suite's short life that a proxy was read in
-place of the fact -- after the prior column in O01, and after a hypothesis
+place of the fact, after the prior column in O01, and after a hypothesis
 about which hyperparameter rows a sectioned fit carries, which was also
 wrong and also settled by printing them. A vector of numbers without its
 names is a proxy.
@@ -56,8 +56,8 @@ names is a proxy.
 ## The guard
 
 `fb_varcomp()` now tests `sigma`, the `sigma_` prefix and the `sd_` prefix,
-and excludes correlations explicitly rather than by assuming they cannot
+and excludes correlations explicitly and not by assuming they cannot
 match. The scenario results banked in `inst/validation/asreml-4.2/` are from
-after the correction; the earlier ones were discarded rather than kept for
+after the correction; the earlier ones were discarded and not kept for
 comparison, because a fixture produced by a broken comparator is not
 evidence of anything.

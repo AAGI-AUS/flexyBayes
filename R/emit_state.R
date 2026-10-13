@@ -1,13 +1,11 @@
-# emit_state.R -- Package-internal store for emit-once message latches.
+# emit_state.R: package-internal store for emit-once message latches.
 #
 # Holds the boolean flags that gate one-time announcements such as the
 # default variance-component prior note and the uniform-on-INLA approx
 # note. The store sits in a package-private environment so it cannot be
-# read or mutated via the public options() namespace; test code reaches
-# it through the .reset_emit_state_for_test() shim and the
-# helper-emit-state.R local_clean_emit_state() wrapper. The public
-# silence-mechanism remains options(flexyBayes.silence_*); only the
-# internal once-flag store is encapsulated here.
+# read or mutated via the public options() namespace. Tests reset it
+# through .reset_emit_state_for_test(). Users silence the messages with
+# options(flexyBayes.silence_*).
 
 .flexybayes_emit_state <- new.env(parent = emptyenv())
 
@@ -15,17 +13,15 @@
 .init_emit_state <- function() {
   .flexybayes_emit_state$default_prior_note <- FALSE
   .flexybayes_emit_state$uniform_inla_approx <- FALSE
-  # With backend = "auto" now the default, the
-  # auto-fallback notes (lgm_gate refused -> brms; INLA not installed ->
-  # brms) fire once per session rather than on every default call.
+  # The auto-fallback notes (lgm_gate refused -> brms, INLA not installed
+  # -> brms) fire once per session.
   .flexybayes_emit_state$auto_fallback_note <- FALSE
   .flexybayes_emit_state$auto_inla_missing_note <- FALSE
   # One-time note when the auto path's INLA fit
   # fails numerically and falls back to brms.
   .flexybayes_emit_state$auto_inla_numerical_fallback_note <- FALSE
   # One-time warning when the augment path carries more than roughly a
-  # third of the fitted rows as unobserved responses; the estimand, not
-  # the device, is what degrades there.
+  # third of the fitted rows as unobserved responses.
   .flexybayes_emit_state$high_missingness_warning <- FALSE
   # One-time warning when the unobserved-cell table is withheld because
   # the engine computed those rows on the linear-predictor scale.

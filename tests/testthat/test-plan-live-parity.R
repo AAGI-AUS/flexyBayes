@@ -1,18 +1,11 @@
-# test-plan-live-parity.R -- the plan surface must never name a route
-# dispatch would not take.
+# The plan surface must never name a route dispatch would not take.
 #
-# The 2026-08-16 adversarial review found `plan = TRUE` announcing
-# `Backend chosen: inla / Path: aggregated_inla` on a
-# `residual = ~ dsum(~ units | env)` model in the same breath as
-# `Gate outcome: refuse_structural (residual_term_type_inla)`. The live
-# call routed to brms, as it should. Two independent defects produced
-# that: `.fb_aggregation_plan()` treated a sectioned residual as
-# aggregatable, and `fb_plan()`'s aggregation override did not require
-# the INLA gate to have accepted the model.
+# `.fb_aggregation_plan()` must not treat a sectioned residual
+# (`dsum(~ units | env)`) as aggregatable, and `fb_plan()` may name the
+# aggregated route only when the INLA gate accepts the model.
 #
-# These tests pin the contract from both ends -- the refused shape must
-# plan and fit the same way, and a genuinely aggregation-eligible model
-# must still plan and fit the aggregated INLA route.
+# The sectioned residual must plan and fit the same way, and an
+# aggregation-eligible model must still plan and fit the aggregated route.
 
 # ---------------------------------------------------------------- #
 # Fixtures                                                           #
@@ -91,10 +84,8 @@ test_that("a sectioned residual is not aggregatable at plan level", {
 })
 
 test_that("explicit backend = 'inla' fits the dsum residual", {
-  # The other end of the parity contract: what the plan names, the live
-  # explicit call does. This used to be a typed refusal; it is now a fit,
-  # and the per-section residual standard deviations come back ordered as
-  # the fixture built them.
+  # What the plan names, the explicit call does. The per-section residual
+  # standard deviations come back in the order the fixture built them.
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -161,7 +152,7 @@ test_that("live auto fit of the dsum shape lands where the plan said", {
 
 
 # ---------------------------------------------------------------- #
-# (3) Positive control -- the aggregated INLA route still runs        #
+# (3) Positive control: the aggregated INLA route still runs         #
 # ---------------------------------------------------------------- #
 
 test_that("an aggregation-eligible model still plans aggregated_inla", {

@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{A fitted \code{flexybayes} object.}
 
-\item{...}{Passed to \code{\link[brms:loo]{brms::loo()}} on the brms path; ignored on the
+\item{...}{Passed to \code{\link[brms:loo]{brms::loo()}} on the brms path. Ignored on the
 refusal paths.}
 }
 \value{
@@ -23,7 +23,7 @@ no posterior.
 A method for the \pkg{loo} package's \code{loo()} generic. On a fit from
 the \strong{brms} engine the call passes through to \code{\link[brms:loo]{brms::loo()}}, which
 computes PSIS-LOO from the pointwise log-likelihood Stan stored, and
-returns \pkg{loo}'s own object -- \code{elpd_loo}, \code{p_loo}, \code{looic} and the
+returns \pkg{loo}'s own object, \code{elpd_loo}, \code{p_loo}, \code{looic} and the
 Pareto-k diagnostics, unchanged.
 }
 \details{
@@ -31,18 +31,18 @@ On a fit from the \strong{INLA} engine the method refuses by name. INLA
 returns a nested Laplace approximation to the posterior, not draws of
 the log-likelihood, so there is no quantity for importance sampling to
 reweight and no leave-one-out estimate to report. The refusal names
-the information criteria the fit did compute -- WAIC at
-\code{fit$inla$waic$waic} and DIC at \code{fit$inla$dic$dic} on a per-row fit --
-so the alternative is in the message rather than left to be found.
+the information criteria the fit did compute, WAIC at
+\code{fit$inla$waic$waic} and DIC at \code{fit$inla$dic$dic} on a per-row fit,
+so the alternative is in the message, not left to be found.
 Neither is a leave-one-out estimate and neither carries Pareto-k
 diagnostics.
 
 A fit that carries no posterior at all is refused as
 \code{fit_lacks_posterior_draws} instead, so the two states are told apart
-by the condition class rather than by reading the message.
+by the condition class, not by reading the message.
 }
 \seealso{
 \code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \verb{$converge} slot carries the
-engine's own diagnostics; \code{\link[=as_draws_df.flexybayes]{as_draws_df.flexybayes()}} for the
-posterior itself; \code{\link[=fb_refusals]{fb_refusals()}} for the refusal vocabulary.
+engine's own diagnostics. \code{\link[=as_draws_df.flexybayes]{as_draws_df.flexybayes()}} for the
+posterior itself. \code{\link[=fb_refusals]{fb_refusals()}} for the refusal vocabulary.
 }

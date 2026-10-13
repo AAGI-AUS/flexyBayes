@@ -3,16 +3,16 @@
 #
 # `y ~ x + (1 | g:h)` and `y ~ x, random = ~ g:h` are the same model in two
 # grammars, and the README says the grammar "is detected from the call
-# shape" -- a promise of surface-independent behaviour. On INLA they
+# shape", a promise of surface-independent behaviour. On INLA they
 # behaved differently: the ASReml spelling was stopped by `lgm_gate()` with
 # a typed refusal naming the engine that does fit it, and the bar spelling
 # was read as a simple random intercept on a group named "g:h", passed the
 # gate, reached the INLA binary, and failed there with a message about the
-# emitted formula rather than about the user's model.
+# emitted formula instead of about the user's model.
 #
 # A refusal contract that holds on one surface and not the other is worse
 # than no contract, because the user learns to trust it. The fix is at the
-# ingest layer rather than at the gate: both surfaces are classified by the
+# ingest layer instead of at the gate: both surfaces are classified by the
 # same walker, so the two descriptors are identical and every downstream
 # gate sees one model.
 # =============================================================================
@@ -92,7 +92,7 @@ test_that("both grammars fit the nested term on INLA, and agree", {
   expect_identical(v_bar$component, v_asr$component)
   expect_true("sd_g:h" %in% v_bar$component)
   # The two spellings build the same IR and the same INLA formula, and the
-  # estimates agree to about 1e-6 relative rather than to the bit: INLA's
+  # estimates agree to about 1e-6 relative instead of to the bit: INLA's
   # optimiser does not land on identical numbers from the two term orderings
   # the grammars produce. 1e-4 is far tighter than any modelling difference
   # and still fails if the grammars ever diverge in substance.

@@ -3,7 +3,7 @@
 # One free standard deviation per level of the outer factor and no covariance
 # between levels. INLA writes this as k independent iid fields, each on an
 # index that is NA outside its level. This refused on INLA until 0.10.0.9000
-# with no reason recorded beyond the allowlist; it is one of ASReml's two
+# with no reason recorded beyond the allowlist. It is one of ASReml's two
 # multi-environment-trial workhorses.
 
 .hv_fixture <- function(seed = 21L, n_gen = 40L,
@@ -43,8 +43,8 @@ test_that("the emitted formula carries one iid field per level", {
     family = "gaussian"
   )
   # deparse() wraps long formulas mid-call, so collapse and normalise the
-  # whitespace before matching -- otherwise the third f() splits and the
-  # match fails on formatting rather than on content.
+  # whitespace before matching, otherwise the third f() splits and the
+  # match fails on formatting instead of on content.
   txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
                                  collapse = " "))
   for (lev in 1:3) {
@@ -106,7 +106,7 @@ test_that("the per-level index does not leak into the summary label", {
     verbose = FALSE
   ))
   comps <- summary(fit)$varcomp$component
-  # brms names the same component sd_<inner>__<outer><level>; the two
+  # brms names the same component sd_<inner>__<outer><level>. The two
   # engines must agree, and the generated index must not surface.
   expect_true("sd_gen__env1" %in% comps)
   expect_false(any(grepl("_at_", comps, fixed = TRUE)))

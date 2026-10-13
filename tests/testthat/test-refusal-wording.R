@@ -2,8 +2,8 @@
 # What a refusal says about the engines, checked through the public verbs.
 #
 # A refusal names what cannot be fitted, why, and what to do instead. When
-# the reason is flexyBayes's own -- no lowering written, a result that did
-# not repeat -- the message says so, and does not describe it as something
+# the reason is flexyBayes's own, no lowering written, a result that did
+# not repeat, the message says so, and does not describe it as something
 # INLA or brms cannot do. Before 0.14.0 several messages did: "no active
 # engine represents" a multi-trait covariance that brms writes directly,
 # "INLA's f() has no equicorrelation model" when INLA has an exchangeable
@@ -81,7 +81,7 @@
 
 # --- structures flexyBayes does not fit on either engine ----------------- #
 
-test_that("a multi-trait covariance refusal points at brms rather than denying it", {
+test_that("a multi-trait covariance refusal points at brms instead of denying it", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   d <- .rw_data()

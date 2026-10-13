@@ -10,7 +10,7 @@ fb_refuse(reason_code, message = NULL, ..., class = character(0), call = NULL)
 \item{reason_code}{A registered reason code (see \code{\link[=fb_refusals]{fb_refusals()}}).}
 
 \item{message}{The message shown to the user. Defaults to the reason's
-registered description; a message that names the user's own
+registered description. A message that names the user's own
 variables or values is usually more helpful.}
 
 \item{...}{Further named fields to carry on the condition object, for
@@ -25,7 +25,7 @@ class and \code{flexybayes_refusal}.}
 as for the core's refusals.}
 }
 \value{
-Does not return; it signals an error. The condition carries
+Does not return. It signals an error. The condition carries
 \code{message}, \code{reason_code}, \code{package} (the package that registered the
 code), \code{call} and the fields given in \code{...}.
 }

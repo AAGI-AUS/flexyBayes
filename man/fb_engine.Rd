@@ -11,7 +11,7 @@ fb_engine(name, opts = list(), ...)
 
 \item{opts}{Named list of tuning options. Recognised names are
 \code{n_samples}, \code{warmup}, \code{chains} and \code{adapt_delta}, described under
-"Recognised options" below; an unrecognised name is an error.}
+"Recognised options" below. An unrecognised name is an error.}
 
 \item{...}{Tuning options given individually, merged into \code{opts}
 (e.g. \code{fb_engine("brms", chains = 4L)}).}
@@ -31,7 +31,7 @@ the default \code{fb_engine()} for that engine.
 }
 \details{
 \code{name} and the derived \code{paradigm} are closed vocabularies. \code{"auto"}
-is a routing directive, not an engine; pass \code{backend = "auto"}
+is a routing directive, not an engine. Pass \code{backend = "auto"}
 directly for automatic routing.
 }
 \section{Recognised options}{
@@ -39,7 +39,7 @@ directly for automatic routing.
 
 All four are sampler controls, read by the routes that emit through
 Stan and ignored by the rest. An unrecognised name is an error at
-construction rather than a silently dropped argument.
+construction, not a silently dropped argument.
 
 \describe{
 \item{\code{n_samples}}{Post-warmup draws to keep, per chain.}

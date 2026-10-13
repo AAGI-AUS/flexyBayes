@@ -1,15 +1,8 @@
-# test-emit-state-isolation.R -- Regression suite for the v0.3.9
-# migration of the emit-once message latches out of the options()
-# namespace into a package-internal env (R/emit_state.R).
-#
-# The pre-v0.3.9 latch was keyed on
-# options(flexyBayes._default_prior_note_emitted) and
-# options(flexyBayes._uniform_inla_approx_emitted); any caller that
-# touched those names could consume the flag before the test
-# intended to re-emit, producing suite-order flakes. These tests pin
-# the new contract: the live store is .flexybayes_emit_state, the
-# public-API reset is local_clean_emit_state(), and stray options()
-# writes have no effect on the latch decision.
+# The emit-once message latches live in a package-internal environment
+# (R/emit_state.R), not in options(), so a test that sets an option
+# cannot consume a latch another test relies on. The store is
+# .flexybayes_emit_state, the reset is local_clean_emit_state(), and
+# options() writes have no effect on the latch.
 
 # Local fixtures (parallel testthat: each test file runs in its own
 # R process, so cross-file helpers are not in scope).
@@ -24,7 +17,7 @@ mk_emit_data <- function() {
 }
 
 test_that(".flexybayes_emit_state initialises to FALSE/FALSE on load", {
-  # Reset then read; both keys must be FALSE after a fresh init.
+  # Both keys must be FALSE after a reset.
   flexyBayes:::.reset_emit_state_for_test()
   expect_false(flexyBayes:::.emit_state_get("default_prior_note"))
   expect_false(flexyBayes:::.emit_state_get("uniform_inla_approx"))
@@ -44,9 +37,7 @@ test_that(".emit_state_set toggles the once-flag", {
 })
 
 test_that("options() writes do not influence the latch decision", {
-  # Set the legacy option-keyed flag to TRUE; the new env-keyed latch
-  # must still report FALSE since the option no longer drives the
-  # decision in R/fb_prior.R.
+  # Setting the option-keyed flag to TRUE leaves the latch FALSE.
   flexyBayes:::.reset_emit_state_for_test()
   withr::local_options(
     flexyBayes._default_prior_note_emitted = TRUE,

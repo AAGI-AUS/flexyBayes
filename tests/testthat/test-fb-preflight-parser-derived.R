@@ -1,13 +1,8 @@
-# Parser-derived preflight tests (audit P1.2, 2026-05-23). The
-# hand-built IR tests in test-fb-preflight.R exercise the byte-formula
-# math; these tests exercise the END-TO-END path: real formula -> live
-# parser (parse_formula.R + .enrich()) -> live preflight. They catch
-# the specific class of bug the audit named: parser-emitted type
-# strings that the preflight estimator did not match, silently routing
-# to the fallthrough and under-estimating by a factor of `k` or `df`.
+# Preflight on IR from the live parser: real formula, then parse_formula.R
+# and .enrich(), then preflight. A type string the estimator does not match
+# falls through and under-estimates by a factor of `k` or `df`.
 #
-# Uses fb_from_asreml() rather than flexybayes() to skip the backend
-# dispatch/fit path -- we only need the parsed IR.
+# fb_from_asreml() gives the parsed IR without a fit.
 
 test_that("preflight on parsed s(x, k = 6) matches object.size() of the basis", {
   skip_if_not_installed("mgcv")
@@ -23,7 +18,7 @@ test_that("preflight on parsed s(x, k = 6) matches object.size() of the basis", 
     data = dx
   )
 
-  # Confirm the live IR shape -- audit's central observation.
+  # Confirm the live IR shape.
   smooth_idx <- which(vapply(
     fb$random_terms,
     function(t) identical(t$type, "smooth_mgcv"),
@@ -52,8 +47,8 @@ test_that("preflight on parsed s(x, k = 6) matches object.size() of the basis", 
 
   # Tolerance per ADR 0021: per-term estimate accuracy <= 5% vs the
   # actually-allocated representation. The preflight estimator
-  # uses 8 * N * k + 8 * k + 256; object.size() includes a few extra
-  # bytes for SEXP header + dimnames + class attribute.
+  # uses 8 * N * k + 8 * k + 256. object.size() adds a few bytes for
+  # the SEXP header, dimnames and class attribute.
   expect_equal(
     smooth_entries[[1L]]$design_memory_bytes,
     actual_basis_bytes,
@@ -107,8 +102,7 @@ test_that("preflight on parsed spl(x) matches splines::bs() basis size", {
     tolerance = 0.05
   )
 
-  # 8 * 5000 * 8 + 8 * 8 + 256 = 320,320 -- the audit-confirmed
-  # expected number, vs the v0.3.0 fallthrough 60,336.
+  # 8 * 5000 * 8 + 8 * 8 + 256 = 320,320. The fallthrough gives 60,336.
   expect_equal(
     spline_entries[[1L]]$design_memory_bytes,
     8 * 5000 * 8 + 8 * 8 + 256
@@ -141,9 +135,8 @@ test_that("preflight on parsed y ~ f1 * f2 sizes the factor:factor block", {
   # Reference: the dense treatment-coded interaction block sized
   # as a clean numeric matrix + coefficient vector (matches the
   # idiom used by the other estimate-accuracy tests in
-  # test-fb-preflight.R; excludes dimnames overhead from
-  # model.matrix() which is not part of the design-representation
-  # contract).
+  # test-fb-preflight.R. The dimnames of model.matrix() are not part
+  # of the design representation).
   L1 <- nlevels(df$f1)
   L2 <- nlevels(df$f2)
   n_dummies <- (L1 - 1L) * (L2 - 1L)

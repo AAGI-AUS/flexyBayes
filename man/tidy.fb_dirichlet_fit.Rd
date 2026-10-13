@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{An \code{fb_dirichlet_fit} object from \code{\link[=fb_dirichlet]{fb_dirichlet()}}.}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 A \code{data.frame} with \code{term}, \code{estimate}, \code{std.error}, \code{conf.low},

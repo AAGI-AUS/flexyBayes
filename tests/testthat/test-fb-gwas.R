@@ -1,16 +1,16 @@
 # Genome-wide association scan (G3). The EMMAX / P3D scan is deterministic
-# and validated against exact, dependency-free oracles -- brute-force
+# and validated against exact, dependency-free oracles, brute-force
 # full-matrix REML for the variance components and brute-force per-marker
 # generalised least squares for the marker tests (both exact by the
-# spectral rotation = GLS identity established for .fb_spectral()) -- and
-# cross-checked against sommer's independent REML (the Independent Oracle
-# Principle: a number whose oracle I did not also author).
+# spectral rotation = GLS identity established for .fb_spectral()), and
+# cross-checked against sommer's independent REML (an independent reference,
+# not a number the test also computes).
 
 # ---------------------------------------------------------------- #
 # (a) REML variance components vs exact + independent oracles.      #
 # ---------------------------------------------------------------- #
 
-# Brute-force full-matrix REML over the variance ratio delta -- the exact
+# Brute-force full-matrix REML over the variance ratio delta, the exact
 # reference the rotated .fb_reml_vc() must reproduce.
 .brute_reml <- function(y, X, K) {
   n <- length(y)
@@ -53,7 +53,7 @@ test_that(".fb_reml_vc() reproduces brute-force full-matrix REML exactly", {
   expect_equal(fb$h2, 1 / (1 + bf$delta), tolerance = 1e-4)
 })
 
-test_that(".fb_reml_vc() agrees with sommer's independent REML (Independent Oracle)", {
+test_that(".fb_reml_vc() agrees with sommer's independent REML", {
   skip_if_not_installed("sommer")
   G <- sim_kinship(n_geno = 60L, n_markers = 400L, seed = 3L)
   sim <- sim_gblup_pheno(G, var_g = 2, var_e = 1, n_rep = 1L, seed = 4L)
@@ -114,7 +114,7 @@ test_that("the EMMAX scan statistic equals exact per-marker GLS at the null VCs"
 
 test_that("fb_gwas() detects simulated QTL with a background relationship matrix", {
   # Proper GWAS practice: the relationship matrix is built from
-  # *background* markers, not the markers being tested -- testing a marker
+  # *background* markers, not the markers being tested, testing a marker
   # that is also in K causes proximal contamination (the polygenic term
   # absorbs the marker's own signal, deflating the statistic). Here K
   # comes from an independent marker panel on the same individuals.
@@ -148,7 +148,7 @@ test_that("fb_gwas() detects simulated QTL with a background relationship matrix
 test_that("fb_gwas() default K-from-markers detects QTL but is conservative (proximal contamination)", {
   # The convenience default (K built from the tested markers) still finds
   # strong QTL, but the shared-marker proximal contamination deflates the
-  # genome-wide statistics -- conservative, documented, and the reason an
+  # genome-wide statistics, conservative, documented, and the reason an
   # independent / leave-one-chromosome-out K is preferred.
   sim <- sim_gwas_pheno(
     n_geno = 250L, n_markers = 500L,
@@ -184,7 +184,7 @@ test_that("fb_gwas() under a pure polygenic null gives uniform p-values (lambda_
 
 test_that("fb_gwas() builds K from markers when none is supplied", {
   # Fewer markers than individuals -> the auto-built relationship matrix is
-  # rank-deficient; the full eigendecomposition must still drive REML.
+  # rank-deficient. The full eigendecomposition must still drive REML.
   sim <- sim_gwas_pheno(n_geno = 120L, n_markers = 80L,
     qtl_idx = c(20L, 60L), qtl_effect = c(2, -2), seed = 43L)
   dat <- data.frame(y = sim$y)
@@ -220,7 +220,7 @@ test_that("fb_gwas() refuses a marker matrix with the wrong row count", {
   )
 })
 
-test_that("print.fb_gwas() renders the headline diagnostics", {
+test_that("print.fb_gwas() renders the diagnostics", {
   sim <- sim_gwas_pheno(n_geno = 80L, n_markers = 50L, qtl_idx = 25L,
     qtl_effect = 2.5, seed = 46L)
   scan <- fb_gwas(y ~ 1, data = data.frame(y = sim$y), markers = sim$markers)

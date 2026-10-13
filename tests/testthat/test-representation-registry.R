@@ -271,7 +271,7 @@ test_that(".register_representation() refuses duplicate name", {
     error = function(e) e
   )
   expect_s3_class(err, "error")
-  # Either the lock check or the duplicate check refuses; both
+  # Either the lock check or the duplicate check refuses. Both
   # protect vocabulary-lock semantics.
   expect_match(
     conditionMessage(err),
@@ -313,7 +313,7 @@ test_that("user-side assign() into the registry raises", {
 # ---------------------------------------------------------------- #
 #
 # Any vocabulary churn surfaces as a snapshot diff that the maintainer
-# must consciously accept or reject; an unintentional addition or
+# must consciously accept or reject. An unintentional addition or
 # removal of a representation class will not pass silently.
 
 test_that("registered representation vocabulary snapshot", {

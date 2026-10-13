@@ -17,7 +17,7 @@ test_that(".fb_dataset(data.frame): basic wrap + dictionary freeze", {
   expect_identical(ds$n_rows, 3L)
   expect_identical(ds$origin, "data.frame")
   expect_true(inherits(ds$data, "data.table"))
-  # col_types named character; one entry per column
+  # col_types: named character, one entry per column
   expect_identical(sort(names(ds$col_types)), sort(c("y", "g", "x")))
   expect_identical(unname(ds$col_types[["y"]]), "double")
   expect_identical(unname(ds$col_types[["g"]]), "factor")
@@ -159,7 +159,7 @@ test_that("format.fb_dataset() / print.fb_dataset() produce diagnostic output", 
   expect_true(any(grepl("g(3)", printed, fixed = TRUE)))
 })
 
-test_that(".fb_dataset is internal -- no exported binding", {
+test_that(".fb_dataset is internal, with no exported binding", {
   # The dotted-name internal contract: `.fb_dataset` is reachable
   # via `flexyBayes:::.fb_dataset` (triple-colon, internal access)
   # but NOT via `flexyBayes::.fb_dataset` (double-colon, exported

@@ -1,4 +1,4 @@
-# inla_covariate_standardisation.R -- INLA fits on standardised covariates.
+# inla_covariate_standardisation.R, INLA fits on standardised covariates.
 #
 # A Gaussian identity-link fit runs on a standardised response
 # (R/inla_standardise.R), which makes it one model whatever units the
@@ -8,14 +8,14 @@
 # groups of 8 with a standard-normal covariate: multiplying the covariate by
 # a thousand moved the Poisson coefficient by 1.8 per cent and the Bernoulli
 # coefficient by 1.7 per cent, against a run-to-run spread of 2e-7 over five
-# identical fits (review/units/U-N5-1_2026-09-16/).
+# identical fits.
 #
 # Each eligible numeric covariate is divided by its standard deviation before
 # the fit, and every reading of it is multiplied back afterwards. Two
 # properties make that exact.
 #
 #   * It is a division only. Centring would move the intercept by a linear
-#     combination of the slopes, and INLA reports marginals rather than the
+#     combination of the slopes, and INLA reports marginals instead of the
 #     joint posterior such a combination would need, so the intercept could
 #     not be mapped back exactly. Dividing maps every quantity by a scalar of
 #     its own.
@@ -27,7 +27,7 @@
 #
 # What the standardisation buys is the prior. A quantity with no stated prior
 # takes INLA's own default on the standardised coordinates, which is written
-# for a covariate of unit spread; and a prior the package or the caller did
+# for a covariate of unit spread. And a prior the package or the caller did
 # state is restated on those coordinates, so the model is the one that was
 # asked for whatever units the covariate is recorded in.
 
@@ -39,11 +39,11 @@
 #' @param fb An `fb_terms` object.
 #' @param data The data the fit is built from.
 #' @returns `NULL` when nothing is eligible, otherwise a list with
-#'   `divisor`, the standard deviation of each standardised data column;
+#'   `divisor`, the standard deviation of each standardised data column.
 #'   `coef_divisor`, the factor each fixed-effect coefficient is multiplied
-#'   by on the standardised coordinates, keyed by design column;
+#'   by on the standardised coordinates, keyed by design column.
 #'   `slope_divisor`, the same for each uncorrelated slope field, keyed by
-#'   the INLA index the field is written over; and `slope_key_divisor`, keyed
+#'   the INLA index the field is written over. And `slope_key_divisor`, keyed
 #'   by the prior DSL's name for that field's standard deviation.
 #' @noRd
 #' @keywords internal
@@ -95,7 +95,7 @@
 #' formula transform reads the column through a function, and `log(x / d)` is
 #' not `log(x)` divided by anything, so the coefficient could not be mapped
 #' back. The response, an offset and an addition term are not covariates. A
-#' grouping factor indexes a field; it does not weight one. The correlated
+#' grouping factor indexes a field. It does not weight one. The correlated
 #' slope's covariate scales a Wishart prior built from `var(y) / var(x)`
 #' (R/emit_inla.R), which a division would state twice. A protected column is
 #' left exactly as the caller recorded it.
@@ -268,7 +268,7 @@
 #' The standard deviation of an uncorrelated slope is in response units per
 #' covariate unit, so a covariate divided by `d` multiplies it by `d`. The
 #' map is `.fb_inla_map_hyper_entry()`, which divides, so it is handed
-#' `1 / d`; every prior family that reaches it is closed under that map, and
+#' `1 / d`. Every prior family that reaches it is closed under that map, and
 #' one that is not refuses there, so no misstated prior reaches INLA.
 #'
 #' @param hyper_ctrl The `priors_to_inla()` list.
@@ -291,7 +291,7 @@
 #'
 #' A coefficient multiplied by `d` has its prior mean multiplied by `d` and
 #' its precision divided by `d^2`. Only a coefficient the caller or the
-#' package gave a prior is restated; one with neither keeps INLA's own
+#' package gave a prior is restated. One with neither keeps INLA's own
 #' default on the standardised coordinates. The intercept is untouched: the
 #' standardisation does not centre.
 #'
@@ -344,7 +344,7 @@
 
 # The factor a hyperparameter is multiplied by. A slope field divided by `d`
 # has its standard deviation divided by `d`, so its precision multiplies by
-# `d^2`; the residual, every other field and every correlation are unchanged,
+# `d^2`. The residual, every other field and every correlation are unchanged,
 # because the covariate carries no information about them.
 .fb_inla_covariate_hyper_factor <- function(name, cstd) {
   if (!startsWith(name, "Precision for ")) {

@@ -1,14 +1,14 @@
 # Reading list fields by exact name.
 #
 # `$` on a list falls back to a unique prefix match when no element carries
-# the exact name, and three readers relied on it. A multi-way interaction
+# the exact name. A multi-way interaction
 # term has `vars` and no `var`, so `term$var` returned the interaction's
 # columns. The aggregation plan names its cell count `K_est`, so
 # `agg_plan$K` returned it. A convention whose response scale had not been
 # filled returned its `response_scale_rule` string for `response_scale`.
-# Each reader now names the field it means. The tests run the readers with
+# Each reader names the field it means. The tests run the readers with
 # partial matching reported and collect every match raised in this package's
-# own code; matches raised inside an engine are not collected.
+# own code. Matches raised inside an engine are not collected.
 
 # The namespace a warning was raised in: the deepest frame below the warning
 # signal whose function is not base R's.

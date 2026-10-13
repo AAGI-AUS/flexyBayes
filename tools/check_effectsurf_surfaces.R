@@ -1,18 +1,18 @@
-# tools/check_effectsurf_surfaces.R -- a response surface that effectsurf
+# tools/check_effectsurf_surfaces.R: a response surface that effectsurf
 # draws from a flexyBayes fit must be that fit's posterior.
 #
 # effectsurf draws the surface of population-level predictions over two
 # covariates of a fitted model through marginaleffects, which reaches a
 # flexyBayes fit through the package's get_coef(), get_vcov() and
 # get_predict() methods (R/marginaleffects_support.R). effectsurf is not on
-# CRAN, so this is a release-gate script rather than a package test, and
+# CRAN, so this is a release-gate script instead of a package test, and
 # flexyBayes does not depend on it.
 #
 # The script simulates a known surface, y = 3 + 0.8 x1 - 1.2 x2 + 0.15 x1 x2
 # with a site effect, fits it on each engine, asks effectsurf for the
 # surface over (x1, x2), and compares every grid point with the posterior of
 # the linear predictor computed here: with a design matrix written here, and
-# from the engine's own output rather than from the package's summaries.
+# from the engine's own output instead of from the package's summaries.
 #
 #   INLA  runs on a standardised response. The relation between the data
 #         and the coordinates INLA ran on is read off the engine's own data

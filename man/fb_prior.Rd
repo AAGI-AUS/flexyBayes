@@ -22,10 +22,10 @@ Examples:
 
 Supported distribution families: \code{pc}, \code{half_normal}, \code{half_cauchy},
 \code{student_t}, \code{normal}, \code{exponential}, \code{lkj}, \code{cauchy}, \code{gamma},
-\code{uniform}, and \code{pooled} (see "Partially pooled SDs" below). Note that \code{uniform()} on a variance component sits
-outside the PC-canonical interlingua, but both active backends
-represent it faithfully on the SD scale: the INLA backend via an
-expression-prior on the log-precision, and brms as a bounded
+\code{uniform}, and \code{pooled} (see "Partially pooled SDs" below). \code{uniform()} on
+a variance component sits outside the PC-canonical interlingua, but both
+active backends represent it faithfully on the SD scale: the INLA backend
+via an expression-prior on the log-precision, and brms as a bounded
 \code{uniform()} prior on each simple random-effect (and residual) SD.}
 }
 \value{
@@ -39,7 +39,7 @@ standard-deviation scale (never precision / variance) and accepts
 two canonical idioms: distributional (\code{half_normal(scale = 1)})
 and tail-quantile / PC (penalised complexity)
 (\code{pc(upper = 1, prob = 0.01)} meaning \code{Pr(sigma > 1) = 0.01}).
-The PC idiom is the cross-engine interlingua -- it survives every
+The PC idiom is the cross-engine interlingua, it survives every
 backend because it is a probability statement, not a
 distributional name.
 }
@@ -56,9 +56,9 @@ duplicated argument, a missing required argument, a non-scalar or
 non-finite value, or a value outside its domain (a non-positive
 scale, a tail probability outside \verb{(0, 1)}) is refused at
 construction with a condition carrying a \verb{flexybayes_refusal_*}
-class -- see \code{\link[=fb_refusals]{fb_refusals()}}. Both halves of a PC prior are
+class: see \code{\link[=fb_refusals]{fb_refusals()}}. Both halves of a PC prior are
 required: \code{pc(upper = 1)} states no probability, and is refused
-rather than completed with a default the caller never wrote.
+instead of completed with a default the caller never wrote.
 }
 \section{What each backend can carry}{
 
@@ -68,9 +68,9 @@ a given (target, distribution) pair can be \emph{carried} depends on the
 backend, and the two differ.
 \itemize{
 \item \strong{brms} takes any of the ten distributions on \code{sigma} and
-\code{sd(group = )} -- the parameter is bounded below at zero and brms
+\code{sd(group = )}: the parameter is bounded below at zero and brms
 renormalises a two-sided density over that support, which is why
-\code{normal(0, s)} and \code{half_normal(s)} are the same prior there -- and
+\code{normal(0, s)} and \code{half_normal(s)} are the same prior there, and
 \code{normal} / \code{student_t} on \code{b()}. It carries no \code{cor()} or
 \code{smooth()} prior, because no model this package emits on brms has
 either parameter.
@@ -81,11 +81,11 @@ which arrives through \code{control.fixed}, and \code{normal} on
 \code{loading(group = )}, the loadings of \code{fa(f, k):group} relative to the
 anchor level. With no loading prior stated, each loading takes
 \code{normal(mean = 1, sd = 0.316)}, which is INLA's own prior on a copy
-scaling; \code{\link[=prior_summary]{prior_summary()}} lists it.
+scaling, \code{\link[=prior_summary]{prior_summary()}} lists it.
 }
 
 A specification the selected backend cannot carry is refused at the
-fit, naming the row and both remedies -- re-express it in a
+fit, naming the row and both remedies, re-express it in a
 distribution that engine does carry, or switch backend. Before 0.9.2
 the INLA route discarded such a row silently while
 \code{\link[=prior_summary]{prior_summary()}} printed it as applied, so a prior-sensitivity
@@ -106,11 +106,11 @@ A fit that states neither \code{prior} nor \code{prior_vc_sd} runs under the
 package default: \code{half_normal(scale = s)} on the residual standard
 deviation and on the standard deviation of every variance component
 the default reaches, on both engines. \code{s} is \code{5 * sd(y)} on an identity
-link, \code{3} on a log link and \code{5} on a logit link; on an uncorrelated
+link, \code{3} on a log link and \code{5} on a logit link. On an uncorrelated
 random slope on a numeric covariate \code{x} it is \code{s / sd(x)}. The default
 has no upper bound. \code{\link[=prior_summary]{prior_summary()}} prints the scale a fit ran under.
 A Gaussian identity-link fit on INLA runs on the response divided by
-\code{sd(y)}, where the same prior is \code{half_normal(scale = 5)}; the printed
+\code{sd(y)}, where the same prior is \code{half_normal(scale = 5)}. The printed
 formula and \code{prior_summary()} show it on both scales.
 }
 
@@ -122,14 +122,14 @@ deviations, instead of a separate prior on each. The target names the
 term, and \code{by} the factor whose levels are pooled:
 \itemize{
 \item \code{sd(group = "TRIAL:VARIETY", by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))} for the genotype-by-trial SDs
-of \code{diag(TRIAL):VARIETY};
+of \code{diag(TRIAL):VARIETY}.
 \item \code{sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))} for the
 residual SDs of \code{dsum(~ units | TRIAL)}.
 }
 
 Either set can be pooled without the other. The log SDs of a pooled set
 are normal with an estimated mean and an estimated SD, the pooling SD.
-\code{scale} is the prior on the pooling SD and has no default; it can be any
+\code{scale} is the prior on the pooling SD and has no default. It can be any
 prior brms accepts for a standard deviation. The mean has a
 \code{normal(log(s / 5), 2)} prior, where \code{s} is the scale of the package's
 default SD prior. On an identity link that is \code{normal(log(sd(y)), 2)}.

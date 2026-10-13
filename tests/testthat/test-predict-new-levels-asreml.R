@@ -41,7 +41,7 @@ test_that("at ASReml's REML variances the set variance is ASReml's plug-in", {
   # One "draw" holding ASReml's variances, as standard deviations, and its
   # field correlations.
   # The fixture keeps ASReml's RANGE and ROW correlations as rho_row and
-  # rho_col; a fit names them rho_RANGE and rho_ROW.
+  # rho_col. A fit names them rho_RANGE and rho_ROW.
   cor_reml <- fx$correlation
   names(cor_reml)[match(c("rho_row", "rho_col"), names(cor_reml))] <-
     c("rho_RANGE", "rho_ROW")
@@ -117,7 +117,7 @@ test_that("the posterior predictive agrees with ASReml's plug-in prediction", {
 
   # Mean: both estimate the same fixed-effect function, the posterior under a
   # vague prior and ASReml by GLS at the REML variances, so they differ by a
-  # small fraction of its standard error. A quarter of it is allowed; the
+  # small fraction of its standard error. A quarter of it is allowed. The
   # Monte Carlo error of 4000 draws is under a tenth.
   se_fixed <- sqrt(theirs$var_fixed)
   expect_lt(max(abs(ours$estimate - theirs$mean) / se_fixed), 0.25)

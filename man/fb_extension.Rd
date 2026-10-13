@@ -46,7 +46,7 @@ an R expression in the columns of \code{data}.}
 \item{data}{A data frame.}
 
 \item{offsets}{The offset terms of a model as written, for example
-\code{"offset(log(area))"}; \code{fb_model_terms(fit)$offsets}.}
+\code{"offset(log(area))"}, \code{fb_model_terms(fit)$offsets}.}
 
 \item{newdata}{\code{TRUE} when \code{data} holds new rows for a prediction, so
 that a missing offset column is refused with a message that says so.}
@@ -79,8 +79,8 @@ to learn transforms from every row.}
 or \code{NULL} when the model has no offset.
 \item \code{fb_model_weights()}: the numeric weights, or \code{NULL} for an unweighted
 model.
-\item \code{fb_known_variance()}: \code{NULL} for a model without a known variance;
-otherwise a list with \code{values} (one variance per row of the fitted data),
+\item \code{fb_known_variance()}: \code{NULL} for a model without a known variance.
+Otherwise a list with \code{values} (one variance per row of the fitted data),
 \code{matrix} (the known covariance, or \code{NULL} for a vector), \code{column} (the
 data column that carries each row's variance) and \code{inla_index} (the
 index of the row effect that carries it in an INLA formula).
@@ -104,7 +104,7 @@ A package built on flexyBayes reads a fitted model through these
 functions, \code{\link[=fb_refit]{fb_refit()}}, \code{\link[=fb_marginal_cov]{fb_marginal_cov()}}, \code{\link[=fb_isolated_lapply]{fb_isolated_lapply()}} and
 the refusal registry (\code{\link[=fb_register_refusals]{fb_register_refusals()}}, \code{\link[=fb_refuse]{fb_refuse()}}), and never
 through the package's internal functions. \code{fb_extension_api()} gives the
-version of that set; a package checks it in its \code{.onLoad()} and refuses to
+version of that set. A package checks it in its \code{.onLoad()} and refuses to
 load against a version it was not written for.
 
 Builds the fixed-effect design matrix of \code{formula} over \code{data}, as

@@ -15,7 +15,7 @@
 #   * every banked fixture carries the provenance fields, and its
 #     `source_sha` is declared in ANCHORS.md;
 #   * and the checking function itself is shown to reject a record that is
-#     missing a field, carries an undeclared SHA, or was run dirty -- so a
+#     missing a field, carries an undeclared SHA, or was run dirty, so a
 #     checker that accepted everything could not pass this file.
 #
 # The git-ancestry half runs only where git and the repository are available,
@@ -37,7 +37,7 @@
   }
   txt <- readLines(path, warn = FALSE)
   # One anchor per line, as a 40-character hex SHA in backticks at the start
-  # of a table row. Read rather than parsed loosely: an anchor that is only
+  # of a table row. Read instead of parsed loosely: an anchor that is only
   # mentioned in prose is not a declaration.
   m <- regmatches(txt, regexpr("`[0-9a-f]{40}`", txt))
   gsub("`", "", m, fixed = TRUE)

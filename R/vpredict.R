@@ -1,7 +1,7 @@
-# vpredict.R -- exact posterior functionals of the variance components.
+# vpredict.R, exact posterior functionals of the variance components.
 #
-# ASReml's vpredict() takes a function of variance components -- a
-# heritability, a genetic correlation, a variance ratio -- and returns the
+# ASReml's vpredict() takes a function of variance components (a
+# heritability, a genetic correlation, a variance ratio) and returns the
 # estimate with a DELTA-METHOD standard error. The delta method linearises
 # the function at the REML estimate, so it does not know where the
 # parameter space ends: an ASReml heritability can come back with an
@@ -19,7 +19,7 @@
 # put every variance component on the standard-deviation scale.
 
 # The sentence that points a pre-0.18.0 name, rho_row on a one-factor AR1
-# field, to the rho_<factor> a fit now carries; empty when none applies.
+# field, to the rho_<factor> a fit now carries. Empty when none applies.
 .fb_rho_renamed_note <- function(unknown, carried, object) {
   renamed <- .fb_ar1_rho_renamed(object$fb)
   hit <- renamed[names(renamed) %in% unknown & renamed %in% carried]
@@ -43,12 +43,12 @@
   )
 }
 
-# .fb_vpredict_draws() --- variance-component draws fit to be transformed.
+# .fb_vpredict_draws(): variance-component draws fit to be transformed.
 #
 # The generic draws path takes hyperparameters from
 # INLA::inla.posterior.sample(), which resamples the stored integration
-# configurations. That is coherent -- each latent draw is paired with the
-# hyperparameters it was drawn under -- but the hyperparameters themselves
+# configurations. That is coherent, each latent draw is paired with the
+# hyperparameters it was drawn under, but the hyperparameters themselves
 # take only as many distinct values as INLA's integration grid has points.
 # Measured on a 24-genotype alpha design: 1000 draws, 15 unique values. A
 # functional built on those has a posterior supported on 15 atoms, and
@@ -79,7 +79,7 @@
   if (is.null(smp) || !is.matrix(smp) || nrow(smp) != n_draws) {
     warning(
       "vpredict(): could not draw from the joint hyperparameter posterior, ",
-      "so the variance components carry INLA's integration grid rather than ",
+      "so the variance components carry INLA's integration grid instead of ",
       "a continuous posterior. Intervals on them are coarser than they look.",
       call. = FALSE
     )
@@ -108,7 +108,7 @@
 
 #' Posterior functionals of the variance components
 #'
-#' The exact posterior of any function of the fitted variance components --
+#' The exact posterior of any function of the fitted variance components:
 #' a heritability, a genetic correlation, a variance ratio, a repeatability.
 #' Each functional is written as a two-sided formula whose left side names
 #' the result and whose right side is an expression over the component
@@ -189,7 +189,7 @@ vpredict.flexybayes <- function(
   n <- length(post[[1L]])
 
   # baseenv(), not the calling frame: a component name the fit does not
-  # carry must refuse by name rather than silently resolve to whatever the
+  # carry must refuse by name instead of silently resolve to whatever the
   # caller happens to have in their workspace under that name.
   env <- list2env(post, parent = baseenv())
 

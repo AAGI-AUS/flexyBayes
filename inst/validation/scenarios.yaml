@@ -431,7 +431,7 @@ scenarios:
 
   # --- Study 4: six-pair ASReml comparison, 2026-08-18 -----------------
   #
-  # `review/phase_reports_091/headtohead_run.R` (workspace). Same design,
+  # Run outside the package on the same six pairs. Same design,
   # different estimator, on every pair: ASReml returns an AI-REML point
   # estimate and flexyBayes a posterior.
 
@@ -505,9 +505,9 @@ scenarios:
     quantity_class: var_component
     result_cache: review/phase_reports_091/headtohead_tables.csv
 
-  # --- Study 5: alternative-implementation hunt (recipe 63) ------------
+  # --- Study 5: alternative-implementation hunt ------------------------
   #
-  # `review/phase_reports_091/alternatives_flexybayes.yaml` declares the
+  # Each entry declares the
   # estimand, the tolerances and the not-the-same-question note for each
   # entry BEFORE any fit ran. One shared 60-row gaussian fixture.
 
@@ -552,7 +552,7 @@ scenarios:
     tolerance_rationale: "declared before the run; the three parameterise the heteroscedasticity differently, so only the ratio is comparable"
     result_cache: review/phase_reports_091/alternatives_results.csv
 
-  # --- Stability / edge of domain (F22) --------------------------------
+  # --- Stability / edge of domain --------------------------------
 
   - id: stability-spatial-field-collapse
     estimator: flexybayes
@@ -590,7 +590,7 @@ scenarios:
     quantity_class: mcmc_summary
     result_cache: inst/validation/execution_grid/ledger.csv
 
-  # --- Stochastic calibration (F21) ------------------------------------
+  # --- Stochastic calibration ------------------------------------
   #
   # The one calibration study the package has. It is a genuine
   # interval-coverage study through `flexybayes()` -- and it is BELOW the

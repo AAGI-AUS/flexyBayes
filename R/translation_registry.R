@@ -1,10 +1,10 @@
-# translation_registry.R -- what each ASReml structure becomes, and what
+# translation_registry.R, what each ASReml structure becomes, and what
 # grounds the claim.
 #
 # The capability matrix (R/capability_matrix.R) answers one question: does an
 # engine fit this structure, or refuse it? The 2026-09-11 translation audit
 # found that a second question was being answered implicitly and inconsistently
-# across the public surfaces -- is the model that gets fitted the same model
+# across the public surfaces, is the model that gets fitted the same model
 # ASReml would fit, and how do we know? "ASReml syntax" was used as a blanket
 # claim over lowerings of three quite different kinds.
 #
@@ -12,8 +12,8 @@
 #
 #   vintage    which grammar the spelling belongs to. ASReml 4 removed
 #              residual-side at() in favour of dsum(), and ped() in favour of
-#              vm(); both spellings still work here, and both are now labelled
-#              as the ASReml 3 forms they are rather than presented as current
+#              vm(). Both spellings still work here, and both are now labelled
+#              as the ASReml 3 forms they are instead of presented as current
 #              syntax.
 #
 #   class      what the lowering promises:
@@ -46,7 +46,7 @@
 #              INLA factor-analytic, us()/iidKd, correlated-slope, sectioned
 #              residual and combined MET paths, and the banked ASReml
 #              comparisons predate all of them. Cross-engine agreement is not
-#              an oracle for these rows -- both engines consume the same
+#              an oracle for these rows, both engines consume the same
 #              parsed representation, so a common parser error agrees
 #              perfectly across them.
 #
@@ -187,11 +187,11 @@
         "ASReml 4.2.0.392 at this anchor on agridat::besag.met. Structural",
         "layer exact: 7 variance parameters, 6 estimable fixed effects, 1,152",
         "observations, identical on both sides. Numerical layer FAILS its",
-        "declared tolerance on the intercept -- 148.60 against 149.14, a",
+        "declared tolerance on the intercept, 148.60 against 149.14, a",
         "difference of 0.55 against a tolerance of 0.35. ASReml pins two of",
         "the six genotype variances at exactly zero and the posterior does",
         "not, so the two systems weight the fixed effects differently. The",
-        "discrepancy is recorded rather than excused, and the tolerance is",
+        "discrepancy is recorded instead of excused, and the tolerance is",
         "not moved"
       ),
       anchor = "test-heterogeneous-variance-inla.R"
@@ -285,7 +285,7 @@
         "ten none converged and correlations from -0.894 to +0.686. Under",
         "every identical Wishart prior tried INLA and Stan agreed, and no",
         "Wishart scale gave REML-sized variances (INLA scale diagnosis,",
-        "2026-09-13), so the joint prior rather than the integration drives",
+        "2026-09-13), so the joint prior instead of the integration drives",
         "the disagreement"
       ),
       anchor = "test-inla-containment.R"
@@ -518,7 +518,7 @@
       engine = "inla, brms",
       class = "covariance-family",
       condition = paste(
-        "A representation-preserving policy rather than a universal ASReml",
+        "A representation-preserving policy instead of a universal ASReml",
         "equivalence: the design row is kept as a latent target. The",
         "estimator assumptions are the user's to check."
       ),

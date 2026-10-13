@@ -1,10 +1,10 @@
-# <flexybayes_review> -- deferred-execution token returned when a
+# <flexybayes_review>: deferred-execution token returned when a
 # user passes `review_code = TRUE` to `flexybayes()` (and, when
 # that entry lands, `fb_brms()`). The object
 # carries the generated backend code together with the IR
 # (intermediate representation), resolved prior, captured call,
 # RNG snapshot, and the arguments needed to advance the deferred
-# fit -- so the user can inspect the code first, then `proceed()`
+# fit: so the user can inspect the code first, then `proceed()`
 # into a fit without re-issuing the original call.
 #
 # Storage is `environment` so that the proceed-cache contract
@@ -91,7 +91,7 @@
 #' Two-line summary of a `<flexybayes_review>` object returned when
 #' `review_code = TRUE` is passed to [flexybayes()]. The first line
 #' reports the backend and the IR (intermediate representation)
-#' dimensions; the second is a prompt directing the user to
+#' dimensions. The second is a prompt directing the user to
 #' [cat_code()] for inspection and [proceed()] to advance the fit.
 #'
 #' @param x   A `<flexybayes_review>` object as returned by
@@ -139,10 +139,10 @@ print.flexybayes_review <- function(x, ...) {
   }
 
   if (isTRUE(x$proceeded)) {
-    cat("--- already proceeded; see x$fit\n")
+    cat("--- already proceeded, see x$fit\n")
   } else {
     cat(
-      "Run cat_code(x) to view the generated code; ",
+      "Run cat_code(x) to view the generated code and ",
       "proceed(x) to fit.\n",
       sep = ""
     )
@@ -152,7 +152,7 @@ print.flexybayes_review <- function(x, ...) {
 
 
 # ---------------------------------------------------------------- #
-# cat_code -- generic + method                                     #
+# cat_code: generic + method                                     #
 # ---------------------------------------------------------------- #
 
 #' Emit the generated backend code for a deferred review object
@@ -202,7 +202,7 @@ cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
 
 
 # ---------------------------------------------------------------- #
-# proceed -- generic + method                                      #
+# proceed: generic + method                                      #
 # ---------------------------------------------------------------- #
 
 #' Advance a deferred-execution object into its fit

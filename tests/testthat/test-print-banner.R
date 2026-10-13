@@ -2,8 +2,8 @@
 # What the prints say, and what they must never say.
 #
 # print() always opened on `MCMC : n chain(s) x n samples`, on every
-# engine. On INLA that is false -- a nested Laplace approximation runs no
-# chains and discards no warmup -- and to an ASReml user it reads as
+# engine. On INLA that is false, a nested Laplace approximation runs no
+# chains and discards no warmup, and to an ASReml user it reads as
 # "this will be slow and random", which is the opposite of what the
 # engine is. The three prints now share one header, and the sampler lines
 # appear only where a sampler ran.
@@ -25,8 +25,8 @@ suppressPackageStartupMessages(library(testthat))
     # The fixture below is a 12-cell grid of pure noise with two plots
     # lost, so its autoregressive field genuinely does not identify and
     # the fit says so. That is correct behaviour and it is asserted in
-    # test-spatial-field-collapse.R; this file's subject is the shape of
-    # the printed banner, so the warning is silenced rather than allowed
+    # test-spatial-field-collapse.R. This file's subject is the shape of
+    # the printed banner, so the warning is silenced instead of allowed
     # to stand in for a failure here.
     flexyBayes.silence_spatial_collapse_warning = TRUE,
     .local_envir = parent.frame()
@@ -303,7 +303,7 @@ test_that("the printed INLA formula names its priors instead of coding", {
   # An SD-scale prior reaches INLA as a C expression: about a hundred
   # characters of theta, sig and return(...) spliced into the formula.
   # Printing it buries the model in the encoding of one prior. The default
-  # here is the half-normal (0.13.0); a stated uniform adds -1.0e10.
+  # here is the half-normal (0.13.0), and a stated uniform adds -1.0e10.
   skip_if_not_installed("INLA")
   skip_on_cran()
   .pb_silence()
@@ -398,8 +398,8 @@ test_that("the prior cell rounds for display and not in the object", {
   cells <- cells[!is.na(cells) & grepl("[0-9]", cells)]
   skip_if(length(cells) == 0L, "no numeric prior cell on this fixture")
 
-  # The stored cell is the resolved prior verbatim -- the basis the
-  # projection identity is checked on -- and carries more digits than the
+  # The stored cell is the resolved prior verbatim, the basis the
+  # projection identity is checked on, and carries more digits than the
   # printed one.
   expect_true(any(nchar(cells) > nchar(
     flexyBayes:::.fb_round_prior_cell(cells)

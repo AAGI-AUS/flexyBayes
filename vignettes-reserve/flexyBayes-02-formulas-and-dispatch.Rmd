@@ -31,7 +31,7 @@ residual = ~ id(units))</code></dd>
 deliberately ASReml's.</dd>
 <dt>What it costs</dt>
 <dd>A narrower set of structures. Anything outside it is refused by name
-rather than silently replaced, and Section 4 is the full list.</dd>
+instead of silently replaced, and Section 4 is the full list.</dd>
 </dl>
 </div>
 
@@ -290,7 +290,7 @@ translated script can arrive here unchanged.
 
 **Level order matters for `ar1()`.** Correlation is read along the
 levels of the factor in their stored order. Row labels that sort
-lexically rather than numerically give the wrong neighbour structure.
+lexically instead of numerically give the wrong neighbour structure.
 The order of the factors in the term does not matter: `ar1(t):g` and
 `g:ar1(t)` are the same field, AR1 along `t` and independent across `g`.
 

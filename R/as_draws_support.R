@@ -1,4 +1,4 @@
-# as_draws_support.R -- the posterior-package draws view over any fit.
+# as_draws_support.R, the posterior-package draws view over any fit.
 #
 # Registers `as_draws()`, `as_draws_df()` and `as_draws_matrix()` for
 # flexyBayes fits on the posterior package's own generics via
@@ -6,11 +6,11 @@
 # Suggests. All three read one seam: `.fb_canonical_draws()`, which
 # composes the backend draws with the per-backend canonical-name map and
 # value transforms. A fit on either engine therefore yields the same
-# parameter tokens -- (Intercept), the fixed-effect terms, sigma,
-# sd_<group> -- with the variance components on the standard-deviation
+# parameter tokens, (Intercept), the fixed-effect terms, sigma,
+# sd_<group>, with the variance components on the standard-deviation
 # scale.
 #
-# as_draws_df() is the constructor; the other two derive from its result,
+# as_draws_df() is the constructor. The other two derive from its result,
 # so there is one place where a draws object is built.
 
 # --- the shared construction ------------------------------------- #
@@ -64,7 +64,7 @@
 #
 # The one construction the three methods share. `n_draws` reaches the
 # INLA sampler, which draws that many samples from the fitted
-# approximation; the brms path already carries every draw the sampler
+# approximation. The brms path already carries every draw the sampler
 # kept and ignores it.
 #
 # @noRd
@@ -108,9 +108,9 @@
 #'
 #' Methods for the \pkg{posterior} package's `as_draws()`,
 #' `as_draws_df()` and `as_draws_matrix()` generics, so a fitted model
-#' hands its posterior to the Bayesian workflow ecosystem --
+#' hands its posterior to the Bayesian workflow ecosystem,
 #' \pkg{posterior} summaries, \pkg{bayesplot} displays, anything reading
-#' a `draws` object -- in the shape those tools expect.
+#' a `draws` object, in the shape those tools expect.
 #'
 #' The parameter names are canonical and the same on every engine:
 #' `(Intercept)`, one entry per fixed-effect term, `sigma` for the
@@ -147,7 +147,7 @@
 #' @param x A fitted `flexybayes` object from either active engine.
 #' @param n_draws Number of posterior draws to return, matching the
 #'   default of [fb_as_draws_simple()]. Used on the INLA path, where the
-#'   draws are sampled from the fitted approximation; ignored on the brms
+#'   draws are sampled from the fitted approximation. Ignored on the brms
 #'   path, which returns the draws the sampler kept.
 #' @param ... Passed to the underlying draws extraction.
 #' @returns A \pkg{posterior} draws object holding one column per
@@ -155,9 +155,9 @@
 #'   `as_draws()`, a `draws_matrix` from `as_draws_matrix()`.
 #'
 #' @seealso [fb_as_draws_simple()] for the same draws as a plain named
-#'   list, with no \pkg{posterior} dependency; [canonical_names()] for
-#'   the name map itself; [prior_summary()] for the priors those draws
-#'   were taken under; [summary.flexybayes()], whose `$converge` slot
+#'   list, with no \pkg{posterior} dependency. [canonical_names()] for
+#'   the name map itself. [prior_summary()] for the priors those draws
+#'   were taken under. [summary.flexybayes()], whose `$converge` slot
 #'   carries the engine's own convergence diagnostics.
 #'
 #' @exportS3Method posterior::as_draws_df

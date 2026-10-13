@@ -45,8 +45,8 @@
 )
 
 # The links flexyBayes fits on brms, default first: the pairs whose Stan code
-# matched brms's own at 0.12.1 plus U-FAM-GATE-1. Freeze by list, so no link
-# is added here without an emitter change that makes it correct.
+# matched brms's own. No link is added here without an emitter change that
+# makes it correct.
 .flg_brms_links <- list(
   gaussian = c(
     "identity",

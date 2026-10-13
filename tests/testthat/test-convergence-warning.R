@@ -92,9 +92,8 @@ test_that("the fa() note keeps its own, different diagnosis", {
   )
   msg <- conditionMessage(w)
   expect_match(msg, "rotation/sign", fixed = TRUE)
-  # The note used to send the reader to fb_structured_cov(), withdrawn at
-  # 0.10.0. It now names the quantity to read instead of a function that no
-  # longer exists (audit 2026-09-11, the F13 class).
+  # The note names the quantity to read, not the withdrawn
+  # fb_structured_cov().
   expect_match(msg, "identified covariance", fixed = TRUE)
   expect_false(grepl("fb_structured_cov", msg, fixed = TRUE))
   expect_false(grepl("one observation per cell", msg, fixed = TRUE))

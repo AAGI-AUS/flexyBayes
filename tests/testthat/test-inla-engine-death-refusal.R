@@ -1,15 +1,15 @@
-# test-inla-engine-death-refusal.R -- C2 / S2 / FS-25.
+# test-inla-engine-death-refusal.R: typed refusal when the INLA program dies.
 #
 # R/emit_inla.R's do.call(INLA::inla, inla_args) used to catch any error
-# and re-wrap it as `stop("INLA fit failed: ", conditionMessage(e))` --
-# untyped, no reason code, no remedy. FS-25 measured a real instance: the
+# and re-wrap it as `stop("INLA fit failed: ", conditionMessage(e))`,
+# untyped, no reason code, no remedy. A real instance: the
 # fit ran for 41.6 minutes, then failed with a raw pass-through of "The
 # inla-program exited with an error. Unless you interrupted it yourself,
 # ...". This file exercises the fix: the call now routes through
-# .inla_call(), and the tryCatch around it classifies the failure --
+# .inla_call(), and the tryCatch around it classifies the failure,
 # a recognised engine-death message pattern becomes the typed refusal
 # `inla_program_failed` carrying the design size, the largest verified
-# size, the binding term, and the remedies; anything else (flexyBayes's
+# size, the binding term, and the remedies. Anything else (flexyBayes's
 # own code) propagates unwrapped.
 #
 # The mocking approach is the one the spec names directly:
@@ -46,10 +46,10 @@ mk_fb_for_inla <- function(
 
 
 # ---------------------------------------------------------------- #
-# .inla_is_program_death_message() -- the pattern gate               #
+# .inla_is_program_death_message(), the pattern gate               #
 # ---------------------------------------------------------------- #
 
-test_that(".inla_is_program_death_message() matches the observed FS-25 text and its siblings, and nothing else", {
+test_that(".inla_is_program_death_message() matches the observed text and its siblings, and nothing else", {
   expect_true(flexyBayes:::.inla_is_program_death_message(
     paste0(
       "The inla-program exited with an error. Unless you interrupted ",
@@ -75,12 +75,12 @@ test_that(".inla_is_program_death_message() matches the observed FS-25 text and 
 
 
 # ---------------------------------------------------------------- #
-# .inla_largest_verified() -- reads the S4 ceilings artefact          #
+# .inla_largest_verified(), reads the ceilings artefact             #
 # ---------------------------------------------------------------- #
 
 test_that(".inla_largest_verified() reports the largest COMPLETED per-row fit on record", {
   # The 2026-08-22 ceilings study has no completed flexyBayes fit (its
-  # 911,808-row rung was preflight refused; the record was corrected on
+  # 911,808-row rung was preflight refused. The record was corrected on
   # 2026-08-26), so the largest verified size is the boundary study's
   # 5,000,000-row per-row INLA fit of the 2026-09-15 Poisson re-run, whose
   # latent-field size was not recorded.
@@ -134,7 +134,7 @@ test_that("mocked engine death becomes inla_program_failed with every field", {
   expect_identical(err$binding_term, "g")
   expect_identical(err$binding_n_levels, 5)
 
-  # Largest verified size, read from the C2 CSV row.
+  # Largest verified size, read from the ceilings CSV row.
   expect_identical(err$largest_verified_n, 5e6)
   expect_true(is.na(err$largest_verified_random_effects))
 
@@ -166,7 +166,7 @@ test_that("a NULL/empty INLA result with no R error also becomes inla_program_fa
   expect_match(err$engine_message, "NULL", fixed = TRUE)
 })
 
-test_that("a non-death engine error is NOT wrapped -- flexyBayes's own code propagates unchanged", {
+test_that("a non-death engine error is NOT wrapped, flexyBayes's own code propagates unchanged", {
   skip_if_no_inla()
   d <- mk_inla_data()
   fb <- mk_fb_for_inla(d)
@@ -194,6 +194,10 @@ test_that("the shared fixture still fits cleanly with the real INLA engine (regr
   skip_if_no_inla()
   d <- mk_inla_data()
   fb <- mk_fb_for_inla(d)
-  fit <- flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  # y carries no g effect and emit_inla() sets no prior, so sd_g is weakly identified.
+  fit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  )
   expect_s3_class(fit, "flexybayes_inla")
 })

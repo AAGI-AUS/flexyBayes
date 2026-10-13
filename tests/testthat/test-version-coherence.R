@@ -9,14 +9,14 @@
 #
 # This gate closes that. Two assertions per surface:
 #
-#   (a) the DESCRIPTION version string appears in the file;
-#   (b) no superseded version is described as the *current* one -- a line
+#   (a) the DESCRIPTION version string appears in the file,
+#   (b) no superseded version is described as the *current* one, a line
 #       naming an older version may stand as history, but not alongside
 #       "current", "development line", or "supported".
 #
 # The files are source-tree artefacts (SUPPORT.md is .Rbuildignore'd, and
 # neither README.md nor cran-comments.md is installed), so each assertion
-# skips when its file is absent rather than failing on an installed tree.
+# skips when its file is absent instead of failing on an installed tree.
 # =============================================================================
 
 .vc_root <- function() {
@@ -36,9 +36,9 @@
 }
 
 # The version the metadata surfaces name. On a release that is the
-# DESCRIPTION version. On a development version -- the fourth component
+# DESCRIPTION version. On a development version, the fourth component
 # 9000 that R's own conventions use for "after X.Y.Z, before the next
-# release" -- it is the release line being developed from: cran-comments,
+# release", it is the release line being developed from: cran-comments,
 # .zenodo.json and the policy documents describe the released artefact,
 # and rewriting them to 0.10.0.9000 would name a version nobody can install.
 .vc_release_line <- function(version = .vc_version()) {
@@ -66,7 +66,7 @@
 )
 
 # A superseded version described as live. The marker set is deliberately
-# narrow: a changelog line such as "0.8.3 -- added glance()" is history and
+# narrow: a changelog line such as "0.8.3, added glance()" is history and
 # must keep working.
 .VC_CURRENCY_MARKERS <- paste(
   "current", "development line", "development release", "supported version",
@@ -74,8 +74,8 @@
 )
 
 test_that("the DESCRIPTION version is a release or a development version", {
-  # Three components on a release; four, 9000 to 9999, while the line is
-  # open. Anything else -- a stray suffix, a two-part string -- is what
+  # Three components on a release. Four, 9000 to 9999, while the line is
+  # open. Anything else, a stray suffix, a two-part string, is what
   # this catches.
   version <- .vc_version()
   skip_if(is.na(version), "not running from the source tree")
@@ -103,7 +103,7 @@ test_that("every metadata surface names the DESCRIPTION version", {
 # Version strings on a line, compared numerically against the current one.
 # A hand-written regex for "any line older than this one" was wrong here:
 # it read "0\\.[0-8]\\." and so could not see the 0.9.x line at all once
-# DESCRIPTION reached 0.10.0 -- the blind spot covered exactly the
+# DESCRIPTION reached 0.10.0, the blind spot covered exactly the
 # transition being made. Parsing each version and comparing has no such
 # gap, and needs no edit at the next bump.
 .vc_stale_on <- function(line, current) {
@@ -127,7 +127,7 @@ test_that("no superseded version is described as the current one", {
   root <- .vc_root()
   skip_if(is.na(root), "not running from the source tree")
   version <- .vc_version()
-  # On an open development line the release line is not superseded -- it is
+  # On an open development line the release line is not superseded, it is
   # the version the surfaces are meant to describe.
   current <- package_version(.vc_release_line(version))
 
@@ -167,7 +167,7 @@ test_that("the citation surfaces still agree with DESCRIPTION", {
   root <- .vc_root()
   skip_if(is.na(root), "not running from the source tree")
   # A citation names something a reader can obtain, so it too tracks the
-  # release line rather than the development version.
+  # release line instead of the development version.
   version <- .vc_release_line()
 
   for (surface in c("CITATION.cff", "codemeta.json", "inst/CITATION")) {

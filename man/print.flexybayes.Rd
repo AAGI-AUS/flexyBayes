@@ -18,7 +18,7 @@ prints.
 \description{
 Reports the call the fit came from, the model the representation
 describes, the engine that ran it, the design and observation counts,
-and the headline posterior quantities. Use \code{\link[=summary]{summary()}} for the full
+and the main posterior quantities. Use \code{\link[=summary]{summary()}} for the full
 coefficient and variance-component tables.
 }
 \details{
@@ -29,8 +29,8 @@ approximation has no chains and no warmup, and reporting them over one
 tells a reader the fit is stochastic when it is not.
 
 The header closes with three lines read from
-\code{fit$extras$reproducibility}: the R, flexyBayes and engine versions; the
+\code{fit$extras$reproducibility}: the R, flexyBayes and engine versions. The
 thread settings (INLA's \code{num.threads}, or the chains, cores and threads
-per chain on brms, with \code{OMP_NUM_THREADS}); and the seed supplied, with
+per chain on brms, with \code{OMP_NUM_THREADS}). And the seed supplied, with
 the seed Stan ran with on brms. \code{\link[=summary]{summary()}} opens with the same header.
 }

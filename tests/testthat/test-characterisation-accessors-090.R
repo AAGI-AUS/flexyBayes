@@ -1,29 +1,11 @@
-# test-characterisation-accessors-090.R -- the 0.9.0 accessor surface,
-# frozen before the ASReml-hands UX work touches it.
+# Characterisation tests for coef(), summary(), predict() and emmeans:
+# they record what each returns, so that any change shows as a diff.
 #
-# These are characterisation tests, not contract tests: they record what
-# coef(), summary(), predict() and the emmeans seam actually do today, so
-# that a later change to any of them is a visible diff rather than a
-# silent one. Where a test states a shape the coming work is expected to
-# replace, the block says so in a comment naming what will supersede it.
+# coef() reads object$glm$coefficients on a brms fit. An INLA fit has no
+# $glm slot, and coef.flexybayes_inla() reads $inla$summary.fixed.
 #
-# Two behaviours recorded here are not what the surface documentation
-# suggests, and both matter to whoever edits next:
-#
-#   * coef() reaches its value by a different route per engine. On a brms
-#     fit it is object$glm$coefficients. On an INLA fit there is no $glm
-#     slot at all -- coef.flexybayes_inla() reads $inla$summary.fixed.
-#     Anything that reasons about "the $glm coefficients" holds on one
-#     engine only.
-#
-#   * summary() returned the engine's own summary object rather than a
-#     shared one -- a four-slot list on INLA, brms's brmssummary on brms,
-#     neither carrying a $varcomp. Section 3 has been updated to record
-#     the 0.9.1 return, the shared summary.flexybayes object; the
-#     engine's own summary stays reachable at $extras$summary.
-#
-# The asreml na.method() fixture the missingness work needs lives in
-# helper-asreml-shapes.R and is exercised here without asreml installed.
+# The asreml na.method() fixture lives in helper-asreml-shapes.R and is
+# exercised here without asreml installed.
 
 suppressPackageStartupMessages(library(testthat))
 
@@ -150,7 +132,7 @@ test_that("every recorded na.method() case keeps the same two-slot shape", {
 
 
 # ---------------------------------------------------------------- #
-# 2. coef() -- the default is the fixed-effect named numeric        #
+# 2. coef(): the default is the fixed-effect named numeric         #
 # ---------------------------------------------------------------- #
 
 test_that("coef() on an INLA fit is the fixed-effect posterior means", {
@@ -179,8 +161,7 @@ test_that("coef() on an INLA fit is the fixed-effect posterior means", {
     )
   )
 
-  # vcov() dimnames follow coef() names -- the emmeans / marginaleffects
-  # seam depends on this alignment.
+  # emmeans and marginaleffects need vcov() dimnames to match coef().
   expect_identical(dimnames(stats::vcov(fit)), list(names(beta), names(beta)))
 })
 
@@ -200,21 +181,12 @@ test_that("coef() on a brms fit is identical to fit$glm$coefficients", {
 
 
 # ---------------------------------------------------------------- #
-# 3. summary() -- invisible return, one object on both engines      #
+# 3. summary(): invisible return, one object on both engines       #
 # ---------------------------------------------------------------- #
 #
-# Updated at 0.9.1. The 0.9.0 baseline this block recorded was two
-# incomparable objects -- INLA's own four-slot list (fixed, random,
-# hyperpar, fitted) and brms's `brmssummary`, each identical to
-# `fit$extras$summary`, neither carrying a `$varcomp`. Both engines now
-# return the same eleven-slot `summary.flexybayes` object, and the
-# engine's own summary stays where it was, on `$extras$summary`, because
-# seven internal readers reach for it there.
-#
-# The invisibility assertions are unchanged: they were true before and
-# are true now. The full shape contract lives in
-# test-summary-asreml-shape.R; what is recorded here is the diff from
-# the frozen baseline.
+# Both engines return the eleven-slot `summary.flexybayes` object. The
+# engine's own summary is kept on `$extras$summary`, where internal
+# readers use it. The full shape is tested in test-summary-asreml-shape.R.
 
 .CHAR090_SUMMARY_SLOTS <- c(
   "fixed", "varcomp", "random", "missing", "converge",
@@ -229,9 +201,8 @@ test_that("summary() on an INLA fit returns the shared summary object", {
   fit <- .char090_inla_fit()
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
 
-  # summary() computes and returns VISIBLY; print.summary.flexybayes() does
-  # the printing. These two lines asserted the opposite -- an invisible
-  # return plus a side-effect print -- which is how that defect survived.
+  # summary() returns visibly and prints nothing.
+  # print.summary.flexybayes() does the printing.
   expect_true(res$visible)
   expect_identical(length(captured), 0L)
 
@@ -256,9 +227,8 @@ test_that("summary() on a brms fit returns the shared summary object", {
   fit <- .char090_brms_fit()
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
 
-  # summary() computes and returns VISIBLY; print.summary.flexybayes() does
-  # the printing. These two lines asserted the opposite -- an invisible
-  # return plus a side-effect print -- which is how that defect survived.
+  # summary() returns visibly and prints nothing.
+  # print.summary.flexybayes() does the printing.
   expect_true(res$visible)
   expect_identical(length(captured), 0L)
 
@@ -276,7 +246,7 @@ test_that("summary() on a brms fit returns the shared summary object", {
 
 
 # ---------------------------------------------------------------- #
-# 4. predict() -- the no-classify path                              #
+# 4. predict(): the no-classify path                               #
 # ---------------------------------------------------------------- #
 
 test_that("predict() with no newdata returns the fixed-effect predictor", {
@@ -302,10 +272,8 @@ test_that("predict() with no newdata returns the fixed-effect predictor", {
     stats::predict(fit, type = "response")
   )
 
-  # The value is X %*% bhat over the fit's own data -- fixed effects
-  # only, which is why it is not fitted() on a fit carrying random
-  # terms. WP-C adds `classify =` alongside this path and must leave it
-  # untouched.
+  # X %*% bhat over the fit's own data: fixed effects only, so it is not
+  # fitted() when the fit has random terms.
   trms <- stats::delete.response(stats::terms(stats::formula(fit)))
   x_mat <- stats::model.matrix(trms, fit$data)
   expect_equal(pred, as.numeric(x_mat %*% stats::coef(fit)))

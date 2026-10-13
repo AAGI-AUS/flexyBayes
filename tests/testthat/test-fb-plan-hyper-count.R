@@ -2,9 +2,9 @@
 # a per-design main-plot variance, diag(design):mainplot, and a per-trial
 # AR1 x AR1 field was planned as "Will fit: no  (preflight refused)" and
 # then fitted on INLA by flexybayes(). The fit runs the design-memory
-# preflight only from 100,000 rows; the plan applied it to every model.
+# preflight only from 100,000 rows. The plan applied it to every model.
 # The model with one variety-by-trial variance per trial is past the
-# hyperparameter budget; the plan and the fit both put it on INLA by
+# hyperparameter budget. The plan and the fit both put it on INLA by
 # empirical Bayes.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
@@ -51,7 +51,9 @@ skip_if_no_inla <- function() skip_if_not_installed("INLA")
 .met_field_fit <- function(d, gxe) {
   withr::local_options(list(
     flexyBayes.silence_spatial_collapse_warning = TRUE,
-    flexyBayes.silence_default_prior_note = TRUE
+    flexyBayes.silence_default_prior_note = TRUE,
+    # Three locations of two trials each leave sd_loc_f and sd_TRIAL weakly identified.
+    flexyBayes.silence_weak_identification_warning = TRUE
   ))
   flexybayes(
     y ~ VARIETY * NAPPLIED * SEEDRATE,
@@ -100,7 +102,7 @@ test_that("DEF-003: the plan and the fit both take GxE variance per trial to INL
   expect_true(p$will_fit)
   expect_identical(p$backend_chosen, "inla")
   # Six per-trial variances take the count from 12 to 17, above the limit
-  # of 15; counted as one term they leave it at 12.
+  # of 15. Counted as one term they leave it at 12.
   expect_identical(p$inla_integration, "eb")
 
   fit <- .met_field_fit(d, "diag(TRIAL):VARIETY")

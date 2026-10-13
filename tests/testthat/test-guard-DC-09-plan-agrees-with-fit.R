@@ -4,7 +4,7 @@
 # under backend = "auto" and "inla". The plan's verdict (refused, per-row
 # INLA, aggregated INLA or brms) must be the route the fit takes. The brms
 # emitter is replaced by a stub, so a model routed to brms is recorded
-# without sampling; every INLA route runs.
+# without sampling. Every INLA route runs.
 #
 # The register rows behind it: the plan refused models the fit accepts
 # (DEF-003, DEF-028, DEF-088), read the INLA gate as the verdict under
@@ -12,7 +12,7 @@
 # aggregator refused (DEF-051, DEF-055).
 #
 # `.g09_open` lists the case and backend pairs where the two disagree
-# today, with their register rows; the list must stay exact.
+# today, with their register rows. The list must stay exact.
 
 .g09_data <- function() {
   set.seed(9)

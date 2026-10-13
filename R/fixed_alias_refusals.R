@@ -1,4 +1,4 @@
-# Fixed-alias refusal --- registry population for R/fixed_alias.R.
+# Fixed-alias refusal: registry population for R/fixed_alias.R.
 #
 # Thrown by flexybayes() and triggered in tests/testthat/test-fixed-alias.R.
 
@@ -10,13 +10,13 @@
       "columns before them on the rows with a response, as in a factorial ",
       "with empty cells, so the data give no estimate for them and an ",
       "engine would report them at their prior. The refusal names the ",
-      "columns; fixed_alias = \"drop\" drops them as asreml does."
+      "columns, fixed_alias = \"drop\" drops them as asreml does."
     ),
     message_template = paste0(
       "flexybayes(): %s fixed-effect columns have no estimate on the rows ",
       "with a response: %s."
     ),
-    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.1_2026-09-24 (U-ALIAS-2)",
+    registered_in_adr = "0.14.1 aliased fixed effects",
     plan_field = NA_character_,
     since_version = "0.14.1"
   )

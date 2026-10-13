@@ -1,15 +1,15 @@
-# fb_dirichlet.R -- Dirichlet family + compositional concentration fitter.
+# fb_dirichlet.R, Dirichlet family + compositional concentration fitter.
 #
 # The Dirichlet distribution is the natural model for compositional data:
 # rows that are proportions summing to one (soil texture fractions, dietary
 # composition, the relative abundance of species in a community, allele
 # frequencies at a locus). Like the GEV it does not fit the single-column
-# GLM-link mixed-model emit path -- the response is a K-column simplex, not a
-# scalar with a mean-link -- so it is provided as a dedicated, self-contained
+# GLM-link mixed-model emit path, the response is a K-column simplex, not a
+# scalar with a mean-link, so it is provided as a dedicated, self-contained
 # fitter (`fb_dirichlet()`) following the genomic-fitter pattern, with a
 # matching family-object constructor (`fb_family_dirichlet()`) registered
 # against the family system so `family = "dirichlet"` is recognised and the
-# user routed here rather than refused generically.
+# user routed here instead of refused generically.
 #
 # The method is dependency-free maximum likelihood (base `optim` on the log
 # concentrations).
@@ -21,10 +21,10 @@
 #'
 #' Constructs the family descriptor for the Dirichlet distribution, the
 #' natural model for compositional (simplex) data. The object mirrors the
-#' shape of the other flexyBayes family descriptors -- a named list carrying
-#' the family name, the parameter description, and the support -- while
+#' shape of the other flexyBayes family descriptors, a named list carrying
+#' the family name, the parameter description, and the support, while
 #' signalling that the Dirichlet is fitted through the dedicated
-#' `fb_dirichlet()` entry point rather than the GLM-link emit path.
+#' `fb_dirichlet()` entry point instead of the GLM-link emit path.
 #'
 #' The Dirichlet on the \eqn{K}-simplex is parameterised by a vector of
 #' \eqn{K} positive concentration parameters
@@ -73,7 +73,7 @@ fb_family_dirichlet <- function() {
 #' vector, via the gamma-normalisation construction.
 #'
 #' @param n Integer. The number of compositions (rows) to draw.
-#' @param alpha Numeric vector of positive concentration parameters; its
+#' @param alpha Numeric vector of positive concentration parameters. Its
 #'   length sets the number of simplex components \eqn{K}.
 #'
 #' @returns A numeric `n` by `K` matrix whose rows sum to one.
@@ -215,7 +215,7 @@ fb_dirichlet <- function(
 #' `data.frame`, one row per simplex component, with the canonical columns.
 #'
 #' @param x An `fb_dirichlet_fit` object from [fb_dirichlet()].
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #'
 #' @returns A `data.frame` with `term`, `estimate`, `std.error`, `conf.low`,
 #'   and `conf.high`.
@@ -234,7 +234,7 @@ tidy.fb_dirichlet_fit <- function(x, ...) {
 #' Print a Dirichlet fit
 #'
 #' @param x An `fb_dirichlet_fit` object.
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #' @returns `x`, invisibly.
 #' @keywords internal
 #' @export

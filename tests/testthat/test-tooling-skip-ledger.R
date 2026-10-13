@@ -1,4 +1,4 @@
-# test-tooling-skip-ledger.R -- smoke tests for tools/skip_ledger.R.
+# test-tooling-skip-ledger.R, smoke tests for tools/skip_ledger.R.
 #
 # The ledger generator lives at flexyBayes/tools/skip_ledger.R (excluded
 # from the package tarball by .Rbuildignore line 36, `^tools$`).  These

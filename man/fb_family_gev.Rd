@@ -16,10 +16,10 @@ integer \code{3}), \code{link} (\code{"identity"} on the location), and \code{fi
 \description{
 Constructs the family descriptor for the generalised extreme value
 distribution, the limiting law of block maxima. The object mirrors the
-shape of a base \code{stats::family()} descriptor -- a named list carrying the
-family name, the parameter names, and the natural support -- so it sits
+shape of a base \code{stats::family()} descriptor (a named list carrying the
+family name, the parameter names, and the natural support) so it sits
 alongside the other flexyBayes families, while signalling that GEV is
-fitted through the dedicated \code{fb_gev()} entry point rather than the
+fitted through the dedicated \code{fb_gev()} entry point instead of the
 GLM-link emit path.
 }
 \details{

@@ -49,8 +49,8 @@ make_mock_flexybayes <- function() {
 
   # Build a mock brms-shaped MCMC component. The print footer's
   # component-label table is a closed vocabulary (glm / brms / inla /
-  # extras -- see .print_fit_components() in R/methods.R), so the mock
-  # uses a real recognised label rather than an invented one.
+  # extras, see .print_fit_components() in R/methods.R), so the mock
+  # uses a real recognised label instead of an invented one.
   brms_out <- structure(
     list(
       model = NULL,
@@ -136,7 +136,7 @@ test_that("print.flexybayes produces output", {
 
 test_that("print.flexybayes lists only the slots the fit carries", {
   # The component footer used to name a fixed slot unconditionally, so
-  # a fit shape lacking it still advertised one -- this fixture proves
+  # a fit shape lacking it still advertised one, this fixture proves
   # the footer follows the object instead (within the closed glm / brms
   # / inla / extras label vocabulary).
   fit <- make_mock_flexybayes()
@@ -178,7 +178,7 @@ test_that("vcov.flexybayes returns matrix", {
 
 test_that("confint.flexybayes refuses unconditionally on a bare-class fit", {
   # The bare method (no flexybayes_inla / flexybayes_brms override) now
-  # abstains unconditionally with fit_lacks_posterior_draws -- it used
+  # abstains unconditionally with fit_lacks_posterior_draws, it used
   # to compute a credible-interval matrix from the withdrawn native
   # engine's posterior draws (see NEWS.md, 0.9.3); neither active
   # engine reaches the parent, each has its own confint() method.
@@ -227,11 +227,11 @@ test_that("logLik.flexybayes returns logLik object", {
 })
 
 # predict.flexybayes() (the bare method) was deleted entirely at 0.9.3
-# (see NEWS.md) -- both active engines have their own predict method
+# (see NEWS.md), both active engines have their own predict method
 # (predict.flexybayes_inla, predict.flexybayes_brms, tested against
 # real fits in test-fb-brms-stan.R and the INLA equivalent), and a
 # bare-class mock like this one has no applicable predict() method any
-# more. The two tests that used to live here are removed rather than
+# more. The two tests that used to live here are removed instead of
 # adapted, since this fixture cannot exercise a class-specific method.
 
 test_that("model.matrix.flexybayes returns matrix", {
@@ -244,7 +244,7 @@ test_that("model.matrix.flexybayes returns matrix", {
 test_that("tidy.flexybayes returns data frame", {
   # conf.int = FALSE: the default TRUE would call confint(), which
   # refuses unconditionally on this bare-class mock (see the
-  # confint.flexybayes test above) -- this test checks the tidy()
+  # confint.flexybayes test above), this test checks the tidy()
   # output shape, not the CI columns.
   fit <- make_mock_flexybayes()
   td <- tidy.flexybayes(fit, conf.int = FALSE)
@@ -312,7 +312,7 @@ test_that("plot.flexybayes refuses pp_check on a fit with no replicates", {
   # Until 0.9.1 this drew an observed-versus-fitted panel on any fit
   # carrying a response and a fitted vector, under a name that promises
   # replicated datasets. The mock carries both and no predictive draws,
-  # so it now refuses by name -- catchable, and pointing at the residual
+  # so it now refuses by name, catchable, and pointing at the residual
   # displays it can draw.
   fit <- make_mock_flexybayes()
   grDevices::pdf(file = NULL)

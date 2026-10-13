@@ -10,7 +10,7 @@ fb_complete_grid(data, index = ~row * col, response, unused_level = NULL)
 \item{data}{A data frame holding one row per recorded design cell.}
 
 \item{index}{A one-sided formula naming the design index variables,
-for example \code{~ row * col}. The operators are ignored; what is read
+for example \code{~ row * col}. The operators are ignored. What is read
 is the set of variables, whose observed levels are crossed.}
 
 \item{response}{Name of the response column, as a single string. The
@@ -31,8 +31,8 @@ when the grid is already complete.
 Reinstates the design cells that are absent from a data frame,
 returning the Cartesian product of the index variables with the
 response set to \code{NA} on every cell that was added. A field book
-already records a lost plot this way -- one row per sown plot, with
-the design columns filled in and the yield missing -- so this helper
+already records a lost plot this way (one row per sown plot, with
+the design columns filled in and the yield missing) so this helper
 is for the trials where the plot is missing from the file altogether.
 }
 \details{
@@ -44,13 +44,13 @@ ASReml states for \code{residual = ~ ar1:ar1}.
 
 A cell can only be reinstated when every other model column at it is
 determined: it is one of the index variables, or it takes one value
-across the whole trial. A column that varies -- a variety label, a
-block -- is a real quantity nobody recorded at the absent cell, and
-the default is to refuse rather than write one in. \code{unused_level}
+across the whole trial. A column that varies (a variety label, a
+block) is a real quantity nobody recorded at the absent cell, and
+the default is to refuse instead of write one in. \code{unused_level}
 opens that door explicitly, filling the varying design factors with a
 level of your naming and warning with every column it wrote to. It is
-ASReml's nin89 LANCER coding, made a decision with a name on it rather
-than a default. A varying \emph{numeric} column is refused whatever
+ASReml's nin89 LANCER coding, made a decision with a name on it, not
+a default. A varying \emph{numeric} column is refused whatever
 \code{unused_level} says: a measured covariate has no level to name.
 }
 \examples{

@@ -3,8 +3,8 @@
 # comes back as a NAMED refusal.
 #
 # The August 2026 external audit found two ways out of the formula surface
-# that were not named refusals. An unrecognised call -- ar2(row),
-# corgh(site):gen -- was read as a plain variable whose name happened to be
+# that were not named refusals. An unrecognised call, ar2(row),
+# corgh(site):gen, was read as a plain variable whose name happened to be
 # its own source text, so a model nobody could fit was silently replaced by
 # a model nobody asked for. And a term type with no branch in the brms
 # formula reconstruction hit a bare stop(), outside the refusal vocabulary
@@ -138,7 +138,7 @@ test_that("a factor-analytic covariance is refused on both engines", {
   # representation does not repeat: on a trial with weak genetic signal
   # eight identical calls moved the identified covariance further than the
   # tolerance declared before they were run. brms has no lowering at all,
-  # so the refusal speaks for both rather than sending auto to brms for a
+  # so the refusal speaks for both instead of sending auto to brms for a
   # second message.
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
@@ -152,8 +152,8 @@ test_that("a factor-analytic covariance is refused on both engines", {
     expect_match(conditionMessage(bad), "diag(env):gen", fixed = TRUE)
   }
 
-  # The bare spelling -- no grouping factor for the covariance to apply to
-  # -- keeps its own refusal, and still names the way to write it.
+  # The bare spelling has no grouping factor for the covariance to apply to.
+  # It keeps its own refusal, and still names the way to write it.
   bare <- .rt_emit(y ~ env, random = ~ fa(env, 1), data = d,
                    backend = "inla")
   expect_s3_class(bare, "flexybayes_refusal_fa_not_representable")
@@ -165,7 +165,7 @@ test_that("a factor-analytic covariance is refused on both engines", {
 })
 
 test_that("an unmatched structured interaction is refused by name", {
-  # us(trait):vm(gen) -- the multi-trait idiom -- matches no interaction
+  # us(trait):vm(gen) (the multi-trait idiom) matches no interaction
   # pattern, so it lands on the catalogue's generic node. That node has no
   # emit anywhere and must not reach one.
   d <- .rt_data()

@@ -8,17 +8,17 @@
 # Tolerances, per level (written before the comparison was run):
 #   * |posterior mean - predicted value| <= 0.25 ASReml SE. The BLUP part
 #     is shrunk by a variance ratio that ASReml fixes at REML and the
-#     posterior averages over; a ratio a few percent off moves a BLUP of
+#     posterior averages over. A ratio a few percent off moves a BLUP of
 #     up to 2 SE by 0.1-0.2 SE.
 #   * Spearman correlation with the predicted values >= 0.99.
 #   * posterior SD / ASReml SE within [0.95, 1.30]. ASReml's SE treats the
-#     variances as known; the posterior SD also carries their uncertainty.
+#     variances as known. The posterior SD also carries their uncertainty.
 #
 # The gen:county table broke the point bound: up to 0.36 SE on the MET fit
 # and 0.29 SE with a cell removed. With six counties, INLA's posterior mean
 # of the gen:county variance is 21.3 against REML's 15.0, so the cell
 # effects are shrunk less and ASReml's value is not the expected one. Those
-# two tables are checked on rank and width only; their point agreement is
+# two tables are checked on rank and width only. Their point agreement is
 # tested with the variances held at REML, where the bound is 0.02 SE.
 # =============================================================================
 
@@ -48,7 +48,7 @@
   .cr_cache[[id]]
 }
 
-# One message per violated bound; character(0) when the table agrees.
+# One message per violated bound, character(0) when the table agrees.
 .cr_check <- function(tab, ref, by, point = 0.25, width = c(0.95, 1.30),
                       rank = 0.99) {
   m <- merge(as.data.frame(tab), ref, by = by, suffixes = c("", ".asreml"))

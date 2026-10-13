@@ -1,10 +1,6 @@
-# test-aggregated-labels.R -- the aggregated header names the fit's own
-# family.
-#
-# `print()` and `summary()` on a `<flexybayes_aggregated>` object
-# hard-coded "aggregated-gaussian", so a binomial or Poisson fit from the
-# count aggregator printed the wrong family on the surface the package
-# uses to signal exactness (2026-08-16 adversarial review, P2-1).
+# The aggregated header names the fit's own family, so a binomial or
+# Poisson fit from the count aggregator does not print as
+# "aggregated-gaussian".
 
 test_that("the label is read off the fit's family", {
   expect_identical(
@@ -104,15 +100,10 @@ test_that("a Poisson aggregated fit prints aggregated-poisson", {
   )))
 })
 
-test_that("print on a flexybayes_stream() fit names the backend and the aggregated path (D10)", {
-  # Before this fix, emit_gaussian_aggregated()/emit_count_aggregated()
-  # left $exactness unset and $extras$backend_decision NULL on the
-  # streamed route (only .dispatch_backend()'s post-emit step, which
-  # flexybayes_stream() bypasses, populated them on the ordinary
-  # aggregate = TRUE route) -- the banner read "backend:    (path = )"
-  # and "Engine:         (unknown engine)" instead of naming INLA and
-  # the aggregated path. Reproduces the bare-print evidence recorded in
-  # logs/flexyBayes-08-big-data.copy_paste.log.
+test_that("print on a flexybayes_stream() fit names the backend and the aggregated path", {
+  # flexybayes_stream() bypasses .dispatch_backend(), so the emit itself
+  # must set $exactness and $extras$backend_decision. Without them the
+  # banner reads "(path = )" and "(unknown engine)".
   skip_on_cran()
   skip_if_not_installed("INLA")
   set.seed(20260826L)

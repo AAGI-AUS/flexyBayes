@@ -2,32 +2,32 @@
 # Scale-aware default priors on INLA.
 #
 # Every prior the package chooses for an INLA fit is written in the units of
-# the quantity it governs; every prior the caller states is left as stated
+# the quantity it governs. Every prior the caller states is left as stated
 # (R/inla_default_priors.R). Expected values come from the data, from lme4, or
-# from the same prior written out by hand and stated -- a route that never
+# from the same prior written out by hand and stated, a route that never
 # passes through the code that fills or scales a default. Tolerances come from
 # the spread of repeated identical fits, measured on INLA 26.8.7 and quoted
 # where each is used.
 # =============================================================================
 
-# Twenty identical fits per cell, INLA 26.8.7 -- the numbers each tolerance
+# Twenty identical fits per cell, INLA 26.8.7, the numbers each tolerance
 # below is built from.
 #
 #   15/sim block SD. Every route, with the default filled, attached or stated:
-#   no error and no blow-up in 180 fits; medians 2.946 to 2.955; the largest
+#   no error and no blow-up in 180 fits. Medians 2.946 to 2.955. The largest
 #   range within one cell 0.062. Tolerance on a median: 0.2, about three
 #   times that range.
 #
 #   sleepstudy `(Dx || Subject)`, default priors, coef(Dx) * c. Range over
-#   20 calls at most 1e-13 at each c; distance from lme4's REML 10.4672859596
+#   20 calls at most 1e-13 at each c. Distance from lme4's REML 10.4672859596
 #   at most 7.8e-12, where lme4 itself agrees with its own fit on rescaled
 #   Days only to 1e-12. The default this replaces had a run-to-run range of
 #   1.5e-10 at c = 1, and the fixed-effect multiplier was chosen against that
 #   range (R/inla_default_priors.R). Tolerance: 1e-9, one order above it,
-#   for engine output that differs between platforms in its last digits; a
+#   for engine output that differs between platforms in its last digits. A
 #   multiplier of 1000 or less (7.8e-8 from lme4) fails it.
 #
-#   Slope SD * c. Range at most 6e-4 at each c; the means at the three scales
+#   Slope SD * c. Range at most 6e-4 at each c. The means at the three scales
 #   within 2.7e-3 of each other. Tolerance across scales: 0.01. Against lme4
 #   the comparison is looser, because a posterior mean of a standard
 #   deviation is not a REML estimate: at c = 1, where no bound binds, the two
@@ -36,7 +36,7 @@
 #   Poisson and Bernoulli random-intercept fits (30 groups of 8, x standard
 #   normal), coefficient times multiplier, three calls per cell. Range within a
 #   cell at most 1.1e-7. Between x / 1000 and x: 2.0e-7 relative (Poisson)
-#   and 9.6e-6 (Bernoulli). Tolerance: 1e-4, ten times the larger; before
+#   and 9.6e-6 (Bernoulli). Tolerance: 1e-4, ten times the larger. Before
 #   the change the two differed by 59 and 96 per cent.
 .sad_tol <- list(
   block_sd_median = 0.2,
@@ -108,7 +108,7 @@ test_that("an unstated block SD takes the bounded default on the per-row route",
   reference <- .sad_component(stated, "sd_blk")
 
   # The aggregated and streamed Gaussian routes now refuse by name (they
-  # cannot carry the residual prior; test-aggregation-gaussian-containment.R),
+  # cannot carry the residual prior. Test-aggregation-gaussian-containment.R),
   # so the per-row route is the one a Gaussian model takes.
   sigma_only <- fb_prior(sigma ~ uniform(lower = 0, upper = upper))
   routes <- list(
@@ -120,8 +120,8 @@ test_that("an unstated block SD takes the bounded default on the per-row route",
 
   # Before the default reached these routes, twenty identical fits of this
   # design gave, per route: per-row 20 of 20 with the block SD above 1e6
-  # (every one passing the numerical-confirm gate); aggregated 10 above 1e6
-  # and 5 engine errors; streamed 10 above 1e6 and 4 errors. The fits that
+  # (every one passing the numerical-confirm gate). Aggregated 10 above 1e6
+  # and 5 engine errors. Streamed 10 above 1e6 and 4 errors. The fits that
   # survived sat at 1.49 against the default's 2.95. Counting only
   # blow-ups and errors, one fit fails with probability 1.0, 0.75 and 0.70,
   # so five pass with probability at most 0.25^5 = 0.001 on the aggregated
@@ -171,7 +171,7 @@ test_that("a slope SD and its coefficient do not move with the covariate's units
     ))
     # A variance-component table without the slope row is one of the ways a
     # scale-blind default shows itself, so its absence is a named failure
-    # rather than an out-of-range read.
+    # instead of an out-of-range read.
     v <- summary(fit)$varcomp
     has_slope <- any(v$component == "sd_Dx_Subject")
     expect_true(
@@ -202,8 +202,8 @@ test_that("a slope SD and its coefficient do not move with the covariate's units
               label = paste(lab, "slope SD against lme4"))
   }
   # Against the fit on the covariate's own units. The posterior mean of a
-  # standard deviation is not a REML estimate -- at c = 1, where no bound
-  # binds, the two stand 7.7 per cent apart -- so the tight comparison is this
+  # standard deviation is not a REML estimate, at c = 1, where no bound
+  # binds, the two stand 7.7 per cent apart, so the tight comparison is this
   # one.
   expect_lt(diff(range(cells$slope_sd)), .sad_tol$slope_across_scales)
   expect_lt(diff(range(cells$days)), .sad_tol$days_lme4)
@@ -214,8 +214,8 @@ test_that("a non-Gaussian coefficient does not move when its covariate shrinks",
   # normal. Before, with x divided by 1000, the coefficient times the
   # multiplier fell to 41 per cent of its value at x on Poisson and to 4.4 per
   # cent on Bernoulli. At x * 1000 the coefficient moves by about 1 per cent
-  # (Poisson) and 3 per cent (Bernoulli) whatever the prior -- raw INLA does
-  # the same under its own defaults and under strategy = "laplace" -- so that
+  # (Poisson) and 3 per cent (Bernoulli) whatever the prior, raw INLA does
+  # the same under its own defaults and under strategy = "laplace", so that
   # scale is an engine limit, not a prior, and is not asserted here.
   skip_if_not_installed("INLA")
   skip_on_cran()
@@ -312,7 +312,7 @@ test_that("a stated fixed-effect prior is not rescaled by its covariate", {
 
   # A blanket scalar: sd = 7 in response units per covariate unit, on every
   # coefficient, whatever the covariate's units. On Dx, recorded in thousandths
-  # of a day, it binds; that is what was asked for.
+  # of a day, it binds. That is what was asked for.
   blanket <- .sad_quiet(flexybayes(
     Reaction ~ Dx + (1 | Subject), data = d, backend = "inla",
     prior_fixed_sd = 7, return_code = TRUE
@@ -320,7 +320,7 @@ test_that("a stated fixed-effect prior is not rescaled by its covariate", {
   expect_equal(blanket$control_fixed$prec, s_y^2 / 49)
   expect_false(is.list(blanket$control_fixed$prec))
 
-  # A b() row keeps its own value; only the unnamed numeric column is scaled.
+  # A b() row keeps its own value. Only the unnamed numeric column is scaled.
   set.seed(11L)
   d$z <- stats::rnorm(nrow(d), 0, 40)
   rowwise <- .sad_quiet(flexybayes(
@@ -346,7 +346,7 @@ test_that("a factor contrast keeps INLA's own fixed-effect default", {
 # --- the streamed route, the multi-way interaction, the blocks carrier ---- #
 
 # [removed] "the streamed default bound equals the per-row bound on the same
-# data" -- a streamed Gaussian fit now refuses by name, because the
+# data", a streamed Gaussian fit now refuses by name, because the
 # aggregated Gaussian route cannot carry the residual prior, and the streamed
 # response-scale reading this compared went with it. The comparison returns
 # with that composition.
@@ -439,8 +439,8 @@ test_that("each block of a blocks-format vm() takes the default under a partial 
     yield = stats::rnorm(60L, 50, 5)
   )
   blocks <- list(diag(2), diag(3) + 0.1)
-  # The gate refuses a blocks carrier on INLA (test-blocks-inla-varcomp.R);
-  # the emitter branch it keeps for a forced override is exercised directly.
+  # The gate refuses a blocks carrier on INLA (test-blocks-inla-varcomp.R).
+  # The emitter branch it keeps for a forced override is exercised directly.
   fb <- fb_from_asreml(
     fixed = yield ~ 1,
     random = ~ vm(geno, cov = fb_cov(blocks, type = "blocks")),

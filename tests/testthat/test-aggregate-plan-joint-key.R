@@ -1,20 +1,15 @@
-# test-aggregate-plan-joint-key.R -- the cell key is a set of variables,
-# not a list of terms.
+# The cell key is a set of variables, not a list of terms.
 #
-# `y ~ a * b` produces three terms over two variables. The planner
-# multiplied the term-level counts, so a replicated 4-by-4 factorial that
-# the runtime aggregator (.fb_stream_key_cols(), which has always keyed
-# on the union) compresses 320 rows into 16 cells was estimated at
-# 4 * 4 * 16 = 256 and refused as `compression_unproductive`. The
-# 2026-08-16 adversarial review found it as P1-3.
+# `y ~ a * b` produces three terms over two variables. A replicated 4-by-4
+# factorial compresses 320 rows into 16 cells, as the runtime aggregator
+# (.fb_stream_key_cols()) does. Multiplying term-level counts would give
+# 4 * 4 * 16 = 256 and refuse as `compression_unproductive`.
 #
-# The second half of that finding is what a live probe then showed: once
-# the planner admits the model, the aggregated INLA emit cannot fit it.
+# The aggregated INLA emit still cannot fit the model.
 # It names model-matrix columns in the INLA formula, and an interaction
 # column is called `a2:b2`, which INLA does not resolve even backticked
 # (`object 'aa2:bb2' not found`, on both the binomial and the Poisson
-# emit). The plan refuses that shape by name rather than handing INLA a
-# formula it cannot read.
+# emit). The plan refuses that shape by name.
 
 .joint_key_factorial <- function(n_rep = 20L, levels = c(4L, 4L),
                                  seed = 20260816L) {
@@ -106,8 +101,7 @@ test_that("an interaction design column refuses the aggregated route", {
     plan$reason_codes,
     "aggregated_interaction_column_not_representable"
   )
-  # The compression the model would have had is still reported -- it is
-  # what makes the refusal legible.
+  # The compression the model would have had is still reported.
   expect_identical(plan$K_est, 16L)
   expect_equal(plan$compression_est, 0.05)
 })

@@ -1,8 +1,8 @@
-# stan_toolchain.R -- telling a broken compiler apart from a broken model.
+# stan_toolchain.R, telling a broken compiler apart from a broken model.
 #
 # The brms path compiles a Stan program, so it needs a working C++
-# toolchain. When that toolchain is missing or mismatched -- a macOS
-# Command Line Tools / SDK skew is the common one -- the compiler's own
+# toolchain. When that toolchain is missing or mismatched, a macOS
+# Command Line Tools / SDK skew is the common one, the compiler's own
 # message ("fatal error: 'cmath' file not found") goes to the console and
 # what reaches R is a downstream symptom: `invalid connection`. Reported
 # verbatim, that sends a user looking for a fault in their model, and there
@@ -12,7 +12,7 @@
 # strings from compilers and platforms this machine cannot produce. It is
 # to ASK the toolchain, once, on the failure path: compile a three-line
 # program that includes the header the failure implicates. The answer is
-# evidence about this machine rather than a reading of an error string.
+# evidence about this machine instead of a reading of an error string.
 
 # Compile a minimal C++ translation unit through R's own build machinery.
 # TRUE when the toolchain works, FALSE when it does not. Runs only after a
@@ -45,7 +45,7 @@
 
 # Raise the failure a brms fit ended on. When the toolchain probe says
 # this machine cannot compile at all, the failure gets a name and a
-# repair; when it compiles fine, the fault is somewhere else and the
+# repair, when it compiles fine, the fault is somewhere else and the
 # engine's own words are what the user needs. Naming a toolchain fault on
 # a fit that failed for another reason would send the reader to fix
 # something that is not broken, which is worse than saying less.
@@ -55,7 +55,7 @@
       reason_code = "brms_stan_toolchain_compile_failure",
       message = paste0(
         "brms::brm() failed, and this machine cannot compile a three-line ",
-        "C++ file either -- so the fault is in the C++ toolchain, not in ",
+        "C++ file either, so the fault is in the C++ toolchain, not in ",
         "the model.\n",
         "  Check it with pkgbuild::check_build_tools(debug = TRUE). On ",
         "macOS this is usually a Command Line Tools or SDK mismatch, ",

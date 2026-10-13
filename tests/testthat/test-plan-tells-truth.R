@@ -1,16 +1,15 @@
-# test-plan-tells-truth.R -- C3 / S6 + FS-22: the plan surface tells the
-# truth.
+# test-plan-tells-truth.R: the plan surface tells the truth.
 #
 # Two independent defects, one file:
 #
-# S6 -- print.fb_plan() and print.fb_aggregation_plan() reported an
+# First, print.fb_plan() and print.fb_aggregation_plan() reported an
 # eligibility VERDICT ("not eligible (compression_unproductive)") with no
 # numbers behind it. A user could not see the rows-per-cell that produced
 # the verdict, or the threshold the verdict was tested against, without
-# reading the source (SCALE_STRATEGY_2026-08-22's own contrast: "1.06
-# rows per cell against the shipped demo's 1,200 cells").
+# reading the source (for example "1.06 rows per cell against the shipped demo's
+# 1,200 cells").
 #
-# FS-22 -- fb_plan() is a brms-formula-only entry point
+# Second, fb_plan() is a brms-formula-only entry point
 # (fb_from_brms(formula = formula, ...)) that captured `random =` /
 # `residual =` into its unused `...` and silently dropped them. A caller
 # who reached for fb_plan() the way they would reach for flexybayes()
@@ -18,19 +17,17 @@
 # no residual row, and a backend prediction (INLA, accept) that live
 # dispatch on the real (fuller) model does not honour.
 #
-# Reproduced against the pre-fix source (see the induced-defect section
-# of the report) exactly as filed in
-# review/phase_reports_091/field_sweep/FIELD_SWEEP_MISSES.md #FS-22.
+# Both were reproduced against the pre-fix source.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
 skip_if_no_brms <- function() skip_if_not_installed("brms")
 
 
 # ---------------------------------------------------------------- #
-# S6 -- rows-per-cell + threshold-stated verdict                    #
+# rows-per-cell + threshold-stated verdict                        #
 # ---------------------------------------------------------------- #
 
-test_that("print.fb_aggregation_plan() states N, K, rows/cell and the threshold -- eligible case", {
+test_that("print.fb_aggregation_plan() states N, K, rows/cell and the threshold, eligible case", {
   set.seed(1L)
   n <- 1000L
   df <- data.frame(
@@ -51,7 +48,7 @@ test_that("print.fb_aggregation_plan() states N, K, rows/cell and the threshold 
 test_that("print.fb_aggregation_plan() states the numbers even when NOT eligible (compression_unproductive)", {
   # Hand-built IR, K = 80 on N = 100 -> rows/cell = 1.25, below threshold.
   # Before the fix, the "not eligible" branch printed only the reason
-  # code -- no N, K, or rows/cell -- so a user could not see WHY.
+  # code, no N, K, or rows/cell, so a user could not see WHY.
   fb <- structure(
     list(
       response = "y",
@@ -120,7 +117,7 @@ test_that("print.fb_plan()'s Aggregation line shows numbers on an unproductive-b
 
 
 # ---------------------------------------------------------------- #
-# FS-22 -- fb_plan() must run the same structural checks live      #
+# fb_plan() must run the same structural checks live      #
 # dispatch runs, on both spellings                                  #
 # ---------------------------------------------------------------- #
 
@@ -136,7 +133,7 @@ test_that("print.fb_plan()'s Aggregation line shows numbers on an unproductive-b
   d
 }
 
-test_that("FS-22 reproduction: the plan and the gate agree under backend = 'auto'", {
+test_that("the plan and the gate agree under backend = 'auto'", {
   skip_if_no_brms()
   d <- .fs22_data()
 
@@ -163,11 +160,11 @@ test_that("FS-22 reproduction: the plan and the gate agree under backend = 'auto
   expect_identical(p_fb_plan$gate_outcome, p_flexybayes_plan$gate_outcome)
   expect_identical(p_fb_plan$will_fit, p_flexybayes_plan$will_fit)
 
-  # FS-22's headline was that the plan announced an INLA route while the
+  # The reported defect was that the plan announced an INLA route while the
   # gate refused the model, and the live call went to brms. The five
   # strata and the sectioned residual all reach INLA from 0.10.0.9000, so
-  # the gate accepts and INLA is the correct answer -- the plan and the
-  # gate agree, which is what FS-22 was about. What must still hold is
+  # the gate accepts and INLA is the correct answer, the plan and the
+  # gate agree, which is what the defect was about. What must still hold is
   # that the plan does not name the AGGREGATED route: a sectioned
   # residual is not aggregatable whatever the gate says.
   expect_identical(p_fb_plan$backend_chosen, "inla")
@@ -175,13 +172,13 @@ test_that("FS-22 reproduction: the plan and the gate agree under backend = 'auto
   expect_identical(p_fb_plan$gate_outcome, "accept")
 
   # The representation table enumerates random AND residual terms, not
-  # only the three fixed terms (FS-22's second observed symptom).
+  # only the three fixed terms (the second observed symptom).
   ids <- vapply(p_fb_plan$representation_plan, function(rp) rp$term_id, character(1L))
   expect_true(any(grepl("^\\(", ids))) # at least one random-term row, "(... | ...)"
   expect_true(any(grepl("dsum(~ units | env)", ids, fixed = TRUE)))
 })
 
-test_that("FS-22 reproduction: fb_plan() matches the live fit under backend = 'inla'", {
+test_that("fb_plan() matches the live fit under backend = 'inla'", {
   skip_if_no_inla()
   d <- .fs22_data()
 
@@ -228,7 +225,7 @@ test_that("plan and live agree when INLA genuinely refuses", {
   expect_s3_class(live_err, "error")
 })
 
-test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (plan == live)", {
+test_that("fb_plan() predicts the live auto fit's backend (plan == live)", {
   skip_if_no_brms()
   skip_on_cran()
   d <- .fs22_data()
@@ -241,10 +238,12 @@ test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (p
     backend = "auto"
   )
   # This assertion is routing parity (which backend the fit landed on),
-  # not a numeric agreement -- Bulk/Tail-ESS is irrelevant to it, so the
+  # not a numeric agreement. Bulk/Tail-ESS is irrelevant to it, so the
   # tiny deliberate n_samples = warmup = 200 / chains = 1 budget's ESS
-  # warning is muffled rather than fixed by raising the budget (see
-  # helper-ess-warnings.R).
+  # warning is muffled, not fixed by raising the budget (see
+  # helper-ess-warnings.R). The yield is pure noise, so a variance
+  # component is weakly identified when the fit lands on INLA.
+  withr::local_options(flexyBayes.silence_weak_identification_warning = TRUE)
   fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     fixed = yield ~ loc + yearf + loc:yearf,
     random = ~ gen + rep:loc:yearf + gen:yearf + gen:loc + gen:loc:yearf,
@@ -264,7 +263,7 @@ test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (p
 
 
 # ---------------------------------------------------------------- #
-# Parity roster -- plan$backend == fit$backend, or plan refuses      #
+# Parity roster, plan$backend == fit$backend, or plan refuses      #
 # where fit refuses, across a small spread of gate outcomes          #
 # ---------------------------------------------------------------- #
 
@@ -353,7 +352,7 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
       spec$expect_backend,
       info = paste0(spec$label, " (plan)")
     )
-    # Routing parity again (see the FS-22 reproduction above) -- the
+    # Routing parity again (see the plan tests above), the
     # tiny sampler budget's ESS warning is muffled, not fixed by a
     # bigger budget, for the same reason.
     fit_args <- list(

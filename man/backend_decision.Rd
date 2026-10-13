@@ -16,29 +16,29 @@ are present on fits from v0.3.6 onwards and \code{NULL} on earlier ones,
 for backward compatibility.
 
 \describe{
-\item{\code{backend}}{Character; one of \code{"inla"}, \code{"brms"}.}
-\item{\code{path}}{Character; the dispatch path token.}
-\item{\code{gate_checks}}{List or NULL; the \code{lgm_gate()} check
-trail (failures on refusal; capabilities on accept).}
-\item{\code{reason}}{Character; the dispatch-decision rationale.}
+\item{\code{backend}}{Character, one of \code{"inla"}, \code{"brms"}.}
+\item{\code{path}}{Character: the dispatch path token.}
+\item{\code{gate_checks}}{List or NULL: the \code{lgm_gate()} check
+trail (failures on refusal, capabilities on accept).}
+\item{\code{reason}}{Character: the dispatch-decision rationale.}
 \item{\code{preflight_summary}}{An \verb{<fb_preflight>} object or
 NULL. Populated when \code{.fb_preflight()} ran (>1e5-row
-path); NULL on the small-data fast path.}
+path). NULL on the small-data fast path.}
 \item{\code{representation_plan}}{Named list of slim per-term
 entries \verb{(term_id, representation_class, justification)}
-derived from \code{preflight_summary}; NULL when no preflight.}
+derived from \code{preflight_summary}. NULL when no preflight.}
 \item{\code{rejected_routes}}{List of \verb{(backend, reason)} pairs
 for the backends considered but not chosen. Empty for
 explicit user requests (the routing policy is bypassed
 when the backend is named directly).}
-\item{\code{routing_policy_version}}{Character; e.g.
-\code{"stage5a_v1"}. The audit-anchor for reproducibility -- a
-policy change bumps this string.}
+\item{\code{routing_policy_version}}{Character, e.g.,
+\code{"stage5a_v1"}. Recorded for reproducibility: a policy change
+bumps this string.}
 }
 }
 \description{
 Returns the dispatch trace recorded at fit time: which backend was
-selected, which gate checks ran, and why. Engine-agnostic -- works
+selected, which gate checks ran, and why. Engine-agnostic, works
 on an \code{flexybayes_inla} or \code{flexybayes_brms} fit alike, reading
 \code{fit$extras$backend_decision} as populated by \code{.build_routing_decision()}
 during dispatch (see the top of this file).

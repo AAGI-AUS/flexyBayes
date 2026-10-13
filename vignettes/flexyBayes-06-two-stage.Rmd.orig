@@ -194,7 +194,7 @@ squares with a penalty.
 
 `fb_marginal_cov()` returns $V$ for the fitted model, here the model with the
 full first-stage covariance, and `as.matrix()` makes it dense. The variety
-columns are the part of the model that is not penalised; the four trial
+columns are the part of the model that is not penalised, and the four trial
 covariates are the candidates.
 
 ```{r whiten}
@@ -211,7 +211,7 @@ colnames(X_w) <- c(colnames(X_variety), colnames(Z))
 
 glmnet then fits the lasso path. The whitened intercept is not a constant
 column, so it enters as one of the unpenalised columns and glmnet fits no
-intercept of its own. The folds hold out whole trials; whitening mixes rows
+intercept of its own. The folds hold out whole trials. Whitening mixes rows
 only within a trial, because $V$ is block-diagonal by trial.
 
 ```{r glmnet, eval = requireNamespace("glmnet", quietly = TRUE)}

@@ -7,7 +7,7 @@
 fb_backend_status(deep = TRUE)
 }
 \arguments{
-\item{deep}{Logical; currently unused (reserved for a future backend whose
+\item{deep}{Logical. Currently unused (reserved for a future backend whose
 readiness probe is expensive enough to need an opt-out). Default \code{TRUE}.}
 }
 \value{

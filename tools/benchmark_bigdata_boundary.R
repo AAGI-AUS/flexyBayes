@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# benchmark_bigdata_boundary.R -- Honest performance comparison of the
+# benchmark_bigdata_boundary.R: Performance comparison of the
 # per-row and the streaming-aggregated fit paths at sample sizes where
 # both are feasible, plus the crossover where the per-row path becomes
 # infeasible while the aggregated path stays cheap.

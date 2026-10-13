@@ -252,7 +252,7 @@
         as.integer(stanfit@stan_args[[1L]]$num_threads)
       ),
       if (is.null(seed)) {
-        # A drawn seed has no value to compare with here; the refit in the
+        # A drawn seed has no value to compare with here. The refit in the
         # brms record test shows it is the seed that ran.
         if (
           is.integer(rec$seed$as_run) &&
@@ -472,7 +472,7 @@ test_that("every INLA fit an entry point returns carries the record", {
       counts$engine <- counts$engine + 1L
       real_call(args)
     },
-    # The restart probe calls INLA for a fit it may discard; it is switched
+    # The restart probe calls INLA for a fit it may discard. It is switched
     # off so that every engine call is a fit that is returned.
     .fb_inla_restart_probe = function(...) NULL
   )
@@ -509,7 +509,11 @@ test_that("every INLA fit an entry point returns carries the record", {
     family = "poisson",
     verbose = FALSE
   )
-  refit <- stats::update(per_row, random = ~ g + h)
+  # y carries no h effect, so the added sd_h is weakly identified.
+  refit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    stats::update(per_row, random = ~ g + h)
+  )
   d_fold <- d
   d_fold$y[seq(1L, nrow(d), by = 4L)] <- NA
   fold <- fb_refit(
@@ -521,7 +525,7 @@ test_that("every INLA fit an entry point returns carries the record", {
     verbose = FALSE
   )
   # No entry point reaches the aggregated Gaussian emitter
-  # (test-aggregation-gaussian-containment.R); its build site is called here
+  # (test-aggregation-gaussian-containment.R). Its build site is called here
   # directly, on the IR of a per-row fit of the same model.
   factor_row <- flexybayes(
     y ~ h,
@@ -659,7 +663,7 @@ test_that("every brms fit an entry point returns carries the record", {
 # 3. The value the engine ran with, not the option                   #
 # ---------------------------------------------------------------- #
 
-# No entry point passes a thread setting to an engine; the emitters' `...` do.
+# No entry point passes a thread setting to an engine. The emitters' `...` do.
 # Each fit below runs on one thread or core while the option says two, so a
 # record read from the option before the fit is wrong.
 

@@ -1,6 +1,4 @@
-# Tests for fb_from_brms() — deliverable 1.
-#
-# Covers the v0.1 minimum subset (response + linear fixed effects +
+# fb_from_brms(): the minimum subset (response + linear fixed effects +
 # random intercepts (1 | g) / (1 || g)), the family + link
 # resolution path, the weights-as-addition_term capture, and the
 # fail-fast refusals for unsupported brms specials.
@@ -154,10 +152,8 @@ test_that("fb_from_brms() carries correlated random slopes (x | g)", {
 })
 
 test_that("fb_from_brms() refuses smoothers s(), naming spl()", {
-  # Typed since 0.9.2, and routed to the same refusal the ASReml grammar
-  # raises: `y ~ s(x)` means one thing on both surfaces, so it gets one
-  # message, and the useful sentence is the one that names the flexyBayes
-  # spelling (field-sweep FS-18).
+  # The same refusal the ASReml grammar raises, naming the flexyBayes
+  # spelling.
   d <- mk_brms_data()
   err <- expect_error(
     flexyBayes:::fb_from_brms(y ~ s(x), data = d),

@@ -1,5 +1,5 @@
 # fb_cov() constructor noun + vm/ped migration + legacy deprecation
-# (ADR 0030 C3; v0.4.0 Wave 2 Phase 2A).
+# (ADR 0030; v0.4.0).
 #
 # Coverage:
 #   (a) standalone constructor: classed object + attribute schema per
@@ -276,7 +276,7 @@ test_that("vm() cov = fb_cov(type = 'low_rank') without scheme refuses at parse"
 # migration actually claims: the fb_cov() form and the legacy keyword
 # form parse to the same cov_representation IR slot (already covered
 # in section (c) above) and therefore emit byte-identical generated
-# code on an active engine -- verified here on brms Stan code.
+# code on an active engine, verified here on brms Stan code.
 
 test_that("codegen: cov = fb_cov(L, type = 'chol') matches the legacy chol = L keyword", {
   skip_if_not_installed("brms")

@@ -6,7 +6,7 @@
 #
 #   * heritability   h^2 = sigma_g^2 / (sigma_g^2 + sigma_e^2), the
 #                    first quantity of interest (narrow-sense, on the
-#                    genotype-mean basis; kinship scaling is the
+#                    genotype-mean basis. Kinship scaling is the
 #                    caller's declared convention --- see the MET /
 #                    genomics vignette pitfall).
 #   * GEBVs          genomic estimated breeding values u_i with full
@@ -23,7 +23,7 @@
 # never a backend object, so the INLA / brms emit paths both feed
 # the same constructor and return the same object. The fit-level
 # accessor that extracts the draws from a fitted model and populates
-# `fit$extras$genomic` lands with the GBLUP emit route (G1); this file
+# `fit$extras$genomic` lands with the GBLUP emit route (G1). This file
 # ships the pure constructor + schema + display the recovery cells and
 # emit paths build on.
 
@@ -94,9 +94,9 @@
   n_draws <- length(var_g_draws)
 
   h2_draws <- var_g_draws / (var_g_draws + var_e_draws)
-  # A draw with sigma_g^2 = sigma_e^2 = 0 is degenerate (0/0); treat its
-  # heritability as NA rather than NaN, so the summary reports the
-  # quantity as undefined rather than as a number.
+  # A draw with sigma_g^2 = sigma_e^2 = 0 is degenerate (0/0). Treat its
+  # heritability as NA instead of NaN, so the summary reports the
+  # quantity as undefined instead of as a number.
   h2_draws[!is.finite(h2_draws)] <- NA_real_
 
   out <- list(
@@ -195,9 +195,9 @@ print.fb_genomic_summary <- function(x, ...) {
 
 #' Genomic summary of a fitted relationship model
 #'
-#' Extract the breeder-facing genomic quantities -- narrow-sense
+#' Extract the breeder-facing genomic quantities: narrow-sense
 #' heritability \eqn{h^2}, genomic estimated breeding values (GEBVs) with
-#' posterior reliability, and the genetic / residual variances -- from a
+#' posterior reliability, and the genetic / residual variances, from a
 #' fitted `vm()` (genomic / GBLUP) or `ped()` (pedigree) model. The
 #' quantities are read from the posterior draws engine-agnostically: an
 #' INLA or brms GBLUP fit returns the same summary object, so the two
@@ -205,7 +205,7 @@ print.fb_genomic_summary <- function(x, ...) {
 #'
 #' The heritability is computed per draw as
 #' \eqn{h^2 = \sigma_g^2 / (\sigma_g^2 + \sigma_e^2)} on the
-#' genotype-mean basis; the kinship scaling convention is the analyst's
+#' genotype-mean basis. The kinship scaling convention is the analyst's
 #' (state it when reporting). Reliability is
 #' \eqn{1 - \mathrm{PEV}_i / \sigma_g^2} from the posterior variance of
 #' each breeding value. GEBVs are available on both active backends
@@ -281,9 +281,9 @@ genomic_summary <- function(fit, term = NULL) {
 
 # Backend-aware extraction of the genetic / residual variance draws and
 # the breeding-value draw matrix from a fitted relationship model. Each
-# backend names these quantities differently; this is the one place that
+# backend names these quantities differently. This is the one place that
 # knows the mapping (brms: sd_<var>__Intercept / sigma /
-# r_<var>[lev,Intercept]; INLA: Precision for <var>_id / Precision for
+# r_<var>[lev,Intercept]. INLA: Precision for <var>_id / Precision for
 # the Gaussian observations / <var>_id:i). Variances are returned (SDs
 # squared, precisions inverted).
 .fb_genomic_draws <- function(fit, var) {
@@ -324,7 +324,7 @@ genomic_summary <- function(fit, term = NULL) {
   } else {
     # Neither active engine: fall through with nothing found so the
     # "could not locate" refusal below fires with a typed message
-    # rather than an opaque "object not found" error.
+    # instead of an opaque "object not found" error.
     var_g <- NULL
     var_e <- NULL
     gcols <- character(0)

@@ -1,9 +1,9 @@
-# fb -- flexyBayes user-facing entry points and ingest dispatchers.
+# fb: flexyBayes user-facing entry points and ingest dispatchers.
 #
 # - fb_from_asreml(): asreml-format ingest path,
 #   wraps the existing parse_formula.R helpers (.parse_fixed,
 #   .parse_formula, .resolve_family) and emits an fb_terms object
-#   (the intermediate representation, IR; see R/fb_terms.R).
+#   (the intermediate representation, IR, see R/fb_terms.R).
 # - fb(): literal alias for flexybayes(). The
 #   brms-format ingest (former fb() body) is deferred to v0.2 under
 #   the working name fb_brms().
@@ -15,7 +15,7 @@
 #' Ingest an ASReml-format model specification into the flexyBayes IR
 #'
 #' Parses an ASReml-style `fixed` / `random` / `residual` specification into
-#' a `fb_terms` object -- flexyBayes's backend-agnostic intermediate
+#' a `fb_terms` object, flexyBayes's backend-agnostic intermediate
 #' representation (IR) of a model. The IR is what every engine emits
 #' from, so building it explicitly lets a power user inspect the parsed
 #' model, cache it, or hand it to a fitting verb. Most users never call
@@ -30,7 +30,7 @@
 #'   defaults to iid residuals (`list(list(type = "units"))`), matching
 #'   [flexybayes()].
 #' @param rcov Defunct in flexyBayes 0.9.0. The ASReml 3 name for the
-#'   residual-structure argument, renamed to `residual` in ASReml 4;
+#'   residual-structure argument, renamed to `residual` in ASReml 4.
 #'   supplying it now raises an error. Use `residual` instead.
 #' @param data A data.frame containing every variable referenced.
 #' @param family Character family name (`gaussian`, `binomial`, `binary`,
@@ -41,7 +41,7 @@
 #' @param weights Optional numeric vector of length `nrow(data)`. When
 #'   non-`NULL`, mapped to a single addition term with `type = "weights"`.
 #' @param known_matrices Named list of known matrices (e.g.
-#'   `list(Gmat = G)`); names are recorded in
+#'   `list(Gmat = G)`). Names are recorded in
 #'   `data_summary$known_matrices`.
 #' @param prior An [fb_prior()] object, or `NULL`. `NULL` falls back to
 #'   the scalar priors `prior_fixed_sd` / `prior_vc_sd`.
@@ -57,7 +57,7 @@
 #' the backend-neutral model plan without fitting it.
 #'
 #' @family flexyBayes ingest adapters
-#' @seealso [flexybayes()] and [fb()] for the universal fitting entry;
+#' @seealso [flexybayes()] and [fb()] for the universal fitting entry.
 #'   [fb_from_brms()] for the other ingest dialect.
 #' @examples
 #' set.seed(1L)
@@ -136,7 +136,7 @@ fb_from_asreml <- function(
     ))
   }
 
-  # Delegate parsing to existing helpers verbatim -- no behaviour
+  # Delegate parsing to existing helpers verbatim, no behaviour
   # change relative to flexybayes().
   fixed_info <- .parse_fixed(fixed, data)
   random_terms <- if (!is.null(random)) {
@@ -171,8 +171,8 @@ fb_from_asreml <- function(
     list()
   }
 
-  # Priors: forward-compat -- accept an fb_prior object when supplied;
-  # otherwise capture legacy scalar priors. Marked legacy = TRUE so
+  # Priors: forward-compat, accept an fb_prior object when supplied.
+  # Otherwise capture legacy scalar priors. Marked legacy = TRUE so
   # downstream code can detect and dispatch accordingly.
   priors <- if (!is.null(prior)) {
     prior
@@ -211,14 +211,14 @@ fb_from_asreml <- function(
 # Grammar polymorphism for the universal entry                    #
 # ---------------------------------------------------------------- #
 
-# .detect_grammar() -- deterministic call-shape dispatch for the
+# .detect_grammar(): deterministic call-shape dispatch for the
 # universal entry (fb() / flexybayes()). The rule is by SHAPE, never by
 # guessing intent:
-#   - a forced `syntax` (anything but "auto") wins outright;
+#   - a forced `syntax` (anything but "auto") wins outright.
 #   - a brmsformula object  -> "brms";
 #   - a formula whose terms carry lme4 / brms bar-grouping ("(... | g)")
-#     -> "brms" (ASReml `fixed` formulae never contain a bar);
-#   - any other formula      -> "asreml" (the long-standing default; a
+#     -> "brms" (ASReml `fixed` formulae never contain a bar).
+#   - any other formula      -> "asreml" (the long-standing default, a
 #     bar-free `y ~ x` is identical under either grammar, so the safe
 #     default matches historical behaviour).
 # A non-formula `spec` falls through to "asreml" so the
@@ -243,10 +243,10 @@ fb_from_asreml <- function(
   "asreml"
 }
 
-# .build_ir_polymorphic() -- the universal entry's ingest step. Detects
+# .build_ir_polymorphic(): the universal entry's ingest step. Detects
 # the grammar from the call shape and routes to the matching exported
 # adapter, producing the backend-agnostic fb_terms IR. ASReml ingest is
-# byte-identical to the historical direct fb_from_asreml() call;
+# byte-identical to the historical direct fb_from_asreml() call.
 # brms-grammar ingest was added later.
 .build_ir_polymorphic <- function(
   fixed,
@@ -323,11 +323,11 @@ fb_from_asreml <- function(
 
 # Note: the `fb` alias for `flexybayes()` is defined at the bottom
 # of R/flexybayes.R so that the alias target is in scope at source
-# time (R sources files alphabetically; this file loads before
+# time (R sources files alphabetically, this file loads before
 # flexybayes.R).
 
 # ASReml's nugget-free separable residual becomes a random-side field
-# marked `residual = TRUE`; the INLA emit fixes the `units` variance near
+# marked `residual = TRUE`. The INLA emit fixes the `units` variance near
 # zero. Any family but Gaussian identity keeps it on the residual side.
 .fb_residual_field_to_random <- function(
   random_terms,

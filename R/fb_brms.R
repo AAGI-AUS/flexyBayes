@@ -1,39 +1,35 @@
-# fb_brms() -- the brms (Stan) engine pin.
+# fb_brms(): the brms (Stan) engine pin.
 #
 # v0.5.0 backend-axis recovery. `fb_brms()` is one
 # of the two active engine pins (alongside `fb_inla()`): sugar
-# over the universal entry with the engine fixed --- `fb_brms(...)` ==
+# over the universal entry with the engine fixed, `fb_brms(...)` ==
 # `fb(..., backend = "brms")`. It fits via Stan (through brms) and accepts
 # every grammar the universal entry does (an ASReml `fixed` / `random` /
-# `residual` specification or a brms-style bar-grouped formula); the grammar
+# `residual` specification or a brms-style bar-grouped formula). The grammar
 # is detected from the call shape, exactly as on `fb()`.
 #
-# Before v0.5.0 `fb_brms()` was the brms-GRAMMAR verb and carried a
-# `backend` argument spanning a since-withdrawn native engine / inla /
-# brms / auto (see NEWS.md, 0.9.3). That
-# multi-backend role moved to the universal entry `fb()` / `flexybayes()`
-# (which now detects brms grammar and reaches every backend); the name is
-# reused here as the brms-ENGINE pin. The brms engine cannot represent an
+# The multi-backend role belongs to the universal entry `fb()` /
+# `flexybayes()`, which detects brms grammar and reaches every backend.
+# `fb_brms()` is the brms-ENGINE pin. The brms engine cannot represent an
 # ASReml structured-covariance term (vm / ped / fa / us / ar1) or a
-# low_rank approximation; those raise the registry's structured refusals
+# low_rank approximation. Those raise the registry's structured refusals
 # (the brms capability_predicate in R/backend_registry.R).
 #
 # The pin forwards the user's call verbatim via .fb_engine_pin() (the
 # match.call() rewrite seam in R/fb_inla.R), so missing()-based defaults
 # and the data-name capture behave exactly as on a direct fb() call. A
-# conflicting `backend` argument raises engine_pin_backend_conflict; the
-# redundant self-pin fb_brms(backend = "brms") is accepted (the v0.4.1
-# deprecation notice promised it would survive the rename).
+# conflicting `backend` argument raises engine_pin_backend_conflict. The
+# redundant self-pin fb_brms(backend = "brms") is accepted.
 
 #' Fit a flexyBayes model via the brms (Stan) engine
 #'
 #' Engine pin: fits the model with Stan through brms only. This is sugar
 #' for [flexybayes()]`(..., backend = "brms")` and accepts the same
-#' arguments and grammars --- an ASReml `fixed` / `random` / `residual`
+#' arguments and grammars, an ASReml `fixed` / `random` / `residual`
 #' specification or a brms-style bar-grouped formula (see [flexybayes()]
 #' for the full argument list). flexyBayes builds the intermediate
 #' representation, translates the prior, calls `brms::brm()`, and wraps
-#' the result; the live `brmsfit` is available on the `$brms` slot for
+#' the result. The live `brmsfit` is available on the `$brms` slot for
 #' brms's own posterior tooling (`loo()`, `posterior_predict()`,
 #' `bayes_factor()`).
 #'
@@ -41,18 +37,18 @@
 #' autoregressive fields, a blocks or low-rank `vm()` / `ped()` carrier, and
 #' a `low_rank` smooth approximation. Such a model raises a structured
 #' refusal naming the term. Several of these fit on INLA through
-#' [fb_inla()]; the capability table in the README lists what each engine
+#' [fb_inla()]. The capability table in the README lists what each engine
 #' fits.
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `formula` / `fixed`,
 #'   `random`, `residual`, `data`, `family`, `prior`, `syntax`). The `backend`
-#'   argument is pinned to `"brms"`; a conflicting `backend` value raises a
+#'   argument is pinned to `"brms"`. A conflicting `backend` value raises a
 #'   structured refusal (the redundant `backend = "brms"` is accepted).
 #'   The pre-v0.5.0 `formula = ` argument is remapped to the universal
 #'   entry's model-spec slot for call-compatibility.
 #'
 #' @return An object of class `"flexybayes_brms"` (a subclass of
-#'   `"flexybayes"`) carrying the live `brmsfit` on `$brms`; see
+#'   `"flexybayes"`) carrying the live `brmsfit` on `$brms`. See
 #'   [flexybayes()] for the shared structure.
 #'
 #' @section Deprecated:
@@ -61,7 +57,7 @@
 #'
 #' @family flexyBayes engine pins
 #' @seealso [flexybayes()] and [fb()] for the universal entry that picks a
-#'   backend; [fb_inla()] for the other active engine pin;
+#'   backend. [fb_inla()] for the other active engine pin and
 #'   [fb_from_brms()] for building a brms-grammar IR.
 #' @examples
 #' # Held back from the default example run because the brms route compiles
@@ -95,7 +91,7 @@ fb_brms <- function(...) {
   if (!is.null(nm) && "formula" %in% nm) {
     if ("fixed" %in% nm) {
       stop(
-        "fb_brms(): pass the model once -- `formula` and `fixed` name ",
+        "fb_brms(): pass the model once: `formula` and `fixed` name ",
         "the same model-spec slot.",
         call. = FALSE
       )

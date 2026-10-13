@@ -73,7 +73,7 @@ universal entry's model slot: it accepts the ASReml \code{fixed} form
 (paired with \code{random} / \code{residual}) \strong{or} a brms / lme4-style
 bar-grouped formula such as \code{response ~ x + (1 | g)} (in which case
 the grouping lives in the formula and \code{random} / \code{residual} must be
-left \code{NULL}). The grammar is detected from the call shape; use
+left \code{NULL}). The grammar is detected from the call shape. Use
 \code{syntax} to force it.
 
 \strong{Offsets.} \code{offset()} terms in the fixed formula enter the linear
@@ -112,17 +112,17 @@ Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms.
 The bare spelling \code{fa(v, k)}, with no grouping factor for the covariance
 to apply to, keeps its own refusal (\code{fa_not_representable}).
 \code{corh(f):g} is likewise ASReml syntax that flexyBayes parses and
-refuses by name; it is described just below.
+refuses by name. It is described just below.
 
 \strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
-one variance per level of \code{f} with no covariance between levels -- the
+one variance per level of \code{f} with no covariance between levels: the
 usual multi-environment structure, where the genotype variance differs by
-site. ASReml treats \code{diag()} and \code{idh()} as the same structure and so does
-flexyBayes; the three spellings emit identical code. \code{us(f):g} estimates
-every pairwise correlation instead, at \code{k(k+1)/2} parameters against
-\code{diag()}'s \code{k}.
+site. ASReml treats \code{diag()} and \code{idh()} as the same structure, and so
+does flexyBayes. The three spellings emit identical code. \code{us(f):g}
+estimates every pairwise correlation instead, at \code{k(k+1)/2} parameters
+against \code{diag()}'s \code{k}.
 
-\code{corh(f):g} -- heterogeneous variances with a single shared correlation --
+\code{corh(f):g}, heterogeneous variances with a single shared correlation,
 is refused on both engines: flexyBayes has no lowering for it, and
 approximating it with either neighbour would change the parameter count.
 With one variance for every level and a correlation of zero or more,
@@ -133,7 +133,7 @@ to the rows where \code{f} takes one of the named levels, with one variance
 per named level, as in ASReml. \code{at(design, "split"):mainplot} is a
 main-plot effect in the split-plot trials alone. Levels are written as
 values, \code{at(f, c("a", "b"))}, or as positions in \code{levels(f)},
-\code{at(f, 2)}; a level the data do not have is refused
+\code{at(f, 2)}. A level the data do not have is refused
 (\code{at_level_not_in_data}). It fits on both engines and reports
 \verb{sd_<g>__<f><level>}, the name \code{at(f):g} gives the same level.
 
@@ -155,7 +155,7 @@ observation per grid node, so an incomplete or replicated grid refuses
 field, so brms refuses.
 
 That four-parameter model is \strong{not} ASReml's separable residual, which
-is one correlated residual with no independent plot error -- three
+is one correlated residual with no independent plot error: three
 parameters, nested inside this one as the nugget goes to zero. On data
 with real plot-to-plot noise the two return different correlations,
 because a nugget-free model must absorb independent noise into the
@@ -167,8 +167,8 @@ described under \code{residual} below.
 
 \strong{Per-trial nested field.} \code{id(trial):ar1(row):ar1(col)} fits one
 separable AR1 field per level of \code{trial} on INLA, via the \verb{replicate =}
-mechanism -- one complete grid per trial, each with its own realised
-field, but the row correlation, column correlation and field SD are
+mechanism: one complete grid per trial, each with its own realised
+field. The row correlation, column correlation and field SD are
 \strong{shared across every level of \code{trial}}, not estimated per trial. This
 is the model ASReml fits under the same spelling.
 
@@ -184,8 +184,8 @@ only. Each trial's plots must fill its own grid. brms refuses both.
 \strong{Units followed through time.} \code{ar1(t):g}, or the same term written
 \code{g:ar1(t)}, fits one AR1 series along \code{t} within each level of \code{g},
 independent across levels, with one correlation and one field SD
-shared by every level and the Gaussian nugget on top -- three
-hyperparameters. This is the units-by-occasions repeated-measures
+shared by every level and the Gaussian nugget on top, three
+hyperparameters in all. This is the units-by-occasions repeated-measures
 covariance of Verbyla and Cullis (1992) written on the random side:
 \code{g} indexes the plots, animals or series and \code{t} the occasions, whose
 levels must be in time order. An occasion a unit missed stays as a
@@ -197,7 +197,7 @@ that sense, one row per node. brms refuses, as for the other fields.}
 (iid residuals). \code{~ dsum(~ units | env)}, and the equivalent
 \code{~ at(env):units}, give a separate residual variance per level of \code{env}.
 Only families that carry a residual scale parameter can have one made
-heterogeneous -- a Poisson's dispersion is a function of its mean, so
+heterogeneous. A Poisson's dispersion is a function of its mean, so
 there is nothing there to vary, and the request is refused.
 
 \code{~ ar1(row):ar1(col)} is ASReml's separable residual: one correlated
@@ -222,15 +222,15 @@ brms.
 A family object (\code{binomial()}, \code{gaussian()}, \code{brms::lognormal()}) is
 also accepted, goes through the same gate as
 its name, and supplies its own link, so \code{Gamma()} means the inverse
-link it names rather than the log link \code{family = "gamma"} defaults
-to. Passing a family object together with a contradicting \code{link} is
-refused rather than resolved. A family outside this set is refused
-at the door; where the boundary is flexyBayes's own rather than the
-engines', the refusal says so and \code{inst/KNOWN_ISSUES.md} records it.
+link it names, not the log link \code{family = "gamma"} defaults to.
+Passing a family object together with a contradicting \code{link} is
+refused, not resolved. A family outside this set is refused at the
+door. Where the boundary is flexyBayes's own and not the engines',
+the refusal says so and \code{inst/KNOWN_ISSUES.md} records it.
 A response outside the family's domain (0 or negative for \code{"gamma"}
 or \code{"lognormal"}, negative for \code{"hurdle_gamma"}, at or outside [0, 1]
 for \code{"beta"}) is refused by name (\code{family_response_domain_violation})
-before any engine runs; a missing (\code{NA}) response is \code{na_action}'s
+before any engine runs. A missing (\code{NA}) response is \code{na_action}'s
 concern, not a domain violation.}
 
 \item{link}{Character or NULL: override the default link function
@@ -261,7 +261,7 @@ at brms, and a block carrier, which INLA would fit with one standard
 deviation per block, pointing at the precision carrier of the
 block-diagonal inverse.
 The bare dense forms \code{vm(group, V = ...)} /
-\code{ped(group, A = ...)} remain the default; the legacy v0.3.7
+\code{ped(group, A = ...)} remain the default. The legacy v0.3.7
 keyword carriers (\verb{chol = }, \verb{precision = }, \verb{blocks = },
 \verb{low_rank_factor = }) are deprecated and emit a migration warning.
 See the formula-surface vignette for per-type worked examples.}
@@ -276,8 +276,8 @@ different, likelihood-power quantity). A constant vector (including
 \code{rep(1, N)}) is the unweighted model under a different spelling and
 passes through unchanged. A non-constant vector on any other family,
 or a non-identity link on Gaussian, is refused by name
-(\code{weights_requires_gaussian}) rather than silently producing the
-unweighted posterior -- likelihood-power, frequency, trials, and
+(\code{weights_requires_gaussian}) instead of silently producing the
+unweighted posterior. Likelihood-power, frequency, trials and
 exposure are different models and cannot share this argument
 silently. \code{aggregate = TRUE} together with weights is also refused
 by name (\code{weights_not_aggregatable}): the aggregated route's
@@ -285,7 +285,7 @@ closed-form sufficient statistics do not carry a per-observation
 weight through the compression.}
 
 \item{na_action}{How to treat observations whose response is missing,
-and -- through the list form below -- observations whose predictors
+and, through the list form below, observations whose predictors
 are missing.
 
 \code{"augment"} (default) retains missing-response rows, carrying the
@@ -296,13 +296,13 @@ matters whenever the model carries a covariance indexed by the
 design: deleting the row of a lost plot changes the index set a
 separable AR1 field is built over, so the fitted model is no longer
 the model that was written down. \code{"omit"} drops the rows
-(complete-case); a structured covariance over the resulting broken
-grid then refuses downstream. \code{"fail"} refuses if any response is
+(complete-case), and a structured covariance over the resulting
+broken grid then refuses downstream. \code{"fail"} refuses if any response is
 missing, and leaves the design grid alone.
 
 A response value that is \code{NaN} or infinite, as \code{log(0)} gives, is not a
 missing observation. It refuses by name under every setting
-(\code{response_not_finite}); set it to \code{NA} to treat it as missing.
+(\code{response_not_finite}). Set it to \code{NA} to treat it as missing.
 
 The argument also accepts the object an ASReml user already writes,
 \code{asreml::na.method(y = , x = )}, and the bare list of the same shape
@@ -312,11 +312,11 @@ for readers without an asreml licence:
 }\if{html}{\out{</div>}}
 
 The response words map \code{include} to \code{"augment"}, \code{omit} to
-\code{"omit"}, \code{fail} to \code{"fail"}. The covariate words are ASReml's own:
+\code{"omit"}, \code{fail} to \code{"fail"}. The covariate words are ASReml's own.
 \code{x = "fail"} (the default, and ASReml's) refuses a missing
-predictor; \code{x = "omit"} drops the affected rows with a warning
-naming the count and the columns; \code{x = "include"} -- ASReml's
-zero-fill (Reference Manual 4.2, section 3.11) -- is refused by
+predictor. \code{x = "omit"} drops the affected rows with a warning
+naming the count and the columns. \code{x = "include"}, ASReml's
+zero-fill (Reference Manual 4.2, section 3.11), is refused by
 name, because a zero is a value the plot did not have. A value
 arriving as an unreduced \code{na.method()} default vector is read as
 its first element, which is the policy ASReml itself would use.
@@ -381,7 +381,7 @@ A standard deviation the prior does name is left exactly as written.}
 \item{prior_fixed_sd}{Numeric: SD for fixed-effect normal priors,
 applied uniformly to the intercept, factor contrasts, continuous
 slopes, factor x continuous interactions, and \code{I()}-expression
-terms. Default \code{100} -- weakly informative on the natural response
+terms. Default \code{100}: weakly informative on the natural response
 scale for the vast majority of agricultural / clinical responses
 (covers responses with central tendency up to several hundred
 without crushing the posterior toward zero), while still
@@ -394,8 +394,8 @@ literature for regression coefficients (e.g. Gelman et al. 2008,
 supply it}, on every backend: brms receives one \code{normal(0, sd)}
 row per fixed-effect class, and INLA receives \code{control.fixed} with
 \code{prec = 1 / sd^2} on the slopes and the intercept alike. Left
-unsupplied, brms keeps its own fixed-effect default -- flat
-coefficients and a response-centred \code{student_t} intercept -- because
+unsupplied, brms keeps its own fixed-effect default (flat
+coefficients and a response-centred \code{student_t} intercept), because
 replacing a response-centred intercept prior with \code{normal(0, 100)} is
 a different model for any response far from zero. INLA gives each
 column built from a numeric variable the covariate-scaled default
@@ -407,7 +407,7 @@ covariate's units do not change the fit, and keeps its own
 \code{\link[=prior_summary]{prior_summary()}} names what a fit ran under. A supplied value is
 never rescaled by a covariate: it is a standard deviation in response
 units per covariate unit, so on a covariate recorded in small units
-(a large coefficient) it can bind -- measure the covariate in natural
+(a large coefficient) it can bind. Measure the covariate in natural
 units, or leave the argument unsupplied on INLA.}
 
 \item{prior_vc_sd}{Numeric: hyperparameter for the legacy
@@ -415,12 +415,12 @@ units, or leave the argument unsupplied on INLA.}
 when both \code{prior} and \code{prior_vc_sd} are left at their defaults, the
 package applies a half-normal default on the SD scale
 (\code{half_normal(scale = s)} with family-aware \code{s}: \code{5 * sd(y)} for
-Gaussian; \code{5} on the logit scale for binomial / beta; \code{3} on the log
+Gaussian, \code{5} on the logit scale for binomial / beta, \code{3} on the log
 scale for Poisson / negative-binomial / gamma) to \code{sigma} and every
 named random-effect group, on both engines, with the scale on the
 standard deviation of an uncorrelated random slope divided by the
 standard deviation of its numeric covariate. It is weakly informative
-and has no upper bound; a half-t or half-Cauchy (Gelman 2006,
+and has no upper bound. A half-t or half-Cauchy (Gelman 2006,
 \emph{Bayesian Analysis} 1(3):515-534) is stated through \code{\link[=fb_prior]{fb_prior()}}.
 Before 0.13.0 the default was \code{uniform(0, U)} with \code{U} equal to the
 scale above. The legacy \code{lognormal(0, 1)} default
@@ -439,7 +439,7 @@ The two engines therefore carry the same variance-component prior.}
 effect on INLA, which does not sample.}
 
 \item{return_code}{Logical: if TRUE, return the generated backend code
-without fitting the model -- the Stan program on \code{backend = "brms"},
+without fitting the model: the Stan program on \code{backend = "brms"},
 the INLA formula, family and hyperparameter list on
 \code{backend = "inla"}.}
 
@@ -447,12 +447,12 @@ the INLA formula, family and hyperparameter list on
 instead return a \verb{<flexybayes_review>} deferred-execution object
 carrying the generated Stan code, the resolved prior, the
 parsed intermediate representation (IR), the captured call, and
-a snapshot of \code{.Random.seed}. Inspect the code with \code{\link[=cat_code]{cat_code()}};
-run the deferred fit with \code{\link[=proceed]{proceed()}}; a second \code{\link[=proceed]{proceed()}} call
+a snapshot of \code{.Random.seed}. Inspect the code with \code{\link[=cat_code]{cat_code()}} and
+run the deferred fit with \code{\link[=proceed]{proceed()}}. A second \code{\link[=proceed]{proceed()}} call
 returns the cached fit. Useful as a teaching / auditing surface
 before a long MCMC run. Default \code{FALSE} preserves the existing
 run-immediately semantics. A session-level override is available
-via \code{options(flexyBayes.review_code_default = TRUE)}; the
+via \code{options(flexyBayes.review_code_default = TRUE)}. The
 argument value at call time always wins. Closest published
 precedent: \code{\link[brms:stancode]{brms::stancode()}} plus the \code{chains = 0} idiom
 for "do everything except sampling". \code{review_code = TRUE} and
@@ -465,21 +465,20 @@ need an INLA-side code slot, which is queued for a later release.}
 
 \item{backend}{Character: one of \code{"auto"} (\strong{default}), \code{"inla"}, or
 \code{"brms"}. INLA fits the latent-Gaussian model class by nested Laplace
-approximation, without sampling; brms is the Stan passthrough. Any other
-value -- including a formerly-registered engine name this package
-withdrew entirely (see \code{NEWS.md}) -- refuses with \code{unknown_backend}
+approximation, without sampling. brms is the Stan passthrough. Any
+other value, including a formerly-registered engine name this package
+withdrew entirely (see \code{NEWS.md}), refuses with \code{unknown_backend}
 naming the two active engines.
 
 \strong{What \code{"auto"} does.} The call runs \code{lgm_gate()} and routes to INLA
 when the model is latent-Gaussian feasible and INLA is installed.
 Otherwise it routes to brms when brms is installed \emph{and} its
 capability predicate accepts the model. When neither can represent
-the model, the call refuses with \code{auto_no_active_route} rather than
+the model, the call refuses with \code{auto_no_active_route} instead of
 fitting something else. Nothing is translated silently. \code{auto} does
-change engine in one case after starting -- an INLA program failure
-is caught and re-routed to brms -- and that is reported by a message,
-never silently; the fit's class and \code{backend} field always record
-which engine produced it.
+change engine in one case after starting: an INLA program failure
+is caught and re-routed to brms, and a message reports it. The fit's
+class and \code{backend} field always record which engine produced it.
 \code{\link[=backend_decision]{backend_decision()}} surfaces the full dispatch trace (including
 \code{rejected_routes}) post-fit, and \code{\link[=fb_backend_status]{fb_backend_status()}} reports which
 engines are usable. The one-time notes on the auto path are
@@ -502,25 +501,25 @@ component (the data say little about the between-group spread), and
 INLA's Laplace approximation is less accurate there than full MCMC.
 For a flagship random-intercept model with few groups, pin
 \code{backend = "brms"} or supply an explicit informative prior (a
-half-Cauchy, per Gelman 2006; see the \emph{priors and regularisation}
+half-Cauchy, per Gelman 2006, as in the \emph{priors and regularisation}
 vignette).
 
 \strong{Convergence.} The brms fit emits a warning when the sampler may
 not have converged (a parameter with Rhat at or above 1.1, or a low
-effective sample size). Treat such a posterior with caution ---
+effective sample size). Treat such a posterior with caution:
 increase \code{warmup} / \code{n_samples}, simplify the model, or supply a more
-informative prior --- and inspect the full diagnostics with
+informative prior, and inspect the full diagnostics with
 \code{\link[=summary]{summary()}}. Silence the warning (for intentionally short fits) via
 \code{options(flexyBayes.silence_convergence_warning = TRUE)}. An INLA fit
 does not sample and carries no such warning.
 
 \strong{Code inspection.} brms is the only engine with a code slot, so
 \code{return_code = TRUE} / \code{review_code = TRUE} under \code{"auto"} resolve to
-brms --- but only when brms can represent the model. Where it cannot,
-the call refuses with \code{auto_no_active_route} rather than returning
+brms, but only when brms can represent the model. Where it cannot,
+the call refuses with \code{auto_no_active_route} instead of returning
 the code for a different model. \code{backend = "inla"} with
 \code{return_code = TRUE} returns the INLA formula, family and
-hyperparameter list; with \code{review_code = TRUE} it refuses until the
+hyperparameter list. With \code{review_code = TRUE} it refuses until the
 INLA-side code slot lands.}
 
 \item{aggregate}{One of \code{"auto"} (default), \code{TRUE}, or \code{FALSE}.
@@ -545,7 +544,7 @@ representation (IR) build and return a \verb{<fb_plan>} object
 carrying the IR, the routing decision, the representation plan,
 the aggregation plan, and the prediction plan, \emph{without} emitting
 backend code or fitting.  Equivalent to calling \code{\link[=fb_plan]{fb_plan()}} with
-the same formula triple --- exposed inline as \code{flexybayes(plan = TRUE)} so users can reach the planning object without re-typing
+the same formula triple, exposed inline as \code{flexybayes(plan = TRUE)} so users can reach the planning object without re-typing
 the call.  Default \code{FALSE} preserves the run-
 immediately semantics.  Mutually exclusive with \code{return_code} and
 \code{review_code}.}
@@ -553,7 +552,7 @@ immediately semantics.  Mutually exclusive with \code{return_code} and
 \item{syntax}{One of \code{"auto"} (default), \code{"asreml"}, or \code{"brms"}.
 Selects how \code{fixed} is interpreted. \code{"auto"} detects the grammar
 from the call shape (a bar-grouped formula is read as brms,
-otherwise ASReml); the other values force a grammar.}
+otherwise ASReml). The other values force a grammar.}
 
 \item{known_variance}{Optional numeric vector of length N, or an N x N
 covariance matrix (below). A vector is a known
@@ -561,7 +560,7 @@ variance for each response, added to the estimated residual variance,
 \code{Var(y_i) = sigma^2 + v_i}. This is the second stage of a two-stage
 analysis, where each response is a first-stage estimate (a variety
 mean in one trial, say) and \code{v_i} is the variance of that estimate.
-\code{weights} is a different model, \code{Var(y_i) = sigma^2 / w_i}; given
+\code{weights} is a different model, \code{Var(y_i) = sigma^2 / w_i}. Given
 both, the residual variance is \code{sigma^2 / w_i + v_i}. Lowered for
 \code{family = "gaussian"} with the identity link: brms fits
 \code{y | se(sqrt(v), sigma = TRUE)}, and INLA a row effect with known
@@ -573,7 +572,7 @@ non-negative value per row with \code{known_variance_invalid}.
 A symmetric positive-definite N x N matrix \code{K} is a known covariance,
 \verb{Var(y) = sigma^2 I + K}, as when the first stage returns the full
 covariance of its estimates. It is fitted on INLA as a latent effect
-with precision \code{K^-1}; brms has no term for it and refuses with
+with precision \code{K^-1}. brms has no term for it and refuses with
 \code{known_variance_not_supported}. A row and column of zeros marks a row
 without a known part. A matrix that is not square, symmetric and
 positive definite over the rows of \code{data} refuses with
@@ -586,7 +585,7 @@ cells. INLA and brms would report such a column at its prior, so by
 default the fit refuses with \code{fixed_effects_aliased} and names the
 columns. \code{"drop"} drops them as asreml 4.2 does, on INLA: terms are
 taken in model order, and within a term by descending factor levels,
-the term's first factor varying slowest; a column that is a linear
+the term's first factor varying slowest. A column that is a linear
 combination of the columns before it is fixed at zero. \code{summary()}
 reports it with estimate 0 and no standard error, the columns are
 listed in \code{fit$extras$fixed_alias$dropped}, and a prediction whose row
@@ -594,9 +593,9 @@ is not a combination of the fitting rows is \code{NA} with status
 \code{"Aliased"} (see \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}).}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
-the residual-structure argument; ASReml 4 renamed it to \code{residual} and
+the residual-structure argument. ASReml 4 renamed it to \code{residual}, and
 flexyBayes follows the ASReml 4 name. Supplying \code{rcov} now raises an
-error -- use \code{residual} instead.}
+error. Use \code{residual} instead.}
 }
 \value{
 An object of class \code{"flexybayes"}, a list with three
@@ -606,7 +605,7 @@ components.
 \item{\verb{$glm}}{A GLM-compatible object (class \code{c("flexybayes_glm", "glm", "lm")}) with posterior mean coefficients, vcov, residuals, fitted values,
 etc. Works with \code{summary()}, \code{emmeans()} and
 \code{marginaleffects()}.}
-\item{\verb{$brms} or \verb{$inla}}{The native backend object --- a live \code{brmsfit}
+\item{\verb{$brms} or \verb{$inla}}{The native backend object: a live \code{brmsfit}
 on the brms path, or INLA's own fitted object on the INLA path. Use
 with \code{bayesplot}, \code{posterior::as_draws()}, and each engine's own
 accessors.}
@@ -638,7 +637,7 @@ weakly. On a 48-trial barley model with 22 localities, eight identical fits
 at \code{"4:1"} gave the locality variance from 0.58 to 42.3, and at \code{"1:1"}
 from 0.75 to 0.79, with the fixed effects unchanged. Set
 \code{options(flexyBayes.inla_threads = "4:1")} for another plan, or \code{"inla"}
-for INLA's own default; the plan a fit ran with is in
+for INLA's own default. The plan a fit ran with is in
 \verb{$extras$reproducibility}.
 
 One thread does not guarantee the same result in a new R session.
@@ -664,7 +663,7 @@ difference across the fits, relative to the smallest. \code{print()} and
 The restart probe of the numerical-confirm gate examines the fit kept.
 The fresh-process fits run beside the session fit, at most
 \code{options(flexyBayes.inla_best_of_workers)} fits at once (default: all of
-them) and fewer, with a message, when the free memory holds fewer; the
+them) and fewer, with a message, when the free memory holds fewer. The
 record gives each fit's time in seconds (\code{wall_s}) and whether they ran at
 once (\code{parallel}).
 }
@@ -672,7 +671,7 @@ once (\code{parallel}).
 \section{Fitting in a separate process}{
 
 \code{options(flexyBayes.isolation = "process")} runs the engine fit in a
-separate R process started through callr, which is in Suggests; without
+separate R process started through callr, which is in Suggests. Without
 callr the request refuses with
 \code{isolation_requires_callr} before anything is fitted. The option applies
 to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()} and \code{proceed()}, and
@@ -708,7 +707,7 @@ release. Call \code{flexybayes()}, which takes the same arguments. A call to
 
 \examples{
 \dontrun{
-# live fit -- needs an active backend (INLA or brms/Stan)
+# live fit, needs an active backend (INLA or brms/Stan)
 data(met_example, package = "flexyBayes")
 # Simple random intercept model (small budget for example purposes)
 fit <- flexybayes(

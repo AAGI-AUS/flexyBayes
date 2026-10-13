@@ -20,7 +20,7 @@
   "flexybayes", "flexybayes_inla", "flexybayes_aggregated", "flexybayes_brms"
 )
 
-# The class a brms fit carries (R/emit_brms.R); a long-tier block checks
+# The class a brms fit carries (R/emit_brms.R). A long-tier block checks
 # it against a real fit.
 .g12_brms_class <- c("flexybayes_brms", "flexybayes", "list")
 
@@ -138,7 +138,7 @@ test_that("DC-12 guard: no fit-class method swallows an argument a sibling takes
       if (!length(lacking)) next
       on_inla <- intersect(names(inla_fits), names(resolved)[resolved %in% f])
       if (!length(on_inla)) {
-        # Only a brms fit reaches this method; its body is read instead.
+        # Only a brms fit reaches this method. Its body is read instead.
         if (!.g12_reads_dots(get(f, envir = ns))) {
           swallowed <- c(swallowed, paste(f, lacking))
         }
@@ -206,7 +206,11 @@ test_that("DC-12 guard: a generic another package exports still reaches the pack
       }
     }
   }
-  expect_gt(checked, 5L)
+  # The count depends on which Suggests are installed.
+  if (requireNamespace("INLA", quietly = TRUE) &&
+      requireNamespace("brms", quietly = TRUE)) {
+    expect_gt(checked, 5L)
+  }
   expect_identical(masked, character(0))
 })
 

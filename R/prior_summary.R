@@ -1,15 +1,15 @@
-# prior_summary() -- user-facing accessor for the resolved prior
+# prior_summary(): user-facing accessor for the resolved prior
 # on a flexyBayes fit.
 #
 # The fb_terms IR carries the prior slot (`fit$extras$fb_terms$priors`)
 # in one of three shapes:
 #
 #   (1) an `fb_prior` object (user-supplied OR the auto-default
-#       half-normal constructed by `.default_half_normal_prior()`);
+#       half-normal constructed by `.default_half_normal_prior()`).
 #   (2) the legacy-bridge list `list(fixed_sd, vc_sd, legacy = TRUE)`
 #       carried when neither a user `fb_prior()` nor the auto-default
-#       fired (rare; default-fire is the standard path);
-#   (3) NULL (pre-IR-recording fits; surfaced as `no_prior_recorded`).
+#       fired (rare, default-fire is the standard path).
+#   (3) NULL (pre-IR-recording fits, surfaced as `no_prior_recorded`).
 #
 # Closest precedent: `brms::prior_summary()` / `rstanarm::prior_summary()`.
 # The flexyBayes implementation differs in one intentional way: it
@@ -18,11 +18,11 @@
 
 #' Resolved-prior summary for a flexyBayes fit
 #'
-#' Returns the resolved priors used to fit the model -- either the
+#' Returns the resolved priors used to fit the model, either the
 #' user-supplied `fb_prior()` object, the auto-default half-normal
 #' on the standard-deviation scale, or the
 #' legacy scalar bridge (`prior_fixed_sd` + `prior_vc_sd`). The
-#' return value is an S3 object with a `print()` method; the
+#' return value is an S3 object with a `print()` method. The
 #' underlying `fb_prior` (when applicable) is exposed under
 #' `$fb_prior` for programmatic access.
 #'
@@ -45,7 +45,7 @@
 #'     \item{`fb_prior`}{The `fb_prior` object (when
 #'       `kind == "fb_prior"`).}
 #'     \item{`default_origin`}{`"auto"` when the prior was
-#'       constructed by the half-normal auto-default;
+#'       constructed by the half-normal auto-default.
 #'       `"user"` when supplied via the `prior` argument; `NA` for
 #'       legacy / no-prior cases.}
 #'     \item{`default_scale`, `default_basis`}{Attributes carried by
@@ -63,9 +63,9 @@
 #'       legacy scalar bridge put on each variance component it reached,
 #'       empty when `prior_vc_sd` was not supplied.}
 #'     \item{`not_applied`}{Named character: a prior this package
-#'       declared that the engine has no parameter for -- a residual
+#'       declared that the engine has no parameter for, a residual
 #'       prior on a family whose dispersion is a function of the mean.}
-#'     \item{`declaration_only`}{Reserved; always `FALSE` for every
+#'     \item{`declaration_only`}{Reserved. Always `FALSE` for every
 #'       current backend.}
 #'     \item{`inputs`}{Data frame: every prior specification the fit was
 #'       given, stated or chosen by the package, with its source and the
@@ -80,7 +80,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' # live brms (Stan) fit -- needs a working Stan toolchain
+#' # live brms (Stan) fit, needs a working Stan toolchain
 #' data(sleepstudy, package = "lme4")
 #' fit <- fb_brms(Reaction ~ Days + (1 | Subject),
 #'                data = sleepstudy,
@@ -128,11 +128,11 @@ prior_summary.default <- function(object, ...) {
 # prior, and why.
 #
 # The declared `fb_prior` covers the terms the default-prior walker
-# reaches. Everything else runs under the engine's own hyperprior, and
-# before 0.9.0 `prior_summary()` printed the declaration alone, so a
-# combined GxE model reported the shared default on one variance
-# component while the other silently carried brms's student_t(3, 0, 2.5).
-# The fingerprint already records the gap; this reads that record.
+# reaches. Everything else runs under the engine's own hyperprior, so
+# printing the declaration alone would let a combined GxE model report the
+# shared default on one variance component while the other silently carried
+# brms's student_t(3, 0, 2.5).
+# The fingerprint already records the gap. This reads that record.
 .prior_summary_engine_default <- function(object) {
   fp <- object$extras$fingerprint
   # An empty record is an answer, not a missing one: it says every
@@ -195,18 +195,18 @@ prior_summary.default <- function(object, ...) {
 }
 
 # .prior_summary_fixed_engine_default() --- what carries the fixed
-# effects when `prior_fixed_sd` was not supplied. Named rather than left
+# effects when `prior_fixed_sd` was not supplied. Named instead of left
 # blank: "this package set no fixed-effect prior" and "the fixed effects
 # have no prior" are different statements, and only the first is true.
 .prior_summary_fixed_engine_default <- function(backend_label) {
   switch(
     backend_label,
     "brms" = paste0(
-      "brms's own defaults -- flat on the population-level coefficients, ",
+      "brms's own defaults, flat on the population-level coefficients, ",
       "student_t on the intercept, centred on the response"
     ),
     "inla" = paste0(
-      "INLA's own control.fixed defaults -- prec = 0.001 (a standard ",
+      "INLA's own control.fixed defaults, prec = 0.001 (a standard ",
       "deviation near 32, in standard deviations of the response on a ",
       "Gaussian identity-link fit), and prec.intercept = 0, which is flat"
     ),
@@ -221,8 +221,8 @@ prior_summary.default <- function(object, ...) {
 # walker touches, including families whose brms counterpart carries no
 # `sigma`: Gamma parameterises `shape`, Beta parameterises `phi`, and
 # neither is on the standard-deviation scale the DSL lives on. The emit
-# drops the row -- it has to, or brms refuses the fit -- and the drop is
-# reported here rather than left for a reader to infer from its absence.
+# drops the row, it has to, or brms refuses the fit, and the drop is
+# reported here instead of left for a reader to infer from its absence.
 .prior_summary_not_applied <- function(priors, fb_terms, backend_label) {
   if (identical(backend_label, "inla")) {
     return(.fb_inla_wishart_sd_not_applied(fb_terms))
@@ -250,8 +250,8 @@ prior_summary.default <- function(object, ...) {
     sigma = paste0(
       "family \"",
       fam,
-      "\" has no residual scale parameter in brms -- its ",
-      "dispersion is a function of the mean -- so the declared sigma prior ",
+      "\" has no residual scale parameter in brms, its ",
+      "dispersion is a function of the mean, so the declared sigma prior ",
       "is not applied, and that dispersion parameter keeps brms's own default"
     )
   )
@@ -264,7 +264,7 @@ prior_summary.default <- function(object, ...) {
 # covariance carries ONE joint Wishart: theta1 holds it and every later
 # theta reports prior = "none" (read from INLA::inla.models()). There is no
 # standard-deviation slot. An explicit prior on these groups refuses at
-# emit; the package's own default cannot refuse, or every fit of these
+# emit. The package's own default cannot refuse, or every fit of these
 # structures would, so it is left unspliced and INLA's Wishart governs.
 #
 # Reporting that unspliced default as though it had reached the fit would
@@ -282,7 +282,7 @@ prior_summary.default <- function(object, ...) {
       why <- paste0(
         "`us(", t$outer, "):", t$inner, "` is one iid", t$n_outer,
         "d field on INLA, and its hyperparameters are a joint Wishart ",
-        "over the whole covariance -- there is no standard-deviation slot ",
+        "over the whole covariance, there is no standard-deviation slot ",
         "to carry the declared prior, so INLA's Wishart governs this term"
       )
       for (lev in t$outer_levels %||% character(0)) {
@@ -294,7 +294,7 @@ prior_summary.default <- function(object, ...) {
       why <- paste0(
         "`(", t$slope_var, " | ", t$var, ")` is one iid2d field on INLA, ",
         "and its hyperparameters are a joint Wishart over the 2-by-2 ",
-        "covariance of the intercept and the slope -- there is no ",
+        "covariance of the intercept and the slope, there is no ",
         "standard-deviation slot to carry the declared prior, so INLA's ",
         "Wishart governs this term. `(", t$slope_var, " || ", t$var,
         ")` has two independent precisions, which do take one"
@@ -337,7 +337,7 @@ prior_summary.default <- function(object, ...) {
     default_basis <- attr(priors, "fb_prior_default_basis")
     default_scale <- attr(priors, "fb_prior_default_scale")
     # Where the prior came from is read from the manifest's input sources
-    # (R/model_manifest.R); a fit built before the manifest carries none.
+    # (R/model_manifest.R). A fit built before the manifest carries none.
     origin <- if (!is.null(.fb_manifest(object))) {
       .fb_manifest_origin(.fb_manifest(object))
     } else if (!is.null(default_basis)) {
@@ -356,7 +356,7 @@ prior_summary.default <- function(object, ...) {
       vc_sd = NA_real_
     )
   } else {
-    # Unknown shape -- defensive surfacing rather than silent
+    # Unknown shape, defensive surfacing instead of silent
     # mis-classification.
     list(
       kind = "unknown_shape",
@@ -400,8 +400,8 @@ prior_summary.default <- function(object, ...) {
   # and with what density. Read off the fit's own prior record rather
   # than rebuilt from the scalar, and empty unless the caller supplied
   # `prior_vc_sd`. summary()'s variance-component table projects this:
-  # on brms the engine's own table answers first, and on INLA -- where
-  # there is no engine prior table to read -- this is what lets the cell
+  # on brms the engine's own table answers first, and on INLA, where
+  # there is no engine prior table to read, this is what lets the cell
   # name the prior the fit carries instead of the two words that were
   # true only while the bridge handed INLA nothing.
   out$legacy_vc_applied <- if (
@@ -468,7 +468,7 @@ prior_summary.default <- function(object, ...) {
   # standard deviation filled with the package default, a default slope
   # bound divided by its covariate's standard deviation, and the
   # covariate-scaled default on each numeric fixed effect. The declaration
-  # printed above is what was stated; these are what was added to it.
+  # printed above is what was stated. These are what was added to it.
   completion <- object$extras$prior_completion
   out$filled_priors <- .prior_summary_spec_strings(completion$filled)
   out$covariate_scaled_priors <- .prior_summary_spec_strings(
@@ -479,7 +479,7 @@ prior_summary.default <- function(object, ...) {
   out$fixed_default_multiplier <- completion$fixed_default_multiplier
 
   # brms is the authority on what reached Stan, so on a brms fit the
-  # engine's own table is carried rather than reconstructed. This is what
+  # engine's own table is carried instead of reconstructed. This is what
   # closes the gap the declaration alone leaves: a retargeted residual
   # prior and an engine default both appear here under their real names.
   out$pooled <- object$extras$pooled
@@ -535,7 +535,7 @@ prior_summary.default <- function(object, ...) {
     scaled <- x$fixed_default_sd %||% numeric(0)
     other <- if (length(scaled)) "other " else ""
     cat(
-      "    prior_fixed_sd:  not supplied -- ",
+      "    prior_fixed_sd:  not supplied, ",
       if (length(scaled)) {
         paste0(
           "each numeric column carries the covariate-scaled default\n",
@@ -685,7 +685,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
         )
       } else {
         cat(
-          "    prior_vc_sd:     not supplied -- the variance components ",
+          "    prior_vc_sd:     not supplied, the variance components ",
           "carry each engine's own hyperprior\n",
           sep = ""
         )
@@ -768,7 +768,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
   if (length(x$not_applied) > 0L) {
     cat("\n  Declared but not applied on this engine:\n", sep = "")
     for (nm in names(x$not_applied)) {
-      cat("    ", nm, " -- ", x$not_applied[[nm]], "\n", sep = "")
+      cat("    ", nm, ", ", x$not_applied[[nm]], "\n", sep = "")
     }
   }
 
@@ -791,7 +791,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
       sep = ""
     )
     for (nm in names(x$engine_default)) {
-      cat("    ", nm, " -- ", x$engine_default[[nm]], "\n", sep = "")
+      cat("    ", nm, ", ", x$engine_default[[nm]], "\n", sep = "")
     }
   }
 
@@ -847,7 +847,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
   if (length(x$not_consumed) > 0L) {
     cat("\n  Stated or defaulted, and used by no engine slot:\n")
     for (nm in names(x$not_consumed)) {
-      cat("    ", nm, " -- ", x$not_consumed[[nm]], "\n", sep = "")
+      cat("    ", nm, ", ", x$not_consumed[[nm]], "\n", sep = "")
     }
   }
 

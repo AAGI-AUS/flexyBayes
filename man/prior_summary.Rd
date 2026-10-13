@@ -33,7 +33,7 @@ components below.
 \item{\code{fb_prior}}{The \code{fb_prior} object (when
 \code{kind == "fb_prior"}).}
 \item{\code{default_origin}}{\code{"auto"} when the prior was
-constructed by the half-normal auto-default;
+constructed by the half-normal auto-default.
 \code{"user"} when supplied via the \code{prior} argument; \code{NA} for
 legacy / no-prior cases.}
 \item{\code{default_scale}, \code{default_basis}}{Attributes carried by
@@ -51,9 +51,9 @@ unsupplied leaves the engine's own default in force, which
 legacy scalar bridge put on each variance component it reached,
 empty when \code{prior_vc_sd} was not supplied.}
 \item{\code{not_applied}}{Named character: a prior this package
-declared that the engine has no parameter for -- a residual
+declared that the engine has no parameter for, a residual
 prior on a family whose dispersion is a function of the mean.}
-\item{\code{declaration_only}}{Reserved; always \code{FALSE} for every
+\item{\code{declaration_only}}{Reserved. Always \code{FALSE} for every
 current backend.}
 \item{\code{inputs}}{Data frame: every prior specification the fit was
 given, stated or chosen by the package, with its source and the
@@ -67,11 +67,11 @@ used, with the reason code.}
 }
 }
 \description{
-Returns the resolved priors used to fit the model -- either the
+Returns the resolved priors used to fit the model, either the
 user-supplied \code{fb_prior()} object, the auto-default half-normal
 on the standard-deviation scale, or the
 legacy scalar bridge (\code{prior_fixed_sd} + \code{prior_vc_sd}). The
-return value is an S3 object with a \code{print()} method; the
+return value is an S3 object with a \code{print()} method. The
 underlying \code{fb_prior} (when applicable) is exposed under
 \verb{$fb_prior} for programmatic access.
 }
@@ -82,7 +82,7 @@ this summary when brms is attached after flexyBayes.
 }
 \examples{
 \dontrun{
-# live brms (Stan) fit -- needs a working Stan toolchain
+# live brms (Stan) fit, needs a working Stan toolchain
 data(sleepstudy, package = "lme4")
 fit <- fb_brms(Reaction ~ Days + (1 | Subject),
                data = sleepstudy,

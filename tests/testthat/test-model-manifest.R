@@ -245,7 +245,7 @@ test_that("T3: brms reports every emitted prior row back as the user's", {
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
   d <- .man_data()
-  # The parsed model is engine-agnostic; an INLA fit is the quickest way to
+  # The parsed model is engine-agnostic. An INLA fit is the quickest way to
   # hold one with the stated prior attached.
   fb_ir <- .man_strict(flexybayes(
     fixed = y ~ x, random = ~ g, data = d, backend = "inla",
@@ -332,7 +332,7 @@ test_that("T4: reported priors, route and evidence trace to the manifest", {
   )
 })
 
-test_that("T5: stated priors round-trip; one-to-many inputs list each slot", {
+test_that("T5: stated priors round-trip, and one-to-many inputs list each slot", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   d <- .man_data()

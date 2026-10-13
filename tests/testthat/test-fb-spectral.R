@@ -227,7 +227,7 @@ test_that(".fb_spectral_from_markers() matches eigendecomposition of G = Zc Zc' 
   from_kinship <- flexyBayes:::.fb_spectral(G + diag(n) * 0)
 
   # Eigenvalues agree (the SVD path may carry trailing ~0 values for
-  # the n - rank(Zc) null directions; compare the leading n).
+  # the n - rank(Zc) null directions, so the leading n are compared).
   ev_marker <- sort(from_marker$values, decreasing = TRUE)
   ev_kin <- sort(from_kinship$values, decreasing = TRUE)
   expect_equal(ev_marker[seq_len(n)], ev_kin, tolerance = 1e-7)

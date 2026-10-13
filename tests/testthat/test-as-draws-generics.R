@@ -4,18 +4,16 @@
 # A Bayesian reaches for `posterior::as_draws_df(fit)`, not for a
 # package-specific extractor. These tests hold three things:
 #
-#   * the same canonical parameter tokens come back from both engines --
-#     (Intercept), the fixed-effect terms, sigma, sd_<group> -- so a
-#     workflow written against one engine reads the other unchanged;
-#   * the variance components are on the standard-deviation scale, and the
-#     values are the same ones `.fb_canonical_draws()` returns, not a
-#     second extraction that could drift from it;
-#   * the Suggests guard refuses with a written message naming the package
-#     and the install command, never a bare requireNamespace() failure.
+#   * both engines return the same canonical parameter names: (Intercept),
+#     the fixed-effect terms, sigma and sd_<group>;
+#   * the variance components are on the standard-deviation scale, with
+#     the values `.fb_canonical_draws()` returns;
+#   * the Suggests guard refuses with a message naming the package and the
+#     install command.
 #
 # The INLA draws are SAMPLED from the fitted approximation, so any test
 # comparing two extractions has to seed the sampling step. The fitting is
-# deterministic; the sampling is not.
+# deterministic, the sampling is not.
 # =============================================================================
 
 suppressPackageStartupMessages(library(testthat))
@@ -47,9 +45,8 @@ suppressPackageStartupMessages(library(testthat))
   )
 }
 
-# Both engines are fitted at most once per file; testthat gives each file
-# its own process, so a file-local cache is safe and keeps the Stan
-# compile off the clock for every block after the first.
+# Each engine is fitted at most once per file, so the Stan compile runs
+# once.
 .adg_cache <- new.env(parent = emptyenv())
 
 .adg_inla_fit <- function() {
@@ -109,8 +106,7 @@ test_that("as_draws_df() returns canonical names on an INLA fit", {
   expect_setequal(posterior::variables(d), .ADG_TOKENS)
   expect_equal(posterior::ndraws(d), 50L)
   # A standard deviation is positive. A precision draw handed over
-  # untransformed would still be positive, so the scale is checked
-  # against the seam itself in section 2 -- this is the cheap guard.
+  # untransformed would still be positive. Section 2 checks the scale.
   expect_true(all(as.numeric(d[["sd_g"]]) > 0))
   expect_true(all(as.numeric(d[["sigma"]]) > 0))
 })
@@ -159,10 +155,8 @@ test_that("both engines answer with the same parameter tokens", {
 # ---------------------------------------------------------------- #
 
 test_that("the draws_df columns are the seam's values, unaltered", {
-  # The exact identity, held where it can be held exactly: the seam is
-  # mocked, so what comes back is what went in, column for column. On a
-  # live INLA fit two extractions cannot be compared this way -- see the
-  # next block for why.
+  # The seam is mocked, so what comes back must be what went in, column
+  # for column. Two live INLA extractions differ, see the next block.
   skip_if_not_installed("posterior")
   ref <- list(
     `(Intercept)` = c(1.5, 2.5, 3.5),
@@ -186,17 +180,13 @@ test_that("the draws_df columns are the seam's values, unaltered", {
 })
 
 test_that("brms draws match the seam exactly, INLA hyperparameters do", {
-  # What is reproducible on each engine, and nothing more.
-  #
-  # A brms fit carries its draws; two extractions are byte-equal. An
-  # INLA fit is SAMPLED from the fitted approximation, and only half of
-  # that sampling follows R's random stream: the hyperparameter draws
-  # do, so they repeat under the same set.seed(); the latent field --
-  # the intercept and the fixed-effect terms -- is drawn by INLA's own
-  # generator, seeded at random unless inla.posterior.sample()'s `seed`
-  # argument is given (?INLA::inla.posterior.sample). So the fixed
-  # effects are compared where they can be, on their posterior mean,
-  # against Monte-Carlo error rather than for equality.
+  # A brms fit carries its draws, so two extractions are byte-equal. On
+  # INLA, the hyperparameter draws follow R's random stream and repeat
+  # under set.seed(). The latent field (intercept and fixed effects) is
+  # drawn by INLA's own generator, seeded at random unless
+  # inla.posterior.sample() gets `seed` (?INLA::inla.posterior.sample).
+  # The fixed effects are compared on their posterior mean, against
+  # Monte Carlo error.
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
@@ -224,10 +214,8 @@ test_that("brms draws match the seam exactly, INLA hyperparameters do", {
   }
   # Two independent 300-draw means of the same posterior differ by
   # Monte-Carlo error: sd of the difference is sqrt(v1 / n + v2 / n). A
-  # fixed 5% relative tolerance failed on 2026-08-26 at a 2.1-sd draw
-  # (0.730 against 0.771), so the bound is now four such sds -- a
-  # ~6e-5 chance per term under agreement, and still far tighter than
-  # any disagreement a wrong mapping would produce.
+  # bound of four such sds fails with probability about 6e-5 per term
+  # under agreement, far tighter than a wrong mapping would produce.
   for (nm in c("(Intercept)", "fb", "x")) {
     a <- as.numeric(d[[nm]])
     b <- as.numeric(raw[[nm]])
@@ -335,8 +323,7 @@ test_that("the guard fires before any draw is extracted", {
 
 test_that("a fit carrying no canonical parameter refuses by name", {
   # An empty draws list is what a fit with nothing to read returns. The
-  # seam is mocked rather than an engine coerced into producing one:
-  # the branch under test is the guard, not the extraction.
+  # seam is mocked, since the guard is under test.
   skip_if_not_installed("posterior")
   local_mocked_bindings(
     .fb_canonical_draws = function(fit, ...) list(),
@@ -353,7 +340,7 @@ test_that("a fit carrying no canonical parameter refuses by name", {
   expect_match(conditionMessage(err), "as_draws()", fixed = TRUE)
 })
 
-test_that("ragged draw vectors are refused rather than reshaped", {
+test_that("ragged draw vectors are refused, not reshaped", {
   # posterior::as_draws_df() would recycle or error obscurely. A draws
   # object needs one value per parameter per draw, and the refusal names
   # the parameters whose lengths disagree.
@@ -375,14 +362,12 @@ test_that("ragged draw vectors are refused rather than reshaped", {
 
 
 # ---------------------------------------------------------------- #
-# 4. The convergence surface is engine-native (H2 smoke)            #
+# 4. The convergence surface is engine-native                       #
 # ---------------------------------------------------------------- #
 
 test_that("summary(fit)$converge is present and engine-native on INLA", {
-  # H2: summary(fit)$converge is the Bayesian diagnostic surface. Built
-  # in Phase 1; asserted here so the Bayesian door's own tests carry a
-  # tripwire on it. A Laplace approximation has no R-hat and none is
-  # invented for it.
+  # summary(fit)$converge carries the diagnostics. A Laplace
+  # approximation has no R-hat and none is invented for it.
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()

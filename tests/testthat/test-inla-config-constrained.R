@@ -69,6 +69,7 @@ test_that("DEF-205: posterior draws meet the constraint and match INLA's", {
 
 test_that("DEF-205: the user-facing summaries of the fit are computed", {
   skip_if_not_installed("INLA")
+  skip_if_not_installed("emmeans")
   ref <- .cc_ref()
   fit <- ref$fit
   se <- predict(fit, se.fit = TRUE)$se.fit

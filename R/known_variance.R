@@ -1,4 +1,4 @@
-# known_variance.R -- a known variance per row, added to the residual.
+# known_variance.R: a known variance per row, added to the residual.
 #
 # `flexybayes(known_variance = v)` fits
 #
@@ -79,7 +79,7 @@
   )
 }
 
-# .fb_known_variance_check() --- refuse a vector that is not one finite,
+# .fb_known_variance_check(): refuse a vector that is not one finite,
 # non-negative variance per row of `data`, and a matrix that is not a
 # covariance over those rows.
 .fb_known_variance_check <- function(known_variance, data) {
@@ -121,7 +121,7 @@
   ))
 }
 
-# Relative to the largest entry; a covariance read from a first-stage fit is
+# Relative to the largest entry. A covariance read from a first-stage fit is
 # symmetric to rounding.
 .FB_KNOWN_SYMMETRY_TOL <- 1e-8
 
@@ -171,7 +171,7 @@
   .fb_known_variance_invalid(problem)
 }
 
-# .fb_known_variance_refuse() --- the refusal for a request that cannot carry
+# .fb_known_variance_refuse(): the refusal for a request that cannot carry
 # a known variance, with the reason and the remedy in `detail`.
 .fb_known_variance_refuse <- function(detail) {
   stop(.fb_refusal_condition(
@@ -180,7 +180,7 @@
   ))
 }
 
-# .fb_known_variance_attach() --- the vector as a column of the analysis data,
+# .fb_known_variance_attach(): the vector as a column of the analysis data,
 # and its record on the IR. A vector of zeros attaches nothing.
 .fb_known_variance_attach <- function(fb, data, known_variance, aggregate) {
   covariance <- NULL
@@ -239,7 +239,7 @@
   list(fb = fb, data = data)
 }
 
-# .fb_known_variance_term() --- the IR's known-variance record, or NULL.
+# .fb_known_variance_term(): the IR's known-variance record, or NULL.
 .fb_known_variance_term <- function(fb) {
   for (t in fb$addition_terms %||% list()) {
     if (identical(t$type %||% "", "known_variance")) {
@@ -249,7 +249,7 @@
   NULL
 }
 
-# .fb_known_variance_fill() --- zero on the `n_added` cells the design grid
+# .fb_known_variance_fill(): zero on the `n_added` cells the design grid
 # appended to the data (R/fb_complete_grid.R), which carry row 1's value in
 # every column the model does not name. Such a cell has no response, and no
 # first stage estimated it.
@@ -265,7 +265,7 @@
   data
 }
 
-# .fb_known_variance_values() --- the known variance of each row of `data`,
+# .fb_known_variance_values(): the known variance of each row of `data`,
 # or NULL when the model carries none.
 .fb_known_variance_values <- function(fb, data) {
   if (is.null(.fb_known_variance_term(fb))) {
@@ -327,7 +327,7 @@
   )
 }
 
-# .fb_inla_known_variance_effect() --- the posterior mean of the row effect on
+# .fb_inla_known_variance_effect(): the posterior mean of the row effect on
 # each row, on the response scale, or NULL. INLA's linear predictor carries
 # it and flexyBayes's fitted values do not.
 .fb_inla_known_variance_effect <- function(object) {
@@ -351,7 +351,7 @@
 }
 
 
-# .fb_brms_known_se_newdata() --- brms reads the se() column of `newdata`
+# .fb_brms_known_se_newdata(): brms reads the se() column of `newdata`
 # even for a posterior mean, which does not depend on it. A new row's known
 # variance is not part of its mean, so an absent column is supplied as zero.
 .fb_brms_known_se_newdata <- function(object, newdata) {

@@ -2,7 +2,7 @@
 # 0.13.0. Its deprecation warning is tested in test-deprecation-conditions.R.
 #
 # The original
-# brms-format ingest path is deferred to v0.2 as fb_brms(); the
+# brms-format ingest path is deferred to v0.2 as fb_brms(). The
 # internal helper fb_from_brms() in R/fb_from_brms.R remains
 # unexported and continues to be tested in test-fb-from-brms.R for
 # v0.2 work continuity.
@@ -55,9 +55,9 @@ test_that("fb() and flexybayes() byte-identical on the same call", {
 })
 
 # ---------------------------------------------------------------- #
-# Code generation (auto routes return_code = TRUE to brms/Stan --   #
+# Code generation (auto routes return_code = TRUE to brms/Stan,   #
 # the v0.1 default fitting path was the native engine withdrawn     #
-# entirely in 0.9.3, see NEWS.md; INLA has no return_code text form)#
+# entirely in 0.9.3, see NEWS.md. INLA has no return_code text form)#
 # ---------------------------------------------------------------- #
 
 test_that("flexybayes() generates brms/Stan code for fixed-only model", {

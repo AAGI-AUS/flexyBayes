@@ -1,14 +1,8 @@
-# test-integer-cast-class.R -- the integer-cast class (C1, FS-24).
+# Integer casts of a product of counts.
 #
-# R/aggregate_plan.R:242 `K_est <- as.integer(prod(Ks))` overflowed to NA
-# past 2^31 - 1 cells (a design-growth ladder on `agridat::barrero.maize`
-# reached ~2.4e9 at 54,208 genotypes). `as.integer()` on a value past the
-# limit returns NA with only a base-R coercion warning, and
-# `compression_est` then silently divided by that NA -- the aggregation
-# plan lost both its cell count and its compression estimate rather than
-# refusing. The identical defect in the ROW-count casts was already found
-# and fixed (`row_count_exceeds_integer`); the fix was applied to one
-# member of the class rather than to the class.
+# `as.integer()` past 2^31 - 1 returns NA with only a coercion warning.
+# A cell count of prod(Ks) passes that limit on real designs: about 2.4e9
+# cells at 54,208 genotypes of `agridat::barrero.maize`.
 #
 # Two tests: (a) a grep gate over R/ so the class cannot re-enter one
 # member at a time; (b) the aggregation planner refuses by name, built
@@ -28,23 +22,7 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
 
   patterns <- c("as.integer(prod(", "as.integer(nrow(", "as.integer(length(")
 
-  # Sites verified safe and exempt from the double-cast fix, each with a
-  # one-line reason kept HERE (not only in the source comment) so the
-  # gate and its justification cannot drift apart. Every other site the
-  # audit found (R/aggregate_plan.R:242, R/fb_preflight.R:781, and a
-  # third in the native-model ingest adapter withdrawn entirely at
-  # 0.9.3 -- see NEWS.md) was fixed to carry the product as a double
-  # before casting, and no longer matches these patterns (the withdrawn
-  # file is simply gone, so the grep gate below no longer scans it at
-  # all).
-  #
-  # The one exemption this allowlist used to carry (fb_log_posterior.R's
-  # n_elem sizing of the coord_names / lower / upper vectors) was
-  # removed at 0.9.3 along with the log-density producer for the
-  # withdrawn native engine that owned it -- the surviving
-  # fb_log_posterior() abstains unconditionally and carries no cast in
-  # this class. No exemption is currently needed; the allowlist is
-  # empty rather than stale.
+  # Sites exempt from the gate, each named with a one-line reason.
   allowlist <- character(0)
 
   r_files <- list.files(r_dir, pattern = "\\.R$", full.names = TRUE)
@@ -83,14 +61,12 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
     )
   )
 
-  # An allowlist entry that names no surviving cast is stale
-  # documentation for a fix already made -- catch drift in the other
-  # direction too.
+  # An allowlist entry must still name a cast.
   for (nm in names(allowlist)) {
     expect_true(
       any(vapply(hits, function(h) identical(h$file, nm), logical(1L))),
       label = paste0(
-        "allowlist entry '", nm, "' names no surviving cast -- remove it"
+        "allowlist entry '", nm, "' names no surviving cast: remove it"
       )
     )
   }
@@ -101,10 +77,8 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
 # (b) planner refuses on cell-count overflow                        #
 # ---------------------------------------------------------------- #
 
-# Minimal hand-built `<fb_terms>` IR -- mirrors
-# test-aggregate-plan.R's `.test_make_plan_ir()`, kept local (test files
-# run individually via testthat::test_file() per the WP-C spec, so a
-# helper defined in a sibling test file is not guaranteed loaded).
+# Minimal hand-built `<fb_terms>` IR. A copy of `.test_make_plan_ir()`
+# in test-aggregate-plan.R, so this file also runs on its own.
 .icc_make_plan_ir <- function(fixed_terms = list(), n = 1000L) {
   structure(
     list(
@@ -127,10 +101,9 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
 
 test_that("aggregation planner refuses by name past the integer cell-count limit", {
   # Two factors at 50,000 levels each: product = 2.5e9, past
-  # 2^31 - 1 = 2,147,483,647. Built entirely from metadata-only
-  # dictionaries (character vectors of labels), never a 2.5e9-row data
-  # frame -- .fb_dataset_levels() reads length(dictionaries[[var]]),
-  # not the underlying data.
+  # 2^31 - 1 = 2,147,483,647. Built from dictionaries of labels, not a
+  # 2.5e9-row frame: .fb_dataset_levels() reads
+  # length(dictionaries[[var]]).
   fb <- .icc_make_plan_ir(
     fixed_terms = list(
       list(type = "factor", var = "f1"),
@@ -162,14 +135,11 @@ test_that("aggregation planner refuses by name past the integer cell-count limit
   expect_match(err$message, "2,500,000,000|2500000000", perl = TRUE)
 })
 
-test_that("aggregate = TRUE on an overflowing cell key refuses by name before any fit; auto does not", {
+test_that("aggregate = TRUE on an overflowing cell key refuses by name before any fit, and auto does not", {
   skip_if_not_installed("INLA")
-  # The overflow plan is built the way the unit test above builds it --
-  # from metadata-only dictionaries -- and handed to the dispatch gate
-  # through a mocked planner, so the gate's own behaviour is what is
-  # tested, not the data-dependent order in which the planner collects
-  # its other reasons (under R CMD check a real 1,000-row frame reached
-  # `compression_unproductive` first).
+  # The overflow plan reaches the dispatch gate through a mocked
+  # planner. A real 1,000-row frame can stop first on
+  # `compression_unproductive`.
   fb_over <- .icc_make_plan_ir(
     fixed_terms = list(
       list(type = "factor", var = "f1"),
@@ -208,8 +178,7 @@ test_that("aggregate = TRUE on an overflowing cell key refuses by name before an
 })
 
 test_that("aggregation planner does not refuse below the integer cell-count limit", {
-  # Same shape, comfortably under the limit -- confirms the guard is a
-  # ceiling check, not a blanket refusal on every two-factor model.
+  # Same shape, under the limit.
   fb <- .icc_make_plan_ir(
     fixed_terms = list(
       list(type = "factor", var = "f1"),
@@ -232,11 +201,7 @@ test_that("aggregation planner does not refuse below the integer cell-count limi
 
 
 # ---------------------------------------------------------------- #
-# (c) the other class member fixed without a dedicated behavioural  #
-# test (F6): .preflight_factor_interaction_dummies(). (A second      #
-# member, the native-model ingest adapter's model_dim reducer, was   #
-# withdrawn entirely with that adapter at 0.9.3 -- see NEWS.md -- so  #
-# its regression test is deleted rather than kept unreachable.)     #
+# (c) .preflight_factor_interaction_dummies()                        #
 # ---------------------------------------------------------------- #
 
 test_that(paste(
@@ -244,8 +209,7 @@ test_that(paste(
   "double and returns NA_integer_ cleanly past the limit"
 ), {
   # Three factors at 3,000 levels each: (3000 - 1)^3 ~= 2.7e10, past
-  # 2^31 - 1. Metadata-only dictionaries, never a 2.7e10-row frame --
-  # same construction as (b) above.
+  # 2^31 - 1. Built from dictionaries, as in (b).
   ds <- .fb_dataset(
     data = NULL,
     n_rows = 1000L,
@@ -260,23 +224,15 @@ test_that(paste(
   )
   vars <- c("f1", "f2", "f3")
 
-  # Passes on the fix: the guarded, real implementation returns
-  # NA_integer_ with no coercion warning.
+  # The package function returns NA_integer_ with no coercion warning.
   expect_no_warning(
     result <- .preflight_factor_interaction_dummies(vars, ds)
   )
   expect_identical(result, NA_integer_)
 
-  # Induced defect: the pre-fix cast, `as.integer(prod(ks_minus_one))`
-  # with no `is.finite()` / `> .Machine$integer.max` guard, restored
-  # here as a scratch copy of the function body (R/fb_preflight.R:781
-  # before this fix). Same overflow class C1 repairs elsewhere
-  # (R/aggregate_plan.R:242) -- the un-guarded cast is not silent in
-  # the sense of returning a wrong value (it still lands on NA), but it
-  # raises an uncaught base-R coercion warning on every ordinary,
-  # in-range-cardinality preflight call that happens to cross the
-  # limit, which the WP-C release gate (0-warning suite footer) treats
-  # as a real defect.
+  # Induced defect: the same body without the `is.finite()` /
+  # `> .Machine$integer.max` guard. It also returns NA, but with a
+  # coercion warning.
   .icc_unfixed_dummies <- function(vars, fb_dataset) {
     if (!length(vars)) {
       return(NA_integer_)
@@ -290,7 +246,7 @@ test_that(paste(
       return(NA_integer_)
     }
     ks_minus_one <- pmax(ks - 1, 0)
-    as.integer(prod(ks_minus_one)) # the pre-fix cast, restored here only
+    as.integer(prod(ks_minus_one)) # unguarded cast
   }
   expect_warning(
     bad <- .icc_unfixed_dummies(vars, ds),

@@ -21,9 +21,9 @@ An \code{fb_genomic_summary} object: \code{heritability},
 metadata.
 }
 \description{
-Extract the breeder-facing genomic quantities -- narrow-sense
+Extract the breeder-facing genomic quantities: narrow-sense
 heritability \eqn{h^2}, genomic estimated breeding values (GEBVs) with
-posterior reliability, and the genetic / residual variances -- from a
+posterior reliability, and the genetic / residual variances, from a
 fitted \code{vm()} (genomic / GBLUP) or \code{ped()} (pedigree) model. The
 quantities are read from the posterior draws engine-agnostically: an
 INLA or brms GBLUP fit returns the same summary object, so the two
@@ -32,7 +32,7 @@ engines' genomic summaries can be read side by side.
 \details{
 The heritability is computed per draw as
 \eqn{h^2 = \sigma_g^2 / (\sigma_g^2 + \sigma_e^2)} on the
-genotype-mean basis; the kinship scaling convention is the analyst's
+genotype-mean basis. The kinship scaling convention is the analyst's
 (state it when reporting). Reliability is
 \eqn{1 - \mathrm{PEV}_i / \sigma_g^2} from the posterior variance of
 each breeding value. GEBVs are available on both active backends

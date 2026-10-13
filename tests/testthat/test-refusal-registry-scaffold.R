@@ -1,5 +1,5 @@
-# Tests for the refusal-taxonomy scaffold (ADR 0030 C7; v0.3.8 scaffold-
-# only posture). The registry is empty at v0.3.8 by design --- the
+# Tests for the refusal-taxonomy scaffold (v0.3.8 scaffold-
+# only posture). The registry is empty at v0.3.8 by design: the
 # ~30 existing refusal sites in dispatch.R / lgm_gate.R /
 # structured_cov.R / emit_inla.R are migrated in one batch at v0.4.0
 # alongside the user-facing fb_refusals() accessor.
@@ -38,7 +38,7 @@ test_that(".register_refusal() validates args before assigning", {
       reason_code = NULL,
       description = "x",
       message_template = "x",
-      registered_in_adr = "ADR 0030",
+      registered_in_adr = "0.3.8 refusal scaffold",
       since_version = "0.3.8"
     ),
     regexp = "reason_code"
@@ -48,7 +48,7 @@ test_that(".register_refusal() validates args before assigning", {
       reason_code = "x",
       description = c("a", "b"),
       message_template = "x",
-      registered_in_adr = "ADR 0030",
+      registered_in_adr = "0.3.8 refusal scaffold",
       since_version = "0.3.8"
     ),
     regexp = "description"
@@ -58,7 +58,7 @@ test_that(".register_refusal() validates args before assigning", {
       reason_code = "x",
       description = "x",
       message_template = "x",
-      registered_in_adr = "ADR 0030",
+      registered_in_adr = "0.3.8 refusal scaffold",
       since_version = ""
     ),
     regexp = "since_version"
@@ -96,7 +96,7 @@ test_that("user-side assign() into .refusal_registry raises", {
 })
 
 # ---------------------------------------------------------------- #
-# (e) v0.3.10 first-migration entries (ADR 0025 Decisions 3 + 4)    #
+# (e) v0.3.10 first-migration entries                          #
 # ---------------------------------------------------------------- #
 #
 # v0.3.8 shipped the registry scaffold empty (zero entries; deliberate
@@ -129,17 +129,17 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   entries <- tab$reason_code
   # 31 from the Phase 1C bulk migration + the family-support refusal,
   # the four parse-time spec refusals, the tensor-smooth refusal, and
-  # the two entry-point argument guards added in the 2026-05-30 audit
-  # remediation (= 39); plus the three fb_cov() carrier-construction
-  # refusals added at v0.4.0 Wave 2 Phase 2A (ADR 0030 C3):
+  # the two entry-point argument guards added in the 2026-05-30 review
+  # (= 39); plus the three fb_cov() carrier-construction
+  # refusals added at v0.4.0:
   # fb_cov_type_unknown, fb_cov_missing_matrix, cov_arg_not_fb_cov (= 42);
-  # plus stan_cannot_represent_structured_cov from ADR 0031 Phase 2b (the
+  # plus stan_cannot_represent_structured_cov (the
   # brms capability gate now reachable from flexybayes()) (= 43); plus the
-  # two grammar-polymorphism guards on the universal entry from ADR 0031
-  # Phase 3: grammar_brms_with_asreml_terms,
-  # grammar_brms_known_matrices_unsupported (= 45). At v0.5.0 (ADR 0031
-  # Phase 3.6) a deferral code naming the third native engine (present
-  # through v0.9.2, withdrawn entirely at 0.9.3 -- see NEWS.md) is
+  # two grammar-polymorphism guards on the universal entry:
+  # grammar_brms_with_asreml_terms,
+  # grammar_brms_known_matrices_unsupported (= 45). At v0.5.0 a deferral code
+  # naming the third native engine (present through v0.9.2, withdrawn
+  # entirely at 0.9.3, see NEWS.md) is
   # REMOVED (fb() now fits a native graph on that engine directly) and
   # two genuine refusals are added: one naming a native graph handed to
   # a different engine, and engine_pin_backend_conflict (a pin handed a
@@ -154,21 +154,21 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # identifiability complement of the data-free fa_rank_invalid floor
   # (= 54). At 0.9.0 the design-fidelity refusal
   # dsum_structured_inner_unsupported is added (a structured dsum() inner
-  # -- ar1/us/... -- is refused rather than silently reduced to a
+  # (ar1/us/...) is refused instead of silently reduced to a
   # per-region heteroscedastic variance) (= 55).
   # At 0.9.0 the (since fully withdrawn) native engine and its dormant
-  # sibling are quarantined, adding three refusal codes -- one naming
-  # each engine directly plus backend_quarantined -- and auto_no_active_route
-  # (= 58), and WP16 adds ar1_spatial_requires_complete_grid (= 59). All
+  # sibling are quarantined, adding three refusal codes, one naming
+  # each engine directly plus backend_quarantined, and auto_no_active_route
+  # (= 58), and 0.9.0 adds ar1_spatial_requires_complete_grid (= 59). All
   # four shipped in the 0.9.0 tag and their `since_version` said 0.9.1,
-  # which named a release that did not exist -- corrected here and in the
+  # which named a release that did not exist, corrected here and in the
   # registry.
   # The residual-structure fidelity fix adds two: brms has no
   # residual-covariance lowering, so a structured residual reaching it must
-  # refuse rather than emit a model without the term
+  # refuse instead of emit a model without the term
   # (stan_cannot_represent_ar1_residual,
   # stan_cannot_represent_structured_residual) (= 61), and weights, parsed
-  # but consumed by no emitter, are refused rather than silently returning
+  # but consumed by no emitter, are refused instead of silently returning
   # the unweighted posterior (weights_not_supported) (= 62). The
   # missing-response augmentation layer adds three: na_action = "fail"
   # with a missing response (missing_response_refused), a missing
@@ -177,7 +177,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # data whose model variables were never recorded
   # (augment_cell_not_determinable) (= 65). brms drops NA-response rows and
   # its mi() addition term is admitted only for the gaussian and lognormal
-  # families, so a missing response on any other family refuses rather than
+  # families, so a missing response on any other family refuses instead of
   # being silently deleted
   # (brms_cannot_augment_nongaussian) (= 66). at(f, level):g conditions the
   # random effect on selected levels, which no active emitter represents and
@@ -187,42 +187,42 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # respelled: the residual form names ASReml's three-parameter nugget-free
   # process and refuses (ar1_residual_not_representable), and the random-side
   # field is INLA-only (stan_cannot_represent_ar1_field) (= 72). The parser
-  # vocabulary closes, so an unrecognised call is refused rather than read as
+  # vocabulary closes, so an unrecognised call is refused instead of read as
   # a variable of that name (asreml_function_not_recognised), and the four
   # parse-for-catalogue structures with no emit path are refused by name
   # (ar2_not_representable, str_not_representable, fa_not_representable,
   # interaction_not_representable) (= 77). The brms formula reconstruction's
   # untyped stop becomes a named refusal (brms_cannot_represent_term) (= 78),
-  # and a numeric variable inside a random interaction is refused rather than
+  # and a numeric variable inside a random interaction is refused instead of
   # resolved to one of its two readings
   # (numeric_variable_in_random_interaction) (= 79). The cross-engine
   # comparison gains a comparability gate, and two fits of different models
-  # are refused rather than compared (= 80). Aligning the class
+  # are refused instead of compared (= 80). Aligning the class
   # graph so INLA fits inherit `flexybayes` makes five parent methods
   # reachable on them, and the four that cannot answer from an INLA fit's
-  # slots refuse by name rather than erroring obscurely or returning an
+  # slots refuse by name instead of erroring obscurely or returning an
   # empty result (fit_lacks_posterior_draws,
   # conditional_loglik_not_available, model_matrix_not_recoverable,
   # update_call_not_reconstructable) (= 84). An explicit backend = "inla"
-  # request that the gate refuses stops with a class rather than a bare
+  # request that the gate refuses stops with a class instead of a bare
   # simpleError, which was the last untyped refusal vocabulary in the
   # package (inla_gate_refused) (= 85). fb_met_summary() abstained with a
   # bare simpleError on both active engines and is now typed
   # (met_summary_not_available) (= 86).
   # A single-file or in-memory streaming source past 2^31 - 1 rows refuses
-  # rather than recording NA (row_count_exceeds_integer) (= 87).
+  # instead of recording NA (row_count_exceeds_integer) (= 87).
   # A `family` argument that is neither a name nor a usable stats family
-  # object -- or a family object contradicting an explicit `link =` --
-  # refuses rather than reaching base R's scalar `if` and erroring with
+  # object, or a family object contradicting an explicit `link =`,
+  # refuses instead of reaching base R's scalar `if` and erroring with
   # "the condition has length > 1" (family_argument_not_recognised)
   # (= 88).
   # At 0.9.1 the covariate half of ASReml's na.method() becomes settable,
-  # and its `include` setting -- treat a missing covariate as zero
-  # (Reference Manual 4.2, section 3.11) -- is the one ASReml behaviour
-  # this package refuses rather than reproduces
+  # and its `include` setting, treat a missing covariate as zero
+  # (Reference Manual 4.2, section 3.11), is the one ASReml behaviour
+  # this package refuses instead of reproduces
   # (covariate_zero_fill_not_supported) (= 89).
   # The ASReml-shaped accessors add one suggested-package guard that
-  # refuses by name rather than through a bare requireNamespace() error
+  # refuses by name instead of through a bare requireNamespace() error
   # (classify_requires_emmeans) (= 90), and one display refusal for the
   # residual variogram, which has no lag to plot against on a model that
   # names no design array (variogram_requires_design_index) (= 91).
@@ -234,16 +234,16 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # of fit_lacks_posterior_draws and the two descriptions name each
   # other (AD-4). It adds a second: a posterior predictive check needs
   # datasets replicated from the fitted model, and a fit whose engine
-  # returns none refuses rather than showing a different display under
+  # returns none refuses instead of showing a different display under
   # the check's name (pp_check_requires_predictive_draws) (= 93).
   # The asreml head-to-head adds two. A factor written on both the fixed
   # and the random side is aliased with itself, was accepted silently,
-  # and reached INLA as an intermittently singular marginal solve -- two
+  # and reached INLA as an intermittently singular marginal solve, two
   # engine segmentation faults and an untyped error at benchmark scale,
   # the only untyped structural failure in that run
   # (term_in_fixed_and_random) (= 94). And predict(classify = ) for a
-  # random-effects grouping factor -- what a breeder asks a MET fit for
-  # first -- died inside emmeans with a bare "No variable named Geno in
+  # random-effects grouping factor, what a breeder asks a MET fit for
+  # first, died inside emmeans with a bare "No variable named Geno in
   # the reference grid", so it refuses by name and points at the
   # accessors that do carry the level effects
   # (classify_random_factor_not_supported) (= 95).
@@ -253,10 +253,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # under a prior nobody asked for. A mini-language is a public API: the
   # constructor now refuses an unknown or duplicated argument name
   # (prior_argument_unknown, prior_argument_duplicated), a missing
-  # required one (prior_argument_missing -- half a PC prior states no
+  # required one (prior_argument_missing, half a PC prior states no
   # probability), a non-scalar or non-finite value
   # (prior_hyperparameter_not_scalar), and a value outside its domain
-  # (prior_hyperparameter_out_of_domain -- a negative standard deviation
+  # (prior_hyperparameter_out_of_domain, a negative standard deviation
   # used to reach the sampler and surface as a missing-draws error).
   # The surrounding entry shapes are typed with it, because a refusal a
   # wrapper cannot match on by class is not a contract: the empty call,
@@ -269,7 +269,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # The same sweep's second slate adds seven more, all on paths that
   # refused for real reasons in untyped conditions. The prior emit is two:
   # a distribution the backend cannot carry on that parameter
-  # (prior_not_translatable_for_backend -- on INLA it used to be dropped
+  # (prior_not_translatable_for_backend, on INLA it used to be dropped
   # silently while prior_summary() printed it as applied), and a prior
   # naming a term the model does not have (prior_target_not_in_model,
   # which brms's own parser answered with a synthesised Stan name). The
@@ -281,19 +281,19 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # (brms_random_effect_form_unsupported,
   # brms_ingest_feature_unsupported) (= 114). The execution grid then
   # reached the two aggregated-route entry refusals that raised bare
-  # errors above the plan gate -- a missing response, which is a property
+  # errors above the plan gate, a missing response, which is a property
   # of the data (aggregation_response_incomplete), and an unreachable
   # aggregated emit, which is a property of the engine roster
   # (aggregation_route_unavailable, raised at two sites) (= 116).
-  # 0.9.3's WP-C scale/weights slate adds five more: an aggregation
+  # 0.9.3 adds five more for scale and weights: an aggregation
   # cell-count product past R's integer limit (cell_count_exceeds_
   # integer), a typed INLA engine-death classification (inla_program_
   # failed), a per-level hyperparameter an at():ar1() field cannot
   # represent (at_field_per_level_hyper_not_representable), and the
-  # two weights refusals -- wrong family/link (weights_requires_
+  # two weights refusals, wrong family/link (weights_requires_
   # gaussian) and the aggregated route (weights_not_aggregatable)
-  # (= 121). 0.9.3's WP-G withdraws a third native engine entirely (see
-  # NEWS.md): eleven codes are removed -- backend_quarantined; the six
+  # (= 121). 0.9.3 withdraws a third native engine entirely (see
+  # NEWS.md): eleven codes are removed, backend_quarantined; the six
   # refusal codes belonging to that engine's dormant sibling (package-
   # not-installed, below the version floor, unsupported family,
   # random-effect grouping factor absent from the data, unsupported
@@ -301,32 +301,32 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # the two codes naming the native engine directly (one for the fit
   # path, one for a native graph handed to a different engine); one
   # naming it as the sole consumer of the low_rank_smooth approximation
-  # scheme (renamed, not simply deleted -- see next); and one unrelated
+  # scheme (renamed, not deleted, see next); and one unrelated
   # orphan, whose raising site (.predict_linear_draws()) was deleted the
   # same session as an unreachable-code discovery, not as part of the
   # withdrawal itself. Two are added: low_rank_smooth_unsupported (the
-  # renamed approximation-scheme code -- the low_rank_smooth scheme has
-  # no active-engine consumer at all now, rather than a since-withdrawn
+  # renamed approximation-scheme code, the low_rank_smooth scheme has
+  # no active-engine consumer at all now, instead of a since-withdrawn
   # one) and unknown_backend (an explicit `backend` naming a value
-  # outside {"auto", "inla", "brms"} -- including the withdrawn engine's
-  # name -- refuses by this code rather than via match.arg()) (121 - 11 +
+  # outside {"auto", "inla", "brms"}, including the withdrawn engine's
+  # name, refuses by this code instead of via match.arg()) (121 - 11 +
   # 2 = 112).
   # 0.10.0.9000 adds one: stream_response_must_be_a_column. The per-row
   # route now evaluates a transformed response (log(yield)); the streaming
   # route reads named columns off disk and cannot, so it refuses by name
-  # rather than asking the reader for a column that does not exist
+  # instead of asking the reader for a column that does not exist
   # (114 + 1 = 115).
   # Nested random effects on INLA add two more: the interaction index needs
   # every named variable present, and it must not overwrite a user column of
   # the same name (115 + 2 = 117).
   # us(f):g and (x | g) reach INLA as iidKd fields, whose hyperparameters
   # are a joint Wishart with no standard-deviation slot. An explicit SD
-  # prior refuses on each rather than being spliced in and dropped
+  # prior refuses on each instead of being spliced in and dropped
   # (us_gxe_prior_not_translatable_inla,
   # cor_slope_prior_not_translatable_inla) (117 + 2 = 119).
   # vpredict() adds three: no functional or a malformed one
   # (vpredict_no_functional), a functional naming a component the fit does
-  # not carry, which must refuse rather than resolve against the caller's
+  # not carry, which must refuse instead of resolve against the caller's
   # workspace (vpredict_component_not_in_posterior), and one that does not
   # return a number per draw (vpredict_functional_not_one_value_per_draw)
   # (= 122). A brms fit that fails on a machine whose toolchain cannot
@@ -355,7 +355,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # place a wrong answer would be invisible. No admitted builder applies to
   # the base fit, or the fit does not report what a builder needs
   # (selection_covariance_not_buildable) (= 134); a covariance block has no
-  # Cholesky factor, refused rather than given jitter, because a silent
+  # Cholesky factor, refused instead of given jitter, because a silent
   # repair there is misspecification wearing a passing test
   # (selection_covariance_not_positive_definite) (= 135); and the dense
   # covariance reference was asked for above its size cap, since it is an
@@ -368,8 +368,8 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # every covariate value to the wrong level
   # (selection_reduction_level_mismatch) (= 138); a candidate is not constant
   # within the term's levels or does not vary across them, which is the rule
-  # that makes the site / year asymmetry structural rather than something to
-  # audit afterwards (selection_candidates_not_constant_within_term) (= 139);
+  # that makes the site / year asymmetry structural instead of something to
+  # check afterwards (selection_candidates_not_constant_within_term) (= 139);
   # the base fit does not carry the parsed model and data the builders read,
   # as on the aggregated route (selection_base_shape_unreadable) (= 140); and
   # absorbing the reduction term as fixed would leave further random terms,
@@ -382,7 +382,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # does not pretend otherwise
   # (selection_penalty_coordinate_basis_dependent) (= 143).
   # Weights, offsets and missing responses add seven, all guarding the same
-  # clause -- that a quantity is absorbed exactly once. Non-positive weights
+  # clause, that a quantity is absorbed exactly once. Non-positive weights
   # (selection_weights_not_positive) (= 144); a weight in the covariance and
   # in the provider loss, or twice in either (selection_weights_absorbed_twice)
   # (= 145); the loss route used where V carries a random part, where the two
@@ -396,7 +396,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # (selection_preprocessing_leak) (= 150).
   # Resampling, prediction and scoring add ten. A stochastic deal with no
   # seed, never defaulted (selection_seed_required) (= 151); an assessment
-  # fold carrying a level absent from training, refused rather than dropped
+  # fold carrying a level absent from training, refused instead of dropped
   # (selection_fold_level_absent) (= 152); a resampling unit given with no
   # scheme and no fold_id, which is not a specification
   # (selection_resamples_underspecified) (= 153); a fold_id that cuts through
@@ -405,10 +405,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # varies inside a unit (selection_strata_not_constant_within_unit) (= 156);
   # a fold too small or degenerate to score (selection_fold_not_usable)
   # (= 157); a training covariance block with no Cholesky factor, named
-  # rather than surfacing as a raw LAPACK error
+  # instead of surfacing as a raw LAPACK error
   # (selection_fold_covariance_not_factorisable) (= 158); a quantity that
   # moved when the assessment rows were corrupted, which is leakage caught by
-  # the gate rather than argued about (selection_leakage_detected) (= 159);
+  # the gate instead of argued about (selection_leakage_detected) (= 159);
   # and an aggregation asked for with no independent unit declared, without
   # which a one-standard-error rule is not reproducible
   # (selection_scoring_unit_undeclared) (= 160).
@@ -417,7 +417,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # while `penalty = NULL` was the only implemented corner, is withdrawn at
   # 0.11.0: the penalty is implemented and nothing throws it.) The base is
   # not a fitted
-  # flexyBayes model, or its structure is not on the allowlist -- us() and
+  # flexyBayes model, or its structure is not on the allowlist, us() and
   # fa() on INLA stay out regardless of how a particular fit behaved
   # (selection_base_not_allowlisted) (= 162); and the response is not
   # Gaussian with an identity link, where the whitening identity is not
@@ -450,8 +450,8 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # rule missing the number it needs, or carrying one it does not read
   # (selection_decision_invalid) (= 184).
   #
-  # The 2026-09-12 audit close adds three. A scoring unit key whose length
-  # does not match the provider's pointwise densities, refused rather than
+  # The 2026-09-12 review adds three. A scoring unit key whose length
+  # does not match the provider's pointwise densities, refused instead of
   # silently replaced by row numbers (selection_scoring_unit_mismatch)
   # (= 185); a projection search with no executed gate, which is `L1`
   # (projection_search_unsupported) (= 186); and a class-wide global-local
@@ -475,7 +475,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # priors, so a large response standard deviation no longer refuses
   # (inla_response_scale_unvalidated) (= 190).
   #
-  # Offsets in the fixed formula are recorded rather than refused at ingest,
+  # Offsets in the fixed formula are recorded instead of refused at ingest,
   # and add two: an offset that is not a finite number on every row
   # (fixed_offset_invalid) (= 191), and a prediction whose new data lack a
   # column an offset reads (newdata_offset_missing) (= 192).
@@ -506,7 +506,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # predict() and a marginaleffects prediction on a non-identity link
   # (predict_link_not_supported, marginaleffects_link_not_supported) (= 204).
   #
-  # The support audit adds one: an INLA fit outside the bound of a stated
+  # The support check adds one: an INLA fit outside the bound of a stated
   # prior (prior_support_violated) (= 205).
   #
   # Fold isolation adds one: a random term that cannot take a new level
@@ -531,7 +531,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # (selection_fold_candidate_drop_not_representable) (= 212).
   #
   # The family response-domain gate adds one: a response outside the domain
-  # its family's likelihood is defined over -- gamma / lognormal strictly
+  # its family's likelihood is defined over, gamma / lognormal strictly
   # positive, hurdle_gamma non-negative, beta an open unit interval
   # (family_response_domain_violation) ).
   # The factor-analytic unit adds one: fa(f, k):g leaves the fitting route on
@@ -545,7 +545,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # one (selection_penalty_family_optimizer_only) ).
   #
   # The fold-concurrency unit adds one: a worker that returned neither a
-  # result nor an error, which is a child killed from outside rather than a
+  # result nor an error, which is a child killed from outside instead of a
   # fold that failed (selection_parallel_worker_failed) (= 217). A fold that
   # refuses inside a live worker keeps its own code, so no other refusal is
   # duplicated for the concurrent path.

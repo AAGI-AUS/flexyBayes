@@ -1,19 +1,17 @@
 # =============================================================================
-# Selection theta: oracle 3 of the correctness ledger.
-#
-# Contract: SPEC_penalised_selection_v3_2026-09-11.md section 12, oracle 3.
+# Selection theta: oracle 3.
 #
 # The whitening operator is only as right as the theta-hat it is built from,
-# and oracles 1 and 2 cannot see a wrong theta -- they check that V is
-# assembled correctly FROM theta and that W inverts it. A theta that is simply
+# and oracles 1 and 2 cannot see a wrong theta, they check that V is
+# assembled correctly FROM theta and that W inverts it. A theta that is
 # wrong passes both. This file is the independent-engine check that closes
 # that gap.
 #
-# Audit A29 says the load-bearing nested component is not externally
+# A prior review found that the load-bearing nested component is not externally
 # validated: the ASReml scenario fits `rep + rep:block` and requests only
 # `rep`, whose coefficient of variation is 1.118, above the comparator's own
 # 0.50 cutoff, so it is not asserted either. `rep:block` is requested nowhere.
-# The audit's remedy needs a converged ASReml refit and the licence server is
+# The remedy needs a converged ASReml refit and the licence server is
 # down.
 #
 # It does not need one. Three things close it without a licence:
@@ -25,8 +23,8 @@
 #   3b  where the posterior is tight, the two agree to within the posterior's
 #       own width. No tuned tolerance: the criterion scales itself.
 #   3c  lme4 reproduces the BANKED ASReml values. That is what licences lme4
-#       as the stand-in while the licence server is unavailable, rather than
-#       assuming it.
+#       as the stand-in while the licence server is unavailable, so it is
+#       not assumed.
 #
 # Scope, stated so it is not overread. This validates the nested covariance
 # BUILDER on a replicated nested design with both engines converged. It is
@@ -44,10 +42,13 @@ fb_theta_fixture <- function() {
   d$gen <- factor(d$gen)
   d$rep <- factor(d$rep)
   d$block <- factor(d$block)
-  # lme4 needs the nested stratum as one factor; flexyBayes reads rep:block
+  # lme4 needs the nested stratum as one factor. FlexyBayes reads rep:block
   # from the formula. Same partition, spelled for each engine.
   d$rb <- factor(paste0(as.character(d$rep), ":", as.character(d$block)))
 
+  # `rep` has three levels, so sd_rep is weakly identified.
+  # The last test below records it.
+  withr::local_options(flexyBayes.silence_weak_identification_warning = TRUE)
   fit <- flexybayes(
     fixed = yield ~ gen, random = ~ rep + rep:block,
     data = d, backend = "inla", verbose = FALSE,
@@ -94,7 +95,7 @@ test_that("oracle 3a: every REML estimate lies inside the posterior interval", {
     )
   )
 
-  # Including the one the audit says is unvalidated. Named explicitly so the
+  # Including the one found unvalidated. Named explicitly so the
   # gap cannot silently reopen by the component being dropped from the frame.
   expect_true("sd_rep:block" %in% cmp$component)
 })
@@ -138,7 +139,7 @@ test_that("oracle 3b: the nested component agrees closely in absolute terms", {
   cmp <- f$cmp
   gap <- cmp$rel_gap[cmp$component == "sd_rep:block"]
   # Measured at 0.072 on 2026-09-12. The bound is deliberately loose enough
-  # to be a regression gate rather than a restatement of today's number.
+  # to be a regression gate instead of a restatement of today's number.
   expect_lt(gap, 0.15)
 })
 
@@ -154,8 +155,9 @@ test_that("oracle 3c: lme4 reproduces the banked ASReml components", {
   skip_if(identical(path, ""), "banked ASReml fixture is not installed")
   rec <- readRDS(path)
 
-  # A26's contract: a nonconverged fit is not admissible as a reference. This
-  # scenario converged; 06 and 07 did not, which is why they are not used here.
+  # A nonconverged fit is not admissible as a reference. This
+  # scenario converged, but 06 and 07 did not,
+  # which is why they are not used here.
   expect_true(isTRUE(rec$asreml_converged))
 
   asr_var <- rec$raw$asreml_varcomp

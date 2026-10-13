@@ -4,12 +4,9 @@
 #' you already know from ASReml or `lme4`/`brms`, dispatched through one of
 #' two active inference engines: INLA (integrated nested Laplace
 #' approximation, over the latent Gaussian model class) or brms (a Stan
-#' passthrough, full Hamiltonian Monte Carlo). A third native engine was
-#' withdrawn entirely in 0.9.3 (see `NEWS.md`): a `backend` request
-#' naming that withdrawn engine, or any other unrecognised name, now
-#' refuses with an ordinary unknown-backend error naming the two active
-#' engines; re-entry, should it ever be proposed, would be a fresh
-#' implementation, not a repair of retained code. All current exports
+#' passthrough, full Hamiltonian Monte Carlo). A `backend` request
+#' naming any other engine refuses with an unknown-backend error naming
+#' the two active engines. All current exports
 #' are at the experimental `lifecycle` stage. The same fitted object
 #' supports `summary()`, `predict()`, `emmeans::emmeans()`,
 #' `marginaleffects::predictions()`, and the `bayesplot::*` family.
@@ -18,32 +15,32 @@
 #' The entry points share a single internal model representation
 #' (`fb_terms`):
 #'
-#' * [flexybayes()] -- ASReml-format entry: `fixed` / `random` / `residual`
+#' * [flexybayes()], ASReml-format entry: `fixed` / `random` / `residual`
 #'   formulas and `known_matrices` for kinship / pedigree. Observation
 #'   `weights` are lowered for the Gaussian family (identity link) and
-#'   refused by name for any other family -- see `?flexybayes`'s
+#'   refused by name for any other family, see `?flexybayes`'s
 #'   `@param weights` for the exact semantics.
-#' * [fb()] / [flexybayes()] -- the universal entry. Accepts an ASReml
+#' * [fb()] / [flexybayes()], the universal entry. Accepts an ASReml
 #'   (`fixed` / `random` / `residual`) or brms-style (`y ~ x + (1 | g)`)
 #'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).
-#' * [fb_inla()] / [fb_brms()] -- the two active single-engine pins.
-#' * [fb_prior()] -- penalised-complexity-canonical prior DSL.
-#' * [vpredict()] -- ASReml's own verb for a posterior functional of the
+#' * [fb_inla()] / [fb_brms()], the two active single-engine pins.
+#' * [fb_prior()], penalised-complexity-canonical prior DSL.
+#' * [vpredict()], ASReml's own verb for a posterior functional of the
 #'   variance components: heritabilities, ratios and genetic correlations,
-#'   computed on the draws rather than by the delta method.
+#'   computed on the draws, not by the delta method.
 #'
 #' @section Vignettes:
 #' Six vignettes ship with the package: *Mixed models in brief*, *Bayesian
 #' estimation in brief*, *The ASReml syntax flexyBayes covers*, *ASReml and
 #' flexyBayes on the same trials*, *A two-stage analysis of a series of
 #' trials*, and *Moving from ASReml-R*. The first two set up the model class
-#' and what changes under a posterior; the third is the formula surface
-#' together with dispatch and the inventory of structures that are refused;
-#' the fourth fits the same trials through both and shows where the answers
-#' agree and where they do not; the fifth fits each trial of a series on its
+#' and what changes under a posterior. The third is the formula surface
+#' together with dispatch and the inventory of structures that are refused.
+#' The fourth fits the same trials through both and shows where the answers
+#' agree and where they do not. The fifth fits each trial of a series on its
 #' own, carries the first stage's variances into a second stage, and fits a
 #' penalised regression of trial-level covariates on the design whitened by
-#' the fitted covariance; the sixth gives the flexyBayes spelling of each
+#' the fitted covariance. The sixth gives the flexyBayes spelling of each
 #' ASReml construct, beside stored ASReml fits. The count here is checked
 #' against `vignettes/` by a parity test, because a number written into prose
 #' is the first thing to drift.
@@ -53,7 +50,7 @@
 #' generated from one R-level table and shown in `README.md` and
 #' `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`. A request
 #' outside that set raises a typed refusal naming the nearest implemented
-#' alternative rather than fitting a neighbouring model under the
+#' alternative instead of fitting a neighbouring model under the
 #' requested model's name.
 #'
 #' @section References:

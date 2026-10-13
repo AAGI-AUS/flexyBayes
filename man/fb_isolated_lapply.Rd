@@ -7,7 +7,7 @@
 fb_isolated_lapply(jobs, fn, plan = list())
 }
 \arguments{
-\item{jobs}{A list or vector; \code{fn} is called on each element.}
+\item{jobs}{A list or vector, \code{fn} is called on each element.}
 
 \item{fn}{A function of one element of \code{jobs}.}
 
@@ -44,10 +44,10 @@ defined in, from where this session loaded them, and starts from this
 session's flexyBayes, brms, cmdstanr and INLA settings, its environment
 variables and its random-number state. Messages, warnings and printed
 output come back and are replayed in job order, never in completion order.
-A job that fails stops new jobs from starting; the jobs before it are
+A job that fails stops new jobs from starting. The jobs before it are
 waited for, and the lowest failing job's error is raised. With one worker,
 each process starts from the random-number state the previous one left,
-as \code{\link[=lapply]{lapply()}} would; with several, each starts from the session's state
+as \code{\link[=lapply]{lapply()}} would, with several, each starts from the session's state
 and the session's state is left where it was.
 
 A process that ends without returning raises the refusal

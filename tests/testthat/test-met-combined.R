@@ -1,19 +1,12 @@
 # The combined multi-environment-trial model: interaction random effects
 # and a sectioned residual in one fit.
 #
-# Until this file existed the two halves were only ever tested apart. The
-# README and inst/KNOWN_ISSUES.md said so plainly -- the capability row
-# read `emits`, meaning the emitted Stan program carried both blocks and
-# nobody had run it -- and the August 2026 external audit recorded the
-# combination as unverified for exactly that reason.
-#
-# Two assertions close it, in the order the fix specification requires:
+# Two assertions:
 #
 #   (a) EMIT. The reconstructed brms formula carries the interaction
 #       group-level term AND the distributional predictor on sigma, and
 #       the Stan program brms writes from it carries both the group-level
-#       standard-deviation vector and the sigma design matrix. Half a
-#       model that samples beautifully is still half a model, so this is
+#       standard-deviation vector and the sigma design matrix. This is
 #       asserted before anything is fitted.
 #
 #   (b) FIT. One live fit on simulated multi-environment data samples
@@ -91,8 +84,8 @@ test_that("the combined model emits both blocks, in the formula and in Stan", {
   expect_true(grepl("sd_2", code, fixed = TRUE))
   expect_true(grepl("X_sigma", code, fixed = TRUE))
   expect_true(grepl("b_sigma", code, fixed = TRUE))
-  # `sigma = exp(...)` rather than a scalar residual scale: the
-  # sectioning replaces the residual, it does not sit beside it.
+  # `sigma = exp(...)`, not a scalar residual scale: the sectioning
+  # replaces the residual.
   expect_false(grepl("real<lower=0> sigma;", code, fixed = TRUE))
 })
 

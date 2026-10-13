@@ -20,7 +20,7 @@
 
 # A stand-in for an INLA return: a Gaussian observation precision and one
 # latent term `g`, each under the same uniform bound on its standard
-# deviation. `theta_g` is the log precision of `g`; the observation precision
+# deviation. `theta_g` is the log precision of `g`. The observation precision
 # sits at log precision 0 (standard deviation 1).
 .psa_fake_fit <- function(
   theta_g,
@@ -144,7 +144,7 @@ test_that("a mode outside the bound is refused by name", {
 })
 
 test_that("an interval outside the bound is refused with the mode inside", {
-  # Mode at standard deviation exp(1) = 2.72 under a bound of 3; the lower
+  # Mode at standard deviation exp(1) = 2.72 under a bound of 3. The lower
   # quantile of the log precision implies a standard deviation of 3.67.
   fake <- .psa_fake_fit(theta_g = -2, q_g = c(-2.6, -1.5))
 
@@ -198,7 +198,7 @@ test_that("hyperparameters that cannot be paired with priors are an error", {
 
 test_that("a bounded likelihood parameter that is not a precision is audited", {
   # The gamma likelihood's hyperparameter is INLA's "precision parameter",
-  # and beta's is `phi`; the package's uniform expression prior sits on
+  # and beta's is `phi`. The package's uniform expression prior sits on
   # their internal theta as on a Gaussian precision.
   fake <- .psa_fake_fit(theta_g = log(4.5))
   rownames(fake$internal.summary.hyperpar)[[1L]] <-
@@ -297,7 +297,7 @@ test_that("every INLA fit an entry point returns has been through the audit", {
       counts$audit <- counts$audit + 1L
       real_audit(...)
     },
-    # The restart probe calls INLA for a fit it may discard; it is switched
+    # The restart probe calls INLA for a fit it may discard. It is switched
     # off so that every engine call is a fit an entry point returns.
     .fb_inla_restart_probe = function(...) NULL
   )
@@ -333,7 +333,11 @@ test_that("every INLA fit an entry point returns has been through the audit", {
     fixed = cnt ~ h, random = ~g, source = d, family = "poisson",
     prior = bounded_count, verbose = FALSE
   )
-  refit <- stats::update(per_row, random = ~ g + h)
+  # y carries no h effect, so the added sd_h is weakly identified.
+  refit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    stats::update(per_row, random = ~ g + h)
+  )
   d_fold <- d
   d_fold$y[seq(1L, nrow(d), by = 4L)] <- NA
   fold <- fb_refit(

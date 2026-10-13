@@ -1,18 +1,18 @@
-# ASReml oracle suite -- specification
+# ASReml oracle suite: specification
 
 **Written 2026-09-11, before any comparison was run.** That ordering is the
 point of the document. Tolerances chosen after seeing results measure nothing,
-and the audit finding this suite answers (F02) is precisely that the package's
+and the audit finding this suite answers is precisely that the package's
 translation claims outran evidence that an independent source produced.
 
 ## What this suite is for
 
-Audit finding F02: the 0.10 development line added or materially changed the
+The audit finding behind this suite: the 0.10 development line added or materially changed the
 INLA factor-analytic, `us()` through `iidKd`, correlated-slope, sectioned
 residual and combined multi-environment paths. The banked ASReml comparisons
 were taken at flexyBayes 0.9.0, before those changes. Every row of
 `inst/TRANSLATION.md` currently reading `none at this anchor` is a translation
-class asserted from the code rather than measured against the incumbent.
+class asserted from the code and not measured against the incumbent.
 
 This suite replaces that with a paired execution: ASReml 4.2 and the built
 flexyBayes tarball, on byte-identical data, at a named source SHA.
@@ -26,7 +26,7 @@ would fail for reasons that have nothing to do with translation.
 
 Comparison runs in two layers.
 
-### Layer 1 -- structural. Exact equality, no tolerance.
+### Layer 1: structural. Exact equality, no tolerance.
 
 If the translation is faithful these are identical, and a difference is a
 defect regardless of how close the numbers are. This is the layer that
@@ -40,10 +40,10 @@ actually tests translation.
 | Residual structure parameter count | equal |
 | Observations entering the fit | equal |
 
-### Layer 2 -- numerical. Tolerances below, fixed in advance.
+### Layer 2: numerical. Tolerances below, fixed in advance.
 
 Every quantity here is invariant to the parameterisation difference between
-the two systems -- a ratio, a correlation, a reconstructed covariance, or a
+the two systems, a ratio, a correlation, a reconstructed covariance, or a
 fixed effect measured in units of its own standard error.
 
 | Quantity | Tolerance | Why this value |
@@ -54,12 +54,12 @@ fixed effect measured in units of its own standard error.
 | Reconstructed covariance `Sigma` | `max(abs(S_fb - S_asr) / abs(S_asr)) <= 0.15` elementwise | The object `us()` and `fa()` actually claim to represent. Elementwise relative, so a large variance cannot mask a wrong covariance. |
 | BLUP agreement | `cor(blup_fb, blup_asr) >= 0.95` | Random-effect predictions are what a user takes forward into selection. |
 
-### Identification gate -- declared in advance
+### Identification gate: declared in advance
 
 A variance component is **well-identified** when ASReml's own reported
 `std.error / component < 0.5`. Only well-identified components carry a Layer 2
 assertion. Components failing the gate are recorded with both systems' values
-and reported as `not asserted -- weakly identified`, never silently dropped
+and reported as `not asserted, weakly identified`, never silently dropped
 and never quietly passed.
 
 This gate exists because a weakly identified component differs between REML
@@ -97,9 +97,9 @@ Rows classified `analogue` or `refused` in the translation registry are out of
 scope: `spl()` is not claimed to be ASReml's spline, and a refusal has nothing
 to pair against.
 
-## Amendment 1 -- 2026-09-11, substrate for the heterogeneous rows
+## Amendment 1: 2026-09-11, substrate for the heterogeneous rows
 
-Recorded rather than applied silently, because this document's value is that
+Recorded, not applied silently, because this document's value is that
 it was written first.
 
 Scenarios 03 and 05 were specified on `agridat::yan.winterwheat` and both
@@ -111,7 +111,7 @@ both 1), so a per-environment genotype variance is confounded with the
 residual and REML has nothing to separate them. ASReml is right to refuse.
 
 Scenarios 03, 05 and the unstructured and factor-analytic rows 06 to 10 move
-to `agridat::besag.met` -- 6 counties, 64 genotypes, 3 replicates per county,
+to `agridat::besag.met`, 6 counties, 64 genotypes, 3 replicates per county,
 minimum 3 observations per cell, so the heterogeneous structures are
 identifiable.
 
@@ -124,7 +124,7 @@ This is itself a finding worth carrying forward: a per-environment variance
 demonstrated on unreplicated data is not demonstrated, whichever system
 reports a number for it.
 
-## Amendment 2 -- 2026-09-11, a repeatability gate ahead of every comparison
+## Amendment 2: 2026-09-11, a repeatability gate ahead of every comparison
 
 A paired comparison assumes the thing being compared is a property of the
 model. On five of the ten structures screened it was not: repeated identical
@@ -139,40 +139,38 @@ screen, its criterion and its own blind spot are recorded in
 
 The fix that followed is recorded in `findings/O01`: where a component comes
 back pinned at zero variance, the fit is restarted from a mode where it
-carries real variance, and the better solution is adopted rather than merely
+carries real variance, and the better solution is adopted and not merely
 flagged. Scenario results produced before that change are superseded, because
 they measured a fit the package no longer returns.
 
 **No tolerance changed.** The gate is additional, and it fails closed: a
 structure whose repeatability is unknown is not compared.
 
-## Amendment 3 -- 2026-09-11, what the identification gate is for
+## Amendment 3: 2026-09-11, what the identification gate is for
 
-The gate declining to assert on a weakly identified component is doing real
-work rather than excusing a miss, and the `diag(env):gen` comparison shows
+The gate declining to assert on a weakly identified component is doing real work and is not excusing a miss, and the `diag(env):gen` comparison shows
 why. ASReml returns exactly 0.00 for two of the six environments. A REML
 estimate can sit on the boundary; the mean of a posterior over a non-negative
 parameter cannot, and a uniform prior on the standard deviation places mass
 away from it. The two systems therefore *must* differ on a component ASReml
-has pinned, and asserting agreement there would test the prior rather than the
-translation.
+has pinned, and asserting agreement there would test the prior and not the translation.
 
-The gate's threshold -- ASReml's `std.error / component < 0.5` -- excludes
+The gate's threshold: ASReml's `std.error / component < 0.5`, excludes
 exactly those rows, because a component estimated at zero has no such ratio.
 This was declared before the comparison ran and is recorded here because the
 first results make its purpose concrete.
 
 
-## Amendment 4 -- 2026-09-11, substrates, numbering, and provenance
+## Amendment 4: 2026-09-11, substrates, numbering, and provenance
 
-Three corrections, all of them to this document rather than to a measurement.
+Three corrections, all of them to this document and not to a measurement.
 
 **Substrate for rows 06 and 07.** The matrix named a `yan.winterwheat` subset.
 That trial carries one observation per genotype-by-environment cell, and at
 one observation per cell the diagonal of an unstructured covariance is
-confounded with the residual variance -- the package's own
+confounded with the residual variance, the package's own
 `inst/KNOWN_ISSUES.md` says so. Pairing on that substrate would have measured
-the confounding rather than the translation. Rows 06 and 07 use
+the confounding and not the translation. Rows 06 and 07 use
 `agridat::besag.met` restricted to the first two and three counties, which is
 replicated within cell. Row 08 at dimension five is unrun and keeps its
 original substrate until it is.
@@ -181,7 +179,7 @@ original substrate until it is.
 run uses `agridat::john.alpha` with weights varying by a factor of four, which
 is a real replicated trial and makes a dropped or inverted weight visible in
 the fixed effects. A simulated substrate would have been equally valid; the
-public one is preferable and the change is recorded rather than left as a
+public one is preferable and the change is recorded and not left as a
 difference between this document and the code.
 
 **Numbering.** The weights scenario was first implemented as `08_weights`,
@@ -189,7 +187,7 @@ which is row 08's number in this matrix. A scenario whose identifier disagrees
 with its specification is a claim surface out of step with its own record, and
 the fixtures are named by that identifier. It is `15_weights`.
 
-**Provenance (review finding A21).** The first tranche built its tarball from
+**Provenance.** The first tranche built its tarball from
 the working directory while stamping the record with `git rev-parse HEAD`.
 Those are the same thing only when the tree is clean, and it was not: five
 fixtures name `5e4e0ef` for a run whose code was what later became `9b1d93c`.
@@ -198,9 +196,9 @@ it, which defeats the purpose of storing it. `run_tranche.sh` now refuses a
 dirty tree, builds from `git archive <sha>`, takes the scenario and comparator
 code from that same archive, and records their hashes with the rest of the
 manifest. `FB_ORACLE_ALLOW_DIRTY=1` runs anyway and marks the record
-`dirty = TRUE`, which makes it exploration rather than evidence.
+`dirty = TRUE`, which makes it exploration, not evidence.
 
-## Manifest -- recorded per scenario
+## Manifest: recorded per scenario
 
 Scenario id and estimand; data digest (SHA-256 of the serialised frame) and
 factor-level order; both calls verbatim; ASReml, R, flexyBayes, INLA and brms
@@ -213,7 +211,7 @@ invariant compared; the tolerance, quoted from this document; pass or fail with
 the raw values on both sides.
 
 A scenario that fails to converge on either side is recorded as
-`not_compared -- <system> did not converge`, which is a result, not an
+`not_compared, <system> did not converge`, which is a result, not an
 omission.
 
 ## Exit gate
@@ -223,23 +221,23 @@ Layer 1 and Layer 2 assertions at the tolerances above, or is reclassified in
 `.fb_translation_registry()` with the measured discrepancy named. There is no
 third outcome, and in particular no outcome in which a tolerance moves.
 
-## Amendment 5 -- 2026-09-13, the selection-validation tranche (V1)
+## Amendment 5: 2026-09-13, the selection-validation tranche (V1)
 
 Written before the tranche ran, for the same reason the rest of this document
 was.
 
 **Why a new group of rows.** The eight banked scenarios pair one model in each
-system. The selection verb's claims are about a *pair* of nested models -- a
-protected-only fit and a protected-plus-candidates fit -- and about quantities
+system. The selection verb's claims are about a *pair* of nested models (a
+protected-only fit and a protected-plus-candidates fit) and about quantities
 the earlier rows never asserted on: the posterior standard deviation of a fixed
 effect, the posterior mean *and median* of a variance component on the variance
 scale, and the largest absolute difference between two systems' random-effect
-predictions rather than only their correlation. Three rows are added for that.
+predictions and not only their correlation. Three rows are added for that.
 
 **Numbering.** The validation programme these rows serve calls them V1(a), (b)
 and (c), and asked for them as "09 to 11" by run order. Matrix numbers 09, 10
 and 11 are already spoken for by the factor-analytic and known-covariance rows,
-which are unrun rather than retired, and Amendment 4 exists because a scenario
+which are unrun, not retired, and Amendment 4 exists because a scenario
 whose identifier disagrees with its specification is a claim surface out of step
 with its own record. The rows are therefore **17, 18 and 19**, and this
 paragraph is the map between the two namings.
@@ -254,10 +252,10 @@ Row 19 is matrix row 13's structure (correlated slope) on a public substrate,
 run here because the selection verb's random-slope claim needs it; row 13 keeps
 its simulated substrate and stays unrun.
 
-### Layer 3 -- the selection-validation comparisons. Tolerances fixed in advance.
+### Layer 3: the selection-validation comparisons. Tolerances fixed in advance.
 
 These are *looser* than Layer 2's and they are a different question, so they are
-a third layer rather than a relaxation of the second. Layer 2 asks whether the
+a third layer, not a relaxation of the second. Layer 2 asks whether the
 translation is faithful, and answers it on a quarter of a standard error. Layer
 3 asks whether a user reading the two systems' reports would draw the same
 scientific conclusion, and a posterior summary and a REML estimate are allowed
@@ -281,6 +279,6 @@ recorded since Amendment 3, and a mean *and* median that both miss is not.
 back as integer indices on one side cannot be aligned with a group whose levels
 come back as decorated labels on the other, and lining the two up by row order
 is a guess that a differently-ordered interaction silently converts into a
-false pass. Such a comparison is recorded as `not asserted -- levels cannot be
+false pass. Such a comparison is recorded as `not asserted, levels cannot be
 matched by name`, which is a finding about the reporting surface, not a
 tolerance question.

@@ -1,20 +1,21 @@
 # =============================================================================
 # Observation weights: refused by name where they are not lowered.
 #
-# C6 lowers `weights` for family = "gaussian" with the identity link only,
+# The package lowers `weights` for family = "gaussian" with the identity
+# link only,
 # in the ASReml / lme4 / glm(weights =) precision sense, Var(y_i) =
 # sigma^2 / w_i (test-weights-lowering.R grounds the fitting side against
 # lme4::lmer(weights =) and a metamorphic check on both engines). Every
-# other family, and a non-identity link on Gaussian, still refuses --
+# other family, and a non-identity link on Gaussian, still refuses,
 # likelihood-power, frequency, trials and exposure are different models
 # and cannot share this argument silently. This file covers the refusal
 # side: wrong family/link (weights_requires_gaussian), the aggregated
 # route (weights_not_aggregatable), and the pass-through / IR-recording
-# mechanics that predate C6 and are unaffected by it.
+# mechanics that predate the lowering and are unaffected by it.
 #
-# Before C6, EVERY family refused (weights_not_supported) -- this file's
-# original form. That refusal is gone for the one family C6 lowers it
-# for; the remaining tests below are what stayed true.
+# Before the lowering, EVERY family refused (weights_not_supported), this
+# file's original form. That refusal is gone for the one family that is
+# lowered. The remaining tests below are what stayed true.
 # =============================================================================
 
 .wdat <- function(n = 8L, seed = 3L) {
@@ -62,8 +63,8 @@ test_that("a non-identity link on Gaussian is refused by name", {
 })
 
 test_that("Gaussian identity-link weights are NOT refused", {
-  # The regression guard for C6 itself: this exact shape refused
-  # (weights_not_supported) before C6. Confirms the refusal was narrowed,
+  # The regression guard for the lowering itself: this exact shape refused
+  # (weights_not_supported) before it. Confirms the refusal was narrowed,
   # not just renamed.
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wdat()
@@ -84,7 +85,7 @@ test_that("Gaussian identity-link weights are NOT refused", {
 
 test_that("the refusal fires before the fit, not after", {
   # return_code = TRUE never reaches a sampler, so a refusal here proves
-  # the gate sits ahead of emission rather than being a post-hoc check on
+  # the gate sits ahead of emission instead of being a post-hoc check on
   # a fitted object.
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wdat_count()
@@ -118,8 +119,8 @@ test_that("aggregate = TRUE with weights is refused by name", {
 })
 
 test_that("aggregate = \"auto\" with weights falls through to per-row, unrefused", {
-  # The same shape as above, but "auto" rather than an explicit TRUE:
-  # the guard is documented to fall through rather than refuse.
+  # The same shape as above, but "auto" instead of an explicit TRUE:
+  # the guard is documented to fall through, not refuse.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(5L)
@@ -138,10 +139,11 @@ test_that("aggregate = \"auto\" with weights falls through to per-row, unrefused
 })
 
 test_that("constant weights are the unweighted model and pass through", {
-  # rep(1, n) -- and any all-equal vector -- specifies the same model as
+  # rep(1, n), and any all-equal vector, specifies the same model as
   # no weights at all, so refusing it (on any family) would be
   # gratuitous.
   skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wdat()
   expect_no_error(
@@ -183,7 +185,7 @@ test_that("the ingest adapters still record the requested weights", {
 
 test_that("the guard reads the IR, not only the dispatch argument", {
   # An IR carrying weights on a non-Gaussian family must be refused even
-  # when the dispatch-level `weights` argument is NULL -- otherwise a
+  # when the dispatch-level `weights` argument is NULL, otherwise a
   # caller that built the IR upstream would slip past the gate.
   d <- .wdat_count(5L)
   ir <- flexyBayes:::fb_from_asreml(
@@ -197,7 +199,7 @@ test_that("the guard reads the IR, not only the dispatch argument", {
 })
 
 test_that("fb_plan() agrees with live dispatch on the family refusal", {
-  # C3 (S6/FS-22) established plan == live for grammar routing; C6 adds a
+  # The plan tests established plan == live for grammar routing. This adds a
   # refusal fb_plan() must also see, or "Will fit: yes" would misreport
   # a model live dispatch actually refuses.
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -208,7 +210,7 @@ test_that("fb_plan() agrees with live dispatch on the family refusal", {
     class = "flexybayes_refusal_weights_requires_gaussian"
   )
   # And the unweighted / Gaussian-weighted cases must NOT be caught by
-  # the same guard -- a regression here would silently over-refuse.
+  # the same guard, a regression here would silently over-refuse.
   expect_s3_class(fb_plan(y ~ x, data = d, family = "poisson"), "fb_plan")
   dg <- .wdat()
   wg <- as.numeric(seq_len(nrow(dg)))

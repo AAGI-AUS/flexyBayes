@@ -18,8 +18,8 @@
   response <- paste(deparse(fixed[[2]]), collapse = "")
   response_is_expression <- FALSE
   if (!response %in% names(data)) {
-    # A transformed response -- log(yield), sqrt(count). Every peer (lm,
-    # lme4, brms, asreml) evaluates the left-hand side rather than demanding
+    # A transformed response, log(yield), sqrt(count). Every peer (lm,
+    # lme4, brms, asreml) evaluates the left-hand side instead of demanding
     # a column of that name, and both engines evaluate it too once the
     # formula reaches them. Demanding a column name here refused a model
     # both engines can fit (issue #14, fit1).
@@ -29,7 +29,7 @@
     # terminates at the empty environment, so a same-named object in the
     # user's workspace cannot be picked up: a mistyped column refuses rather
     # than silently binding to a global of the right length. asNamespace()
-    # does NOT achieve this -- every namespace's parent chain reaches
+    # does NOT achieve this, every namespace's parent chain reaches
     # globalenv, so the first version of this guard accepted a workspace
     # vector as the response. Found by the falsification test, not by review.
     val <- tryCatch(
@@ -108,7 +108,7 @@
 #
 # Each offset is evaluated as the response expression is, with baseenv() as
 # the enclosure (see .parse_fixed()): base transforms resolve, and a name
-# that is not a column refuses rather than binding to a workspace object of
+# that is not a column refuses instead of binding to a workspace object of
 # the right length. Several offsets add, as they do in lm() and lme4. An
 # offset is a known part of the linear predictor on every row the engine is
 # handed, so anything but a finite numeric vector of one value per row
@@ -116,7 +116,7 @@
 # row on the other.
 #
 # `newdata = TRUE` is prediction, where an absent column is the caller's
-# omission rather than a malformed model and refuses under its own code.
+# omission instead of a malformed model and refuses under its own code.
 .fb_offset_total <- function(offsets, data, newdata = FALSE) {
   if (!length(offsets)) {
     return(NULL)
@@ -157,7 +157,7 @@
         ")"
       )
     } else if (!is.numeric(val) || is.factor(val) || !is.atomic(val)) {
-      paste0("it evaluates to a ", class(val)[[1L]], " rather than a number")
+      paste0("it evaluates to a ", class(val)[[1L]], " instead of a number")
     } else if (length(val) != n) {
       paste0("it has ", length(val), " values for ", n, " rows")
     } else if (!all(is.finite(val))) {
@@ -196,10 +196,10 @@
 # expression over columns.
 #
 # `fb$response` is the deparsed left-hand side. For a plain column name it
-# indexes `data` directly; for `log(yield)` there is no such column, and every
+# indexes `data` directly. For `log(yield)` there is no such column, and every
 # consumer that reached for `data[[fb$response]]` got NULL. The guards around
-# those reads then returned "no missing responses" and "nothing to check" --
-# a silent wrong answer rather than a crash, which is why the transformed
+# those reads then returned "no missing responses" and "nothing to check",
+# a silent wrong answer instead of a crash, which is why the transformed
 # response has to be resolved in one place instead of guarded in several.
 .fb_response_values <- function(fb, data) {
   resp <- fb$response
@@ -255,12 +255,12 @@
 }
 
 # The smoother spellings other packages use on the fixed side. mgcv and
-# brms write `s(x)`; flexyBayes writes `random = ~ spl(x)` and emits it
+# brms write `s(x)`. FlexyBayes writes `random = ~ spl(x)` and emits it
 # as INLA's rw2. Before 0.9.2 an `s(x)` in the fixed part fell through to
 # the `expression` catch-all, was pasted into the engine's formula, and
-# surfaced as a bare `could not find function "s"` -- on INLA from the
+# surfaced as a bare `could not find function "s"`, on INLA from the
 # subprocess, and on brms only after a completed sampling run, so the
-# compute was spent before the failure (field-sweep FS-18).
+# compute was spent before the failure.
 .fb_fixed_smoother_heads <- function() {
   c("s", "te", "ti", "t2", "sos", "gp", "spl")
 }
@@ -296,13 +296,13 @@
 
     # Mixed factor x continuous (v0.2.6). Treatment-
     # coded indexed slopes: the reference level's slope is structurally
-    # fixed at zero; the L-1 non-reference levels carry per-level
+    # fixed at zero. The L-1 non-reference levels carry per-level
     # deviation parameters. v0.2 collapsed this to
     # `beta * as_data(factor) * as_data(continuous)`, which silently
     # coerced the factor to its integer codes and produced a posterior
-    # disagreeing with lme4::lmer by > 3 sigma; the v0.2.6 path closes
+    # disagreeing with lme4::lmer by > 3 sigma. The v0.2.6 path closes
     # that correctness bug. Restricted to two-way mixed terms in v0.2.6
-    # (one factor + one continuous); higher-order combinations stay on
+    # (one factor + one continuous). Higher-order combinations stay on
     # the legacy `interaction` branch pending v0.3.
     if (
       length(parts) == 2L &&
@@ -314,7 +314,7 @@
       fac_name <- parts[[fac_idx]]
       con_name <- parts[[con_idx]]
       # Unsupported-contrast detection. Only the treatment-coded path
-      # is shipped at v0.2.6; helmert / sdif / sum-to-zero / ordered /
+      # is shipped at v0.2.6. Helmert / sdif / sum-to-zero / ordered /
       # user-supplied custom matrices defer to v0.3 representation IR.
       .stop_if_unsupported_contrast(fac_name, data[[fac_name]])
       f <- factor(data[[fac_name]])
@@ -374,7 +374,7 @@
       lbl,
       "` is a smoother written in the fixed part of the formula, and ",
       "flexyBayes\n",
-      "does not carry smoothers there -- `",
+      "does not carry smoothers there, `",
       head,
       "()` is the mgcv / brms spelling.\n\n",
       if (multivariate) {
@@ -423,7 +423,7 @@
   lapply(terms, .enrich, data = data)
 }
 
-# Recursive AST walker -- converts formula expression tree to term descriptors
+# Recursive AST walker, converts formula expression tree to term descriptors
 .walk <- function(expr) {
   if (is.name(expr)) {
     nm <- as.character(expr)
@@ -471,12 +471,12 @@
     # named arguments (chol, precision, blocks, low_rank_factor,
     # low_rank_scheme) alongside the historical positional / V=
     # dense-matrix arg. The cov_representation slot is the IR
-    # anchor; v0.3.7 emits dense + chol + precision, v0.3.8 emits
+    # anchor. v0.3.7 emits dense + chol + precision, v0.3.8 emits
     # blocks, low-rank reserves the slot for a future release.
     "vm" = {
       var_name <- .dep(expr, 2)
       # v0.4.0: the fb_cov() constructor front door takes
-      # precedence. `cov = fb_cov(...)` is the canonical form; the four
+      # precedence. `cov = fb_cov(...)` is the canonical form. The four
       # legacy keyword carriers (chol / precision / blocks /
       # low_rank_factor) continue to work with a deprecation warning.
       if (!is.null(expr[["cov"]])) {
@@ -565,7 +565,7 @@
     # diag() and idh() are ASReml's own spellings for a diagonal variance
     # structure over a factor: one variance per level, no covariance. They are
     # the same structure `at(f)` produces without a level, and ASReml treats
-    # them as identical -- fitted side by side it returns the same components
+    # them as identical, fitted side by side it returns the same components
     # and the same standard errors for diag(site):gen and idh(site):gen. They
     # map to the same node so the downstream emit has one path, not three.
     #
@@ -580,7 +580,7 @@
     )),
     # corh() sits between diag() and us(): heterogeneous variances with ONE
     # common correlation shared by every pair of levels. Parsed to its own
-    # type so it can be refused by name -- neither active engine represents
+    # type so it can be refused by name, neither active engine represents
     # it, and it must not fall through to the diagonal or the unstructured
     # form, both of which it is genuinely different from.
     "corh" = list(list(type = "corh", var = .dep(expr, 2))),
@@ -594,9 +594,9 @@
     )),
     "spl" = list(list(type = "spline", var = .dep(expr, 2))),
     # mgcv-style univariate smooth s(x[, k = ..., bs = ...]).
-    # v0.1 supports s() only; te() / ti() / t2()
+    # v0.1 supports s() only. te() / ti() / t2()
     # tensor-product smooths defer to v0.2. The full original call is
-    # captured here; .enrich() evaluates it via mgcv::smoothCon() to
+    # captured here. .enrich() evaluates it via mgcv::smoothCon() to
     # build the n x k design matrix.
     # v0.4.0: an optional `representation`
     # argument inside s() requests an approximation scheme for the
@@ -604,7 +604,7 @@
     # "low_rank_smooth", rank = 5L)) (the list is the de-classed shape
     # fb_approx() returns). It is NOT an mgcv::s() argument,
     # so it is intercepted here and stripped from the call before
-    # .enrich() evaluates the cleaned call via mgcv::smoothCon(); the
+    # .enrich() evaluates the cleaned call via mgcv::smoothCon(). The
     # raw spec expression is carried on `approx_expr` and resolved at
     # enrich time (where the basis dimension k and row count n are known
     # for the rank refusal).
@@ -627,9 +627,9 @@
     },
     # Tensor-product / multivariate smooths te() / ti() / t2() are not
     # supported (only univariate s() / spl() ship). Refuse explicitly
-    # rather than letting them reach the simple-variable default below,
+    # instead of letting them reach the simple-variable default below,
     # which would silently parse e.g. te(x, z) as a term named
-    # "te(x, z)" -- a no-silent-fitting charter violation.
+    # "te(x, z)", which would be a silent fit of the wrong model.
     "te" = ,
     "ti" = ,
     "t2" = stop(.fb_refusal_condition(
@@ -638,7 +638,7 @@
         "Tensor-product / multivariate smooth ",
         deparse(expr),
         " is not supported. flexyBayes fits univariate penalised ",
-        "splines only -- use s(x) or spl(x) per smooth dimension. ",
+        "splines only, use s(x) or spl(x) per smooth dimension. ",
         "Multivariate smooths are planned for a future release."
       )
     )),
@@ -660,10 +660,10 @@
         error = function(e) NULL
       )
       if (is.null(parsed) || is.null(parsed$grp)) {
-        # Fidelity guard (0.10.0.9000): a dsum() body that carries no
-        # grouping used to fall through to a homogeneous `units` residual.
-        # dsum(~ units | env) requests one variance per section; a typo that
-        # drops the bar -- dsum(~units) -- then fitted a single-variance
+        # Fidelity guard: a dsum() body that carries no grouping would fall
+        # through to a homogeneous `units` residual.
+        # dsum(~ units | env) requests one variance per section. A typo that
+        # drops the bar, dsum(~units), then fitted a single-variance
         # residual, a plausible neighbour that survives convergence checks
         # and prints credible output. That is the one failure this package
         # exists to prevent, so it refuses by name instead.
@@ -673,11 +673,11 @@
           message = sprintf(
             paste0(
               "`%s` does not name the sections to give their own variance. ",
-              "dsum() takes a formula with a grouping bar -- ",
+              "dsum() takes a formula with a grouping bar, ",
               "dsum(~ units | env) fits one residual variance per level of ",
               "env. Written without the bar there is nothing to section on, ",
               "and a homogeneous residual is a different model from the one ",
-              "requested, so it is refused rather than fitted. For a single ",
+              "requested, so it is refused instead of fitted. For a single ",
               "residual variance, write residual = ~ units."
             ),
             written
@@ -689,9 +689,9 @@
         # Fidelity guard: dsum() is represented ONLY as a per-region
         # heteroscedastic variance (the inner term is `units`). A
         # structured inner (ar1(), ar1():ar1(), us(), ...) would otherwise
-        # be silently reduced to at_units -- fitting a heteroscedastic
+        # be silently reduced to at_units, fitting a heteroscedastic
         # model where a per-region spatial one was requested. Refuse loudly
-        # instead (charter: never silently reduce a model).
+        # instead of silently reducing the model.
         if (.dsum_inner_is_separable_ar1(parsed$inner)) {
           inner <- parsed$inner
           return(list(list(
@@ -748,7 +748,7 @@
     # a call flexyBayes does not recognise. It used to be read as a plain
     # variable named after its own source text, which turned ar2(row) into a
     # column lookup for "ar2(row)" and corgh(site):gen into a nested effect
-    # of two invented factors -- a silent reinterpretation of the model.
+    # of two invented factors, a silent reinterpretation of the model.
     .stop_asreml_function_not_recognised(expr)
   )
 }
@@ -800,9 +800,9 @@
 }
 
 # Nearest recognised spellings to an unrecognised token, by edit distance.
-# corgh -> corh, cor; ar3 -> ar1. Returns at most three, closest first, and
+# corgh -> corh, cor. Ar3 -> ar1. Returns at most three, closest first, and
 # nothing at all when the token is far enough from everything that a
-# suggestion would be noise rather than help.
+# suggestion would be noise instead of help.
 .nearest_asreml_spellings <- function(token, max_n = 3L) {
   pool <- .asreml_suggestion_pool()
   d <- as.integer(utils::adist(token, pool, ignore.case = TRUE))
@@ -838,7 +838,7 @@
       token,
       "(), which is not in the ASReml vocabulary flexyBayes reads. ",
       "The random / residual grammar is a closed set, so an unrecognised ",
-      "call is refused rather than read as a variable of that name.",
+      "call is refused instead of read as a variable of that name.",
       suggestion,
       " The recognised set is ",
       paste0(.asreml_function_vocabulary(), "()", collapse = ", "),
@@ -863,10 +863,10 @@
     is_ar1(expr[[3L]])
 }
 
-# A dsum() inner term is "plain units" -- the only residual structure
+# A dsum() inner term is "plain units", the only residual structure
 # flexyBayes represents through dsum() (a per-region heteroscedastic
-# variance). Anything else (ar1(), ar1():ar1(), us(), ...) is structured;
-# rather than being silently reduced to at_units it is refused with
+# variance). Anything else (ar1(), ar1():ar1(), us(), ...) is structured.
+# Instead of being silently reduced to at_units it is refused with
 # dsum_structured_inner_unsupported.
 .dsum_inner_is_plain_units <- function(expr) {
   if (is.null(expr)) {
@@ -914,7 +914,7 @@
       type = .FB_GXE_PAIR_TYPE[["us"]], outer = l$var, inner = r$var
     )))
   }
-  # CORH GxE:   corh(env) : id(geno) -- heterogeneous variances, ONE shared
+  # CORH GxE:   corh(env) : id(geno), heterogeneous variances, ONE shared
   # correlation. Carried as its own node so the refusal can name it.
   if (lt == "corh" && rt %in% c("id", "ide", "simple")) {
     return(list(list(type = "corh_gxe", outer = l$var, inner = r$var)))
@@ -945,7 +945,7 @@
   # ASReml's usual spelling for a set of units followed through time.
   # The covariance is one object whichever factor is written first (the
   # Kronecker product commutes up to the ordering of its index), so both
-  # orders parse to the same node -- AR1 along the ar1() factor and
+  # orders parse to the same node, AR1 along the ar1() factor and
   # independent across the plain one.
   if (lt %in% c("simple", "id", "ide") && rt == "ar1") {
     return(list(list(
@@ -955,8 +955,8 @@
       col_ar1 = FALSE
     )))
   }
-  # at(trial):ar1(row) is the first half of at(trial):ar1(row):ar1(col);
-  # a:b:c parses as (a:b):c, so the next fold completes it.
+  # at(trial):ar1(row) is the first half of at(trial):ar1(row):ar1(col).
+  # A:b:c parses as (a:b):c, so the next fold completes it.
   if (lt == "at" && rt == "ar1") {
     return(list(list(
       type = "at_ar1_partial",
@@ -981,7 +981,7 @@
       level = l$level
     )))
   }
-  # id(trial):ar1(row):ar1(col); the left node is trial:ar1(row) or
+  # id(trial):ar1(row):ar1(col). The left node is trial:ar1(row) or
   # ar1(row):trial, with `trial` as its col_var.
   if (
     identical(lt, "ar1_spatial") &&
@@ -1029,7 +1029,7 @@
   if (is.null(level_txt)) {
     return(all_levels)
   }
-  # Only a literal, or c() of literals, is read; nothing else is evaluated.
+  # Only a literal, or c() of literals, is read. Nothing else is evaluated.
   expr <- tryCatch(str2lang(level_txt), error = function(e) NULL)
   is_literal <- function(e) {
     (is.character(e) || is.numeric(e)) && length(e) == 1L
@@ -1101,7 +1101,7 @@
       # Same identifiability bound the fa(f, k):g form has carried since
       # 0.4.0, and the same reason code. It was reachable only through the
       # interaction branch below, so a bare fa(site, 99) over three sites
-      # parsed and fitted; k < number of levels is a property of the
+      # parsed and fitted. K < number of levels is a property of the
       # covariance, not of how the term was written.
       if (
         !is.null(term$k) &&
@@ -1136,7 +1136,7 @@
         term$outer_levels <- levels(f)
         # Data-aware identifiability preflight: a factor-analytic
         # covariance is identifiable only for k < n_outer. The data-free
-        # k < 1 floor is enforced earlier in .classify_interaction(); the
+        # k < 1 floor is enforced earlier in .classify_interaction(). The
         # upper bound needs n_outer, which is known only here.
         if (!is.null(term$k) && term$k >= term$n_outer) {
           stop(.fb_refusal_condition(
@@ -1236,7 +1236,7 @@
         )
       )
       # Each level's own row and column levels, in the order the INLA index
-      # numbers them; the formula and the random-effect table read these
+      # numbers them. The formula and the random-effect table read these
       # without seeing `data`.
       by_chr <- as.character(data[[term$by_var]])
       term$level_grids <- lapply(
@@ -1258,7 +1258,7 @@
       if (!is.null(term$col_var) && term$col_var %in% names(data)) {
         term$n_col <- length(unique(data[[term$col_var]]))
       }
-      # C5/FS-27: the per-trial spelling's replicate count, for
+      # The per-trial spelling's replicate count, for
       # diagnostic visibility (preflight / plan display). NULL / absent
       # for the pre-existing single-field case.
       if (!is.null(term$at_var) && term$at_var %in% names(data)) {
@@ -1284,9 +1284,9 @@
       term
     },
     "factor_numeric_interaction" = {
-      # Term descriptor is fully populated by .classify_fixed_term();
+      # Term descriptor is fully populated by .classify_fixed_term().
       # .enrich() is a no-op here (the random-term enrichment branches
-      # do not apply -- this is a fixed term).
+      # do not apply, this is a fixed term).
       term
     },
     "smooth_mgcv" = {
@@ -1322,7 +1322,7 @@
       term$smooth_label <- sm_obj$label
       # Retain the constructed mgcv Smooth object on the IR.
       # predict.flexybayes(newdata = ...) re-evaluates the basis via
-      # mgcv::Predict.matrix(<smooth_obj>, newdata) -- the only correct
+      # mgcv::Predict.matrix(<smooth_obj>, newdata), the only correct
       # way to reproduce the training-time knot placement / quantile
       # structure on new data. Without this slot the predict path falls
       # back to stats::model.matrix() which silently produces wrong
@@ -1332,7 +1332,7 @@
       # `representation` spec, resolve it now (k and n are known) and
       # truncate the basis to its rank-K principal-component
       # approximation. The model then carries B_K = X V_K (n x K) and
-      # K coefficients rather than the full n x k basis; V_K and the
+      # K coefficients instead of the full n x k basis. V_K and the
       # realised Frobenius capture are recorded on `approx_spec` for
       # the emit path (codegen), the predict-side projection, and
       # validate_approximation().
@@ -1359,7 +1359,7 @@
           ))
         }
         # Validate scheme against the locked registry (refuses
-        # unknown schemes); only low_rank_smooth has a smooth-basis
+        # unknown schemes). Only low_rank_smooth has a smooth-basis
         # emit path at v0.4.0.
         .lookup_approximation(spec$scheme)
         if (!identical(spec$scheme, "low_rank_smooth")) {
@@ -1403,11 +1403,11 @@
 # ASReml user reaches for when they want a random regression: a per-subject
 # slope on Days. It is not what the crossing emits. `Subject:Days` builds an
 # interaction grouping factor, so the emitted model carries one independent
-# deviation per (Subject, Days) cell -- 180 of them on sleepstudy, against
+# deviation per (Subject, Days) cell, 180 of them on sleepstudy, against
 # the eighteen slopes the user meant.
 #
 # Both readings are defensible and they are different models, so the term is
-# refused rather than resolved by fiat. The message names the two readings
+# refused instead of resolved by fiat. The message names the two readings
 # and the route to each: (x || g) for the uncorrelated slope, an explicit
 # factor conversion for the per-cell effect.
 .stop_if_numeric_in_random_interaction <- function(vars, data) {
@@ -1439,7 +1439,7 @@
       numeric_vars,
       " || ",
       group_vars,
-      ") in the brms-style grammar -- an uncorrelated ",
+      ") in the brms-style grammar, an uncorrelated ",
       "per-",
       group_vars,
       " slope on ",
@@ -1464,10 +1464,10 @@
       "spelling are different models. ASReml reads it as a random ",
       "regression on the numeric variable within the grouping factor. ",
       "The interaction crossing flexyBayes would emit instead gives one ",
-      "independent deviation per cell -- ",
+      "independent deviation per cell, ",
       format(n_cells),
       " of them ",
-      "here. flexyBayes refuses rather than choosing one reading for ",
+      "here. flexyBayes refuses instead of choosing one reading for ",
       "you. ",
       slope_route,
       " For a genuine per-cell effect convert the variable first: ",
@@ -1492,11 +1492,11 @@
 # `contr.sum`, ordered factors, user-supplied custom contrast
 # matrices) defer to the v0.3 representation IR. Raise a structured
 # refusal at ingest time so the user sees a clean message naming the
-# contrast and the deferral target rather than a downstream emit
+# contrast and the deferral target instead of a downstream emit
 # failure.
 .stop_if_unsupported_contrast <- function(factor_name, col) {
-  # Ordered factors -- v0.3 representation IR will carry polynomial
-  # contrasts as a first-class IR class; v0.2.6 refuses.
+  # Ordered factors, v0.3 representation IR will carry polynomial
+  # contrasts as a first-class IR class. v0.2.6 refuses.
   if (is.ordered(col)) {
     cond <- structure(
       class = c(
@@ -1521,11 +1521,11 @@
     )
     stop(cond)
   }
-  # Custom / non-treatment contrasts -- read the contrasts attribute.
+  # Custom / non-treatment contrasts, read the contrasts attribute.
   # Base R stores either a character(1) function name (when set via
   # `options(contrasts = ...)` followed by `factor(...)`) or a
   # numeric L x (L-1) matrix (when set via `contrasts(f) <- ...`).
-  # The named-function path is rare in practice; the matrix path is
+  # The named-function path is rare in practice. The matrix path is
   # the dominant case for users who explicitly opt into helmert /
   # sdif / sum. Both must refuse.
   ctr <- attr(col, "contrasts")

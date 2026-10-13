@@ -9,24 +9,24 @@ fb_brms(...)
 \arguments{
 \item{...}{Arguments passed to \code{\link[=flexybayes]{flexybayes()}} (e.g. \code{formula} / \code{fixed},
 \code{random}, \code{residual}, \code{data}, \code{family}, \code{prior}, \code{syntax}). The \code{backend}
-argument is pinned to \code{"brms"}; a conflicting \code{backend} value raises a
+argument is pinned to \code{"brms"}. A conflicting \code{backend} value raises a
 structured refusal (the redundant \code{backend = "brms"} is accepted).
 The pre-v0.5.0 \verb{formula = } argument is remapped to the universal
 entry's model-spec slot for call-compatibility.}
 }
 \value{
 An object of class \code{"flexybayes_brms"} (a subclass of
-\code{"flexybayes"}) carrying the live \code{brmsfit} on \verb{$brms}; see
+\code{"flexybayes"}) carrying the live \code{brmsfit} on \verb{$brms}. See
 \code{\link[=flexybayes]{flexybayes()}} for the shared structure.
 }
 \description{
 Engine pin: fits the model with Stan through brms only. This is sugar
 for \code{\link[=flexybayes]{flexybayes()}}\verb{(..., backend = "brms")} and accepts the same
-arguments and grammars --- an ASReml \code{fixed} / \code{random} / \code{residual}
+arguments and grammars, an ASReml \code{fixed} / \code{random} / \code{residual}
 specification or a brms-style bar-grouped formula (see \code{\link[=flexybayes]{flexybayes()}}
 for the full argument list). flexyBayes builds the intermediate
 representation, translates the prior, calls \code{brms::brm()}, and wraps
-the result; the live \code{brmsfit} is available on the \verb{$brms} slot for
+the result. The live \code{brmsfit} is available on the \verb{$brms} slot for
 brms's own posterior tooling (\code{loo()}, \code{posterior_predict()},
 \code{bayes_factor()}).
 }
@@ -35,7 +35,7 @@ flexyBayes has no brms lowering for some ASReml structures: \code{fa()}, the
 autoregressive fields, a blocks or low-rank \code{vm()} / \code{ped()} carrier, and
 a \code{low_rank} smooth approximation. Such a model raises a structured
 refusal naming the term. Several of these fit on INLA through
-\code{\link[=fb_inla]{fb_inla()}}; the capability table in the README lists what each engine
+\code{\link[=fb_inla]{fb_inla()}}. The capability table in the README lists what each engine
 fits.
 }
 \section{Deprecated}{
@@ -66,7 +66,7 @@ if (requireNamespace("brms", quietly = TRUE) &&
 }
 \seealso{
 \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal entry that picks a
-backend; \code{\link[=fb_inla]{fb_inla()}} for the other active engine pin;
+backend. \code{\link[=fb_inla]{fb_inla()}} for the other active engine pin and
 \code{\link[=fb_from_brms]{fb_from_brms()}} for building a brms-grammar IR.
 
 Other flexyBayes engine pins:

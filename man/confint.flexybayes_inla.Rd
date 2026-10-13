@@ -26,7 +26,7 @@ Quantiles of INLA's own posterior marginals for the fixed effects, not
 frequentist confidence intervals and not a normal approximation to
 them. The bounds come from \code{INLA::inla.qmarginal()} applied to the
 marginal densities the fit stores, so any credible level is available
-rather than only the 0.95 that \code{summary.fixed} tabulates.
+and not only the 0.95 that \code{summary.fixed} tabulates.
 }
 \details{
 Before 0.9.0 an INLA fit did not inherit the \code{flexybayes} parent class,

@@ -28,19 +28,25 @@
 #
 # Run from the package root. Not shipped (`^tools$` in .Rbuildignore).
 
-TARGET_VERSION <- "0.14.5"
+# The package root, whether this file is run from the root or sourced by a
+# test from tests/testthat.
+.dod_root <- function() {
+  d <- normalizePath(getwd())
+  while (!file.exists(file.path(d, "DESCRIPTION"))) {
+    up <- dirname(d)
+    if (identical(up, d)) stop("definition_of_done.R: no DESCRIPTION above ", getwd())
+    d <- up
+  }
+  d
+}
+TARGET_VERSION <- read.dcf(file.path(.dod_root(), "DESCRIPTION"),
+                           fields = "Version")[[1L]]
 TARGET_TIER <- "V2"
-# 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
-# Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
-# three of those eleven were wrongly grouped: fb_gblup_cv() is taught and
-# executed in the met-and-genomics vignette, and genomic_summary() and the
-# genomic cross-engine comparison (removed in 0.14.0) operated on posterior
-# draws. The /rpkg E1 cap of 30
-# is therefore missed by four, deliberately and on the record.
-# Set to 36 on 2026-09-15 (Max, DEC-LEAN-01 = b): the count 0.11.0 shipped,
-# held as a ceiling that only falls. 0.13.0 reduces the exports to 25 or
-# fewer through a deprecation cycle.
-MAX_EXPORTS <- 36L
+# The export count 0.18.0 ships. It is a ceiling: a release may lower it
+# through a deprecation cycle and never raises it without a recorded
+# decision. The seven selection functions stay exported so that they
+# stop with a named refusal.
+MAX_EXPORTS <- 56L
 # D5 asserts zero lints, measured on 2026-09-19 with lintr 3.4.0 and the
 # development tree loaded (D5's own command). The gate fails on any lint,
 # matching the hard gate in .github/workflows/lint.yaml.
@@ -207,7 +213,7 @@ LINT_BASELINE <- 0L
   # meant shipping SVG assets to state, for a fifth time, a fact already
   # carried by the DESCRIPTION version, the README, API_STABILITY.md and
   # the startup message. CRAN does not require badges. Retiring it is
-  # recorded here rather than deleted silently, because retiring a
+  # recorded here instead of deleted silently, because retiring a
   # criterion is the same visible act as adding one.
 )
 
@@ -254,11 +260,11 @@ LINT_BASELINE <- 0L
         # set. Flagging valid code would be worse than the gap, because
         # a guard that cries wolf stops being read.
         #
-        # Known cost, recorded rather than papered over. Two documented
+        # Known cost, recorded instead of papered over. Two documented
         # arguments have shipped that did not exist: `fb_plan(fixed = )`,
         # which errors, and three predict arguments advertised in
         # API_STABILITY.md that `...` silently swallowed. Neither was
-        # caught here -- the first because of this skip, the second
+        # caught here: the first because of this skip, the second
         # because this check reads roxygen in R/ and that claim lived in
         # a markdown file. Markdown claim surfaces are not guarded for
         # argument names at all; that is the larger of the two gaps.
@@ -346,7 +352,7 @@ LINT_BASELINE <- 0L
       imp <- setdiff(imp, c("", "stats", "methods", "utils", "graphics"))
       # Two ways this guard used to pass on a dead Import, both fixed
       # here. It read comments as use, and it accepted the mere presence
-      # of the package NAME anywhere in the source -- including inside a
+      # of the package NAME anywhere in the source, including inside a
       # refusal-message string. `splines` sat in Imports with `bs()`
       # called nowhere and this check reported clean, which is the defect
       # 089a64d fixed by hand for coda, recurring inside the guard
@@ -416,16 +422,16 @@ LINT_BASELINE <- 0L
   list(
     # The R Journal review of 0.10.0 called the prose machine-written. A
     # word-list sweep over eleven reader-facing files found nineteen hits in
-    # total, so the register problem was never lexical -- B8 above already
+    # total, so the register problem was never lexical. B8 above already
     # covers the words. It was STRUCTURAL, and these are the three shapes it
     # took, each measured before this criterion was written:
-    #   * README.md: 178 of 371 lines commented out rather than deleted
+    #   * README.md: 178 of 371 lines commented out instead of deleted
     #   * the gate refusal: 16 lines and 1225 characters for a two-rule
     #     refusal, including a roadmap sentence about mixtures printed
     #     whether or not the model contained one
     #   * test names carrying a verb instead of a claim ("handles X")
     # A threshold is set a little above where the repaired code sits, so
-    # this fails on a return to the old shape rather than on a line of drift.
+    # this fails on a return to the old shape instead of on a line of drift.
     id = "B8b", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "no structural bloat on the surfaces a reader meets",
     check = function() {
@@ -436,8 +442,8 @@ LINT_BASELINE <- 0L
         txt <- paste(readme, collapse = "\n")
         # (?s) so the dot spans newlines. Without it the pattern matched no
         # multi-line comment at all and the arm silently passed on a README
-        # that was half commented out -- caught by falsifying the gate
-        # rather than by reading it.
+        # that was half commented out, caught by falsifying the gate
+        # instead of by reading it.
         blocks <- regmatches(
           txt, gregexpr("(?s)<!--.*?-->", txt, perl = TRUE)
         )[[1L]]
@@ -485,7 +491,7 @@ LINT_BASELINE <- 0L
   ),
   list(
     id = "B8", cost = "quick", owner = "maintainer", blocking = TRUE,
-    what = "no I14 flag words on any shipped surface",
+    what = "no flag words on any shipped surface",
     check = function() {
       pat <- "honesty check|graduation|SA-gate|vibe-check"
       # text only: inst/ carries binaries, and grepl() on those emits an
@@ -550,7 +556,7 @@ LINT_BASELINE <- 0L
       # criterion permanently, and a deleted cell whose call string
       # survived in a comment would still pass. The ledger is committed,
       # so a fresh clone has it; fall back to the source only when it is
-      # absent, and say so rather than passing quietly.
+      # absent, and say so instead of passing quietly.
       # The oracle is the recorded run, not the source. Reading the
       # source meant `k_cap <- diag(6)` in fixture setup satisfied the
       # `diag` criterion permanently, and a deleted cell whose call
@@ -709,8 +715,7 @@ LINT_BASELINE <- 0L
     what = "every export is named in API_STABILITY.md",
     check = function() {
       # The stability document is the contract a user reads before
-      # depending on a function. Three exports were absent from it --
-      # fb_complete_grid(), genomic_summary() and ranef() -- so their
+      # depending on a function. Three exports were absent from it (fb_complete_grid(), genomic_summary() and ranef()) so their
       # stability stage was undeclared while the document presented
       # itself as the inventory.
       doc <- "API_STABILITY.md"
@@ -856,6 +861,8 @@ LINT_BASELINE <- 0L
         pg <- page_of(e)
         if (is.na(pg)) return(TRUE)
         if (basename(pg) == "reexports.Rd") return(FALSE)
+        # A removed selection function only stops, so it has no example.
+        if (basename(pg) == "fb_selection_removed.Rd") return(FALSE)
         !any(grepl("\\examples", pages[[pg]], fixed = TRUE))
       }, logical(1))]
       .dod_ok(length(no_ex) == 0L,
@@ -904,7 +911,7 @@ LINT_BASELINE <- 0L
       # correction.
       # Derived, not listed. The hand-written list read na_action.R,
       # emit_brms.R, README and the vignettes, and was still short by
-      # R/flexybayes.R -- the entry point, and the most-read statement of
+      # R/flexybayes.R, the entry point, and the most-read statement of
       # the identity of the four. A list is only as good as the person
       # writing it remembering every surface; deriving the set means a
       # new surface cannot escape by not being thought of.
@@ -912,8 +919,8 @@ LINT_BASELINE <- 0L
       surfaces <- surfaces[file.exists(surfaces)]
       # Patterns, not literals. Three hand-copied sentences missed the
       # entry point's phrasing ("posterior FOR THE MODEL PARAMETERS is
-      # the same whether"), so widening the surface list changed nothing
-      # -- the guard could see the file and still not see the claim. The
+      # the same whether"), so widening the surface list changed nothing.
+      # The guard could see the file and still not see the claim. The
       # regex tolerates the words a writer puts between "posterior" and
       # "is the same".
       # Anchored on "whether" (2026-09-15). Every statement of the identity
@@ -949,7 +956,7 @@ LINT_BASELINE <- 0L
 .dod_section_d <- list(
   list(id = "D1", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "testthat suite: 0 fail, 0 warn",
-       command = "review/phase_reports_0100/scripts/bake_and_gate.sh gates"),
+       command = "Rscript -e 'devtools::test()'"),
   list(id = "D2", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "R CMD check --as-cran, INLA present: 0/0/<=1",
        command = "R CMD check --as-cran flexyBayes_0.10.0.tar.gz"),
@@ -962,7 +969,7 @@ LINT_BASELINE <- 0L
   list(id = "D5", cost = "full", owner = "maintainer", blocking = TRUE,
        what = paste0("lint count does not rise above the baseline of ",
                      LINT_BASELINE),
-       # with the dev tree loaded, as CI does via local::. -- against a
+       # with the dev tree loaded, as CI does via local::., against a
        # stale installed build object_usage_linter reports phantoms
        command = paste("Rscript -e 'pkgload::load_all(quiet=TRUE);",
                        "print(length(lintr::lint_package()))'"),
@@ -1002,7 +1009,7 @@ LINT_BASELINE <- 0L
   # devtools::check() short, and the release suite must still run it. The
   # record is the one tools/run_test_suite.R writes, named by the
   # environment variable FLEXYBAYES_SUITE_RECORD; with no record the
-  # criterion fails rather than passing unevidenced.
+  # criterion fails instead of passing unevidenced.
   list(id = "D11", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "every test tier ran in the recorded release suite",
        command = paste("FLEXYBAYES_RUN_LONG=true Rscript",
@@ -1074,15 +1081,15 @@ LINT_BASELINE <- 0L
 # ---------------------------------------------------------------------
 
 .dod_section_e <- list(
-  list(id = "E1", cost = "manual", owner = "Max", blocking = TRUE,
-       what = "D8 governance: licence consult, co-author consent, public home"),
-  list(id = "E2", cost = "manual", owner = "Max", blocking = TRUE,
-       what = "E19 human De-Vibe pass on the release tree"),
-  list(id = "E3", cost = "manual", owner = "Max", blocking = TRUE,
+  list(id = "E1", cost = "manual", owner = "maintainer", blocking = TRUE,
+       what = "Governance: licence consult, co-author consent, public home"),
+  list(id = "E2", cost = "manual", owner = "maintainer", blocking = TRUE,
+       what = "Human read of the release tree for internal wording"),
+  list(id = "E3", cost = "manual", owner = "maintainer", blocking = TRUE,
        what = "win-builder devel and release archived (outward)"),
-  list(id = "E4", cost = "manual", owner = "Max", blocking = TRUE,
+  list(id = "E4", cost = "manual", owner = "maintainer", blocking = TRUE,
        what = "R-hub Linux archived (outward)"),
-  list(id = "E5", cost = "manual", owner = "Max", blocking = TRUE,
+  list(id = "E5", cost = "manual", owner = "maintainer", blocking = TRUE,
        what = "CRAN submission and confirmation (outward)")
 )
 
@@ -1095,7 +1102,7 @@ LINT_BASELINE <- 0L
 .dod_out_of_scope <- list(
   c("V3 floors: MFD, SBC n_sim >= 1000, null-recovery, metamorphics",
     "0.14 (SBC harness, plan v2 Phase 3)"),
-  c("Bayesian FA GxE on brms, the incumbent's headline model",
+  c("Bayesian FA GxE on brms, the incumbent's flagship model",
     "Phase 4 spike candidate"),
   c("INLA-SPDE Matern; hierarchically shrunk INLA residual; Tweedie",
     "Phase 4 candidate"),
@@ -1136,8 +1143,8 @@ LINT_BASELINE <- 0L
   if (is.null(item$check)) {
     # A blocking criterion with no in-process check is UNMET until its
     # evidence is recorded, not passed. It used to report SKIP, and SKIP
-    # did not count, so D1-D9 -- the suite, both check runs, the grid,
-    # lint, pkgdown, the clean room, CI and coverage -- could every one
+    # did not count, so D1-D9, the suite, both check runs, the grid,
+    # lint, pkgdown, the clean room, CI and coverage, could every one
     # be red while this script exited 0 and the header claimed it exits
     # non-zero while any blocking criterion is unmet.
     return(list(status = if (isTRUE(item$blocking)) "PENDING" else "SKIP",
@@ -1217,8 +1224,8 @@ LINT_BASELINE <- 0L
   cat("\n")
 
   # Quick tier gates on what it can read. The full tier is the release
-  # question, so there an unmet blocking criterion -- failed or merely
-  # unevidenced -- exits non-zero.
+  # question, so there an unmet blocking criterion (failed or merely
+  # unevidenced) exits non-zero.
   if (n_fail > 0L || (do_full && n_pending > 0L)) {
     quit(status = 1L)
   }

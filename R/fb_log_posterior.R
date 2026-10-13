@@ -1,10 +1,10 @@
-# fb_log_posterior() -- exposes a fitted model's log-posterior as a callable.
+# fb_log_posterior(): exposes a fitted model's log-posterior as a callable.
 #
 # This is the one inference-result outflow from flexyBayes: a fitted
 # flexyBayes object is turned into a vectorised, domain-safe, unnormalised
 # log-posterior callable that a downstream tool (for example the proxymix
 # package, via `proxymix::from_fb_posterior()`) can compress into a
-# closed-form Gaussian-mixture proxy. flexyBayes owns the producer; the
+# closed-form Gaussian-mixture proxy. flexyBayes owns the producer. The
 # consumer never depends on flexyBayes at run time (an acyclic dependency
 # invariant), so this file emits the *callable*, read by the consumer as a
 # bare callable carrying its metadata as attributes.
@@ -12,12 +12,12 @@
 # No active backend currently produces a real C4 log-density. brms's
 # log-density (`rstan::log_prob`) lives on the Stan unconstrained scale, and
 # the parameter-name to Stan-unconstrained-index mapping is version-fragile
-# (transformed parameters, declaration order); a wrong mapping would yield a
+# (transformed parameters, declaration order). A wrong mapping would yield a
 # wrong log-density silently, so abstaining beats emitting a
-# plausible-but-wrong producer (Independent Oracle Principle). INLA's
+# plausible-but-wrong producer. INLA's
 # posterior is a deterministic Laplace/grid approximation, not a sampling
 # log-density at arbitrary natural-scale points, so it abstains too. Both
-# raise an informative, classed condition rather than guessing.
+# raise an informative, classed condition instead of guessing.
 
 # ---------------------------------------------------------------- #
 # The generic                                                      #
@@ -29,7 +29,7 @@
 #' a vectorised, domain-safe, unnormalised log-posterior callable that
 #' `proxymix::from_fb_posterior()` compresses into a closed-form
 #' Gaussian-mixture proxy. It is the single inference-result outflow from
-#' flexyBayes; the contract is the *log-density*, not the draws, so the
+#' flexyBayes, the contract is the *log-density*, not the draws, so the
 #' returned object is addressed purely through its callable.
 #'
 #' The returned value is a **bare callable**
@@ -39,11 +39,11 @@
 #' (constrained) scale. Its output is a length-`nrow(theta_matrix)` numeric
 #' vector of `log p(theta | data) + const` (unnormalised). The callable is
 #' vectorised, side-effect free, and domain-safe: a row outside the
-#' parameters' support returns `-Inf` rather than raising an error (the
+#' parameters' support returns `-Inf` instead of raising an error (the
 #' consumer probes it at construction). It carries, as attributes:
 #'
 #' \describe{
-#'   \item{`parameter_names`}{Character vector naming the parameters; its
+#'   \item{`parameter_names`}{Character vector naming the parameters. Its
 #'     length fixes the proxy's ambient dimension. Vector-valued targets
 #'     are flattened in column-major order with index suffixes (e.g.
 #'     `beta[1,1]`, `beta[2,1]`).}
@@ -58,27 +58,27 @@
 #'     default importance proposal.}
 #'   \item{`draws`}{An `n` by `n_dim` numeric matrix of the fit's posterior
 #'     draws on the natural scale, column-aligned to `parameter_names`.
-#'     Used only to seed the consumer's default proposal; never required.}
+#'     Used only to seed the consumer's default proposal. Never required.}
 #' }
 #'
 #' Backend support. No active backend produces a real C4 log-density today.
 #' The **brms** and **INLA** backends both abstain with an informative
-#' condition -- brms's log-density lives on the Stan unconstrained scale
+#' condition: brms's log-density lives on the Stan unconstrained scale
 #' with a version-fragile name mapping, and INLA's posterior is a
 #' deterministic approximation, not a sampling log-density. Abstaining is
 #' preferred to emitting a plausible-but-wrong log-density.
 #'
 #' Acyclic note. A consumer such as proxymix uses this callable without
-#' depending on flexyBayes; flexyBayes does not list proxymix in `Imports`
+#' depending on flexyBayes, flexyBayes does not list proxymix in `Imports`
 #' or `Suggests`. The cross-package demonstration lives in a separate
 #' integration harness, not in this package, preserving the acyclic
 #' dependency graph.
 #'
 #' @param fit A fitted flexyBayes object. Every current backend class
-#'   abstains; the generic and its methods are retained so a consumer can
-#'   dispatch on the abstention rather than discovering the gap by a
+#'   abstains, the generic and its methods are retained so a consumer can
+#'   dispatch on the abstention instead of discovering the gap by a
 #'   missing method.
-#' @param ... Reserved for future producer options; currently unused.
+#' @param ... Reserved for future producer options. Currently unused.
 #'
 #' @return Does not return on any current backend: it raises a classed
 #'   `fb_c4_unavailable` condition naming the backend and the reason.
@@ -87,11 +87,11 @@
 #' @seealso `proxymix::from_fb_posterior()` for the consumer (compresses
 #'   the returned callable into a Gaussian-mixture proxy).
 #' @section Lifecycle:
-#' No active backend produces a real C4 log-density; both `flexybayes_brms`
+#' No active backend produces a real C4 log-density. Both `flexybayes_brms`
 #' and `flexybayes_inla` fits abstain with the classed condition
 #' `fb_c4_unavailable`, for the reasons given above. The generic and its
-#' methods are retained so a consumer can dispatch on the abstention rather
-#' than discovering the gap by a missing method.
+#' methods are retained so a consumer can dispatch on the abstention instead
+#' of discovering the gap by a missing method.
 #'
 #' @keywords internal
 fb_log_posterior <- function(fit, ...) {

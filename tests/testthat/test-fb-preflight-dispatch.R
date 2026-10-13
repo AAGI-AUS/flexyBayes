@@ -1,7 +1,5 @@
-# Tests for the Stage 2 MVP preflight integration in .dispatch_backend()
-# (ADR 0021 / v0.3.0). Verifies:
-#   - small-n (< 1e5) paths bypass preflight entirely; existing test
-#     suite behaviour is preserved
+# Preflight in .dispatch_backend() (ADR 0021):
+#   - small-n (< 1e5) paths bypass preflight entirely
 #   - large-n paths run preflight and short-circuit with a structured
 #     <flexybayes_preflight_refusal> condition when the design memory
 #     exceeds the ceiling
@@ -15,21 +13,20 @@ test_that("dispatch: small-n path bypasses preflight (existing behaviour intact)
     g = factor(rep(letters[1:5], 10))
   )
   # review_code = TRUE returns the <flexybayes_review> token without
-  # invoking the backend; exercises dispatch's branching. With only two
-  # active engines, auto review-code emits brms (Stan) source, so this
-  # needs brms.
+  # calling the backend. auto review-code emits brms (Stan) source, so
+  # this needs brms.
   skip_if_not_installed("brms")
   rev <- flexybayes(y ~ x, random = ~g, data = df, review_code = TRUE)
   expect_s3_class(rev, "flexybayes_review")
   # No preflight slot mutates the review object at this commit (commit
-  # 7 wires the print integration); the review object survives the
+  # 7 wires the print integration). The review object survives the
   # bypass.
   expect_identical(rev$backend, "stan_via_brms")
 })
 
 test_that("dispatch: large-n path triggers preflight refusal with tight ceiling", {
   # The review_code = TRUE path on flexybayes() short-circuits before
-  # .dispatch_backend() (commit 7 hooks preflight into that path); so
+  # .dispatch_backend() (commit 7 hooks preflight into that path). So
   # we call .dispatch_backend() directly here to exercise the
   # dispatch-side gate. Force a refusal deterministically via the
   # flexyBayes.preflight_ceiling_gb option (0.0001 GiB = ~100 KB) so

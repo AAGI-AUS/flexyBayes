@@ -13,7 +13,7 @@
 }
 \value{
 The response family the model was fitted under, as the
-\code{family} object the fit recorded at emit time -- so it names the
+\code{family} object the fit recorded at emit time, so it names the
 family and link the engine actually used, not the string the caller
 passed.
 }

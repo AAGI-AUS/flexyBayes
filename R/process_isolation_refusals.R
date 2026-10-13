@@ -1,4 +1,4 @@
-# Process-isolation refusals --- registry population for
+# Process-isolation refusals: registry population for
 # R/process_isolation.R.
 #
 # Codes register as their throwing sites land, never in advance. Both codes
@@ -7,8 +7,8 @@
 # simulated, the second by a signal sent to the child's own process ID while
 # it fits.
 #
-# Why a death needs a name of its own. A condition raised inside the child --
-# a refusal, an engine error, an untyped failure -- travels back and is
+# Why a death needs a name of its own. A condition raised inside the child (a
+# refusal, an engine error, an untyped failure) travels back and is
 # re-raised as itself, so every existing code keeps its name under
 # isolation. A child that the operating system kills, or that crashes in
 # compiled code, sends nothing back: all that is left is its exit status or
@@ -30,7 +30,7 @@
       "%s: options(flexyBayes.isolation = \"process\") needs the callr ",
       "package, which is not installed."
     ),
-    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-ISOLATE)",
+    registered_in_adr = "0.14.0 process isolation",
     plan_field = NA_character_,
     since_version = "0.14.0"
   )
@@ -41,7 +41,7 @@
       "A separate R process running an engine fit or a job of ",
       "fb_isolated_lapply() ",
       "ended before it returned: a signal ended it (SIGKILL is sent from ",
-      "outside the process; SIGSEGV or SIGABRT comes from a crash in ",
+      "outside the process, SIGSEGV or SIGABRT comes from a crash in ",
       "compiled code), or it exited with a non-zero status. The refusal ",
       "names the engine, the entry point, the fold where there is one, the ",
       "exit status and the signal. The session that asked for the fit is ",
@@ -51,7 +51,7 @@
       "%s: the separate R process fitting with %s ended before it ",
       "returned: %s."
     ),
-    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-ISOLATE)",
+    registered_in_adr = "0.14.0 process isolation",
     plan_field = NA_character_,
     since_version = "0.14.0"
   )

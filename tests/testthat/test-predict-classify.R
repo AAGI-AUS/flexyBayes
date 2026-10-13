@@ -1,12 +1,12 @@
 # =============================================================================
-# predict(classify = ) -- the marginal-means table.
+# predict(classify = ): the marginal-means table.
 #
 # `predict(asreml_fit, classify = "Variety")` is the object a breeder takes
 # to a meeting, and this is the flexyBayes equivalent. Four properties are
 # asserted:
 #
 #   * classify = NULL leaves the existing predict() paths untouched. That
-#     is the whole reason the argument exists rather than a new verb.
+#     is the whole reason the argument exists instead of a new verb.
 #   * the table has one row per level combination, in the frozen columns.
 #   * the print names the estimator and says what the table is not. An
 #     ASReml user reading a means table without an SED column beside it
@@ -183,9 +183,9 @@ test_that("a one-sided formula and the ASReml spelling agree", {
   # The point estimate is X %*% bhat and is the same number both times.
   #
   # The standard error is not, and the band below is drawn from what its
-  # noise actually measures rather than from a round number. On this
+  # noise actually measures instead of from a round number. On this
   # engine the marginal-mean standard error is sqrt(l' V l), where V is
-  # vcov.flexybayes_inla()'s Monte-Carlo posterior covariance -- 2000
+  # vcov.flexybayes_inla()'s Monte-Carlo posterior covariance, 2000
   # draws from INLA::inla.posterior.sample(), redrawn on every call, per
   # that method's documented default. Two calls therefore compare one
   # Monte-Carlo estimate against another and neither side is a fixed
@@ -195,18 +195,18 @@ test_that("a one-sided formula and the ASReml spelling agree", {
   # a relative standard deviation of sqrt(2 / (n - 1)) = 3.2% at n = 2000,
   # and its square root carries half of that, 1.6%. Measured on this
   # fixture over twenty independent calls the realised figure is 2.0% per
-  # level -- a little above the independent-draw value because
+  # level, a little above the independent-draw value because
   # inla.posterior.sample() draws across a weighted set of hyperparameter
-  # configurations rather than from one fixed Gaussian. Two independent
+  # configurations instead of from one fixed Gaussian. Two independent
   # calls differ with a relative standard deviation of sqrt(2) x 2.0% =
-  # 2.8%, so 0.15 is a 5.3-sigma bound and 0.05 was a 1.8-sigma one --
-  # which is why the 0.05 band failed roughly one comparison in ten
+  # 2.8%, so 0.15 is a 5.3-sigma bound and 0.05 was a 1.8-sigma one.
+  # That is why the 0.05 band failed roughly one comparison in ten
   # (measured: 380 ordered pairs from those twenty calls, 11.6% of them
   # over 0.05, the largest observed 0.085).
   #
   # A 5.3-sigma band still has teeth for what this test is for. A
-  # spelling that resolved to a different linear combination -- a cell
-  # mean where a marginal mean was asked for, say -- moves the standard
+  # spelling that resolved to a different linear combination, a cell
+  # mean where a marginal mean was asked for, say, moves the standard
   # error by far more than 15%, while redrawing the same combination's
   # covariance does not.
   expect_equal(a$estimate, b$estimate, tolerance = 1e-10)
@@ -328,7 +328,7 @@ test_that("there is no sed argument and no pairwise block", {
   # D-5: the means table only. A pairwise standard error of a difference
   # is a separate object and is not smuggled in under another name.
   # (predict.flexybayes(), the bare parent method, was deleted entirely
-  # at 0.9.3 -- both active engines fully override it, so the two
+  # at 0.9.3, both active engines fully override it, so the two
   # engine-specific methods are the only formals left to guard.)
   expect_false("sed" %in% names(formals(predict.flexybayes_inla)))
   expect_false("pairwise" %in% names(formals(predict.flexybayes_inla)))
@@ -376,7 +376,7 @@ test_that("a malformed classify is refused by shape", {
   expect_error(stats::predict(fit, classify = "  "), "names no variables")
 })
 
-test_that("emmeans absent refuses by name rather than by namespace", {
+test_that("emmeans absent refuses by name instead of by namespace", {
   # C-p1. Exercised without uninstalling emmeans, by mocking the named
   # availability predicate the guard consults.
   local_mocked_bindings(
@@ -489,8 +489,8 @@ test_that("a fixed factor still classifies, and an unknown name is left alone", 
   expect_s3_class(out, "fb_predict_classify")
   expect_identical(nrow(out), 3L)
 
-  # A name the model does not carry at all is not this refusal's business
-  # -- emmeans's own message for that case is already about the right
+  # A name the model does not carry at all is not this refusal's business.
+  # emmeans's own message for that case is already about the right
   # thing, and claiming it as a random factor would be a lie.
   cnd <- tryCatch(predict(fit, classify = "nosuchvar"), error = function(e) e)
   expect_null(cnd$reason_code)

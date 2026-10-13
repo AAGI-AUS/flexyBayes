@@ -5,11 +5,11 @@
 # The INLA emit fixes the loading of factor j to one at its anchor level and
 # enters factor j only at the anchor and the levels placed after it. That is
 # a reparameterisation of G = Lambda Lambda' + Psi only when the anchors'
-# loadings are not zero, so the anchors are chosen from the data rather than
+# loadings are not zero, so the anchors are chosen from the data, not
 # taken from factor-level order.
 
 
-# .fb_fa_levels() -- the levels of f in the order the emit enters factors:
+# .fb_fa_levels(): the levels of f in the order the emit enters factors:
 # the k anchors first, then the other levels in factor order.
 .fb_fa_levels <- function(term, levs) {
   if (is.null(term$fa_order)) {
@@ -19,7 +19,7 @@
 }
 
 
-# .fb_fa_choose_anchors() -- set `fa_order` on every fa(f, k):g term.
+# .fb_fa_choose_anchors(): set `fa_order` on every fa(f, k):g term.
 #
 # `response` is the IR's response part, read by .fb_working_response().
 .fb_fa_choose_anchors <- function(random_terms, data, response) {
@@ -34,7 +34,7 @@
 }
 
 
-# .fb_fa_anchor_order() -- a permutation of the levels of f that puts the
+# .fb_fa_anchor_order(): a permutation of the levels of f that puts the
 # anchors first.
 #
 # The genotype-by-environment table of cell means gives a moment estimate S
@@ -81,20 +81,20 @@
 }
 
 
-# .fb_fa_g() -- G = Lambda diag(sd_factor^2) Lambda' + diag(psi^2).
+# .fb_fa_g(): G = Lambda diag(sd_factor^2) Lambda' + diag(psi^2).
 .fb_fa_g <- function(mat_l, vec_sf, vec_psi) {
   mat_l %*% diag(vec_sf^2, nrow = length(vec_sf)) %*% t(mat_l) +
     diag(vec_psi^2, nrow = length(vec_psi))
 }
 
 
-# .fb_fa_identified() -- the genetic covariance G and the genetic
+# .fb_fa_identified(): the genetic covariance G and the genetic
 # correlations of a fa(f, k):g fit on INLA.
 #
 # Both are computed on each of `n` joint draws of the hyperparameters
 # (fb_variance_draws()) and summarised by their posterior medians, entry by
 # entry. G and the correlations do not change when the loadings are rotated
-# or change sign; the loadings themselves do. Rows and columns follow the
+# or change sign. The loadings themselves do. Rows and columns follow the
 # level order of f.
 .fb_fa_identified <- function(fit, n = 2000L, seed = 1L) {
   is_fa <- vapply(
@@ -148,7 +148,7 @@
 }
 
 
-# .fb_fa_agreement() -- how far several fits of one fa(f, k):g model are
+# .fb_fa_agreement(): how far several fits of one fa(f, k):g model are
 # apart on the identified covariance.
 #
 # `fits` is a list of at least two results of .fb_fa_identified() (or any
@@ -165,7 +165,9 @@
   levs <- rownames(fits[[1L]]$G)
   same <- vapply(
     fits,
-    function(x) identical(rownames(x$G), levs) && identical(rownames(x$cor), levs),
+    function(x) {
+      identical(rownames(x$G), levs) && identical(rownames(x$cor), levs)
+    },
     logical(1L)
   )
   if (!all(same)) {
@@ -193,14 +195,14 @@
 }
 
 
-# Thresholds of the k-fit agreement gate, from U-FA-1: the largest relative
+# Thresholds of the k-fit agreement gate: the largest relative
 # spread of a genetic variance and the largest absolute spread of a genetic
 # correlation across the k fits.
 .FB_FA_GATE_G_REL <- 0.10
 .FB_FA_GATE_COR_ABS <- 0.05
 
 
-# .fb_fa_term() -- the first fa(f, k):g term of an IR, or NULL.
+# .fb_fa_term(): the first fa(f, k):g term of an IR, or NULL.
 .fb_fa_term <- function(fb) {
   for (t in fb$random_terms %||% list()) {
     if (identical(t$type, "fa_gxe")) {
@@ -211,7 +213,7 @@
 }
 
 
-# .fb_fa_mode_identified() -- G and the genetic correlations at an INLA
+# .fb_fa_mode_identified(): G and the genetic correlations at an INLA
 # fit's joint hyperparameter mode, `inla_fit$mode$theta`.
 #
 # Read on the coordinates INLA ran on. A standardised response scales every
@@ -245,7 +247,7 @@
 }
 
 
-# .fb_fa_gate() -- the k-fit agreement record of a fa(f, k):g fit.
+# .fb_fa_gate(): the k-fit agreement record of a fa(f, k):g fit.
 #
 # `fits` holds the k INLA fits. `agree` is TRUE when both spreads are within
 # the thresholds.

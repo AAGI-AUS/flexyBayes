@@ -1,4 +1,4 @@
-# fb_prior -- PC-canonical hybrid prior DSL.
+# fb_prior: PC-canonical hybrid prior DSL.
 #
 # Implements the cross-engine prior interlingua. v0.1 minimum subset:
 # user-facing constructor + S3 class + structured spec list +
@@ -30,8 +30,8 @@
 #                                engine compilation is engine-direct, not
 #                                via the PC translation table.
 #
-# All specifications are stored verbatim with their parsed args;
-# the emit_*() functions translate to backend-specific syntax at
+# All specifications are stored verbatim with their parsed args.
+# The emit_*() functions translate to backend-specific syntax at
 # fit time per the cross-engine translation table.
 
 # ---------------------------------------------------------------- #
@@ -45,7 +45,7 @@
 #' two canonical idioms: distributional (`half_normal(scale = 1)`)
 #' and tail-quantile / PC (penalised complexity)
 #' (`pc(upper = 1, prob = 0.01)` meaning `Pr(sigma > 1) = 0.01`).
-#' The PC idiom is the cross-engine interlingua -- it survives every
+#' The PC idiom is the cross-engine interlingua, it survives every
 #' backend because it is a probability statement, not a
 #' distributional name.
 #'
@@ -61,9 +61,9 @@
 #' non-finite value, or a value outside its domain (a non-positive
 #' scale, a tail probability outside `(0, 1)`) is refused at
 #' construction with a condition carrying a `flexybayes_refusal_*`
-#' class -- see [fb_refusals()]. Both halves of a PC prior are
+#' class: see [fb_refusals()]. Both halves of a PC prior are
 #' required: `pc(upper = 1)` states no probability, and is refused
-#' rather than completed with a default the caller never wrote.
+#' instead of completed with a default the caller never wrote.
 #'
 #' @param ... One or more two-sided formulas of the form
 #'   `target ~ distribution(args)`, one per parameter being given a
@@ -79,10 +79,10 @@
 #'
 #' Supported distribution families: `pc`, `half_normal`, `half_cauchy`,
 #' `student_t`, `normal`, `exponential`, `lkj`, `cauchy`, `gamma`,
-#' `uniform`, and `pooled` (see "Partially pooled SDs" below). Note that `uniform()` on a variance component sits
-#' outside the PC-canonical interlingua, but both active backends
-#' represent it faithfully on the SD scale: the INLA backend via an
-#' expression-prior on the log-precision, and brms as a bounded
+#' `uniform`, and `pooled` (see "Partially pooled SDs" below). `uniform()` on
+#' a variance component sits outside the PC-canonical interlingua, but both
+#' active backends represent it faithfully on the SD scale: the INLA backend
+#' via an expression-prior on the log-precision, and brms as a bounded
 #' `uniform()` prior on each simple random-effect (and residual) SD.
 #'
 #' @section What each backend can carry:
@@ -92,9 +92,9 @@
 #' backend, and the two differ.
 #'
 #' * **brms** takes any of the ten distributions on `sigma` and
-#'   `sd(group = )` -- the parameter is bounded below at zero and brms
+#'   `sd(group = )`: the parameter is bounded below at zero and brms
 #'   renormalises a two-sided density over that support, which is why
-#'   `normal(0, s)` and `half_normal(s)` are the same prior there -- and
+#'   `normal(0, s)` and `half_normal(s)` are the same prior there, and
 #'   `normal` / `student_t` on `b()`. It carries no `cor()` or
 #'   `smooth()` prior, because no model this package emits on brms has
 #'   either parameter.
@@ -105,10 +105,10 @@
 #'   `loading(group = )`, the loadings of `fa(f, k):group` relative to the
 #'   anchor level. With no loading prior stated, each loading takes
 #'   `normal(mean = 1, sd = 0.316)`, which is INLA's own prior on a copy
-#'   scaling; [prior_summary()] lists it.
+#'   scaling, [prior_summary()] lists it.
 #'
 #' A specification the selected backend cannot carry is refused at the
-#' fit, naming the row and both remedies -- re-express it in a
+#' fit, naming the row and both remedies, re-express it in a
 #' distribution that engine does carry, or switch backend. Before 0.9.2
 #' the INLA route discarded such a row silently while
 #' [prior_summary()] printed it as applied, so a prior-sensitivity
@@ -127,11 +127,11 @@
 #' package default: `half_normal(scale = s)` on the residual standard
 #' deviation and on the standard deviation of every variance component
 #' the default reaches, on both engines. `s` is `5 * sd(y)` on an identity
-#' link, `3` on a log link and `5` on a logit link; on an uncorrelated
+#' link, `3` on a log link and `5` on a logit link. On an uncorrelated
 #' random slope on a numeric covariate `x` it is `s / sd(x)`. The default
 #' has no upper bound. [prior_summary()] prints the scale a fit ran under.
 #' A Gaussian identity-link fit on INLA runs on the response divided by
-#' `sd(y)`, where the same prior is `half_normal(scale = 5)`; the printed
+#' `sd(y)`, where the same prior is `half_normal(scale = 5)`. The printed
 #' formula and `prior_summary()` show it on both scales.
 #'
 #' @section Partially pooled SDs:
@@ -142,13 +142,13 @@
 #'
 #' * `sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
 #'   pooled(scale = half_normal(scale = 0.5))` for the genotype-by-trial SDs
-#'   of `diag(TRIAL):VARIETY`;
+#'   of `diag(TRIAL):VARIETY`.
 #' * `sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))` for the
 #'   residual SDs of `dsum(~ units | TRIAL)`.
 #'
 #' Either set can be pooled without the other. The log SDs of a pooled set
 #' are normal with an estimated mean and an estimated SD, the pooling SD.
-#' `scale` is the prior on the pooling SD and has no default; it can be any
+#' `scale` is the prior on the pooling SD and has no default. It can be any
 #' prior brms accepts for a standard deviation. The mean has a
 #' `normal(log(s / 5), 2)` prior, where `s` is the scale of the package's
 #' default SD prior. On an identity link that is `normal(log(sd(y)), 2)`.
@@ -296,11 +296,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       # used to reach as.character() on the unevaluated argument, which
       # deparses a call head-first: b(c("x", "z")) became the three names
       # c("c", "x", "z") and b(starts_with("x")) became c("starts_with", "x").
-      # Neither was refused; the phantom head survived fb_plan() and the
+      # Neither was refused. The phantom head survived fb_plan() and the
       # length-3 target then failed inside the emitter with the base error
-      # "the condition has length > 1" -- an R internals message about a
+      # "the condition has length > 1", an R internals message about a
       # formula the user wrote. Vector and tidy-select targets are a real
-      # feature and need a typed term resolver, not a coercion; until that
+      # feature and need a typed term resolver, not a coercion, until that
       # exists the refusal names what was written and what b() takes.
       raw <- args_list[[1]]
       ok <- is.symbol(raw) ||
@@ -311,7 +311,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           message = paste0(
             "`b(", paste(deparse(raw), collapse = ""), ")` does not name one ",
             "coefficient. b() takes a single coefficient name, written as a ",
-            "string -- b(\"treatment\") -- or as a bare symbol -- ",
+            "string, b(\"treatment\"), or as a bare symbol, ",
             "b(treatment).",
             "\nA vector or a tidy-select helper is not yet supported: give ",
             "each coefficient its own row in fb_prior()."
@@ -369,7 +369,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   .stop_prior_target_unsupported(expr)
 }
 
-# Deparse a language object to one line -- a long call deparses to a
+# Deparse a language object to one line, a long call deparses to a
 # character vector, and a refusal message must be a single string.
 .fb_prior_deparse <- function(expr) {
   paste(deparse(expr), collapse = " ")
@@ -387,7 +387,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   ))
 }
 
-# Helper -- extract a named string argument from a parsed call.
+# Helper: extract a named string argument from a parsed call.
 .extract_string_arg <- function(args_list, name) {
   if (!is.null(args_list[[name]])) {
     return(as.character(args_list[[name]]))
@@ -404,19 +404,19 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Parse distribution side of a prior spec formula. Returns:
 #   list(family = "pc", args = list(upper = 1, prob = 0.01))
 
-# The parameter contract for every supported prior family -- the one
+# The parameter contract for every supported prior family, the one
 # place the DSL's argument names, its required arguments, and the domain
 # each argument lives on are written down. `.name_prior_args()` matches a
 # user call against `params` so a positional call binds exactly as R
 # would, and `.check_prior_args()` enforces `required` and `domain`
 # afterwards. The names match what the emit paths read (legacy reads `sd`
-# for normal, `scale` for half_normal; INLA and brms read `upper` /
+# for normal, `scale` for half_normal, INLA and brms read `upper` /
 # `prob` for pc), so a named and a positional call are the same
 # specification downstream.
 #
 # Before 0.9.2 this table held parameter names only, an unmatchable call
 # was returned unchanged, and every emit-side read carried a `%||%`
-# default -- so `half_normal(sd = 1.5)` was accepted and fitted under
+# default: so `half_normal(sd = 1.5)` was accepted and fitted under
 # `half_normal(scale = 1)`. The required and domain columns exist so the
 # refusal happens where the user can see it.
 #
@@ -488,7 +488,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   )
 }
 
-# The supported distribution names, read off the one table rather than
+# The supported distribution names, read off the one table instead of
 # re-listed. A family without a parameter contract cannot be emitted.
 .fb_prior_supported_families <- function() {
   names(.fb_prior_family_table())
@@ -684,7 +684,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   requirement <- switch(
     domain,
     "positive" = paste0(
-      "be strictly positive -- zero or a negative value names no ",
+      "be strictly positive, zero or a negative value names no ",
       "distribution on this parameter"
     ),
     "nonnegative" = "be >= 0 (the SD scale is non-negative)",
@@ -736,12 +736,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   # Name positional arguments by the family's canonical parameter order
   # *before* evaluating, so that `normal(0, 50)` and `normal(0, sd = 50)`
   # carry identical names downstream. Every emit path (INLA, brms)
-  # reads these arguments by name; without this step a
+  # reads these arguments by name, without this step a
   # positional call silently drops to the default scale on the by-name
   # paths. Matching is delegated to base R via match.call() on a stub
   # with the canonical formals, so named and positional binding follow
-  # the usual rules -- and a call base R cannot match is refused here
-  # rather than carried unnamed into the emit paths.
+  # the usual rules: and a call base R cannot match is refused here
+  # instead of carried unnamed into the emit paths.
   expr <- .name_prior_args(expr, fn)
   if (identical(fn, "pooled")) {
     return(.parse_prior_pooled(expr, envir))
@@ -783,11 +783,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   list(family = fn, args = args)
 }
 
-# Local null-coalescing op (R < 4.4 compat -- DESCRIPTION targets >= 4.1).
+# Local null-coalescing op (R < 4.4 compat. DESCRIPTION targets >= 4.1).
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 # ---------------------------------------------------------------- #
-# Default-prior construction (Simpson-2017 PC) -- internal         #
+# Default-prior construction (Simpson-2017 PC): internal         #
 # ---------------------------------------------------------------- #
 
 # Pick a sensible scale U for the PC default from the response and
@@ -796,7 +796,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # matches the random effect's working scale. Logit-link (binomial,
 # beta): U = 2.5 (logit-scale random effects are typically O(1) so
 # response-derived scale is meaningless). Returns (scale, basis)
-# where basis records which branch fired -- captured so the
+# where basis records which branch fired, captured so the
 # deprecation message can explain itself.
 .default_prior_scale <- function(data, response, family, link = NULL) {
   fam <- if (inherits(family, "family")) {
@@ -869,7 +869,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Construct a PC prior fb_prior() for a model. PC spec applied to
 # sigma + every named random group in `random_groups`. Retained in
 # v0.1.x as an explicit-choice constructor (e.g., used in the advanced
-# priors vignette appendix and PC-default tests); no longer the v0.1
+# priors vignette appendix and PC-default tests). No longer the v0.1
 # default. The bounded-uniform default below supersedes the former
 # PC default.
 .default_pc_prior <- function(
@@ -907,9 +907,9 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # link, 3 on a log link, 5 on a logit link. The uniform was replaced because
 # INLA's reported interval for a weakly identified component can run past a
 # bound, which the support audit refuses (agridat::john.alpha,
-# `rep + rep:block`: 8 of 8 repeats); a half-normal has no bound to cross.
-# The divisor is the "matched to the current bound" rule adopted in unit
-# U-PRIOR-HN-1 against the anchored validation tests.
+# `rep + rep:block`: 8 of 8 repeats). A half-normal has no bound to cross.
+# The divisor is the "matched to the current bound" rule adopted against
+# the anchored validation tests.
 .FB_DEFAULT_SCALE_DIVISOR <- 1
 
 # The multiplier that turns the response SD into the default's scale on the
@@ -918,7 +918,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # a heterogeneous residual the scalar sigma prior is retargeted onto the
 # log-sigma coefficients (.brms_retarget_sigma_for_heterogeneous_residual()
 # in R/priors_to_brms.R), and the INLA Wishart scale (.fb_inla_response_var()
-# in R/emit_inla.R) is written on the response variance; both recover sd(y)
+# in R/emit_inla.R) is written on the response variance. Both recover sd(y)
 # by dividing s by this multiplier. Written out twice, the constants drifted
 # apart once, and the retarget inherited the superseded PC default's 2.5
 # while the uniform default had moved to 5.
@@ -932,12 +932,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 #   (3 on the log scale is a 20x ratio of group means).
 # - Logit link (Binomial, Beta): s = 5 / d; basis = "logit_half_normal"
 # where d is .FB_DEFAULT_SCALE_DIVISOR. The 5 * sd(y) is a flexyBayes
-# heuristic, wide enough to be weakly informative; Gelman (2006, Bayesian
+# heuristic, wide enough to be weakly informative, Gelman (2006, Bayesian
 # Analysis 1(3):515-534) discusses half-t and half-Cauchy alternatives for
 # very small J, available via fb_prior().
 #
 # `resp_sd`, when given, is the response standard deviation read from
-# somewhere other than `data` -- the streamed route holds only a head sample
+# somewhere other than `data`: the streamed route holds only a head sample
 # of the rows and reads it off the full sufficient statistics instead.
 .default_half_normal_scale <- function(data, response, family, link = NULL,
                                        resp_sd = NULL) {
@@ -1038,14 +1038,14 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 #
 # The default also fires on vm() and ped() structured-cov random terms.
 # The two forms share the simple-RI scale derivation (5 * sd(response)
-# heuristic; identity / log / logit family-aware branches via
+# heuristic, identity / log / logit family-aware branches via
 # .default_half_normal_scale()) because their natural variance-matrix
 # scaling is identity in the SD-on-the-Cholesky-scaled-random-effect
 # interpretation that codegen .code_random's vm / ped branches use
 # (u_<tag> = L_G %*% (z * sigma_<tag>); the Cholesky absorbs G's scale and
 # sigma is purely the residual-scale multiplier). At 0.9.0 the nested
 # interaction intercept, the heterogeneous-variance diag / idh / at group
-# and the unstructured us group joined them -- see
+# and the unstructured us group joined them, see
 # .fb_default_prior_targets() for which term types reach the default and
 # which are left to the engine.
 #
@@ -1086,7 +1086,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   }
   # vm() + ped() branch. Add a separate spec per structured group
   # so prior_summary() surfaces them distinctly from the simple-RI
-  # groups; carry a `_default_form` tag (vm / ped) so the
+  # groups, carry a `_default_form` tag (vm / ped) so the
   # surface can explain which structured form the spec came from.
   for (g in unique(vm_ped_groups)) {
     if (!nzchar(g)) {
@@ -1109,17 +1109,17 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   obj
 }
 
-# .fb_default_prior_targets() --- which random terms the shared default
+# .fb_default_prior_targets(): which random terms the shared default
 # reaches, and which are left to whatever the engine does on its own.
 #
 # One walk over the IR's random terms, consumed twice: flexybayes() reads
 # `$shared` / `$vm_ped` to build the default half-normal prior, and the
 # model fingerprint (R/model_fingerprint.R) reads `$engine` to record the
 # parameters that carry no prior this package chose. Both consumers must
-# agree about which is which -- a term whose prior is the shared default in
+# agree about which is which: a term whose prior is the shared default in
 # one place and an engine default in the other would make the fit's prior
 # record, which prior_summary() prints, disagree with the prior the fit
-# carried, so the two views are derived here rather than written out twice.
+# carried, so the two views are derived here instead of written out twice.
 #
 # `$shared` and `$vm_ped` are group names in the key the prior DSL uses
 # (`sd(group = <name>)`); `$engine` is a data.frame of *canonical parameter
@@ -1162,8 +1162,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
-    # (x | g) -- the same two standard deviations, plus the correlation
-    # between them. brms takes an SD prior on both; the correlation keeps
+    # (x | g): the same two standard deviations, plus the correlation
+    # between them. brms takes an SD prior on both. The correlation keeps
     # brms's LKJ, which the prior DSL does not carry.
     if (identical(ttype, "simple_slope_cor")) {
       if (!is.null(t$var) && nzchar(t$var)) {
@@ -1199,7 +1199,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
-    # diag(f):g / idh(f):g / at(f):g -- one free SD per level of the outer
+    # diag(f):g / idh(f):g / at(f):g: one free SD per level of the outer
     # factor, all of them in brms's `sd` class for the inner group, so a
     # single group-keyed spec covers every level.
     if (identical(ttype, "at_simple")) {
@@ -1209,10 +1209,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
-    # us(f):g -- the same per-level SDs, plus a correlation block. The SDs
-    # take the shared default; the correlations keep brms's own LKJ, which
+    # us(f):g: the same per-level SDs, plus a correlation block. The SDs
+    # take the shared default. The correlations keep brms's own LKJ, which
     # has no counterpart in the prior DSL and no INLA analogue.
-    # fa(f, k):g -- the common factors and the per-level specific variances
+    # fa(f, k):g, the common factors and the per-level specific variances
     # are ordinary iid fields keyed by the inner group, so the shared SD
     # default reaches them. It has to: left on INLA's default log-gamma
     # precision, the specific variance at the level with the largest loading
@@ -1256,7 +1256,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
-    # AR1 field -- its standard deviation is keyed `spatial`, which the
+    # AR1 field: its standard deviation is keyed `spatial`, which the
     # fingerprint names sd_spatial. The correlations keep INLA's own prior.
     if (identical(ttype, "ar1_spatial_at")) {
       shared <- c(shared, "spatial")
@@ -1317,8 +1317,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # One-time announcement of the default variance-component prior.
 # Silenceable via options(flexyBayes.silence_default_prior_note = TRUE).
 # The once-flag is held in the package-internal emit-state env (see
-# R/emit_state.R); v0.3.9 migrated the flag out of the options() namespace
-# where unrelated callers could consume it before the intended emission.
+# R/emit_state.R), not in options(), where unrelated callers could consume
+# it before the intended emission.
 .default_prior_note_once <- function(scale, basis = NULL) {
   if (isTRUE(getOption("flexyBayes.silence_default_prior_note", FALSE))) {
     return(invisible())
@@ -1415,7 +1415,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 }
 
 # Faithful INLA expression prior for the legacy `lognormal(0, s)`
-# variance-component prior on the SD scale -- the brms path emits this
+# variance-component prior on the SD scale, the brms path emits this
 # as a `lognormal` row for `prior_vc_sd`. INLA parameterises the
 # hyperparameter as theta = log(precision), so
 # sigma = exp(-theta / 2) and log sigma = -theta / 2. Transforming
@@ -1484,7 +1484,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 }
 
 # Did the caller write this scalar prior argument? flexybayes() records
-# the answer on the IR; a direct emit_*() call carries no record, and the
+# the answer on the IR. A direct emit_*() call carries no record, and the
 # absence means "not supplied", which is what it meant before 0.9.2.
 .fb_prior_scalar_supplied <- function(fb, which) {
   flags <- fb$prior_scalars$supplied
@@ -1593,18 +1593,18 @@ print.fb_prior <- function(x, ...) {
 # by f()-term group / smoother variable, with "sigma" for the residual,
 # mapping to the `hyper` body INLA takes on that term.
 #
-# Untranslatable rows refuse here rather than falling through. Before
+# Untranslatable rows refuse here instead of falling through. Before
 # 0.9.2 this function handled `pc`, `half_normal` and `uniform` on
 # `sigma` / `sd()` / `smooth()` and returned nothing at all for every
-# other pair, while `prior_summary()` printed each of them as applied --
-# a prior-sensitivity analysis on INLA could vary a `student_t` scale
-# and compare the engine's default with itself (field-sweep FS-21).
+# other pair, while `prior_summary()` printed each of them as applied,
+# so a prior-sensitivity analysis on INLA could vary a `student_t` scale
+# and compare the engine's default with itself.
 # Which pairs translate is declared once, in
 # `.fb_prior_translation_table()` (R/prior_translation.R).
 #
 # `b()` rows are translatable but do not arrive here: INLA states the
 # fixed-effect prior in `control.fixed`, which
-# `.priors_to_inla_control_fixed()` builds. They are skipped rather than
+# `.priors_to_inla_control_fixed()` builds. They are skipped instead of
 # refused.
 priors_to_inla <- function(prior) {
   out <- list()
@@ -1628,7 +1628,7 @@ priors_to_inla <- function(prior) {
       next
     }
     if (!s$target$type %in% c("sigma", "sd", "smooth")) {
-      # b() arrives through control.fixed; nothing else survives the
+      # b() arrives through control.fixed. Nothing else survives the
       # translation check above.
       next
     }
@@ -1695,7 +1695,7 @@ priors_to_inla <- function(prior) {
 #
 # `available` is the design-matrix column names the emit will build, so
 # a `b()` row naming a coefficient the model does not carry refuses by
-# name (field-sweep FS-20) instead of arriving as a `control.fixed`
+# name instead of arriving as a `control.fixed`
 # entry INLA silently ignores.
 .priors_to_inla_control_fixed <- function(prior, available = NULL) {
   out <- list(mean = list(), prec = list())

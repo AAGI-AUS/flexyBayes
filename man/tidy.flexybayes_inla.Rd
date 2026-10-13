@@ -18,14 +18,14 @@
 \item{conf.int}{Logical. Whether to attach the credible-interval columns.
 Defaults to \code{TRUE}.}
 
-\item{conf.level}{Numeric in \verb{(0, 1)}. Accepted for generic compatibility;
+\item{conf.level}{Numeric in \verb{(0, 1)}. Accepted for generic compatibility.
 INLA reports the 95\% marginal bounds, so a non-0.95 request is noted.}
 
 \item{effects}{Character. Which effects to return: \code{"fixed"} for the
 population-level coefficients or \code{"random"} for the variance-component
 summary. Defaults to \code{"fixed"}.}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 A \code{data.frame} with one row per term and the columns
@@ -36,7 +36,7 @@ A \code{data.frame} with one row per term and the columns
 }
 \description{
 The INLA backend returns a \code{flexybayes_inla} object whose internal
-layout differs from the other engines' -- it has no \verb{$glm} shim -- so it
+layout differs from the other engines', it has no \verb{$glm} shim, so it
 needs its own \code{tidy()} method even though it shares the \code{flexybayes}
 parent class. The fixed-effect
 summary is read directly off INLA's \code{summary.fixed} table, whose \code{mean},
@@ -46,8 +46,8 @@ summary is read directly off INLA's \code{summary.fixed} table, whose \code{mean
 \details{
 Because the INLA fixed-effect intervals come from the marginal posteriors
 INLA has already integrated, the \code{conf.level} argument is accepted for
-generic compatibility but only the 95\% bounds INLA reports are returned;
-a one-off message notes this when a different level is requested rather
+generic compatibility but only the 95\% bounds INLA reports are returned.
+A one-off message notes this when a different level is requested rather
 than silently ignoring it.
 
 The \code{effects} argument is the same one \code{\link[=tidy.flexybayes]{tidy.flexybayes()}} carries, and
@@ -55,7 +55,7 @@ means the same thing on both: \code{"fixed"} returns the population-level
 coefficients, \code{"random"} the variance-component summary. Before 0.9.1
 this method had no such argument, so \code{effects = "random"} on an INLA fit
 was absorbed by \code{...} and the FIXED-effect table came back under a call
-that asked for variance components -- a wrong answer with no error. An
+that asked for variance components, a wrong answer with no error. An
 unrecognised value now stops.
 }
 \examples{

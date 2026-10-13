@@ -1,4 +1,4 @@
-# tools/capability_grid_matrix.R -- the capability-matrix CSV builder.
+# tools/capability_grid_matrix.R: the capability-matrix CSV builder.
 #
 # Both tools/execution_grid.R (the live grid, which drives its M-section
 # test cells off the same list) and tools/generate_capability_matrix.R (the
@@ -14,7 +14,7 @@
 # execute to its minimal live call, one list entry per class (a second
 # entry for a second spelling of the same class, e.g. `vm()` / `ped()`,
 # shares the class's row and does not add one). Row order in the built CSV
-# follows this list's order, not the registry's own row order -- two rows
+# follows this list's order, not the registry's own row order. Two rows
 # the grid added after the original table (`Per-trial separable AR1 field`,
 # `Grouped temporal AR1 field`) sit later in the list than in the table.
 # `.fb_capability_grid_m_executed_elsewhere()` names the registry rows no M
@@ -128,7 +128,7 @@
     ),
     list(
       # `ped()` and `vm()` are two spellings of one known-covariance term
-      # -- every branch in the package tests `%in% c("vm", "ped")` -- so the
+      # (every branch in the package tests `%in% c("vm", "ped")`) so the
       # capability is one row and the spelling is a surface on it. The grid
       # executed `vm()` only, and `ped()` was advertised without ever being
       # fitted (audit item 9, 2026-08-27). This cell fits the same row
@@ -209,7 +209,7 @@
         paste0("  grid cells naming no matrix row: ",
                paste(extra, collapse = " | "), "\n")
       },
-      "Every capability cell is executed, or the gate is not F28.",
+      "Every capability cell is executed, or the execution gate fails.",
       call. = FALSE
     )
   }

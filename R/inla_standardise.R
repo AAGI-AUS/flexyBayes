@@ -1,4 +1,4 @@
-# inla_standardise.R -- Gaussian INLA fits on a standardised response.
+# inla_standardise.R: Gaussian INLA fits on a standardised response.
 #
 # A Gaussian fit on INLA runs on y* = (y - m) / s, where m is the mean of the
 # response when the model has an intercept and 0 otherwise, and s is its
@@ -8,7 +8,7 @@
 # scale-free: the fit of a response in kilograms and the fit of the same
 # response in tonnes are one model. The stored result is mapped back where the
 # fit is built, and draws are mapped back where they are taken, because INLA's
-# samplers read the engine's internal state rather than the stored tables.
+# samplers read the engine's internal state, not the stored tables.
 
 .FB_INLA_STANDARDISED_RESPONSE <- "fb_standardised_response"
 
@@ -20,7 +20,7 @@
 #' model is y = o + eta, so on the standardised coordinates the fit runs on
 #' (y - m) / s with offset o / s, and what the likelihood and every prior
 #' see is (y - o - m) / s. Read from y instead, a large offset makes s the
-#' spread of the offset rather than of the model, which is the case the
+#' spread of the offset, not of the model, which is the case the
 #' standardisation exists to remove (the measurement is in the commit that
 #' made this choice and in test-fixed-offset.R).
 #'
@@ -59,7 +59,7 @@
 }
 
 .fb_inla_standardisation_record <- function(centre, scale, n_obs) {
-  # A response with no spread has nothing to divide by; the fit then runs on
+  # A response with no spread has nothing to divide by. The fit then runs on
   # the response shifted by its mean, which is still an exact transform.
   if (!is.finite(scale) || scale <= 0) {
     scale <- 1
@@ -68,7 +68,7 @@
 }
 
 # The factor a hyperparameter is mapped back by. Every latent field and the
-# residual carry the response's units, so a precision divides by s^2; a
+# residual carry the response's units, so a precision divides by s^2. A
 # correlation or a copy's scaling is unchanged.
 .fb_inla_hyper_factor <- function(name, spec) {
   if (startsWith(name, "Precision for ")) {
@@ -169,8 +169,8 @@
 #'
 #' INLA states the fixed-effect prior as a mean and a precision. On
 #' y* = (y - m) / s a slope is beta / s, so its mean divides by s and its
-#' precision multiplies by s^2; the intercept is (beta0 - m) / s. Only what
-#' the caller stated is mapped; a coefficient with no stated prior keeps
+#' precision multiplies by s^2. The intercept is (beta0 - m) / s. Only what
+#' the caller stated is mapped. A coefficient with no stated prior keeps
 #' INLA's default on the standardised coordinates.
 #'
 #' @param control_fixed The `control.fixed` list the emit built, possibly
@@ -248,9 +248,9 @@
 #'
 #' Every stored reading of the fit is mapped back: fixed effects, random
 #' effects, hyperparameters, fitted values and the linear predictor, with
-#' their marginals; the marginal likelihood, which loses `n log(s)`; DIC and
+#' their marginals. The marginal likelihood, which loses `n log(s)`. DIC and
 #' WAIC, which gain `2 n log(s)` while their effective parameter counts are
-#' unchanged; and CPO, which divides by `s`. `$.args`, `$mode` and `$misc`
+#' unchanged. And CPO, which divides by `s`. `$.args`, `$mode` and `$misc`
 #' keep the engine's own coordinates, since they are what INLA ran and what
 #' its samplers read.
 #'
@@ -464,7 +464,7 @@
 #' @param n Number of draws.
 #' @returns A list: `latent`, a matrix with one row per latent node and one
 #'   column per draw, and `hyperpar`, a matrix with one row per draw and one
-#'   column per hyperparameter; both on the original scale and under the
+#'   column per hyperparameter. Both on the original scale and under the
 #'   names `INLA::inla.posterior.sample()` uses.
 #' @noRd
 #' @keywords internal

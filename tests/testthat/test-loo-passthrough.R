@@ -2,17 +2,16 @@
 # loo() on a flexyBayes fit.
 #
 # Approximate leave-one-out cross-validation needs the log-likelihood of
-# each observation at each posterior draw. A Stan sampler stores it; a
-# nested Laplace approximation never computed it. So the method does one
-# of three things, and which one is decided by what the fit holds rather
-# than by its class name:
+# each observation at each posterior draw. A Stan sampler stores it, and
+# a nested Laplace approximation does not compute it. What the fit holds,
+# not its class name, decides among three outcomes:
 #
-#   * brms engine -- pass straight through to brms::loo() and return
-#     loo's own object, diagnostics included;
-#   * a fit with a posterior but no pointwise log-likelihood -- refuse as
+#   * brms engine: pass through to brms::loo() and return loo's own
+#     object, diagnostics included;
+#   * a posterior but no pointwise log-likelihood: refuse as
 #     loo_requires_sampler_draws, naming the information criteria the fit
-#     DOES carry so the alternative is in the message;
-#   * a fit with no posterior at all -- refuse as the sibling code
+#     does carry;
+#   * no posterior at all: refuse as the sibling code
 #     fit_lacks_posterior_draws, so the two states are told apart by the
 #     condition class.
 #
@@ -92,11 +91,8 @@ suppressPackageStartupMessages(library(testthat))
 
 .loo_shape_draws_only <- function() {
   # `.fb_refuse_loo()`'s has_posterior check reads $inla or a top-level
-  # $draws -- a third branch reading the withdrawn native engine's own
-  # draws slot was removed with the engine at 0.9.3 (see NEWS.md);
-  # nest the fixture's draws directly under $draws so it still
-  # represents "has posterior, no log-likelihood" rather than "no
-  # posterior at all".
+  # $draws, so the draws sit under $draws: a posterior with no
+  # log-likelihood.
   structure(
     list(draws = 1),
     class = c("flexybayes", "list")
@@ -165,9 +161,8 @@ test_that("loo() on an INLA fit refuses by name and names the WAIC slot", {
 
 test_that("an aggregated fit is not told it carries criteria it does not", {
   # The aggregated emits fit on cell-level sufficient statistics and ask
-  # INLA for neither WAIC nor DIC (control.compute), so the same message
-  # written from memory rather than from the fit would name two slots
-  # that are empty.
+  # INLA for neither WAIC nor DIC (control.compute). The message must be
+  # built from the fit, or it would name two empty slots.
   skip_if_not_installed("loo")
   agg <- structure(
     list(inla = list()),

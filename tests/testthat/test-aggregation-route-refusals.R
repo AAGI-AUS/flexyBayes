@@ -1,22 +1,11 @@
 # =============================================================================
-# The three aggregated-route entry refusals raise typed conditions.
+# The aggregated-route entry refusals in .maybe_aggregate_gaussian() raise
+# typed conditions: missing response, backend without an aggregated emit, and
+# no resolvable route. Each also carries the family class
+# `flexybayes_aggregate_refusal`, so a handler for the family catches all.
 #
-# The execution grid's capability-matrix section (tools/execution_grid.R,
-# section M) reached three refusals in .maybe_aggregate_gaussian() that raised
-# a bare stop(): the missing-response guard, the backend-capability guard, and
-# the no-resolvable-route guard. Each is a documented refusal -- the function's
-# own contract says it "raises a typed condition" -- but a caller could not
-# match any of them by class, only by message text.
-#
-# The two refusals lower down the same function already carried
-# `flexybayes_aggregate_refusal`, so the family class is retained beneath the
-# per-code class here: a handler written against the family keeps catching
-# every aggregated-route refusal rather than only some of them.
-#
-# The three sites split across two boundaries, not one. A missing response is
-# a property of the DATA (no sufficient statistic exists for the cell); an
-# unavailable route is a property of the ENGINE ROSTER (no aggregated emit is
-# reachable). They carry separate reason codes accordingly.
+# A missing response (no sufficient statistic for the cell) and an
+# unavailable route (no aggregated emit reachable) have separate reason codes.
 # =============================================================================
 
 .agg_route_trial <- function(seed = 20260819L) {
@@ -39,7 +28,7 @@
 }
 
 # ---------------------------------------------------------------- #
-# 1. Site 1 -- a missing response has no sufficient statistic       #
+# 1. Site 1: a missing response has no sufficient statistic        #
 # ---------------------------------------------------------------- #
 
 test_that("aggregate = TRUE on a missing response raises a typed refusal", {
@@ -75,7 +64,7 @@ test_that("the missing-response refusal keeps the family class and wording", {
   # A caller pattern-matching the aggregated-route family still catches it.
   expect_s3_class(err, "flexybayes_aggregate_refusal")
   expect_s3_class(err, "flexybayes_refusal")
-  # The message text is the pre-0.9.2 text verbatim -- users match on it.
+  # Users match on this text, so it is pinned.
   expect_match(conditionMessage(err), "the response has missing values",
                fixed = TRUE)
   expect_match(conditionMessage(err), "per-cell sufficient", fixed = TRUE)
@@ -83,7 +72,7 @@ test_that("the missing-response refusal keeps the family class and wording", {
 })
 
 # ---------------------------------------------------------------- #
-# 2. Site 2 -- a backend with no aggregated emit at all             #
+# 2. Site 2: a backend with no aggregated emit at all              #
 # ---------------------------------------------------------------- #
 #
 # This is the capability matrix's one `n/a` cell: aggregation on brms. The
@@ -124,7 +113,7 @@ test_that("the brms aggregation refusal names the backend and its wording", {
 })
 
 # ---------------------------------------------------------------- #
-# 3. Site 3 -- no aggregated backend resolves for this model        #
+# 3. Site 3: no aggregated backend resolves for this model         #
 # ---------------------------------------------------------------- #
 #
 # Reached without mocking: on backend = "auto" the resolver consults
@@ -168,13 +157,8 @@ test_that("the no-route refusal keeps the family class and its wording", {
 # 4. The message text did not move when the class arrived           #
 # ---------------------------------------------------------------- #
 #
-# Typing these refusals is an additive change: the condition class is new,
-# the message body is the pre-0.9.2 text verbatim. Callers already in the
-# field match on the text, so the whole string is pinned here rather than a
-# fragment of it. A deliberate re-wording must edit this test -- 0.9.3's
-# withdrawal of a third native engine (see NEWS.md) is exactly such a
-# rewording: both messages named that engine's quarantine status, which no
-# longer exists, so the pinned text below moved with it.
+# Callers match on the message text, so the whole string is pinned. A
+# deliberate rewording must edit this test.
 
 test_that("the two route refusals carry their 0.9.3 message verbatim", {
   skip_if_not_installed("brms")
@@ -271,31 +255,18 @@ test_that("the two codes describe two different boundaries", {
 })
 
 # ---------------------------------------------------------------- #
-# 6. Site 4 -- a family or link the aggregated route cannot take    #
+# 6. Site 4: a family or link the aggregated route cannot take     #
 # ---------------------------------------------------------------- #
 #
-# .fb_aggregation_plan()'s family / link scope check (R/aggregate_plan.R)
-# runs before the term-shape loops, so a family or link reason is always
-# plan$reason_codes[1] when either fires. On aggregate = TRUE with
-# backend = "inla" it used to reach .maybe_aggregate_gaussian()'s generic
-# ineligibility branch, which built the refusal by hand
-# (`structure(class = c("flexybayes_aggregate_refusal", "error",
-# "condition"), ...)`) rather than through .fb_refusal_condition() --
-# a class, but not a registered one, and not reachable by
-# `class = "flexybayes_refusal_<reason_code>"`, the contract every other
-# refusal in this file is asserted against above.
+# .fb_aggregation_plan() checks family and link before term shapes, so a
+# family or link reason is always plan$reason_codes[1].
 #
-# Both facts already have a name elsewhere. A non-canonical link
-# (binomial(link = "probit"), poisson(link = "sqrt")) is exactly what
-# lgm_gate()'s family_allowlist rule refuses for an explicit
-# backend = "inla" request on the three aggregatable families -- the
-# aggregation canon link (identity / logit / log) is each one's INLA
-# default (U-LINK-1) -- so it now raises inla_gate_refused, the same code
-# the per-row route already raises for the same pair. A family outside
-# {gaussian, binomial, poisson} (gamma is admitted by the family gate and
-# fits fine on INLA per row; it just has no aggregated emit) now raises
-# aggregation_route_unavailable, the code already registered for "no
-# aggregated backend resolves for the model" two sections above.
+# A non-canonical link (binomial(link = "probit"), poisson(link = "sqrt"))
+# raises inla_gate_refused, as on the per-row route. The aggregated links
+# (identity, logit, log) are INLA's defaults for the three families.
+# A family outside {gaussian, binomial, poisson} raises
+# aggregation_route_unavailable. Gamma, for example, fits on INLA per row
+# but has no aggregated emit.
 
 .agg_link_trial <- function(seed = 1L) {
   set.seed(seed)

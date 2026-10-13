@@ -46,11 +46,10 @@ sum of squares. Those are sufficient statistics.
 Two million rows over four hundred cells carry exactly the same
 information for that model as four hundred rows of sufficient
 statistics. Compressing them is not an approximation and does not
-change the posterior -- it changes what has to be held in memory.
+change the posterior. It changes what has to be held in memory.
 
 This is why the restriction is narrow. Sufficiency of that kind holds
-for the Gaussian identity-link case, and the package refuses rather
-than compressing where it does not.
+for the Gaussian identity-link case, and the package refuses instead of compressing where it does not.
 
 # 2. Aggregating in memory
 
@@ -105,7 +104,7 @@ likelihood is the same likelihood.
 
 # 3. When it refuses
 
-`aggregate = TRUE` is a request, and it is declined rather than silently
+`aggregate = TRUE` is a request, and it is declined instead of silently
 downgraded when the compression would not be exact or would not be
 worth doing.
 
@@ -130,7 +129,7 @@ the change of code path.
 
 # 4. Data that never fit in memory
 
-`flexybayes_stream()` takes a file rather than a data frame, reads it in
+`flexybayes_stream()` takes a file instead of a data frame, reads it in
 chunks, accumulates the same per-cell sufficient statistics, and fits
 from the accumulator. Peak memory is set by the number of cells, not by
 the number of rows.
@@ -166,12 +165,12 @@ compression costs.
 one cell per row. Bin the covariate first, or fit per-row.
 
 **Missing responses are refused.** Sufficient statistics are not defined
-for a missing value, so the aggregated path declines rather than
+for a missing value, so the aggregated path declines instead of
 dropping rows silently.
 
 **Check the compression ratio.** If cells are nearly as numerous as
 rows, aggregation adds a code path for no gain, and the package says so
-rather than proceeding.
+instead of proceeding.
 
 **It is not a sampling method.** No rows are discarded and no subsample
 is taken. The whole dataset informs the fit.

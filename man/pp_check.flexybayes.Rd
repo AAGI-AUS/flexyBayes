@@ -9,8 +9,8 @@
 \arguments{
 \item{object}{A fitted \code{flexybayes} object.}
 
-\item{...}{Passed to \code{\link[brms:pp_check]{brms::pp_check()}} on the brms path -- \code{type},
-\code{ndraws}, \code{group} and the rest; ignored on the refusal path.}
+\item{...}{Passed to \code{\link[brms:pp_check]{brms::pp_check()}} on the brms path, \code{type},
+\code{ndraws}, \code{group} and the rest. Ignored on the refusal path.}
 }
 \value{
 On a brms-engine fit, the \pkg{ggplot2} object
@@ -24,14 +24,14 @@ fit from the \strong{brms} engine the call delegates to
 \code{\link[brms:pp_check]{brms::pp_check()}}: datasets are simulated from the posterior
 predictive distribution and shown against the observed response. The
 default display overlays the densities of the replicated datasets on
-the density of the response (\code{type = "dens_overlay"}); every other
+the density of the response (\code{type = "dens_overlay"}). Every other
 \pkg{bayesplot} check type, and every argument of
 \code{\link[brms:pp_check]{brms::pp_check()}}, is reachable through \code{...}.
 }
 \details{
 On a fit from the \strong{INLA} engine the method refuses by name. A nested
 Laplace approximation returns marginal densities, not simulated
-datasets, so there is nothing to overlay -- and a display of observed
+datasets, so there is nothing to overlay, and a display of observed
 against fitted values shown under this name would be a different
 diagnostic wearing the check's title. The refusal names the residual
 displays the fit does answer: \code{plot(fit, type = "residuals")} and, on
@@ -42,8 +42,8 @@ points cannot disagree about what a check is.
 }
 \seealso{
 \code{\link[=plot.flexybayes]{plot.flexybayes()}} for the other displays, including the
-residual diagnostics this refusal points at;
-\code{\link[=as_draws_df.flexybayes]{as_draws_df.flexybayes()}} for the posterior itself;
+residual diagnostics this refusal points at.
+\code{\link[=as_draws_df.flexybayes]{as_draws_df.flexybayes()}} for the posterior itself.
 \code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \verb{$converge} slot carries the engine's
 own diagnostics.
 }

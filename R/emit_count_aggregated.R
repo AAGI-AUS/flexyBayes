@@ -1,15 +1,15 @@
-# emit_count_aggregated.R -- Exact aggregated emit for the binomial and
+# emit_count_aggregated.R. Exact aggregated emit for the binomial and
 # poisson families.
 #
 # Count families aggregate exactly with no nuisance scale parameter. A
 # cell whose linear predictor is constant has, summed over its rows:
 #
-#   binomial -- sum of successes ~ Binomial(sum of trials, p_cell), since
+#   binomial: sum of successes ~ Binomial(sum of trials, p_cell), since
 #               independent Binomials with a shared probability add. The
 #               binomial coefficient that distinguishes the cell-total
 #               likelihood from the per-row product is free of the model
 #               parameters, so the posterior is unchanged.
-#   poisson  -- sum of counts ~ Poisson(lambda_cell * sum of exposure),
+#   poisson : sum of counts ~ Poisson(lambda_cell * sum of exposure),
 #               since independent Poissons with a shared rate add. The
 #               multinomial coefficient is parameter-free, so the
 #               posterior is unchanged.
@@ -17,11 +17,11 @@
 # Both are therefore exact compression, not approximation: INLA is given
 # the cell totals with `Ntrials` (binomial) or `E` (poisson). Unlike
 # the gaussian path (emit_gaussian_aggregated.R) there is no within-cell
-# sum-of-squares term and no custom-prior correction -- the only
+# sum-of-squares term and no custom-prior correction, the only
 # hyperparameters are the random-intercept precisions, identical to the
 # per-row model, so matched priors give a matched posterior.
 #
-# Internal -- not exported. Called from .fb_stream_emit() for the count
+# Internal: not exported. Called from .fb_stream_emit() for the count
 # families.
 
 emit_count_aggregated <- function(
@@ -190,7 +190,7 @@ emit_count_aggregated <- function(
   # was wired.
   # `coef_names` is the aggregated design's own column vocabulary: the
   # aggregated INLA formula names model-matrix columns, so a `b()` prior
-  # row has to be checked against those rather than against the per-row
+  # row has to be checked against those instead of against the per-row
   # term labels, or a row naming a factor level would arrive as a
   # `control.fixed` entry INLA silently ignores.
   control_fixed <- .build_inla_control_fixed(
@@ -270,12 +270,12 @@ emit_count_aggregated <- function(
   # expression prior the per-row emit_inla() path uses (both paths share
   # one prior). The fallback below fires only when no fb_prior is in play
   # (e.g. the legacy `prior_vc_sd` path) or a user supplies a partial
-  # prior that omits this group; it pins the scale-invariant
+  # prior that omits this group. It pins the scale-invariant
   # loggamma(1, 5e-5) so the aggregated fit matches the per-row path,
   # which inherits the same INLA default when hyper_ctrl is empty.
   default_iid_hyper <- list(prior = "loggamma", param = c(1, 5e-05))
   ri_pieces <- character(length(ri_plan))
-  # The engine slot each f() term writes, for the model manifest; the
+  # The engine slot each f() term writes, for the model manifest. The
   # pinned INLA default is recorded as the engine's own prior.
   slots <- list()
   reads <- list()
@@ -370,7 +370,7 @@ emit_count_aggregated <- function(
 # ---------------------------------------------------------------- #
 # Builds the <flexybayes_aggregated> shape downstream methods consume,
 # mirroring .agg_emit_build_fit() but for the count families (no
-# residual scale; fitted values on the response scale via the inverse
+# residual scale. Fitted values on the response scale via the inverse
 # link).
 .agg_count_build_fit <- function(
   fb,
@@ -413,7 +413,7 @@ emit_count_aggregated <- function(
     posterior_summary,
     ri_plan
   )
-  # A Poisson offset reached the fit as exposure; each row's linear predictor
+  # A Poisson offset reached the fit as exposure. Each row's linear predictor
   # carries it.
   off_row <- .fb_offset_values(fb, data)
   if (!is.null(off_row)) {
@@ -496,8 +496,8 @@ emit_count_aggregated <- function(
       # order, as the per-row emits and the aggregated Gaussian emit
       # record. update() re-issues every recorded field to flexybayes(),
       # so a field this route left out was a default silently substituted
-      # for what the user asked for -- which is why an aggregated count
-      # fit refused update() outright rather than re-fitting a different
+      # for what the user asked for, which is why an aggregated count
+      # fit refused update() outright instead of re-fitting a different
       # model under the same name.
       call_info = list(
         fixed = fixed,
@@ -518,7 +518,7 @@ emit_count_aggregated <- function(
         na_action = na_action,
         # The engine and the representation the call ASKED for, and the
         # reporting it ran under. See the aggregated Gaussian emit for
-        # why the request rather than the resolved engine is recorded.
+        # why the request instead of the resolved engine is recorded.
         backend = requested_backend,
         aggregate = requested_aggregate,
         verbose = verbose
@@ -536,7 +536,7 @@ emit_count_aggregated <- function(
         K = fb_aggregated$K,
         compression = fb_aggregated$compression,
         residual = "none",
-        # Three cases, not two -- see .agg_prior_parametrization(). The
+        # Three cases, not two, see .agg_prior_parametrization(). The
         # auto-default is an fb_prior object, so a class test alone
         # labelled an ordinary call "custom (explicit prior supplied)".
         prior_parametrization = .agg_prior_parametrization(

@@ -7,7 +7,7 @@
 #' functions, [fb_refit()], [fb_marginal_cov()], [fb_isolated_lapply()] and
 #' the refusal registry ([fb_register_refusals()], [fb_refuse()]), and never
 #' through the package's internal functions. `fb_extension_api()` gives the
-#' version of that set; a package checks it in its `.onLoad()` and refuses to
+#' version of that set. A package checks it in its `.onLoad()` and refuses to
 #' load against a version it was not written for.
 #'
 #' * `fb_model_terms()` returns the model description of a fit: the parsed
@@ -35,7 +35,7 @@
 #' @param response The response as written in the model: a column name or
 #'   an R expression in the columns of `data`.
 #' @param offsets The offset terms of a model as written, for example
-#'   `"offset(log(area))"`; `fb_model_terms(fit)$offsets`.
+#'   `"offset(log(area))"`, `fb_model_terms(fit)$offsets`.
 #' @param newdata `TRUE` when `data` holds new rows for a prediction, so
 #'   that a missing offset column is refused with a message that says so.
 #' @param engine `NULL`, an `fb_engine` object, or a named list of sampler
@@ -55,8 +55,8 @@
 #'   or `NULL` when the model has no offset.
 #' * `fb_model_weights()`: the numeric weights, or `NULL` for an unweighted
 #'   model.
-#' * `fb_known_variance()`: `NULL` for a model without a known variance;
-#'   otherwise a list with `values` (one variance per row of the fitted data),
+#' * `fb_known_variance()`: `NULL` for a model without a known variance.
+#'   Otherwise a list with `values` (one variance per row of the fitted data),
 #'   `matrix` (the known covariance, or `NULL` for a vector), `column` (the
 #'   data column that carries each row's variance) and `inla_index` (the
 #'   index of the row effect that carries it in an INLA formula).
@@ -196,7 +196,7 @@ fb_check_refit <- function(fit, caller = "") {
 }
 
 
-# .fb_extension_terms() --- a model description, from itself or from a fit.
+# .fb_extension_terms(): a model description, from itself or from a fit.
 .fb_extension_terms <- function(terms) {
   if (inherits(terms, "flexybayes")) .fb_fit_ir(terms) else terms
 }

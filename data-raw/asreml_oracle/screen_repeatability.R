@@ -1,4 +1,4 @@
-# screen_repeatability.R -- can this structure return the same answer twice?
+# screen_repeatability.R: can this structure return the same answer twice?
 #
 # Run before any further paired ASReml comparison. A single-run comparison is
 # not evidence for a structure whose repeated fits disagree with each other:
@@ -179,11 +179,11 @@ for (cm in setdiff(comps, "sigma")) {
   }
 }
 # Amendment, 2026-09-11: a third verdict, added after the first screen run
-# returned STABLE for `diag_gxe` -- the structure already measured as
+# returned STABLE for `diag_gxe`, the structure already measured as
 # bistable over 24 fits. All three screen runs had collapsed alike, so there
 # was no flip and no live component to compare, and a consistently wrong
 # answer scored as a repeatable one. Repeatability is not correctness, and a
-# criterion that cannot tell them apart has to say so rather than pass.
+# criterion that cannot tell them apart has to say so instead of passing.
 #
 # The restart probe settles what three repeats cannot: if a restart from a
 # mode where the pinned components carry real variance finds a materially
@@ -201,7 +201,7 @@ verdict <- if (flip || ratio_max > INSTABILITY_RATIO) {
   "STABLE"
 }
 # The probe verdict from the last fit, which is the cheaper and sharper
-# signal: one fit plus one restart, rather than three fits compared.
+# signal: one fit plus one restart, not three fits compared.
 probe <- NULL
 if (exists("last_fit", inherits = FALSE)) {
   probe <- last_fit$num_check$restart_probe

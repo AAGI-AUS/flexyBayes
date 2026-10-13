@@ -1,17 +1,17 @@
-# .fb_aggregate_gaussian() -- Gaussian exact aggregation by
+# .fb_aggregate_gaussian(), Gaussian exact aggregation by
 # sufficient statistics (target v0.3.2).
 #
 # Cell construction. A cell k is the maximal subset of observations
 # that share the same linear-predictor value mu_k = x_k^T beta + sum_j
 # u_{g_j(k)}, where the right-hand side is constant within the cell by
 # construction. The cell key is therefore the unique combination of
-#   (i)  every column of the fixed-effects model.matrix();
+#   (i)  every column of the fixed-effects model.matrix().
 #   (ii) every random-intercept grouping-factor level.
 #
 # Three sufficient statistics per cell:
-#   n_k    -- cell size              (integer)
-#   S1_k   -- sum_{i in k} y_i       (double)
-#   S2_k   -- sum_{i in k} y_i^2     (double)
+#   n_k   , cell size              (integer)
+#   S1_k  , sum_{i in k} y_i       (double)
+#   S2_k  , sum_{i in k} y_i^2     (double)
 #
 # Aggregated gaussian-identity log-likelihood:
 #   ell(beta, sigma^2) = -N/2 * log(2 pi sigma^2)
@@ -20,20 +20,20 @@
 #                                                       + n_k mu_k^2 ]
 # which is algebraically identical (not approximate) to the per-row
 # gaussian log-likelihood. Bit-exact equivalence is the property-based
-# test gate; the cell-mean shortcut (replacing the cell by its mean
+# test gate. The cell-mean shortcut (replacing the cell by its mean
 # and modelling N(mu_k, sigma^2/n_k)) is explicitly forbidden because
 # it drops the sigma-dependent within-cell sum-of-squares term and
 # biases the residual-variance posterior.
 #
-# Internal-only at v0.3.2 -- consumed by emit_gaussian_aggregated()
-# (backend wiring; not in this commit). No @export.
+# Internal-only at v0.3.2, consumed by emit_gaussian_aggregated()
+# (backend wiring, not in this commit). No @export.
 
 # Top-level aggregator. Returns an <fb_aggregated> S3 list:
 #   $cell_design     K x p cell-level fixed-effects design matrix.
 #                    One row per cell carrying the unique fixed-effect
 #                    column values for that cell. The v0.3.0.9000
-#                    foundation stored the full N x p design matrix;
-#                    this defeated compression at large N and did not
+#                    foundation stored the full N x p design matrix.
+#                    This defeated compression at large N and did not
 #                    scale to the 10M-100M-row roadmap. The cell-level
 #                    form contains
 #                    the same information for the aggregated emit path
@@ -47,12 +47,12 @@
 #                     factor columns
 #   $K              integer count of distinct cells
 #   $N              integer total observations (sum of n_k)
-#   $compression    K / N ratio (smaller is better; 1.0 = no compression)
+#   $compression    K / N ratio (smaller is better. 1.0 = no compression)
 #   $response       response variable name (string)
 #
 # Per-row equivalence verification (the bit-exact log-lik gate)
 # rebuilds the per-row design matrix from the underlying data via
-# stats::model.matrix(); the aggregator no longer carries it.
+# stats::model.matrix(). The aggregator no longer carries it.
 #
 # Refuses (typed condition `flexybayes_aggregate_out_of_scope`) when:
 #   - family != gaussian (link identity)
@@ -79,7 +79,7 @@
     )
   }
 
-  # Scope gate -- the cell-constant mu_k property only holds for the
+  # Scope gate, the cell-constant mu_k property only holds for the
   # aggregation envelope: gaussian-identity + fixed (numeric /
   # factor) + random intercept.
   .assert_aggregate_in_scope(fb_ir)
@@ -114,7 +114,7 @@
   # both feed model.matrix(<same formula>, data) into the backend.
   fixed_form <- .fb_aggregate_fixed_formula(fb_ir)
   if (is.null(fixed_form)) {
-    # Intercept-only -- model.matrix(~ 1, data) is N x 1 of ones.
+    # Intercept-only, model.matrix(~ 1, data) is N x 1 of ones.
     X <- matrix(1, nrow = N, ncol = 1L, dimnames = list(NULL, "(Intercept)"))
   } else {
     X <- stats::model.matrix(fixed_form, data = data)
@@ -172,7 +172,7 @@
 
   # Extract the cell-level design matrix (K x p) from the aggregated
   # data.table. The full N x p `X` matrix is no longer carried on the
-  # returned object -- it goes out of scope on function return.
+  # returned object, it goes out of scope on function return.
   cell_design <- as.matrix(agg[, fixed_cols, with = FALSE])
   colnames(cell_design) <- fixed_cols
 
@@ -241,7 +241,7 @@
 
   # Random-effect term scope: random intercept only. The previous
   # catch-all `random_slope_in_scope` conflated three distinct
-  # out-of-scope shapes; split into a
+  # out-of-scope shapes. Split into a
   # taxonomy that names what actually breaks aggregation:
   #   - smooth_term_not_aggregatable    (smooth / spline on random side)
   #   - random_slope_not_aggregatable   (correlated / uncorrelated slope)
@@ -277,7 +277,7 @@
 
 .stop_aggregate_out_of_scope <- function(reason_code, detail) {
   msg <- paste0(
-    "Aggregated Gaussian emit refused -- the model is out of scope.\n",
+    "Aggregated Gaussian emit refused, the model is out of scope.\n",
     "Reason: ",
     reason_code,
     "\n",
@@ -287,7 +287,7 @@
     "(no compression); this condition is informational, not an error ",
     "in the per-row path."
   )
-  # The gate's reasons are routing facts, not registered codes; the
+  # The gate's reasons are routing facts, not registered codes. The
   # registered code is the scope refusal itself.
   stop(.fb_refusal_condition(
     reason_code = "aggregation_out_of_scope",
@@ -300,10 +300,10 @@
 
 
 # ---------------------------------------------------------------- #
-# Likelihood evaluators (pure-R; for the bit-exact equivalence test) #
+# Likelihood evaluators (pure-R, for the bit-exact equivalence test) #
 # ---------------------------------------------------------------- #
 
-# Raw per-row gaussian log-likelihood. mu vector of length N; sigma
+# Raw per-row gaussian log-likelihood. mu vector of length N. Sigma
 # positive scalar.
 .gaussian_loglik_raw <- function(y, mu, sigma) {
   N <- length(y)
@@ -312,7 +312,7 @@
 
 # Aggregated per-cell gaussian log-likelihood using the three
 # sufficient statistics (n_k, S1_k, S2_k). mu_cell is the
-# linear-predictor value at each cell (length K); sigma positive
+# linear-predictor value at each cell (length K). Sigma positive
 # scalar. Algebraically identical to the raw form.
 .gaussian_loglik_aggregated <- function(n_k, S1_k, S2_k, mu_cell, sigma) {
   N <- sum(n_k)
@@ -324,7 +324,7 @@
 
 # Cell-mean shortcut. Drops the within-cell
 # sum-of-squares term `S2_k - S1_k^2 / n_k` (sigma-dependent). This is
-# the BIASED form -- exposed as a helper so the property-based test
+# the BIASED form, exposed as a helper so the property-based test
 # can confirm it produces a different log-likelihood from the correct
 # aggregated form.
 .gaussian_loglik_cellmean <- function(n_k, S1_k, mu_cell, sigma) {

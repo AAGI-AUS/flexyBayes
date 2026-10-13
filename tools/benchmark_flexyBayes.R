@@ -33,7 +33,7 @@
 # Heavy Bayesian backends can stall during Python/TensorFlow or Stan
 # setup. Each backend task runs in a separate R process via system2()
 # with a per-task timeout. That way a stalled brms / INLA
-# run is recorded as a timeout rather than blocking the whole study.
+# run is recorded as a timeout instead of blocking the whole study.
 #
 # Typical runtime on the local Mac with all dependencies installed:
 #   - smoke profile:    5-15 minutes
@@ -426,7 +426,7 @@ run_microbenchmarks <- function(
 #
 # The point of these rows is the n-scaling check: under the indexed
 # emit path, code size stays nearly constant in n because the design
-# matrix is bound into the model environment by reference rather than
+# matrix is bound into the model environment by reference instead of
 # inlined as a literal. The "dense baseline" cells are not measured
 # here because no dense-baseline path is exposed at the R surface in
 # the indexed-codegen package; the n-scaling check below is the
@@ -438,7 +438,7 @@ run_microbenchmarks <- function(
 #   smooth                 y ~ s(x)
 #
 # Two additional classes scheduled for v0.2.6 (Stage 1A + 1B) are not
-# exercised here yet -- they are added once those merges land.
+# exercised here yet. They are added once those merges land.
 
 make_repr_data <- function(n, n_group = 8L, seed = 71L) {
   set.seed(seed)
@@ -457,7 +457,7 @@ make_repr_data <- function(n, n_group = 8L, seed = 71L) {
 # intercept, simple fixed factor) or the basis matrix (smooth s(x)).
 # The estimate is
 # constructed deterministically from data + the IR shape, matching what
-# the emit path actually allocates -- not what model.matrix() would
+# the emit path actually allocates, not what model.matrix() would
 # allocate on a hypothetical dense fall-back.
 .repr_pre_fit_object_size <- function(term_class, data, fb = NULL) {
   switch(
@@ -900,7 +900,7 @@ run_child_as_process <- function(
 }
 
 task_plan <- function(profile = "standard", include_brms_fit = FALSE) {
-  # timeout_sec is intentionally generous enough to let honest backend
+  # timeout_sec is intentionally generous enough to let backend
   # setup happen, while short enough to keep the whole run under the
   # requested 3 hour budget.
   base <- dt(
@@ -1035,7 +1035,7 @@ write_report <- function(
     "Note: this report benchmarks the current local source tree; the",
     "DESCRIPTION version is reported above without rewriting it.",
     "",
-    "## Headline Result",
+    "## Main result",
     "",
     paste0("- Microbench tasks OK/error: ", ok_micro, " / ", fail_micro),
     paste0("- Child/backend tasks OK/non-OK: ", ok_child, " / ", fail_child),

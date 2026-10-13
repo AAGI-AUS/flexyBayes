@@ -100,7 +100,7 @@ test_that("INLA's exchangeable group model fits one variance and one shared corr
 })
 
 test_that("INLA builds a trait-by-genotype covariance from a known-covariance field and a scaled copy", {
-  # Trait 1 carries a field u with known covariance A; trait 2 carries
+  # Trait 1 carries a field u with known covariance A. Trait 2 carries
   # beta * u plus an independent field v with the same A. The trait
   # covariance is then [s1^2, beta s1^2; beta s1^2, beta^2 s1^2 + s2^2]
   # crossed with A, which is the unstructured trait covariance.

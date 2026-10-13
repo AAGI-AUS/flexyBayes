@@ -1,5 +1,4 @@
-# Architectural-invariant tests (ADR 0030 Verification; v0.4.0 Wave 2
-# Phase 2C).
+# Architectural-invariant tests (ADR 0030 Verification; v0.4.0).
 #
 # ADR 0030 ratifies the architecturally-final API surface: six exported
 # verbs, four constructor nouns, four closed-vocabulary registries
@@ -13,7 +12,8 @@
 # backend package is installed), so they are stable across machines.
 
 # The exported verbs (ADR 0030 §3, roster grown by ADR 0031 Phase 3:
-# fb_inla() added as the INLA engine pin). Closed list; a further verb
+# fb_inla() added as the INLA engine pin). The list is closed, and a
+# further verb
 # requires an ADR amendment. fb_from_*() are ingest adapters, not verbs,
 # and are tracked separately. A third engine pin existed briefly on this
 # list between ADR 0031 Phase 3 and the 0.9.3 withdrawal of its engine
@@ -160,10 +160,10 @@ test_that("the registry key inventory is stable (snapshot)", {
     )
   })
   names(dump) <- .FB_REGISTRIES
-  # Printed one key per line rather than as R's column-aligned character
+  # Printed one key per line instead of as R's column-aligned character
   # vector. print() pads every element to the width of the longest, so the
-  # snapshot carried trailing whitespace on ~90 lines -- reported by
-  # `git diff --check` and flagged in the 2026-09-11 review -- and adding one
+  # snapshot carried trailing whitespace on ~90 lines, reported by
+  # `git diff --check` and flagged in the 2026-09-11 review, and adding one
   # long key reflowed the whole block instead of showing a one-line diff.
   expect_snapshot({
     for (d in dump) {

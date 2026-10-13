@@ -1,4 +1,4 @@
-# inla_default_priors.R -- the priors the package chooses for an INLA fit.
+# inla_default_priors.R, the priors the package chooses for an INLA fit.
 #
 # A prior the caller states reaches INLA exactly as stated. This file decides
 # the rest: the prior on every quantity the caller left unstated. Each one is
@@ -27,7 +27,7 @@
 #
 #   * An unstated random-intercept SD degenerated. On a 400-row design with
 #     four blocks (true SD 2) and only the residual prior stated, 20 of 20
-#     identical per-row fits returned a block SD above 1e6 (median 1e7); on
+#     identical per-row fits returned a block SD above 1e6 (median 1e7). On
 #     the aggregated route 10 of 20 did and 5 more failed in the engine, and
 #     the streamed route, which attached no prior at all, gave 10 and 4.
 #   * lme4::sleepstudy with `(Dx || Subject)` and Dx = Days / 1000: the
@@ -35,7 +35,7 @@
 #     279 (0.279 per day, against 6.45 at Dx = Days).
 #   * The same fit carried INLA's prec = 0.001 on the Dx coefficient, on the
 #     standardised coordinates, and returned 8.64 per day against lme4's
-#     10.4673; widening that one prior restored 10.4673. On Poisson and
+#     10.4673. Widening that one prior restored 10.4673. On Poisson and
 #     Bernoulli fits with x / 1000 the coefficient fell to 41 and 4.4 per
 #     cent of its value at x.
 #
@@ -76,7 +76,7 @@
 # links. On a perfectly separated Bernoulli design (200 rows, 20 groups) the
 # coefficient was 70 under INLA's default and 76 at sqrt(1000); at 100 the
 # INLA engine failed, and at 1000, 1e4 and 1e6 it returned 369, 764 and 1476
-# -- every converged fit with mode.status 0 and the numerical-confirm gate
+# ---- every converged fit with mode.status 0 and the numerical-confirm gate
 # passing.
 .FB_INLA_FIXED_SD_MULTIPLIER <- c(
   identity = 1e5,
@@ -91,7 +91,7 @@
 
 
 # The default prior on an fa(f, k):g loading: INLA's own prior on a copy
-# scaling, normal(mean 1, precision 10), until the plan owner chooses one.
+# scaling, normal(mean 1, precision 10).
 .FB_FA_LOADING_PRIOR <- c(mean = 1, sd = 1 / sqrt(10))
 
 
@@ -143,7 +143,7 @@
 #'
 #' @param fb An `fb_terms` object.
 #' @param data A data frame.
-#' @returns A logical vector over the rows of `data`; all `TRUE` when the
+#' @returns A logical vector over the rows of `data`. All `TRUE` when the
 #'   response cannot be resolved row by row.
 #' @noRd
 #' @keywords internal
@@ -261,8 +261,8 @@
 #' filled in
 #'
 #' Two additions to the `priors_to_inla()` list the emit built from what was
-#' stated. First, when the fit carries a prior of any kind -- an `fb_prior()`,
-#' partial or whole, or the legacy `prior_vc_sd` scalar -- each target of
+#' stated. First, when the fit carries a prior of any kind (an `fb_prior()`,
+#' partial or whole, or the legacy `prior_vc_sd` scalar) each target of
 #' `.fb_inla_sd_targets()` with no entry takes the half-normal default.
 #' A fit with no prior at all is left alone: every public route resolves one
 #' before it reaches an emit (flexybayes() builds the auto-default and
@@ -276,7 +276,7 @@
 #'
 #' @param fb An `fb_terms` object.
 #' @param hyper_ctrl The `priors_to_inla()` list of what was stated.
-#' @param data The data the fit is built from; `NULL` where the route holds
+#' @param data The data the fit is built from, `NULL` where the route holds
 #'   none.
 #' @param resp_sd The response standard deviation when `data` does not hold
 #'   the full response (the aggregated and streamed routes read it off the
@@ -405,8 +405,8 @@
 #' The covariate-scaled default prior SD of each numeric fixed effect
 #'
 #' `normal(0, K u / sd(x_j))` for every design column that carries a numeric
-#' variable -- a continuous term, a factor-by-covariate interaction, a
-#' transformed covariate -- where `u` is `.fb_inla_fixed_prior_unit()` and
+#' variable: a continuous term, a factor-by-covariate interaction, a
+#' transformed covariate: where `u` is `.fb_inla_fixed_prior_unit()` and
 #' `K` is `.fb_inla_fixed_sd_multiplier()`.
 #'
 #' A column built from factors alone is left to INLA's own default. Its 0/1
@@ -418,7 +418,7 @@
 #' has, which is not a unit. The intercept keeps INLA's flat prior.
 #'
 #' Empty when the caller supplied `prior_fixed_sd`, which is a statement
-#' about every coefficient; a coefficient named by a `b()` row keeps that
+#' about every coefficient. A coefficient named by a `b()` row keeps that
 #' row. Empty too when `data` is not a data frame: the aggregated routes
 #' hold the design as cell contrasts, and a numeric column never reaches
 #' them.

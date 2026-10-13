@@ -1,14 +1,14 @@
-# tidiers.R -- broom-style tidy / glance / augment methods for the
+# tidiers.R: broom-style tidy / glance / augment methods for the
 # flexyBayes fit classes.
 #
 # A flexyBayes fit is a backend-specific S3 list: the brms route returns
 # `c("flexybayes_brms", "flexybayes", ...)` (the bare `flexybayes` method
-# below serves it, via inheritance -- there is no separate
+# below serves it, via inheritance, there is no separate
 # `tidy.flexybayes_brms`), and the INLA route
 # `c("flexybayes_inla", "flexybayes", "list")` (its own method).
 # Downstream code that
 # wanted a flat one-row-per-term summary had to reach into backend-specific
-# slots, which is fragile and -- worse -- different across backends, so a
+# slots, which is fragile and, worse, different across backends, so a
 # table that compared brms against INLA was hand-built every
 # time. These methods register against the `tidy()` generic (re-exported by
 # `broom`), so `broom::tidy(fit)` and `generics::tidy(fit)` both return a
@@ -42,14 +42,14 @@ generics::augment
 #' `broom::tidy(fit)` and `generics::tidy(fit)` both dispatch here.
 #'
 #' This is the supported accessor for cross-engine summaries. The hub returns
-#' backend-specific objects -- `flexybayes_brms` (brms) and
-#' `flexybayes_inla` (INLA) -- whose internal layouts differ. Tidying
+#' backend-specific objects, `flexybayes_brms` (brms) and
+#' `flexybayes_inla` (INLA), whose internal layouts differ. Tidying
 #' through this generic yields the same columns across both, so a
 #' brms-versus-INLA comparison table can be assembled by `rbind`-ing two
-#' `tidy()` outputs rather than reaching into each backend's slots by hand.
+#' `tidy()` outputs instead of reaching into each backend's slots by hand.
 #'
 #' The credible intervals are posterior quantile-based intervals, not
-#' frequentist confidence intervals; they are reported in the
+#' frequentist confidence intervals. They are reported in the
 #' `broom`-canonical `conf.low` / `conf.high` columns. The `std.error` column
 #' carries the posterior standard deviation of each term, again under the
 #' `broom`-canonical (dotless to the user, dotted in the column name) label.
@@ -63,7 +63,7 @@ generics::augment
 #' @param effects Character. Which effects to return: `"fixed"` for the
 #'   population-level (fixed) coefficients or `"random"` for the
 #'   variance-component summary. Defaults to `"fixed"`.
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #'
 #' @returns A `data.frame` with one row per term and columns:
 #'   \describe{
@@ -110,7 +110,7 @@ tidy.flexybayes <- function(
 
 # Fixed-effect tidier shared by the flexybayes / brms fit classes. Reads the
 # posterior mean from coef(), the posterior SD from the diagonal of vcov(),
-# and -- when asked -- the credible interval from confint().
+# and: when asked, the credible interval from confint().
 .tidy_fixed_flexybayes <- function(x, conf.int, conf.level) {
   beta <- stats::coef(x)
   if (length(beta) == 0L) {
@@ -140,7 +140,7 @@ tidy.flexybayes <- function(
 # components live on `fit$extras$variance_comps`, already summarised to
 # component / estimate / sd / q2.5 / q97.5 by the backend post-fit code.
 .tidy_random_flexybayes <- function(x, conf.int) {
-  # Read through the shared normaliser rather than off the raw field: an
+  # Read through the shared normaliser instead of off the raw field: an
   # aggregated emit writes a list of posterior means under that name, and
   # `nrow()` of a list is NULL.
   vc <- .fb_variance_comps(x)
@@ -166,7 +166,7 @@ tidy.flexybayes <- function(
 #' Tidy a per-row INLA fit into a one-row-per-term data frame
 #'
 #' The INLA backend returns a `flexybayes_inla` object whose internal
-#' layout differs from the other engines' -- it has no `$glm` shim -- so it
+#' layout differs from the other engines', it has no `$glm` shim, so it
 #' needs its own `tidy()` method even though it shares the `flexybayes`
 #' parent class. The fixed-effect
 #' summary is read directly off INLA's `summary.fixed` table, whose `mean`,
@@ -175,8 +175,8 @@ tidy.flexybayes <- function(
 #'
 #' Because the INLA fixed-effect intervals come from the marginal posteriors
 #' INLA has already integrated, the `conf.level` argument is accepted for
-#' generic compatibility but only the 95% bounds INLA reports are returned;
-#' a one-off message notes this when a different level is requested rather
+#' generic compatibility but only the 95% bounds INLA reports are returned.
+#' A one-off message notes this when a different level is requested rather
 #' than silently ignoring it.
 #'
 #' The `effects` argument is the same one [tidy.flexybayes()] carries, and
@@ -184,18 +184,18 @@ tidy.flexybayes <- function(
 #' coefficients, `"random"` the variance-component summary. Before 0.9.1
 #' this method had no such argument, so `effects = "random"` on an INLA fit
 #' was absorbed by `...` and the FIXED-effect table came back under a call
-#' that asked for variance components -- a wrong answer with no error. An
+#' that asked for variance components, a wrong answer with no error. An
 #' unrecognised value now stops.
 #'
 #' @param x A `flexybayes_inla` fit.
 #' @param conf.int Logical. Whether to attach the credible-interval columns.
 #'   Defaults to `TRUE`.
-#' @param conf.level Numeric in `(0, 1)`. Accepted for generic compatibility;
+#' @param conf.level Numeric in `(0, 1)`. Accepted for generic compatibility.
 #'   INLA reports the 95% marginal bounds, so a non-0.95 request is noted.
 #' @param effects Character. Which effects to return: `"fixed"` for the
 #'   population-level coefficients or `"random"` for the variance-component
 #'   summary. Defaults to `"fixed"`.
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #'
 #' @returns A `data.frame` with one row per term and the columns
 #'   `term`, `estimate`, `std.error`, and (when `conf.int = TRUE`)
@@ -243,8 +243,8 @@ tidy.flexybayes_inla <- function(
     )
   }
 
-  # C4/FS-26: this term vector is summary()'s own fixed-effect source
-  # (.fb_summary_fixed() calls tidy() rather than reading summary.fixed
+  # This term vector is summary()'s own fixed-effect source
+  # (.fb_summary_fixed() calls tidy() instead of reading summary.fixed
   # directly), so restoring the user's own labels here is what makes
   # summary() correct, the same substitution coef.flexybayes_inla()
   # applies to its own copy of the same rownames.
@@ -266,7 +266,7 @@ tidy.flexybayes_inla <- function(
 
 # Empty-but-well-typed tidy frame, so a fixed-effects-only fit asked for
 # random effects (or a degenerate fit) returns the documented columns with
-# zero rows rather than an untyped empty data.frame.
+# zero rows instead of an untyped empty data.frame.
 .empty_tidy <- function(conf.int) {
   out <- data.frame(
     term = character(0),
@@ -291,7 +291,7 @@ tidy.flexybayes_inla <- function(
 #' parameters, and the wall-clock run time.
 #'
 #' @param x A flexyBayes fit (`flexybayes` or `flexybayes_brms`).
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #'
 #' @returns A one-row `data.frame` with `nobs`, `npar`, `logLik`, `family`,
 #'   `link`, `chains`, `samples`, `max_rhat`, `min_ess`, and `run_time`.
@@ -351,7 +351,7 @@ glance.flexybayes <- function(x, ...) {
 #' @param x A flexyBayes fit (`flexybayes` or `flexybayes_brms`).
 #' @param data Optional `data.frame` to augment. Defaults to the data the
 #'   model was fitted to.
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #'
 #' @returns The supplied (or original) `data.frame` with `.fitted` and
 #'   `.resid` columns appended.
@@ -385,25 +385,15 @@ augment.flexybayes <- function(x, data = NULL, ...) {
 # An INLA fit inherits "flexybayes" (the class graph was aligned at
 # 0.9.0), so the parent methods below are reachable on it.
 #
-# glance() -- D15 / WP-D (found by WP-G2's stress run). Before this fix,
-# glance.flexybayes_inla() hard-refused, and calling the PARENT
-# glance.flexybayes() directly (bypassing S3 dispatch, as a diagnostic
-# probe would) crashed with "arguments imply differing number of rows:
-# 1, 0": that method reads model_info$n_params (only brms's model_info
-# carries this key; INLA's carries n_fixed/n_random/n_hyper instead) and
-# call_info$chains / call_info$n_samples (present as keys but NULL on an
-# INLA fit, which never receives sampler arguments), both NULL feeding
-# data.frame(). logLik.flexybayes_inla()'s own roxygen already says its
-# job is to let "downstream summaries (for example glance()) degrade
-# gracefully instead of erroring" -- the refusal below contradicted that
-# stated intent. Reuses exactly that method's df/nobs attributes (the
-# fixed-effect coefficient count; INLA's random effects are latent, not
-# free parameters, so they are not added in) so there is one definition
-# of "how many parameters" across logLik() and glance(), not two.
+# glance(): the parent glance.flexybayes() reads model_info$n_params,
+# call_info$chains and call_info$n_samples, which an INLA fit lacks. The
+# INLA method reuses the df/nobs attributes of logLik.flexybayes_inla()
+# (the fixed-effect coefficient count; latent random effects are not free
+# parameters), so logLik() and glance() count parameters the same way.
 # Sampler-specific columns (chains, samples, max_rhat, min_ess) are
 # genuinely inapplicable to a deterministic Laplace fit and are NA, not
-# guessed at -- the standard tidier convention (report what applies,
-# NA the rest) rather than a refusal.
+# guessed at, the standard tidier convention (report what applies,
+# NA the rest) instead of a refusal.
 #
 # augment() genuinely has no INLA-side answer (no per-row model frame
 # retained the way a data.frame-shaped .fitted/.resid table needs), so

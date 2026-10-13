@@ -1,4 +1,4 @@
-# fb_extreme_value.R -- generalised extreme value (GEV) family + fitter.
+# fb_extreme_value.R, generalised extreme value (GEV) family + fitter.
 #
 # The generalised extreme value distribution is the limiting law of block
 # maxima (annual maximum rainfall, daily maximum temperature, peak yields).
@@ -6,18 +6,18 @@
 # flexyBayes families use: there is no canonical mean-link parameterisation,
 # and the quantity of interest is the (location, scale, shape) triple plus
 # the return levels they imply, not a regression coefficient. So GEV is
-# provided as a dedicated, self-contained fitter (`fb_gev()`) -- the same
-# pattern the genomic fitters `fb_gwas()` / `fb_gblup_cv()` follow -- with a
+# provided as a dedicated, self-contained fitter (`fb_gev()`), the same
+# pattern the genomic fitters `fb_gwas()` / `fb_gblup_cv()` follow, with a
 # matching family-object constructor (`fb_family_gev()`) registered against
 # the family system so `family = "gen_extreme_value"` is recognised and the
-# user is routed to `fb_gev()` rather than refused generically.
+# user is routed to `fb_gev()` instead of refused generically.
 #
-# The fitter uses dependency-free maximum likelihood (base `optim`); no
+# The fitter uses dependency-free maximum likelihood (base `optim`). No
 # active engine has a turnkey GEV route today. A scalable Bayesian GEV
-# belongs on INLA's native `gev` / `bgev` family; that route is left for
-# a future release rather than wired half-heartedly here.
+# belongs on INLA's native `gev` / `bgev` family, that route is left for
+# a future release instead of wired half-heartedly here.
 # References: Coles (2001), *An Introduction to Statistical Modeling of
-# Extreme Values*; Jenkinson (1955).
+# Extreme Values*, Jenkinson (1955).
 
 # ---- Family-object constructor -----------------------------------------
 
@@ -25,10 +25,10 @@
 #'
 #' Constructs the family descriptor for the generalised extreme value
 #' distribution, the limiting law of block maxima. The object mirrors the
-#' shape of a base `stats::family()` descriptor -- a named list carrying the
-#' family name, the parameter names, and the natural support -- so it sits
+#' shape of a base `stats::family()` descriptor (a named list carrying the
+#' family name, the parameter names, and the natural support) so it sits
 #' alongside the other flexyBayes families, while signalling that GEV is
-#' fitted through the dedicated `fb_gev()` entry point rather than the
+#' fitted through the dedicated `fb_gev()` entry point instead of the
 #' GLM-link emit path.
 #'
 #' The GEV is parameterised by a location \eqn{\mu}, a positive scale
@@ -64,9 +64,9 @@ fb_family_gev <- function() {
 # ---- Density / simulation primitives ------------------------------------
 
 # GEV log-density in the Jenkinson / von Mises parameterisation. `xi` is the
-# shape; the Gumbel limit (`abs(xi) < tol`) is handled separately because the
+# shape, the Gumbel limit (`abs(xi) < tol`) is handled separately because the
 # `(1 + xi z)` term degenerates there. Out-of-support points (where
-# `1 + xi z <= 0`) return -Inf rather than NaN so the likelihood is well
+# `1 + xi z <= 0`) return -Inf instead of NaN so the likelihood is well
 # defined across the whole real line.
 .dgev_log <- function(y, location, scale, shape, tol = 1e-08) {
   if (scale <= 0) {
@@ -133,7 +133,7 @@ rgev <- function(n, location, scale, shape = 0) {
 #' for the requested return periods.
 #'
 #' flexyBayes has no GEV route on either engine yet. INLA has `gev` and
-#' `bgev` likelihoods and brms a `gen_extreme_value()` family; a route
+#' `bgev` likelihoods and brms a `gen_extreme_value()` family. A route
 #' through one of them is planned for a future release.
 #'
 #' @param y Numeric vector of block-maxima observations. Must contain at
@@ -180,7 +180,7 @@ fb_gev <- function(
 # Maximum-likelihood GEV fit. Optimises (location, log-scale, shape) and
 # recovers SEs from the Hessian, with the scale SE delta-corrected back to
 # the natural scale. The line search occasionally probes out-of-support
-# parameters; the penalised negative log-likelihood returns a large finite
+# parameters, the penalised negative log-likelihood returns a large finite
 # value there, and the NaN warnings that base `log()` raises on those probes
 # are suppressed so the fit is quiet.
 .fb_gev_ml <- function(y, conf_level) {
@@ -258,7 +258,7 @@ fb_gev <- function(
 #' per parameter (`location`, `scale`, `shape`), with the canonical columns.
 #'
 #' @param x An `fb_gev_fit` object from [fb_gev()].
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #'
 #' @returns A `data.frame` with `term`, `estimate`, `std.error`, `conf.low`,
 #'   and `conf.high`.
@@ -277,7 +277,7 @@ tidy.fb_gev_fit <- function(x, ...) {
 #' Print a GEV fit
 #'
 #' @param x An `fb_gev_fit` object.
-#' @param ... Currently unused; present for generic compatibility.
+#' @param ... Currently unused. Present for generic compatibility.
 #' @returns `x`, invisibly.
 #' @keywords internal
 #' @export
@@ -339,7 +339,7 @@ print.fb_gev_fit <- function(x, ...) {
 
 # Standard errors from a Hessian, guarding a non-invertible matrix: when the
 # Hessian cannot be inverted (flat or singular likelihood) the SEs are NA
-# rather than an error, and the caller's intervals widen to NA accordingly.
+# instead of an error, and the caller's intervals widen to NA accordingly.
 .safe_hessian_se <- function(hessian) {
   vc <- tryCatch(solve(hessian), error = function(e) NULL)
   if (is.null(vc)) {

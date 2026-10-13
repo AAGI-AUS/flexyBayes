@@ -17,7 +17,7 @@
 
 \item{n_draws}{Number of posterior draws to return, matching the
 default of \code{\link[=fb_as_draws_simple]{fb_as_draws_simple()}}. Used on the INLA path, where the
-draws are sampled from the fitted approximation; ignored on the brms
+draws are sampled from the fitted approximation. Ignored on the brms
 path, which returns the draws the sampler kept.}
 
 \item{...}{Passed to the underlying draws extraction.}
@@ -30,9 +30,9 @@ canonical parameter: a \code{draws_df} from \code{as_draws_df()} and from
 \description{
 Methods for the \pkg{posterior} package's \code{as_draws()},
 \code{as_draws_df()} and \code{as_draws_matrix()} generics, so a fitted model
-hands its posterior to the Bayesian workflow ecosystem --
+hands its posterior to the Bayesian workflow ecosystem,
 \pkg{posterior} summaries, \pkg{bayesplot} displays, anything reading
-a \code{draws} object -- in the shape those tools expect.
+a \code{draws} object, in the shape those tools expect.
 }
 \details{
 The parameter names are canonical and the same on every engine:
@@ -71,8 +71,8 @@ between two sets of draws as a difference between two posteriors.
 
 \seealso{
 \code{\link[=fb_as_draws_simple]{fb_as_draws_simple()}} for the same draws as a plain named
-list, with no \pkg{posterior} dependency; \code{\link[=canonical_names]{canonical_names()}} for
-the name map itself; \code{\link[=prior_summary]{prior_summary()}} for the priors those draws
-were taken under; \code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \verb{$converge} slot
+list, with no \pkg{posterior} dependency. \code{\link[=canonical_names]{canonical_names()}} for
+the name map itself. \code{\link[=prior_summary]{prior_summary()}} for the priors those draws
+were taken under. \code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \verb{$converge} slot
 carries the engine's own convergence diagnostics.
 }

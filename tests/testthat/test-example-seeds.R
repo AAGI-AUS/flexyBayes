@@ -1,12 +1,12 @@
 # =============================================================================
-# Every stochastic example carries its own seed (audit 2026-09-11, F11).
+# Every stochastic example carries its own seed (review of 2026-09-11).
 #
 # The package's mechanical invariant checker marked seed discipline present
 # because it found `set.seed()` calls somewhere in the sources. Five example
 # blocks generated random data without one: fb_from_asreml, fb_complete_grid,
 # fb_cov, fb_from_brms and fb_inla. Two clean runs of those examples did not
 # produce identical inputs, so the stated reproducibility invariant was not
-# met -- an invariant checked in aggregate is not checked.
+# met, an invariant checked in aggregate is not checked.
 #
 # This gate reads each `@examples` block on its own and asks whether a seed is
 # set *before* the first draw in that same block. A seed in a neighbouring

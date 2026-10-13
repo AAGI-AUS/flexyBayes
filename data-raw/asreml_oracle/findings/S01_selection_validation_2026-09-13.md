@@ -1,4 +1,4 @@
-# S01 -- selection validation against ASReml and glmnet
+# S01: selection validation against ASReml and glmnet
 
 **Run** 2026-09-13. **Programme** V1 to V4 below, each item's criterion fixed
 before the item ran and recorded with it. **Systems** ASReml 4.2.0.392 and
@@ -7,8 +7,8 @@ CmdStan, projpred 2.10.0, INLA 26.8.7 and glmnet 5.0 under R 4.6.1.
 
 ## Provenance, and a correction to it
 
-The brief named source SHA `8777be4` and tarball SHA-256 `6d23fcde...`. Both
-moved during the session, and the record has to say so rather than repeat the
+The request named source SHA `8777be4` and tarball SHA-256 `6d23fcde...`. Both
+moved during the session, and the record has to say so and not repeat the
 figure it was given.
 
 | Artefact | State when the work began | State now | What ran on it |
@@ -20,11 +20,10 @@ figure it was given.
 
 `3670c4c` is the only code commit between `8777be4` and the build every result
 here rests on. Its whole diff is in `R/fb_select.R`: `scoring_unit` becomes
-`NA` rather than the string `not scored out of fold` when a route has no
+`NA` instead of the string `not scored out of fold` when a route has no
 out-of-fold table, the calibration approximation gains the words `units of`,
 and two print methods word the absent case. No estimand, no arithmetic and no
-decision changes, so no number below moves under it. That was checked rather
-than assumed: **V2 was re-run on the current R 4.6 build and every one of its
+decision changes, so no number below moves under it. That was checked instead of assumed: **V2 was re-run on the current R 4.6 build and every one of its
 33 measurements came back bit-identical** to the run on the earlier build.
 
 **Tranche invocation**, recorded as SPEC.md's manifest requires:
@@ -43,7 +42,7 @@ fixtures in `oracle_work/oracle_out/`, five seconds each.
 
 ## V1. The mixed-model side, against ASReml
 
-Three designs, each fitted twice in each system -- protected-only and
+Three designs, each fitted twice in each system, protected-only and
 protected plus candidates. Criteria are SPEC.md Amendment 5, written before
 the tranche ran. lme4's REML fit is carried alongside ASReml on every
 component, because two of the three ASReml formulations were written for this
@@ -69,7 +68,7 @@ fixed effect and no name-matched BLUP missed.
 
 Four candidate coefficients on row 18 are not asserted at V1-F2 because
 ASReml's own estimate is not resolved from zero, which is the gate the
-criterion declares rather than a miss. On row 18 the two systems agree on
+criterion declares, not a miss. On row 18 the two systems agree on
 every one of the eight fixed effects to five significant figures: ASReml
 `c1 = 0.55781`, flexyBayes `0.55773`; ASReml `c4 = -0.57515`, flexyBayes
 `-0.57524`.
@@ -116,12 +115,11 @@ The six V1-V fails sort into three kinds.
 `rep` has three levels and ASReml's own `std.error` exceeds its estimate by
 twelve per cent, so the identification gate Amendment 3 declared excludes it
 and the Layer 2 variance-ratio check on the same row correctly recorded
-`not asserted -- weakly identified`. Amendment 5's boundary test is looser
+`not asserted, weakly identified`. Amendment 5's boundary test is looser
 than that gate and asserted anyway. The posterior mean of a three-level
 variance under a uniform prior on the standard deviation is dominated by the
 prior; the median is 4.0 times the REML estimate and the mode 0.55 times it.
-This is a property of the data, and the fix belongs to Amendment 5's gate
-rather than to the package: **Layer 3 should carry Amendment 3's
+This is a property of the data, and the fix belongs to Amendment 5's gate and not to the package: **Layer 3 should carry Amendment 3's
 identification gate as well as the boundary test.**
 
 **Kind 2, the mean-against-mode estimand difference (row 18 `site`, row 17
@@ -147,7 +145,7 @@ is described under "Defects found" below.
 five site folds, `new_cluster`. The oracle refits both models by REML on each
 training fold and scores the held-out sites at the marginal predictive
 `N(x'beta_hat, sigma_e^2 + sigma_site^2)`, aggregating by the package's own
-rule re-implemented rather than called. The partition is read off the
+rule re-implemented and not called. The partition is read off the
 result's own fold objects, never rebuilt from the seed.
 
 | Quantity | ASReml plug-in | flexyBayes Bayesian | Difference |
@@ -196,7 +194,7 @@ ridge answer is wrong in the second decimal place.
 
 **The one fail is the comparator, and it can be shown to be.** At `p = 120`,
 `n = 60` the two points differ by 3.40e-6 while the package's point carries a
-KKT residual of 2.6e-14 and glmnet's carries 9.6e-7 -- forty-five thousand
+KKT residual of 2.6e-14 and glmnet's carries 9.6e-7, forty-five thousand
 times larger. The canonical objective at the package's point is lower by
 9.6e-12, which is the numerical floor of the objective itself, so the two
 points sit in a flat direction of a near-degenerate wide problem and the
@@ -206,7 +204,7 @@ run and is left where it is; what changed is the reading of it.
 
 At `p = 120`, `n = 60` the unpenalised limit is not applicable: with more
 columns than rows the minimiser is a set, not a point, so there is no referent
-to compare against. Recorded rather than skipped.
+to compare against. Recorded, not skipped.
 
 ### The convention, at two independent glmnet versions
 
@@ -225,7 +223,7 @@ and the winning residual is seven orders of magnitude below the runner-up in
 both. The two versions agree to 1e-14 absolute on every rule's residual, and
 every one of the 33 checks returns the same verdict under both. The measured
 L2 convention is therefore a property of glmnet across a major version
-boundary rather than of the installed copy.
+boundary and not of the installed copy.
 
 ---
 
@@ -301,7 +299,7 @@ package built for itself.
 
 The identity holds on the substrate where it is defined, to nine decimal
 places, and the sampled posterior mean on that same substrate sits a million
-times further from the mode than glmnet does -- its KKT residual is 1.895
+times further from the mode than glmnet does, its KKT residual is 1.895
 against 4e-14. The package claims the identity nowhere: `mode_oracle` is
 empty on both sampled arms, and the glmnet arm is labelled
 `posterior_predictive_comparable`, never `map_exact_fixed_covariance`.
@@ -405,7 +403,7 @@ are invariant to it. REML returns the same numbers at every scale.
 | ASReml, any scale | 0.9667 | 0.2314 | 0.0656 |
 
 At ten times the response the reported intercept-slope correlation moves from
-0.02 to 0.969 -- across essentially the whole of its range -- on a
+0.02 to 0.969 (across essentially the whole of its range) on a
 transformation that changes no model. The ratio of the intercept standard
 deviation to the residual doubles. The tenfold fit also raises the package's
 own numerical-confirm gate (`INLA mode.status = 8`), which is the one
@@ -448,14 +446,14 @@ and its own comment says `adapt_delta` exists because the convergence contract
 refuses on a single divergent transition and "without a lever a caller who
 hits one has nothing to reach for but a different seed".
 
-Both selection runs in this programme hit that refusal -- V4(i) on two
-divergences of six thousand, V3's laplace arm on **one** -- and the lever that
+Both selection runs in this programme hit that refusal (V4(i) on two
+divergences of six thousand, V3's laplace arm on **one**) and the lever that
 clears it is the one option the help page omits. A reader following the
 documentation would conclude the refusal cannot be cleared.
 
 ---
 
-## Smaller findings, reported rather than filed as defects
+## Smaller findings, reported, not filed as defects
 
 1. **The convergence contract refuses on one divergent transition in six
    thousand.** V3's laplace arm refused at 0.017 per cent divergences. The
@@ -466,7 +464,7 @@ documentation would conclude the refusal cannot be cleared.
    gate.** Three of the six V1-V fails are on components ASReml itself reports
    with `std.error / component` above 0.5. Layer 2 declines to assert on them
    and Layer 3 asserted. This is a defect in the criterion written for this
-   suite, not in the package, and it is recorded here rather than fixed
+   suite, not in the package, and it is recorded here and not fixed
    quietly by moving a tolerance.
 3. **The elastic-net arm's `gls` benchmark is byte-identical across the two
    penalties**, as it must be, which is a small confirmation that the

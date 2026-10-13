@@ -8,12 +8,11 @@
 # exactly as before.
 #
 # How a session dies, path by path, and what isolation changes. Read from the
-# code and measured on this machine (review/units/U-ISOLATE_2026-09-19,
-# probe 01), because the design follows from it:
+# code and measured on this machine, because the design follows from it:
 #
 #   * INLA fits in its own program, `inla.run`, started with system(). A
 #     signal that ends that program (a segmentation fault, or the operating
-#     system reclaiming memory) comes back to R as a non-zero exit status;
+#     system reclaiming memory) comes back to R as a non-zero exit status.
 #     INLA retries once, and emit_inla() turns a second failure into the
 #     typed refusal `inla_program_failed`. The R session survives this path
 #     with or without isolation. The INLA R package has no compiled code.
@@ -50,12 +49,12 @@
 #   variables as they stand in the session (the child reads no startup
 #   files, so a thread count set with Sys.setenv() reaches it).
 #   The state. The random-number state goes in and the child's comes back,
-#   so a draw inside an isolated call is the draw an in-process call makes;
-#   the once-per-session notes go in and come back the same way.
+#   so a draw inside an isolated call is the draw an in-process call makes.
+#   The once-per-session notes go in and come back the same way.
 #
 # What comes back. The value, and every message and warning in the order
-# they were raised, re-signalled in the session with its class; printed
-# output in its place among them; an error raised in the child re-raised as
+# they were raised, re-signalled in the session with its class. Printed
+# output in its place among them. An error raised in the child re-raised as
 # itself, so a typed refusal keeps its reason code.
 
 # --- the option ---------------------------------------------------------- #
@@ -63,8 +62,8 @@
 #' The isolation mode the caller asked for
 #'
 #' `"none"` fits in this session and runs concurrent fold workers as separate
-#' processes; `"process"` also runs single fits and one-at-a-time folds in a
-#' separate process; `"fork"` fits in this session and forks concurrent fold
+#' processes, `"process"` also runs single fits and one-at-a-time folds in a
+#' separate process, `"fork"` fits in this session and forks concurrent fold
 #' workers.
 #'
 #' @return `"none"`, `"process"` or `"fork"`.
@@ -259,7 +258,7 @@
 #' callr runs this function in the child with its environment set to the
 #' child's global environment, so it names nothing from this namespace until
 #' it has loaded it: the namespaces this session loaded, found through
-#' `load`. Only then are the payload's closures read; their environments
+#' `load`. Only then are the payload's closures read. Their environments
 #' then attach to those namespaces.
 #'
 #' @param payload_path The file holding the call.
@@ -299,7 +298,7 @@
   payload <- readRDS(payload_path)
   fn <- readRDS(payload$fn_path)
   .fb_isolation_apply_state(payload$state)
-  # The child is the isolated process; it does not start another.
+  # The child is the isolated process. It does not start another.
   options(flexyBayes.isolation = "none")
   .fb_isolation_pin_threads(payload$pin)
 
@@ -309,7 +308,7 @@
   sink(out)
   closed <- FALSE
   n_seen <- 0L
-  # Complete lines printed so far; once the connection is closed, `printed`
+  # Complete lines printed so far, once the connection is closed, `printed`
   # also holds a last line that ended without a newline.
   flush_printed <- function() {
     lines <- if (closed) printed else textConnectionValue(out)
@@ -366,10 +365,10 @@
 #' @param args Its arguments.
 #' @param pin The OpenMP threads the child is limited to, or `NULL` to leave
 #'   them as the session has them.
-#' @param packages The namespaces the child loads; see
+#' @param packages The namespaces the child loads. See
 #'   `.fb_isolation_load_spec()`.
 #' @param quote Passed to `do.call()` in the child. `TRUE` hands a call object
-#'   among `args` over as a value, as a direct call hands over its argument;
+#'   among `args` over as a value, as a direct call hands over its argument.
 #'   `FALSE` evaluates it, as `do.call()` does by default.
 #' @return A handle: the process, its PID and the files it uses.
 #' @noRd
@@ -456,7 +455,7 @@
   token
 }
 
-#' Release a collected child; end the supervisor after the last one
+#' Release a collected child. End the supervisor after the last one
 #'
 #' The supervisor is ended only if flexyBayes started it. A second release
 #' of the same handle does nothing.
@@ -502,7 +501,7 @@
 
 #' The refusal for a child that ended without returning
 #'
-#' @param status The exit status; a negative value is the signal that ended
+#' @param status The exit status. A negative value is the signal that ended
 #'   the process.
 #' @param pid The child's process ID.
 #' @param engine The engine the child was running, or `"none"`.
@@ -614,7 +613,7 @@
     tryCatch(handle$proc$kill_tree(), error = function(e) NULL)
     if (!is.na(status) && status > 0L) {
       # A child that failed before the call ran (it could not load the
-      # namespace, say) leaves its own error; that is not a death.
+      # namespace, say) leaves its own error, that is not a death.
       started <- tryCatch(handle$proc$get_result(), error = function(e) e)
       parent <- if (inherits(started, "error")) started$parent else NULL
       if (inherits(parent, "error")) {
@@ -654,7 +653,7 @@
 #' @param record A `.fb_isolation_harvest()` record.
 #' @param adopt_seed `TRUE` to move the session's random-number stream to
 #'   where the child's ended, as an in-process call would have moved it.
-#' @return The child's value; a condition raised in the child is re-raised.
+#' @return The child's value. A condition raised in the child is re-raised.
 #' @noRd
 #' @keywords internal
 .fb_isolation_deliver <- function(record, adopt_seed = TRUE) {
@@ -715,7 +714,7 @@
 #' @param args Its arguments.
 #' @param engine The engine the call fits with, for a refusal.
 #' @param entry_point The public verb, for a refusal.
-#' @param with_pid `TRUE` returns `list(value, pid)`; `FALSE`, the value.
+#' @param with_pid `TRUE` returns `list(value, pid)`, `FALSE`, the value.
 #' @inheritParams .fb_isolation_start
 #' @return The value `fn` returned in the child.
 #' @noRd
@@ -753,17 +752,17 @@
 #' session's flexyBayes, brms, cmdstanr and INLA settings, its environment
 #' variables and its random-number state. Messages, warnings and printed
 #' output come back and are replayed in job order, never in completion order.
-#' A job that fails stops new jobs from starting; the jobs before it are
+#' A job that fails stops new jobs from starting. The jobs before it are
 #' waited for, and the lowest failing job's error is raised. With one worker,
 #' each process starts from the random-number state the previous one left,
-#' as [lapply()] would; with several, each starts from the session's state
+#' as [lapply()] would, with several, each starts from the session's state
 #' and the session's state is left where it was.
 #'
 #' A process that ends without returning raises the refusal
 #' `isolated_process_died`, which names the engine, the entry point, the job
 #' and the signal or exit status.
 #'
-#' @param jobs A list or vector; `fn` is called on each element.
+#' @param jobs A list or vector, `fn` is called on each element.
 #' @param fn A function of one element of `jobs`.
 #' @param plan A list:
 #'   * `workers`: how many processes run at once, a whole number of one or
@@ -984,7 +983,7 @@ fb_isolated_lapply <- function(jobs, fn, plan = list()) {
     return(invisible(NULL))
   }
   Sys.setenv(OMP_NUM_THREADS = as.character(threads))
-  # brms reads `cores` from this option; one chain process per child keeps
+  # brms reads `cores` from this option. One chain process per child keeps
   # the children from multiplying again.
   options(mc.cores = 1L)
   # INLA keeps option flexyBayes.inla_threads ("1:1" by default), which the

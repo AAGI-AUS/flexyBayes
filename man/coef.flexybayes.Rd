@@ -12,7 +12,7 @@
 \item{what}{Which part of the fit to return. \code{"fixed"} (the default)
 is the fixed-effect posterior means. \code{"random"} is one data frame
 per grouping factor, with the columns \code{group}, \code{level}, \code{estimate},
-\code{std.error}, \code{conf.low} and \code{conf.high}; a grouping factor carrying
+\code{std.error}, \code{conf.low} and \code{conf.high}. A grouping factor carrying
 more than one effect names the effect in \code{level}. \code{"missing"} is
 the table of unobserved design cells, in the columns \code{row},
 \code{estimate}, \code{std.error}, \code{conf.low}, \code{conf.high} plus any design
@@ -33,12 +33,12 @@ the elements \code{fixed}, \code{random} and \code{missing}.
 \description{
 Returns the fixed effects by default, and the random-effect
 predictions or the unobserved design cells on request. An ASReml user
-reaches for \code{coef(fit)$random}; the equivalent here is
+reaches for \code{coef(fit)$random}. The equivalent here is
 \code{coef(fit, what = "random")}, which is what \code{\link[=ranef]{ranef()}} calls.
 }
 \details{
-The default is the historical return -- a named numeric vector of the
-fixed effects -- so every caller that treats \code{coef(fit)} as a numeric
+The default is the historical return, a named numeric vector of the
+fixed effects, so every caller that treats \code{coef(fit)} as a numeric
 vector keeps working, including the \pkg{emmeans} and
 \pkg{marginaleffects} seams, \code{\link[=predict]{predict()}}, \code{\link[=vcov]{vcov()}} and the tidiers.
 }

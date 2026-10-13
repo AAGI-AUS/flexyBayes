@@ -2,32 +2,23 @@
 # The capability matrix is one R-level table, and every verdict in it is
 # re-derived here from the gate and emit code.
 #
-# The August 2026 external audit found four public surfaces -- the primary
-# man page, inst/KNOWN_ISSUES.md, the README table and two tutorials -- each
-# stating a different, and each a false, account of what the package fits.
-# A hand-maintained Markdown table cannot be tested, so it drifts; the
-# emitted-code assertions in the rest of the suite were all green while the
-# documents were wrong. Two gates close that:
+# Three gates:
 #
 #   (a) STALENESS. The committed block in README.md and inst/KNOWN_ISSUES.md
-#       must equal a fresh render of .fb_capability_matrix(). Editing the
-#       Markdown by hand fails here; the fix is to edit the R table and
-#       re-run tools/generate_capability_matrix.R.
+#       must equal a fresh render of .fb_capability_matrix(). To change
+#       it, edit the R table and re-run tools/generate_capability_matrix.R.
 #
-#   (b) BEHAVIOUR ANCHORS. Every row is probed against the live code --
-#       return_code = TRUE walks the whole gate + emit path without
-#       sampling -- and the recorded verdict must match what the engine
-#       actually does. A `refuses` row must raise; a `fits` / `emits` row
-#       must not. Where the refusal carries a registered reason code or a
-#       typed condition class, the anchor asserts on that class rather than
-#       on the message text.
+#   (b) BEHAVIOUR ANCHORS. Every row is probed with return_code = TRUE,
+#       which walks the gate and emit path without sampling. A `refuses`
+#       row must raise, and a `fits` / `emits` row must not. A refusal
+#       with a registered reason code or condition class is matched on
+#       the class, not the message text.
 #
 #   (c) ENGINE CLAIMS. A `refuses` row whose note says that INLA or brms
 #       cannot do something names, in its basis field, a block of
 #       test-engine-claims.R that calls that engine directly. A refusal that
 #       is flexyBayes's own choice says so, and its note makes no claim
-#       about the engine. The 0.10.0 review found refusals describing engine
-#       limitations nobody had checked, and three of them were false.
+#       about the engine.
 #
 # The staleness gate reads the source tree, so it skips on an installed
 # package (README.md is not installed) in the same way the withdrawn-engine
@@ -97,7 +88,7 @@ test_that("the committed capability blocks equal a fresh render", {
       fresh,
       label = paste0(
         relative,
-        " is stale -- re-run tools/generate_capability_matrix.R"
+        " is stale: re-run tools/generate_capability_matrix.R"
       )
     )
   }
@@ -136,16 +127,13 @@ test_that("the engine prose in ?flexybayes equals a fresh render", {
       squish(readLines(path, warn = FALSE)),
       fixed = TRUE
     ),
-    label = "man/flexybayes.Rd is stale -- re-run devtools::document()"
+    label = "man/flexybayes.Rd is stale: re-run devtools::document()"
   )
 })
 
 test_that("the translation registry and the capability table agree on refusals", {
-  # Two tables describe the same structures from two sides -- whether an
-  # engine fits a structure, and what the fit promises -- and a refusal
-  # recorded in one and not the other is the drift both exist to prevent.
-  # Rows are matched on spelling; every engine a translation row names must
-  # carry `refuses` exactly when the row's class is `refused`.
+  # Rows are matched on spelling. Every engine a translation row names
+  # must carry `refuses` exactly when the row's class is `refused`.
   cap <- flexyBayes:::.fb_capability_matrix()
   reg <- flexyBayes:::.fb_translation_registry()
   norm <- function(s) gsub("[`~[:space:]]", "", s)
@@ -322,9 +310,8 @@ test_that("the engine-claim pattern finds the claims it exists to find", {
 
 # Assert one cell of the matrix against the live code. `verdict` is the
 # recorded value; `condition_class` names the typed class the refusal is
-# required to carry. Every refusal reachable from the formula surface now
-# carries one, so NA is reserved for rows whose refusal is raised by a
-# collaborating package rather than by flexyBayes.
+# required to carry. NA is for rows whose refusal is raised by another
+# package, not by flexyBayes.
 .cap_expect <- function(result, verdict, label, condition_class = NA) {
   if (identical(verdict, "n/a")) {
     return(invisible(NULL))
@@ -643,11 +630,8 @@ test_that("the combined MET model emits both blocks on brms", {
   )
   .cap_expect(emitted, r$brms, "brms")
 
-  # The emit half of the row: the reconstructed brms formula carries the
-  # interaction group-level term AND the distributional predictor on
-  # sigma. The fit half -- that the combination samples with acceptable
-  # diagnostics, which is what moved this row from `emits` to `fits` --
-  # is asserted on a live fit in test-met-combined.R.
+  # The brms formula carries the interaction group-level term and the
+  # predictor on sigma. A live fit is tested in test-met-combined.R.
   fb <- fb_from_asreml(
     fixed = y ~ env,
     random = ~ gen + gen:env,
@@ -669,12 +653,9 @@ test_that("the combined MET model emits both blocks on brms", {
 })
 
 test_that("factor-analytic GxE refuses on both engines", {
-  # Refused on both from 0.13.0 under one reason code. The refusal is
-  # dispatch-wide rather than per-engine because the limit is not INLA's
-  # representation -- that works -- but that its fits of simulated trials
-  # missed the coverage required, and brms has no factor-analytic lowering
-  # to route to. A per-engine refusal would send backend = "auto" to brms
-  # to collect a second, less informative message.
+  # One reason code on both engines: INLA's fits of simulated trials
+  # missed the required coverage, and brms has no factor-analytic
+  # lowering.
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row("Factor-analytic genotype-by-environment covariance")
@@ -931,10 +912,8 @@ test_that("exact Gaussian aggregation refuses by name on the INLA path", {
 
 test_that("every capability row carries a behaviour anchor here", {
   tab <- flexyBayes:::.fb_capability_matrix()
-  # Anchors either name a dedicated test file elsewhere in the suite or
-  # this one. Either way the row must be probed above; the per-row tests
-  # call .cap_row(), which raises on an unknown model_class, so the only
-  # remaining failure mode is a row nobody probes. Guard the count.
+  # .cap_row() raises on an unknown model_class, so the remaining gap is
+  # a row nobody probes.
   probed <- c(
     "Gaussian LMM, simple random intercept",
     paste(

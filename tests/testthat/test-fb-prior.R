@@ -1,5 +1,4 @@
-# Tests for fb_prior() -- the PC-canonical hybrid prior DSL
-# (deliverable 3).
+# fb_prior(), the PC-canonical hybrid prior DSL.
 
 # ---------------------------------------------------------------- #
 # Constructor                                                      #
@@ -80,10 +79,7 @@ test_that("fb_prior() rejects unsupported targets", {
 # ---------------------------------------------------------------- #
 
 # Each family is written with its own complete argument list, read off
-# .fb_prior_family_table(). The earlier form of this test passed the same
-# two positional arguments to every family, which only worked because an
-# unmatchable call fell through unnamed -- the defect the 0.9.2
-# strict-matching pass removed.
+# .fb_prior_family_table().
 test_that("fb_prior() accepts the v0.1 distribution families", {
   calls <- list(
     pc = quote(pc(upper = 1, prob = 0.01)),
@@ -96,7 +92,7 @@ test_that("fb_prior() accepts the v0.1 distribution families", {
     cauchy = quote(cauchy(location = 0, scale = 1)),
     gamma = quote(gamma(shape = 1, rate = 0.01))
   )
-  # pooled() needs a `by =` target; test-model-c-pooled.R covers it.
+  # pooled() needs a `by =` target. test-model-c-pooled.R covers it.
   expect_setequal(
     names(calls),
     setdiff(flexyBayes:::.fb_prior_supported_families(), c("uniform", "pooled"))
@@ -146,11 +142,6 @@ test_that("print.fb_prior() emits a multi-line summary", {
 # ---------------------------------------------------------------- #
 # Translation helpers                                              #
 # ---------------------------------------------------------------- #
-#
-# priors_to_legacy() (the legacy-scalar bridge for the native engine's
-# emit path, withdrawn entirely in 0.9.3 -- see NEWS.md) was deleted
-# with it; its three unit tests are removed rather than adapted, since
-# no active engine reads that bridge shape.
 
 test_that("priors_to_inla() emits pc.prec for sigma pc spec", {
   p <- fb_prior(sigma ~ pc(upper = 2, prob = 0.05))
@@ -219,10 +210,9 @@ test_that("priors_to_inla() emits an exact uniform-on-SD expression prior", {
 })
 
 test_that(".default_half_normal_prior() maps to faithful INLA expression priors", {
-  # The synthesised default reaches all three INLA paths via
-  # priors_to_inla(); it must carry the exact half-normal expression
-  # prior, not the former PC approximation that disagreed with brms on
-  # small group counts.
+  # The default reaches all three INLA paths through priors_to_inla()
+  # as the exact half-normal expression prior. A PC approximation
+  # disagrees with brms on small group counts.
   dat <- data.frame(y = stats::rnorm(60), g = factor(rep(1:5, each = 12)))
   dp <- flexyBayes:::.default_half_normal_prior(
     data = dat,
@@ -259,7 +249,7 @@ test_that(".default_pc_prior() builds PC specs scaled by sd(y) (Gaussian)", {
   expect_s3_class(p, "fb_prior")
   expect_identical(p$specs[[1]]$target$type, "sigma")
   expect_identical(p$specs[[1]]$spec$family, "pc")
-  # Scale is 2.5 * sd(y); allow tolerance for sample sd noise.
+  # Scale is 2.5 * sd(y).
   expect_true(abs(p$specs[[1]]$spec$args$upper - 2.5 * sd(d$y)) < 1e-9)
   expect_identical(p$specs[[2]]$target$type, "sd")
   expect_identical(p$specs[[2]]$target$group, "g")
@@ -281,12 +271,11 @@ test_that(".default_prior_scale() picks family-aware scale", {
 })
 
 # ---------------------------------------------------------------- #
-# Half-normal default (0.13.0; supersedes the uniform default of   #
-# ADR 0004, which superseded the ADR 0003 PC default)              #
+# Half-normal default                                              #
 # ---------------------------------------------------------------- #
 
-# The former uniform bound U; the default's scale is U divided by the
-# adopted divisor (R/fb_prior.R).
+# The default's scale is the uniform bound U divided by this divisor
+# (R/fb_prior.R).
 .hn_divisor <- function() flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR
 
 test_that(".default_half_normal_prior() builds half-normal specs scaled by 5*sd(y) (Gaussian)", {
@@ -366,11 +355,8 @@ test_that(".default_half_normal_prior() leaves at/us/fa/ar1 outside its default 
   set.seed(20260525L)
   d <- data.frame(y = stats::rnorm(40L))
   # The function takes only `random_groups` (simple/ide/id) and
-  # `vm_ped_groups` -- other structured forms are not part of the
-  # caller's enumeration in flexybayes()/fb_brms() (see code in
-  # the same files), so they continue to fall through to the
-  # legacy lognormal default at codegen time. We assert here that
-  # passing no vm_ped_groups returns only sigma + simple-RI specs.
+  # `vm_ped_groups`. With no vm_ped_groups it returns only the sigma and
+  # simple random-intercept specs.
   p <- flexyBayes:::.default_half_normal_prior(
     data = d,
     response = "y",

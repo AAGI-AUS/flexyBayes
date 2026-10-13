@@ -1,10 +1,10 @@
-# huge_n_probe.R -- shape probe of the preflight + aggregation +
+# huge_n_probe.R: shape probe of the preflight + aggregation +
 # prediction kernel paths at N = 5e6.
 #
 # Active at v0.4.0 (Wave 2 Phase 2C trust-release gate, v040-plan
 # section 9.3 + section 11). The script exercises the three data-shape
-# code paths -- preflight, aggregation plan, and prediction-kernel
-# file-output format resolution -- at N = 5e6 without materialising the
+# code paths (preflight, aggregation plan, and prediction-kernel
+# file-output format resolution) at N = 5e6 without materialising the
 # (intractable) full MCMC fit. The point is to confirm the metadata /
 # dispatch layer handles the huge-N data shape: a regression here would
 # invert the v0.4.0 trust narrative, so a fault is a release blocker.
@@ -111,7 +111,7 @@ stopifnot(identical(fmt_auto, if (fst_ok) "fst" else "rds"))
 stopifnot(identical(fmt_interop, "csv"))
 
 elapsed <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-cat(sprintf("\n=== huge_n_probe COMPLETE (v0.4.0) -- %.1fs ===\n", elapsed))
+cat(sprintf("\n=== huge_n_probe COMPLETE (v0.4.0), %.1fs ===\n", elapsed))
 cat(
   "All three huge-N shape paths (preflight, aggregation, prediction ",
   "format resolution) handled the N = 5e6 data shape.\n",

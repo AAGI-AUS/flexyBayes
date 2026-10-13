@@ -20,7 +20,7 @@
 #' with glmnet.
 #'
 #' @param ... Ignored.
-#' @returns None; each function signals the refusal.
+#' @returns None. Each function signals the refusal.
 #' @keywords internal
 #' @name fb_selection_removed
 NULL
@@ -69,14 +69,15 @@ fb_decision <- function(...) {
 }
 
 
-# .fb_selection_removed() --- the refusal every removed function raises.
+# .fb_selection_removed(): the refusal every removed function raises.
 .fb_selection_removed <- function(fn) {
   stop(.fb_refusal_condition(
     reason_code = "selection_removed",
     message = paste0(
       fn, " is no longer part of flexyBayes: penalised selection was ",
-      "removed after the public 0.10.0 release. To fit a penalised regression on the ",
-      "fixed effects of a mixed model, whiten the design with the fit's ",
+      "removed after the public 0.10.0 release. To fit a penalised ",
+      "regression on the fixed effects of a mixed model, whiten the design ",
+      "with the fit's ",
       "marginal covariance from fb_marginal_cov() and pass it to glmnet, ",
       "as shown in vignette(\"flexyBayes-06-two-stage\"), section ",
       "\"Penalised selection on the whitened design\"."
@@ -93,11 +94,12 @@ fb_decision <- function(...) {
       "A penalised-selection function was called: fb_select(), ",
       "fb_select_path(), fb_select_refit(), fb_select_fold_data(), ",
       "fb_penalty(), fb_resamples() or fb_decision(). Penalised selection ",
-      "was removed after the public 0.10.0 release, and the two-stage vignette ",
-      "shows a penalised regression on the whitened design with glmnet."
+      "was removed after the public 0.10.0 release, and the two-stage ",
+      "vignette shows a penalised regression on the whitened design with ",
+      "glmnet."
     ),
     message_template = "%s is no longer part of flexyBayes.",
-    registered_in_adr = "PARTB_coupling_table_06Oct2026 (D6)",
+    registered_in_adr = "0.18.0 selection removal",
     plan_field = NA_character_,
     since_version = "0.15.0.9000"
   )

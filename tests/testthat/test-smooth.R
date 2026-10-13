@@ -1,14 +1,10 @@
-# Tests for mgcv-style univariate smooth ingest s(x) (ADR 0004 D3).
+# mgcv-style univariate smooth ingest s(x) (ADR 0004 D3).
 #
-# v0.1 supports s() only; te() / ti() / t2() defer to v0.2. The basis is
-# constructed at parse time via mgcv::smoothCon() into a `smooth_mgcv`
-# random-term type, tested below. 0.9.3: the only engine that ever emitted
-# this term type was withdrawn entirely (see NEWS.md) -- neither active
-# engine represents it (brms has no lowering for it; INLA's own smooth
-# route uses a native rw2 term instead, a different random-term type), so
-# the code-generation tests this file used to carry are gone. A live
-# `flexybayes(random = ~ s(x))` call now refuses on both `backend = "brms"`
-# and `backend = "inla"` before any code is emitted.
+# s() is parsed, and te(), ti() and t2() are not. The basis is built at parse
+# time with mgcv::smoothCon() into a `smooth_mgcv` random term. Neither
+# engine fits that term (INLA's smooth route is spl(), a native rw2), so
+# `flexybayes(random = ~ s(x))` refuses on both backends before any code
+# is emitted.
 
 skip_if_no_mgcv <- function() skip_if_not_installed("mgcv")
 
@@ -53,7 +49,7 @@ test_that("s(x, k = 6) honours user-supplied k", {
   rt <- fb$random_terms[[1]]
   expect_identical(rt$type, "smooth_mgcv")
   # absorb.cons = TRUE drops one column to fold the sum-to-zero
-  # constraint; k = 6 -> 5 effective columns.
+  # constraint, so k = 6 gives 5 effective columns.
   expect_identical(rt$k, 5L)
 })
 
@@ -71,14 +67,9 @@ test_that(".enrich() errors politely when s() variable is missing from data", {
 })
 
 test_that(".brms_term_refusal_message() distinguishes spl() (INLA route) from s() (no active route)", {
-  # 0.9.3: brms has no lowering for either smoother, but the two
-  # messages must not claim the same alternative. spl() genuinely
-  # reaches INLA as a second-order random walk; s() (smooth_mgcv) does
-  # not -- INLA's rw2 route is spl(), a different term type built on
-  # an ASReml-style basis, not a lowering of the mgcv smooth basis
-  # s() constructs. Before this fix the smooth_mgcv message wrongly
-  # claimed s(x) itself would run on INLA as a second-order random
-  # walk, which it does not: neither active engine fits it.
+  # brms lowers neither smoother. spl() reaches INLA as a second-order
+  # random walk on an ASReml-style basis. s() (smooth_mgcv) reaches
+  # neither engine, so its message must not offer INLA.
   spl_msg <- flexyBayes:::.brms_term_refusal_message(
     list(type = "spline", var = "x")
   )
@@ -89,8 +80,7 @@ test_that(".brms_term_refusal_message() distinguishes spl() (INLA route) from s(
   smooth_msg <- flexyBayes:::.brms_term_refusal_message(
     list(type = "smooth_mgcv", var = "x")
   )
-  # Recommends spl(x), not s(x), on INLA -- and does not repeat the
-  # false claim that s(x) itself is what runs as a random walk there.
+  # Recommends spl(x), not s(x), on INLA.
   expect_match(smooth_msg, "spl(x)", fixed = TRUE)
   expect_false(grepl('s(x) with backend = "inla"', smooth_msg, fixed = TRUE))
   # brms fits s() in its own formula (test-engine-claims.R), so the message

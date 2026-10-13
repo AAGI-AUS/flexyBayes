@@ -6,11 +6,11 @@
 #   list(format = c("dense", "chol", "precision", "blocks",
 #                   "low_rank", "pedigree_sparse_precision"),
 #        data   = <deparsed symbol name resolving via known_matrices>,
-#        scheme = <NULL for exact formats; registered approximation
+#        scheme = <NULL for exact formats. Registered approximation
 #                  name for low_rank>)
 #
 # v0.3.7 activates dense + chol + precision (+ ped sparse-precision
-# opt-in). v0.3.10 activates blocks; low_rank reserves the slot for
+# opt-in). v0.3.10 activates blocks, low_rank reserves the slot for
 # v0.4.0 and the refusal message names `validate_approximation()` as
 # the v0.4.0 forward export.
 #
@@ -22,7 +22,7 @@
 #     shadow V.
 #   - Validators that run after known_matrices binding resolves
 #     (.validate_chol_input, .validate_precision_input). These are
-#     called from setup_env when the format is non-dense; their
+#     called from setup_env when the format is non-dense. Their
 #     refusals fire before the route guard so users see structural
 #     input errors at the right granularity.
 #   - The route guard (.stage5a_route_check) that refuses non-dense
@@ -50,7 +50,7 @@
 )
 
 # Recover a literal scalar string from its deparsed form. The formula
-# parser's .dep_named() helper returns deparsed expressions; for the
+# parser's .dep_named() helper returns deparsed expressions. For the
 # low_rank_scheme arg the user writes "pca" (a string literal) which
 # deparses to the quoted form '"pca"'. Strip the wrapping quotes so
 # the stored scheme name matches the approximation registry vocabulary.
@@ -126,7 +126,7 @@
   }
 
   # ped() with use_sparse_precision = TRUE routes through the
-  # sparse-precision format internally; the emit turns getA() into
+  # sparse-precision format internally. The emit turns getA() into
   # getAInv() and lifts the matrix through the precision codepath.
   if (
     identical(fn, "ped") &&
@@ -171,7 +171,7 @@
 
 # Build the cov_representation IR slot from an inline
 # `cov = fb_cov(...)` argument on a vm() / ped() term (v0.4.0). The
-# formula parser does NOT evaluate the carrier -- it deparse-extracts
+# formula parser does NOT evaluate the carrier, it deparse-extracts
 # the matrix symbol and the `type` literal so the matrix continues to
 # resolve via known_matrices at fit time, identical to the legacy
 # keyword forms. The resulting slot shape (format / data / scheme) is
@@ -402,7 +402,7 @@
   }
 
   # Known-matrix dim + level alignment (v0.3.8).
-  # Pre-v0.3.8 the validator stopped at structural checks; a chol
+  # Pre-v0.3.8 the validator stopped at structural checks. A chol
   # factor with wrong dim or permuted dimnames would silently
   # produce wrong predictions downstream. Both checks no-op when
   # the dispatch layer cannot supply expected_n / fit_levels (e.g.
@@ -463,7 +463,7 @@
   # to use base R chol() for the strict-PD contract.
   #
   # The flexyBayes.trust_pd option skips PD entirely when the user
-  # has externally validated Q -- useful for repeated fits where the
+  # has externally validated Q: useful for repeated fits where the
   # PD probe is on the critical path.
   if (!isTRUE(getOption("flexyBayes.trust_pd", FALSE))) {
     .validate_precision_input_pd(Q, name = name, group_var = group_var)
@@ -514,7 +514,7 @@
   # not as part of the structural symmetry contract. Pre-v0.3.8 the
   # symmetry check called Matrix::isSymmetric(Q) directly, which
   # refuses when dimnames(Q)[[1]] != dimnames(Q)[[2]] (a per-attribute
-  # check); that swallowed the more actionable
+  # check), that swallowed the more actionable
   # known_matrix_dimnames_mismatch refusal downstream.
   Q_unnamed <- Q
   dimnames(Q_unnamed) <- NULL
@@ -549,7 +549,7 @@
 #     fill-reducing permutation lets the sparse Cholesky run in
 #     near-linear time on sparse-structured precision matrices
 #     (pedigree A^{-1}; spatial BYM2 Q). The Cholesky factorisation
-#     itself succeeds iff Q is PD; failure surfaces as an error or
+#     itself succeeds iff Q is PD. Failure surfaces as an error or
 #     warning that this tryCatch traps.
 #   - Dense (base matrix) routes through base R chol() for the same
 #     strict-PD contract the pre-v0.3.8 validator used. No behaviour
@@ -562,9 +562,9 @@
     # indefinite, which the tryCatch traps. Critically, this does
     # NOT dense-coerce Q.
     # Matrix::Cholesky() (the higher-level factor-returning function)
-    # is not a strict PD test -- it returns a CHMfactor with
-    # non-positive pivot entries for indefinite Q rather than
-    # raising; we use the lower-level chol() entry to get the
+    # is not a strict PD test, it returns a CHMfactor with
+    # non-positive pivot entries for indefinite Q instead of
+    # raising, we use the lower-level chol() entry to get the
     # warning-based PD contract.
     tryCatch(
       {
@@ -610,7 +610,7 @@
 #
 # Ships at v0.3.10. The user supplies a
 # named list `blocks = my_blocks` where `my_blocks` resolves at fit
-# time to `list(V_1, ..., V_K)` --- each V_k is the dense covariance
+# time to `list(V_1, ..., V_K)`, each V_k is the dense covariance
 # matrix for one block of the grouping factor's levels (taken in the
 # natural ordering of `levels(group_var)`). The validator runs on the
 # INLA path (from `emit_inla()`'s data_inla setup loop), passing
@@ -623,13 +623,13 @@
 # block list.
 #
 # Refusal contracts:
-#   blocks_not_in_known_matrices    --- the symbol resolves to NULL.
-#   blocks_not_a_list               --- value is not a list.
-#   blocks_empty_list               --- length-zero list.
-#   block_not_positive_definite     --- some V_k fails PD probe;
-#                                       message names the offending
+#   blocks_not_in_known_matrices: the symbol resolves to NULL.
+#   blocks_not_a_list: value is not a list.
+#   blocks_empty_list: length-zero list.
+#   block_not_positive_definite: some V_k fails PD probe.
+#                                       Message names the offending
 #                                       block index.
-#   block_partition_incomplete      --- sum(n_k) != expected_n.
+#   block_partition_incomplete: sum(n_k) != expected_n.
 .validate_blocks_input <- function(
   blocks_list,
   name,
@@ -761,7 +761,7 @@
         expected_n,
         "). The blocks must partition levels(`",
         group_var,
-        "`) exactly --- each level lands in one and ",
+        "`) exactly, each level lands in one and ",
         "only one block."
       ),
       expected_n = expected_n,
@@ -822,7 +822,7 @@
 # Dimname-driven level alignment (v0.3.8). When the matrix carries
 # dimnames, we can enforce that the rows / columns correspond
 # positionally to levels(<group>). When dimnames are absent the
-# check no-ops -- the dispatch layer surfaces an alignment caution
+# check no-ops: the dispatch layer surfaces an alignment caution
 # on backend_decision instead.
 .check_known_matrix_dimnames <- function(M, name, group_var, fit_levels) {
   if (is.null(fit_levels)) {
@@ -935,7 +935,7 @@
 # format, scheme, etc.
 .stop_structured_cov_refusal <- function(reason_code, message, ...) {
   # Route through the unified condition constructor. The message is
-  # unchanged (the call site still builds it verbatim); the
+  # unchanged (the call site still builds it verbatim). The
   # constructor adds the per-code class
   # flexybayes_refusal_<reason_code> above the retained family class
   # and gates the reason_code against the registry.
@@ -949,7 +949,7 @@
 
 # The low-rank covariance carrier's vocabulary is registered
 # (fb_cov(type = "low_rank", scheme = )) but no engine has an
-# approximate-covariance fit route wired to it -- it is a reserved
+# approximate-covariance fit route wired to it, it is a reserved
 # slot for a future release, not a per-engine capability gap. Without
 # this check, a low_rank vm()/ped() carrier still refuses (both active
 # engines' own capability gates catch it), but each engine's message
@@ -963,11 +963,11 @@
 # list is assembled, for every vm()/ped() term regardless of which
 # grammar (asreml or brms) or which cov_representation construction
 # path (the fb_cov() front door or the deprecated legacy keyword
-# carriers) built it -- so it applies uniformly regardless of
+# carriers) built it: so it applies uniformly regardless of
 # `backend`, and does not fire on a bare .parse_formula() call in
 # isolation (a handful of tests call .parse_formula() directly to
 # check parsing/deprecation behaviour without going through the full
-# IR-construction path; those must stay refusal-free).
+# IR-construction path. Those must stay refusal-free).
 .check_low_rank_cov_reserved <- function(cov_rep, var_name) {
   if (is.null(cov_rep) || !identical(cov_rep$format, "low_rank")) {
     return(invisible(NULL))
@@ -981,8 +981,8 @@
       cov_rep$data,
       ", type = \"low_rank\", scheme = \"",
       cov_rep$scheme,
-      "\")): the low-rank covariance carrier is a reserved type ",
-      "-- its vocabulary is registered but the approximate-",
+      "\")): the low-rank covariance carrier is a reserved type: ",
+      "its vocabulary is registered but the approximate-",
       "covariance fit route activates in a later release. Until ",
       "then, materialise the rank-K matrix and route through the ",
       "dense carrier: vm(",

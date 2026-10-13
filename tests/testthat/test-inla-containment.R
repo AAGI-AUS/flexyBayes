@@ -1,9 +1,9 @@
 # =============================================================================
 # INLA containment (2026-09-13).
 #
-# Estimated correlation matrices -- the correlated random slope (x | g) and
-# us(f):g -- are fitted on brms only (correlated_covariance_requires_brms),
-# a recorded decision.
+# Estimated correlation matrices, such as the correlated random slope
+# (x | g) and us(f):g, are fitted on brms only
+# (correlated_covariance_requires_brms).
 #
 # The same change made a Gaussian fit on INLA refuse when the response
 # standard deviation exceeded 150 (inla_response_scale_unvalidated). That
@@ -157,7 +157,7 @@ test_that("auto routes both structures to brms before anything is fitted", {
 #
 # The block design has twenty blocks because a block standard deviation
 # over four ran 2 per cent apart between identical aggregated fits at either
-# scale; over twenty it holds to 7.3e-7. Before the response was
+# scale. Over twenty it holds to 7.3e-7. Before the response was
 # standardised a thousandfold fit on sleepstudy returned ratios of the
 # subject variance to the residual between 0.03 and 6.99 against 1.198,
 # orders of magnitude outside either tolerance.
@@ -260,7 +260,7 @@ test_that("a large-scale response fits on INLA through backend, pin and auto", {
 test_that("a large-scale Gaussian response refuses by name on the aggregated and streamed routes", {
   # The aggregated and streamed Gaussian routes refuse whatever the response
   # scale, because they cannot carry the residual prior. The refusal is that
-  # one, not a response-scale refusal; the per-row large-scale fits above
+  # one, not a response-scale refusal. The per-row large-scale fits above
   # carry the scale check.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)

@@ -20,7 +20,7 @@ prints.
 Two-line summary of a \verb{<flexybayes_review>} object returned when
 \code{review_code = TRUE} is passed to \code{\link[=flexybayes]{flexybayes()}}. The first line
 reports the backend and the IR (intermediate representation)
-dimensions; the second is a prompt directing the user to
+dimensions. The second is a prompt directing the user to
 \code{\link[=cat_code]{cat_code()}} for inspection and \code{\link[=proceed]{proceed()}} to advance the fit.
 }
 \keyword{internal}

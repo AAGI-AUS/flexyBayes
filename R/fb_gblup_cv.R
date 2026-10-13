@@ -1,18 +1,18 @@
-# Genomic-prediction cross-validation (G5) --- the payoff layer.
+# Genomic-prediction cross-validation.
 #
 # Genomic selection is judged by *prediction accuracy*: how well a model
 # trained on phenotyped genotypes predicts the field performance of
 # genotypes whose phenotypes were held out, using only the genomic
 # relationship matrix to borrow strength from relatives. `fb_gblup_cv()`
-# runs that cross-validation analytically -- it is the GBLUP best-linear-
-# unbiased-prediction equation evaluated per fold, leaning on the same
-# spectral primitive (G0a) and REML estimator (`.fb_reml_vc()`, G3) the
-# rest of the genomics track uses, so no MCMC backend is needed. The
+# runs that cross-validation analytically: it evaluates the GBLUP
+# best-linear-unbiased-prediction equation per fold, using the package's
+# spectral primitive and REML estimator (`.fb_reml_vc()`), so no MCMC
+# backend is needed. The
 # expensive part (the eigendecomposition of the training relationship
-# matrix) is the shared primitive; everything else is matrix algebra.
+# matrix) is the shared primitive. Everything else is matrix algebra.
 #
 # This is the analytic complement to a full Bayesian CV (which would re-fit
-# the actual posterior per fold and propagate prediction uncertainty); the
+# the actual posterior per fold and propagate prediction uncertainty). The
 # analytic accuracy is the field-standard metric and is fast enough to
 # repeat many times.
 
@@ -26,8 +26,8 @@
 #' breeding values are predicted from the genomic relationship matrix
 #' (\eqn{\hat{u}_V = K_{VT}(K_{TT} + \delta I)^{-1}(y_T - X_T\hat\beta)}),
 #' and the predictions are compared with the observed phenotypes. The
-#' headline metric is *prediction accuracy*, the correlation between
-#' predicted and observed across the held-out genotypes; *bias* is the
+#' main metric is *prediction accuracy*, the correlation between
+#' predicted and observed across the held-out genotypes. *bias* is the
 #' slope of observed on predicted (1 is unbiased).
 #'
 #' @param y Numeric vector of phenotypes, one per genotype, aligned to the
@@ -37,7 +37,7 @@
 #'   used when `NULL`).
 #' @param folds Number of cross-validation folds (default 5).
 #' @param repeats Number of independent fold partitions to average over
-#'   (default 1); repeated CV stabilises the estimate.
+#'   (default 1). Repeated CV stabilises the estimate.
 #' @param seed Optional integer seed for reproducible fold assignment.
 #' @param tol PSD / symmetry tolerance for the spectral decomposition.
 #'
@@ -50,7 +50,7 @@
 #' @examples
 #' \donttest{
 #' set.seed(1)
-#' n <- 80L; m <- 400L
+#' n <- 80L. M <- 400L
 #' Z <- matrix(rbinom(n * m, 2L, 0.3), n, m)
 #' Zc <- scale(Z, scale = FALSE)
 #' G <- tcrossprod(Zc) / m + diag(n) * 1e-3
@@ -73,7 +73,7 @@ fb_gblup_cv <- function(
   n <- length(y)
   if (nrow(K) != n || ncol(K) != n) {
     stop(
-      "`K` must be an ", n, " x ", n, " relationship matrix aligned to `y`; ",
+      "`K` must be an ", n, " x ", n, " relationship matrix aligned to `y`, ",
       "got ", nrow(K), " x ", ncol(K), ".",
       call. = FALSE
     )
@@ -91,7 +91,7 @@ fb_gblup_cv <- function(
     stop("`folds` must be between 2 and ", n, ".", call. = FALSE)
   }
   if (!is.null(seed)) {
-    # The seed fixes the folds; the caller's own random-number stream is put
+    # The seed fixes the folds. The caller's own random-number stream is put
     # back on exit, including its absence if it had not been started.
     if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
       caller_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)

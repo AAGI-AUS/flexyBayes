@@ -178,7 +178,7 @@ test_that("the brms formula carries each offset verbatim", {
 test_that("a brms fit carries the offset into Stan and matches lme4", {
   # Four seeds of this call (2 chains, 1000 draws each) put the Days
   # posterior mean 0.034 or less from lme4's 9.467286 with the offset, a
-  # spread of 0.067 across seeds (2026-09-13); without the offset the
+  # spread of 0.067 across seeds (2026-09-13). Without the offset the
   # coefficient is 10.47, a full unit away. The tolerance is 0.2.
   skip_if_not_installed("brms")
   skip_if_not_installed("lme4")
@@ -251,7 +251,7 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
 test_that("a per-row Gaussian INLA fit with an offset matches lme4", {
   # Five identical calls returned the same coefficients to 1.1e-13, and
   # they differed from lme4 with the offset by 8.4e-12 (intercept) and
-  # 1.6e-12 (Days) (2026-09-13). The tolerance is 1e-6; dropping the offset
+  # 1.6e-12 (Days) (2026-09-13). The tolerance is 1e-6. Dropping the offset
   # moves Days by 1.
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
@@ -362,9 +362,9 @@ test_that("a Bernoulli INLA fit with an offset matches glmer", {
 test_that("an offset on a sectioned residual shifts the fit exactly", {
   # Two Gaussian likelihoods, one per section. offset(Days) against the fit
   # without it, five pairs at INLA's default thread setting (2026-09-13):
-  # Days differs by 1 within 3.6e-5 and the intercept by up to 6.0e-5; under
-  # one stated prior on one thread the gaps reached 8.0e-5 and 1.4e-4. The
-  # tolerance is 1e-3; without the offset Days moves by 1.
+  # Days differs by 1 within 3.6e-5 and the intercept by up to 6.0e-5.
+  # Under one stated prior on one thread the gaps reached 8.0e-5 and
+  # 1.4e-4. The tolerance is 1e-3. Without the offset Days moves by 1.
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
@@ -405,7 +405,7 @@ test_that("an offset on a sectioned residual shifts the fit exactly", {
 test_that("the scale an offset model is fitted on is read from y - o", {
   # A 600-row design whose offset has standard deviation 1000: sd(y) = 999.3,
   # sd(y - o) = 4.11. Read from y, the response-scale bound of 150 refuses
-  # the fit; read from y - o it fits, and three identical calls were 2.0e-6
+  # the fit. Read from y - o it fits, and three identical calls were 2.0e-6
   # (intercept), 1.0e-4 (slope), 0.103 (random-effect SD, a posterior mean
   # against REML, 4.3 per cent) and 5.7e-3 (residual SD) from lme4, the same
   # distances as at sd(o) = 0, 30 and 100 under either reading (2026-09-13).
@@ -423,7 +423,7 @@ test_that("the scale an offset model is fitted on is read from y - o", {
   spec <- fit$extras$response_standardisation
   expect_equal(spec$centre, mean(w), tolerance = 1e-12)
   expect_equal(spec$scale, stats::sd(w), tolerance = 1e-12)
-  # The shared default bound, U = 5 sd, reads the same quantity; read from
+  # The shared default bound, U = 5 sd, reads the same quantity. Read from
   # y it would be 5 x 999.3.
   expect_equal(
     attr(fit$extras$fb_terms$priors, "fb_prior_default_scale"),
@@ -557,7 +557,7 @@ test_that("an offset model is invariant to rescaling the response and offset", {
 test_that("aggregated and streamed Gaussian fits with an offset refuse by name", {
   # The cell statistics still subtract the offset exactly, which the plan
   # records. The aggregated and streamed Gaussian routes refuse, because they
-  # cannot carry the residual prior; their agreement with the per-row fit
+  # cannot carry the residual prior. Their agreement with the per-row fit
   # (measured 2026-09-13 at 6.6e-12 on the fixed effects) returns with that
   # composition.
   skip_if_not_installed("INLA")
@@ -583,7 +583,7 @@ test_that("a Poisson offset reaches the aggregated route as exposure", {
   # Against the per-row fit of count ~ f + offset(log(E)), three calls each
   # (2026-09-13): the aggregated and the streamed fit within 4.5e-10 (fixed)
   # and 5.7e-9 relative (hyperparameters), a second per-row call within
-  # 1.5e-10 and 1.8e-9; the streamed fit written with exposure = "E" and no
+  # 1.5e-10 and 1.8e-9, and the streamed fit written with exposure = "E" and no
   # offset within 9.6e-10 and 9.3e-9. Without the offset the aggregated
   # intercept is 1.95 against 0.26.
   skip_if_not_installed("INLA")
@@ -791,7 +791,7 @@ test_that("brms and INLA agree on an offset model under one stated prior", {
   # intercept, 0.031 on Days, 0.50 on the subject SD and 0.044 on the
   # residual SD, inside brms's own spread across the seeds (0.75, 0.038,
   # 0.39, 0.025). The same model without the offset gave 0.40, 0.007, 0.38
-  # and 0.049. Tolerances 2, 0.1, 1.5 and 0.15; a dropped offset on either
+  # and 0.049. Tolerances 2, 0.1, 1.5 and 0.15. A dropped offset on either
   # engine moves Days by 1.
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")

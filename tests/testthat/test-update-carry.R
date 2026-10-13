@@ -2,20 +2,10 @@
 # What update() carries, and what it refuses to guess.
 #
 # update() re-issues every recorded argument to flexybayes(). An argument
-# the fit never recorded comes back as its default, so a short record means
-# a re-fit that is a different model under the same name. Two gaps closed
-# here:
-#
-#   * the aggregated route recorded eleven of the sixteen fields, so an
-#     ordinary call that auto-routed there refused update() outright. A
-#     Gaussian call is now fitted per row, and the aggregated record is held
-#     on the count route (section 4);
-#   * no route recorded the missing-response policy, so an `omit` fit would
-#     have re-fitted as the default `augment`, on a different set of rows
-#     from the one it was named after.
-#
-# The refusal has to stay reachable. A fit whose record is genuinely short
-# is refused by name rather than re-fitted with defaults filled in.
+# the fit never recorded would come back as its default, a different model
+# under the same name. Every route records the full set, including the
+# missing-response policy. A fit whose record is short is refused by name,
+# not re-fitted with defaults.
 # =============================================================================
 
 suppressPackageStartupMessages(library(testthat))
@@ -47,12 +37,7 @@ suppressPackageStartupMessages(library(testthat))
 }
 
 # The nineteen fields a re-fit needs, in the order the per-row emits write
-# them. Read off emit_inla() rather than restated, so a change to one
-# record is a change to the contract all three are held to. The last
-# three joined at 0.9.1: without them a re-fit took the formal defaults
-# for the engine, the representation and the reporting, so an identity
-# update() could come back on another engine (see
-# test-update-engine-carry.R).
+# them. The last three are tested in test-update-engine-carry.R.
 .UC_CALL_FIELDS <- c(
   "fixed", "random", "residual", "data_name", "family", "link",
   "known_matrices", "weights", "n_samples", "warmup", "chains", "seed",
@@ -68,8 +53,8 @@ suppressPackageStartupMessages(library(testthat))
 # The aggregated Gaussian route cannot carry the residual prior, so a
 # default Gaussian call is fitted per row. The test that compared the
 # aggregated Gaussian record with the per-row one would now compare a
-# per-row record with itself; the aggregated record is compared on the count
-# route in section 4.
+# per-row record with itself. The aggregated record is compared on the
+# count route in section 4.
 
 test_that("a default Gaussian call is fitted per row, with the full record", {
   skip_if_not_installed("INLA")
@@ -92,7 +77,11 @@ test_that("update() re-fits a default Gaussian fit", {
     y ~ f, random = ~g, data = d, verbose = FALSE, mcmc_verbose = FALSE
   ))
 
-  refit <- suppressMessages(stats::update(fit, random = ~ g + h))
+  # y carries no h effect, so the added sd_h is weakly identified.
+  refit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    suppressMessages(stats::update(fit, random = ~ g + h))
+  )
   expect_s3_class(refit, "flexybayes")
   expect_identical(refit$extras$call_info$random, ~ g + h)
   # The arguments the record grew are carried, not re-defaulted.
@@ -115,16 +104,9 @@ test_that("an omit fit re-fits as omit", {
   .uc_silence()
   d <- .uc_data()
   d$y[c(4L, 22L)] <- NA
-  # A grouping factor that is not already a fixed effect, so the override
-  # below adds a well-posed random term. This test's subject is the
-  # missing-response policy travelling with the re-fit, and the term the
-  # override adds is incidental to that -- it only has to be a term. It
-  # used to be `f`, which is also the fixed effect, and a factor on both
-  # sides of the model is confounded: once the prior policy started
-  # pricing the added term's SD, INLA's marginals for it came back
-  # degenerate and the varcomp table could not be built. That behaviour
-  # is correct and is pinned on purpose in
-  # test-summary-asreml-shape.R, not carried here as a side effect.
+  # A grouping factor that is not a fixed effect, so the override adds a
+  # well-posed random term. A factor on both sides of the model is
+  # confounded, a case tested in test-summary-asreml-shape.R.
   d$h <- factor(rep(paste0("H", 1:4), length.out = nrow(d)))
 
   fit <- suppressMessages(flexybayes(
@@ -135,7 +117,11 @@ test_that("an omit fit re-fits as omit", {
   expect_identical(fit$extras$na_action$na_action, "omit")
   expect_identical(stats::nobs(fit), 58L)
 
-  refit <- suppressMessages(stats::update(fit, random = ~ g + h))
+  # y carries no h effect, so the added sd_h is weakly identified.
+  refit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    suppressMessages(stats::update(fit, random = ~ g + h))
+  )
   expect_identical(refit$extras$call_info$na_action, "omit")
   expect_identical(refit$extras$na_action$na_action, "omit")
   # The re-fit is computed on the same rows, not on the augmented design.
@@ -156,7 +142,11 @@ test_that("an augment fit re-fits as augment", {
     y ~ f, random = ~g, data = d, backend = "inla", aggregate = FALSE,
     na_action = "augment", verbose = FALSE, mcmc_verbose = FALSE
   ))
-  refit <- suppressMessages(stats::update(fit, random = ~ g + h))
+  # y carries no h effect, so the added sd_h is weakly identified.
+  refit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    suppressMessages(stats::update(fit, random = ~ g + h))
+  )
   expect_identical(refit$extras$call_info$na_action, "augment")
   expect_identical(stats::nobs(refit), 60L)
   expect_identical(as.integer(stats::nobs(refit, type = "observed")), 58L)
@@ -187,14 +177,11 @@ test_that("a record with no recorded policy refuses by name", {
 
 
 # ---------------------------------------------------------------- #
-# 4. The aggregated COUNT route (F-3)                               #
+# 4. The aggregated count route                                     #
 # ---------------------------------------------------------------- #
 #
-# The Gaussian aggregated record was completed in Phase 2; the count one
-# was not, so an ordinary Poisson or binomial call -- which auto-routes
-# to the same aggregation layer -- still refused update(). The repair is
-# the one applied there: five formals, five recorded fields, and the same
-# five passed through dispatch.
+# An ordinary Poisson or binomial call auto-routes to the aggregation layer,
+# which records the same fields as the per-row route.
 
 .uc_count_data <- function(seed = 4242L, n = 90L) {
   set.seed(seed)
@@ -220,7 +207,7 @@ test_that("the count fixture crosses f and h", {
 })
 
 test_that("a default Poisson call auto-routes to the aggregated emit", {
-  # The premise of the next two tests, asserted rather than assumed.
+  # The premise of the next two tests.
   skip_if_not_installed("INLA")
   skip_on_cran()
   .uc_silence()
@@ -251,7 +238,11 @@ test_that("update() re-fits a default aggregated Poisson fit", {
     verbose = FALSE, mcmc_verbose = FALSE
   ))
 
-  refit <- suppressMessages(stats::update(fit, random = ~ g + h))
+  # y carries no h effect, so the added sd_h is weakly identified.
+  refit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    suppressMessages(stats::update(fit, random = ~ g + h))
+  )
   expect_s3_class(refit, "flexybayes")
   expect_identical(refit$extras$call_info$random, ~ g + h)
   expect_identical(refit$extras$call_info$family, "poisson")
@@ -281,13 +272,9 @@ test_that("a short count record still refuses by name", {
 })
 
 # =============================================================================
-# D16 / WP-D (found by WP-G2's stress run): the classic unnamed
-# stats::update() replacement-formula idiom, `update(fit, . ~ . + z)`,
-# used to be silently discarded -- the override loop matches `...` to
-# the recorded argument set by NAME, and an unnamed element has no name
-# to match, so the re-fit ran with the unchanged original call and
-# nothing said so. A valid object answering a question nobody asked, not
-# a re-fit and not a refusal. Now refuses by name instead.
+# The unnamed stats::update() idiom, `update(fit, . ~ . + z)`, is refused
+# by name. Overrides are matched to the recorded arguments by name, so an
+# unnamed one would otherwise be dropped without a word.
 # =============================================================================
 
 test_that("update() refuses the unnamed stats::update() replacement-formula idiom", {
@@ -310,9 +297,7 @@ test_that("update() refuses the unnamed stats::update() replacement-formula idio
   expect_match(conditionMessage(err), "update(fit, . ~ . + z)", fixed = TRUE)
   expect_match(conditionMessage(err), "fixed = ", fixed = TRUE)
 
-  # The pre-fix behaviour: re-run the identical call directly (what the
-  # silently-discarded path used to do) and confirm the recorded formula
-  # is unchanged -- so the fix is a refusal, not a null re-fit either.
+  # An identity re-fit keeps the recorded formula.
   identity_refit <- suppressMessages(stats::update(fit))
   expect_identical(identity_refit$extras$call_info$fixed, orig_fixed)
 })
@@ -333,7 +318,7 @@ test_that("update() with a mix of one unnamed and one named argument still refus
   )
 })
 
-test_that("update() with only named arguments is unaffected by the D16 guard", {
+test_that("update() with only named arguments is unaffected by the unnamed-argument guard", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   .uc_silence()

@@ -12,11 +12,11 @@
 # The contract tested here:
 # - fitted() and residuals() return one value per row, in row order, equal to
 #   the per-row fit of the same model (one INLA thread, tolerance 1e-6 against
-#   a measured difference below 1e-8, and 5e-7 with a within-cell offset);
+#   a measured difference below 1e-8, and 5e-7 with a within-cell offset).
 # - a streamed fit holds only the first rows it read, so where that head
-#   sample is shorter than the data it refuses by name rather than return the
-#   sample as if it were every row;
-# - nobs() and glance()$nobs are the integer summary()$n_design reports;
+#   sample is shorter than the data it refuses by name, not return the
+#   sample as if it were every row.
+# - nobs() and glance()$nobs are the integer summary()$n_design reports.
 # - every generic that reaches an aggregated or streamed fit returns a value
 #   or refuses with a registered reason code, and the test counts the pairs
 #   it checked.
@@ -100,7 +100,7 @@ test_that("an offset inside each cell reaches the aggregated fitted values", {
   row <- .acc_fit("per_row", y ~ env + offset(log(E)), d, "poisson")
   expect_equal(unname(fitted(agg)), unname(fitted(row)), tolerance = 1e-6)
   # Residuals sit near zero, where a relative tolerance against the per-row
-  # fit measures nothing useful; they are held to their definition instead.
+  # fit measures nothing useful. They are held to their definition instead.
   expect_equal(unname(residuals(agg)), unname(d$y - fitted(agg)), tolerance = 1e-12)
 })
 
@@ -137,7 +137,7 @@ test_that("a streamed fit returns row values only when it holds every row", {
   .acc_one_thread()
 
   # 1,200 rows: the head sample is every row, so the values exist and equal
-  # the in-memory aggregated fit's; an exposure column scales each row.
+  # the in-memory aggregated fit's. An exposure column scales each row.
   d <- .acc_counts(1200L, 318L)
   agg <- .acc_fit("aggregated", y ~ env, d, "poisson")
   small <- .acc_fit("stream", y ~ env, d, "poisson")
@@ -198,7 +198,7 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     "confint" = function(fit) confint(fit),
     # ref_grid() reaches emm_basis() after recover_data(), and wraps a
     # recover_data() error in its own untyped "Perhaps a 'data' or 'params'
-    # argument is needed"; calling recover_data() first keeps the refusal's
+    # argument is needed". Calling recover_data() first keeps the refusal's
     # own condition where there is one.
     "emmeans::emm_basis" = function(fit) {
       emmeans::recover_data(fit)

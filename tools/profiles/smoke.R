@@ -1,4 +1,4 @@
-# smoke.R -- fast local sanity profile for the flexyBayes test suite.
+# smoke.R: fast local sanity profile for the flexyBayes test suite.
 #
 # Pure-R subset only: preflight + dispatch + IR shape + canonical names
 # + backend-decision metadata.  No MCMC, no INLA, no tarball build.

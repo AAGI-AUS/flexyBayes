@@ -6,7 +6,7 @@
 #     read INLA's posterior-mean fitted values.
 #   * logLik() had no flexybayes_inla method, so it (and glance()) errored
 #     with "no applicable method". It now returns an NA logLik
-#     rather than fabricating INLA's marginal likelihood as a conditional one.
+#     instead of fabricating INLA's marginal likelihood as a conditional one.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
 

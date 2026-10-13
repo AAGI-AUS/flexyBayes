@@ -3,7 +3,7 @@
 # 1. Every INLA hyperparameter a fit estimates is listed in its prior
 #    record, prior_summary(fit)$slots, one slot each. A standard deviation of a term the
 #    default-prior walker covers carries the package's prior, never INLA's
-#    own; only the smoothing precision of spl() is left to the engine, and
+#    own. Only the smoothing precision of spl() is left to the engine, and
 #    the record says so. Swept over the term kinds of the class's register
 #    rows: nested, diag, slope and AR1 field terms (DEF-047, DEF-129,
 #    DEF-189), the residual, a sectioned residual and a multi-way term.

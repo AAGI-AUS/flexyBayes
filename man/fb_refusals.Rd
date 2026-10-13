@@ -22,7 +22,7 @@ method renders it as a compact checklist.
 \description{
 \code{fb_refusals()} exposes the locked refusal-reason registry as a
 browsable table: the canonical vocabulary of conditions under which
-flexyBayes declines to fit, route, or validate a model --- each
+flexyBayes declines to fit, route, or validate a model, each
 with a one-line description and the release it was introduced in.
 It is the discovery surface for the structured refusals the package
 raises. Every such refusal carries
@@ -34,7 +34,7 @@ listed here can be caught precisely, for example with
 Two optional filters narrow the listing. \code{reason_code} selects rows
 by exact reason-code match (a single code or a vector). The
 \code{since_version} filter selects reasons introduced in a matching
-release by version-string prefix --- \code{since_version = "0.4"}
+release by version-string prefix: \code{since_version = "0.4"}
 returns every reason added in the 0.4 series.
 
 Routing-decision reasons (surfaced by \code{\link[=fb_plan]{fb_plan()}} and

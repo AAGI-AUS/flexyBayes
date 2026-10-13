@@ -1,8 +1,8 @@
 # Class guard DC-08: every call the documentation shows can be made.
 #
-# Reads the R code a reader is shown -- \code{} and \examples in every help
+# Reads the R code a reader is shown: \code{} and \examples in every help
 # page, fenced and inline code in README.md, API_STABILITY.md,
-# inst/KNOWN_ISSUES.md and the vignette sources -- and checks each call to a
+# inst/KNOWN_ISSUES.md and the vignette sources, and checks each call to a
 # flexyBayes function: the function exists, an example calls it as a user
 # can (exported, or through :::), and every named argument reaches a formal.
 # A named argument that lands in a `...` the function never passes on is

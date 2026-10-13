@@ -1,12 +1,9 @@
 # =============================================================================
 # Arrival: a prior the user asked for reaches the engine that fits the model.
 #
-# The 0.9.1 field sweep found three independent defects sharing one shape --
-# an argument accepted at the door and never delivered. `half_normal(sd =
-# 1.5)` fitted under `half_normal(scale = 1)`; `pc(upper = 1)` fitted under a
-# tail probability the caller never wrote; `prior_fixed_sd` was documented,
-# accepted, and discarded on both engines. Acceptance was tested everywhere
-# in the suite. Arrival was tested nowhere.
+# A prior argument can be accepted and never delivered: `half_normal(sd =
+# 1.5)` fitting under `half_normal(scale = 1)`, `pc(upper = 1)` under a tail
+# probability the caller never wrote, or `prior_fixed_sd` discarded.
 #
 # The oracle here is the engine's own account of what it received: brms's
 # generated Stan program (`return_code = TRUE` runs the same
@@ -128,9 +125,8 @@ test_that("an accepted fb_prior() spec reaches INLA with the values written", {
 # --- the substitution the sweep caught cannot recur ---------------------- #
 
 test_that("no accepted spec can reach an engine under a defaulted value", {
-  # The three silent substitutions of FS-2, verbatim. Each is now refused at
-  # construction, so none of them can reach an engine at all -- the
-  # assertion is on the refusal, because there is no fit left to inspect.
+  # Three specs once fitted under a substituted value. Each is refused at
+  # construction, so the assertion is on the refusal.
   for (spec in list(
     sd(group = "g") ~ half_normal(sd = 1.5),
     sd(group = "g") ~ half_normal(scale = "1"),
@@ -248,8 +244,8 @@ test_that("prior_vc_sd reaches INLA as the same density brms receives", {
 })
 
 test_that("the INLA lognormal expression prior integrates to one", {
-  # The expression is a density in theta, so the check is the engine's
-  # question rather than ours: does the transformed density normalise?
+  # The expression is a density in theta. Does the transformed density
+  # normalise?
   expr <- flexyBayes:::.inla_lognormal_sd_expr(3)
   s <- 3
   dens <- function(theta) {

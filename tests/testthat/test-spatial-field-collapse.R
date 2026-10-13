@@ -239,8 +239,8 @@ test_that("a correlation away from zero is a field, with no refit", {
 
 test_that("a non-spatial fit is outside the warning's scope entirely", {
   # A small grouping variance is a different fact about a different
-  # structure. It keeps the quiet `collapsed` cell and raises nothing --
-  # the teaching in the getting-started tutorial depends on that.
+  # structure. It keeps the quiet `collapsed` cell and raises nothing.
+  # The teaching in the getting-started tutorial depends on that.
   skip_on_cran()
   skip_on_ci()
   skip_if_not_installed("INLA")
@@ -328,7 +328,7 @@ test_that("a correlation is called unidentified only when it spans the space", {
   expect_match(reasons, "rho_row is unidentified", fixed = TRUE)
 
   # A correlation that is merely small, with a bounded interval, is a
-  # finding rather than a failure.
+  # finding instead of a failure.
   expect_identical(
     flexyBayes:::.fb_spatial_collapse_reasons(
       .sfc_shell(.sfc_vc(0.9, -0.2, 0.25), medians)

@@ -25,10 +25,10 @@
 \item{newdata}{Optional data.frame at which to predict. When
 omitted, returns the in-sample posterior summary. On a model with an
 \code{offset()} brms evaluates the offset on \code{newdata}, so \code{newdata} needs
-every column the offset reads; an absent one refuses with
-\code{newdata_offset_missing} rather than being taken as zero.}
+every column the offset reads. An absent one refuses with
+\code{newdata_offset_missing} instead of being taken as zero.}
 
-\item{type}{\code{"response"} (default; posterior_epred) or \code{"link"}
+\item{type}{\code{"response"} (default. posterior_epred) or \code{"link"}
 (posterior_linpred).}
 
 \item{re_formula}{Forwarded to brms; \code{NULL} (default) includes
@@ -38,7 +38,7 @@ all random effects, \code{NA} excludes them (population-level).}
 (posterior mean) and \code{se.fit} (posterior SD).}
 
 \item{summary}{Logical: if \code{TRUE} (default), summarise across
-draws to a numeric vector; if \code{FALSE}, return the
+draws to a numeric vector. If \code{FALSE}, return the
 \verb{draws x rows} posterior matrix.}
 
 \item{classify}{The factors to break a predicted-value table down by:
@@ -46,7 +46,7 @@ a character value (\code{"Variety"}, \code{"Variety:env"}) or a one-sided
 formula (\code{~ Variety}). The factors may be fixed or random, and the
 table follows ASReml's default rules, described under
 \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}. On this engine the values come from the
-posterior draws; a level combination the data never held is drawn
+posterior draws. A level combination the data never held is drawn
 from its fitted normal distribution. \code{NULL} (the default) is the
 historical behaviour.}
 
@@ -57,7 +57,7 @@ Default \code{0.95}.}
 \item{allow_new_levels}{Logical. \code{TRUE} returns the posterior predictive of
 the rows of \code{newdata}, observation noise included, in which a level the
 fit did not see is drawn from its fitted standard deviation:
-\code{brms::posterior_predict(allow_new_levels = TRUE, sample_new_levels = "gaussian")}. The table matches the INLA method's; see
+\code{brms::posterior_predict(allow_new_levels = TRUE, sample_new_levels = "gaussian")}. The table matches the INLA method's. See
 \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}} for the structures it is built for and the
 refusals. Its \code{estimate}, \code{sd}, \code{lower} and \code{upper} are the mean,
 standard deviation and quantiles of the draws. \code{FALSE} (the default)
@@ -78,9 +78,9 @@ One of five shapes, by argument. With \code{classify} set, the
 marginal-means table for those factors. With \code{allow_new_levels = TRUE},
 the \code{fb_predict_new} table described in \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}.
 Otherwise with
-\code{summary = FALSE}, the \verb{draws x rows} posterior matrix; with
+\code{summary = FALSE}, the \verb{draws x rows} posterior matrix. With
 \code{se.fit = TRUE}, a list of \code{fit} (posterior mean per row) and
-\code{se.fit} (posterior SD per row); and by default a numeric vector of
+\code{se.fit} (posterior SD per row). And by default a numeric vector of
 posterior means, one per row of \code{newdata} or of the fitted data.
 }
 \description{
@@ -88,7 +88,7 @@ Delegates to brms's \code{posterior_epred()} (response-scale posterior
 mean) or \code{posterior_linpred()} (linear-predictor scale) on the
 live \code{brmsfit} carried at \verb{$brms}. The parent
 \code{predict.flexybayes()} path uses a \verb{$glm$linear.predictors}
-point estimate that handles only the original-data case; this
+point estimate that handles only the original-data case. This
 subclass override accepts \code{newdata} and returns the posterior-mean
 prediction (per-row mean over draws), or the full posterior
 matrix when \code{summary = FALSE}.
@@ -96,6 +96,6 @@ matrix when \code{summary = FALSE}.
 \details{
 Population-level vs. group-level prediction follows brms's
 \code{re_formula} convention: the default \code{re_formula = NULL} includes
-all random effects; pass \code{re_formula = NA} for population-level
+all random effects. Pass \code{re_formula = NA} for population-level
 predictions only.
 }

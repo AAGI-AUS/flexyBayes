@@ -18,7 +18,7 @@ data, or of \code{fit} when it is an \code{fb_marginal_cov} object. \code{NULL} 
 default) covers every row.}
 
 \item{variances}{\code{TRUE} (the default) to use the fit's own variance
-components; \code{FALSE} for the structure alone, with every variance \code{NA};
+components, \code{FALSE} for the structure alone, with every variance \code{NA}.
 or a list with \code{residual} (the residual variance, or one per section
 named by level), \code{terms} (a variance per block, named by block) and,
 for an AR1 x AR1 field, \code{rho} (a list of \code{c(row = , col = )} named by
@@ -27,7 +27,7 @@ block), all on the variance scale.}
 \item{x}{An \code{fb_marginal_cov} object.}
 
 \item{cols}{Integer positions of the columns, for a cross-covariance
-between two sets of rows; defaults to \code{rows}.}
+between two sets of rows. Defaults to \code{rows}.}
 
 \item{...}{Unused.}
 }

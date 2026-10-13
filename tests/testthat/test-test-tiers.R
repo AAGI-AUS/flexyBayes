@@ -1,4 +1,4 @@
-# test-test-tiers.R -- the long test tier and the release criterion that
+# test-test-tiers.R: the long test tier and the release criterion that
 # proves it ran.
 #
 # skip_if_not_long_tier() (helper-test-tiers.R) holds a block back unless

@@ -1,9 +1,9 @@
-# test-space-level-factor.R -- C4 / FS-26: the INLA emit dies untyped on
-# a non-syntactic factor level.
+# test-space-level-factor.R: the INLA emit died untyped on a factor level
+# containing a space.
 #
-# R/emit_inla.R died with `object 'NAPPLIED2low N' not found` -- INLA
+# R/emit_inla.R died with `object 'NAPPLIED2low N' not found`. INLA
 # expands a factor fixed term to per-level names built as
-# paste0(var, level) and evaluates them internally; a level containing a
+# paste0(var, level) and evaluates them internally. A level containing a
 # space breaks that. The fix legalises every factor the model uses on a
 # copy of `data` before anything reaches INLA, records the map on the
 # fit, and every reader of the fit's own labels (coef(), the tidier
@@ -12,16 +12,16 @@
 # confint() go through) restores the user's own labels from that map.
 #
 # Note on the live-crash reproduction: the raw INLA-program failure
-# mode at small / unbalanced N is not deterministic in this environment
-# -- repeated draws of an unbalanced n = 60 fixture with the identical
-# space-containing level surfaced the exact FS-26 text
+# mode at small / unbalanced N is not deterministic in this environment:
+# repeated draws of an unbalanced n = 60 fixture with the identical
+# space-containing level surfaced the exact text
 # ("object 'NAPPLIED2low N' not found") on some runs and an unrelated
-# GSL numerical / subprocess-segfault failure (caught by C2's
+# GSL numerical / subprocess-segfault failure (caught as
 # `inla_program_failed`) on others, evidently from the INLA subprocess's
 # own multi-threaded solver. A live crash is therefore not a reliable
 # test oracle for THIS specific defect. The mechanism-level test below
 # (mocking `.inla_call()` to intercept the data before it ever reaches
-# the engine, per the same pattern C2 uses) pins the actual claim
+# the engine, as the INLA program-death tests do) pins the actual claim
 # deterministically: no factor level flexyBayes hands to INLA carries a
 # space, or anything else make.names() would touch. The live-fit tests
 # after it use a larger, balanced, signal-bearing design (spot-checked
@@ -32,17 +32,25 @@
 # `aggregate = FALSE` is explicit throughout: the identical space-level
 # design is also aggregation-eligible at small N, and the aggregated
 # INLA route (R/emit_gaussian_aggregated.R) is a SEPARATE code path this
-# slice does not touch -- see the WP-C report's Handoffs. These tests
+# file does not touch. These tests
 # exercise the per-row emit_inla() fix this file owns.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
 skip_if_no_brms <- function() skip_if_not_installed("brms")
 
+# N_TRIAL has three levels, so its SD is weakly identified on every INLA fit here.
+.space_level_quiet <- function() {
+  withr::local_options(
+    flexyBayes.silence_weak_identification_warning = TRUE,
+    .local_envir = parent.frame()
+  )
+}
+
 # Two crossed random-intercept groups (4 and 3 levels) with 8 reps per
-# cell and a real fixed + random signal (not pure noise) -- a smaller /
+# cell and a real fixed + random signal (not pure noise), a smaller /
 # noisier version of this shape hit INLA's own hyperparameter grid-
 # search numerical instability (unrelated to the level-name defect this
-# file exercises) on several seeds during development; this size and
+# file exercises) on several seeds during development. This size and
 # signal was spot-checked stable across five seeds and three repeats.
 .space_level_data <- function(seed = 14L) {
   set.seed(seed)
@@ -83,7 +91,7 @@ test_that(".inla_call() receives data with every non-syntactic level legalised, 
   testthat::local_mocked_bindings(
     .inla_call = function(args) {
       captured <<- args
-      stop("mocked -- intercepted before the real engine call")
+      stop("mocked, intercepted before the real engine call")
     },
     .package = "flexyBayes"
   )
@@ -98,18 +106,18 @@ test_that(".inla_call() receives data with every non-syntactic level legalised, 
     sort(levels(captured$data$NAPPLIED2)),
     sort(make.names(levels(d$NAPPLIED2), unique = TRUE))
   )
-  # The direct FS-26 claim: no level INLA is handed carries a space --
+  # The direct claim: no level INLA is handed carries a space,
   # checked the same way the implementation itself decides legality
   # (a letter-led probe prefix, since INLA's own coefficient name
-  # concatenates a real, letter-led variable name onto the level; see
+  # concatenates a real, letter-led variable name onto the level. See
   # .inla_legalise_factor_levels()'s banner). NOT bare
   # make.names(lv) == lv: that test is a false positive on a purely
-  # numeric level like TRIAL's "1"/"2"/... -- concatenated onto a
+  # numeric level like TRIAL's "1"/"2"/..., concatenated onto a
   # variable name ("TRIAL1") it is already a valid identifier, so it
   # must NOT be legalised, which the second half of this test asserts
   # directly (a regression guard for exactly this false positive,
   # which once silently diverged the per-row and streamed-aggregated
-  # INLA emits' coefficient names -- test-aggregation-equivalence-
+  # INLA emits' coefficient names, test-aggregation-equivalence-
   # backend.R is where that surfaced).
   for (v in c("NAPPLIED2", "TRIAL", "N_TRIAL")) {
     lv <- levels(captured$data[[v]])
@@ -127,6 +135,7 @@ test_that(".inla_call() receives data with every non-syntactic level legalised, 
 
 test_that("a space-containing factor level fits cleanly on INLA", {
   skip_if_no_inla()
+  .space_level_quiet()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -142,6 +151,7 @@ test_that("a space-containing factor level fits cleanly on INLA", {
 
 test_that("the level map legalises exactly the factors the model touches", {
   skip_if_no_inla()
+  .space_level_quiet()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -153,9 +163,9 @@ test_that("the level map legalises exactly the factors the model touches", {
   )
   expect_setequal(names(fit$level_labels), c("NAPPLIED2", "TRIAL", "N_TRIAL"))
   # NAPPLIED2's space-containing levels are the only ones this fixture
-  # actually needs legalised; TRIAL / N_TRIAL's purely-numeric levels
+  # actually needs legalised. TRIAL / N_TRIAL's purely-numeric levels
   # ("1", "2", ...) are already valid once concatenated onto the
-  # variable name ("TRIAL1"), so their map entries are the identity --
+  # variable name ("TRIAL1"), so their map entries are the identity,
   # present (every touched factor gets one, unconditionally), but
   # unchanged. Asserting the identity map here is itself the regression
   # guard for the false positive test-aggregation-equivalence-backend.R
@@ -179,6 +189,7 @@ test_that("the level map legalises exactly the factors the model touches", {
 
 test_that("summary() shows the user's own labels", {
   skip_if_no_inla()
+  .space_level_quiet()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -200,6 +211,7 @@ test_that("summary() shows the user's own labels", {
 
 test_that("coef() shows the user's own labels", {
   skip_if_no_inla()
+  .space_level_quiet()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -218,6 +230,7 @@ test_that("coef() shows the user's own labels", {
 
 test_that("ranef() shows the user's own labels", {
   skip_if_no_inla()
+  .space_level_quiet()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -236,6 +249,7 @@ test_that("predict(classify = ) shows the user's own labels", {
   skip_if_no_inla()
   skip_if_not_installed("emmeans")
   skip_if_not_long_tier()
+  .space_level_quiet()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -254,11 +268,12 @@ test_that("predict(classify = ) shows the user's own labels", {
 
 # ---------------------------------------------------------------- #
 # backend = "auto" now routes to INLA where it silently fell to      #
-# brms before the fix (FS-26's "Class" note)                        #
+# brms before the fix                                            #
 # ---------------------------------------------------------------- #
 
 test_that("backend = 'auto' now routes to INLA on a space-level design (was silently brms)", {
   skip_if_no_inla()
+  .space_level_quiet()
   d <- .space_level_data()
   p <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -285,21 +300,20 @@ test_that("backend = 'auto' now routes to INLA on a space-level design (was sile
 
 # ---------------------------------------------------------------- #
 # brms control: the identical model fits regardless of the space    #
-# (confirms the defect was INLA-path-specific, per FS-26's own       #
-# control experiment: "The same data on backend = brms fits either  #
-# way, in 23.4 s")                                                   #
+# (confirms the defect was INLA-path-specific: the same data on      #
+# backend = brms fit either way)                                     #
 # ---------------------------------------------------------------- #
 #
-# "Confirm brms output labels are also the user's" (C4 item text) is
-# a verification step, not a claim both engines format labels
-# identically. Grounded here rather than assumed: brms/Stan's OWN
+# That brms output labels are also the user's is a check, not a claim
+# that both engines format labels identically.
+# Grounded here instead of assumed: brms/Stan's OWN
 # fixed-effect parameter-naming convention (independent of anything
-# this slice touches) strips the space rather than substituting a
-# dot -- "NAPPLIED2low N" becomes "NAPPLIED2lowN", not
+# this file touches) strips the space instead of substituting a
+# dot, "NAPPLIED2low N" becomes "NAPPLIED2lowN", not
 # "NAPPLIED2low.N" (INLA/make.names()'s convention) and not
 # "NAPPLIED2low N" (a literal round-trip). What IS the user's own,
 # unmangled, on brms is anything that passes through as a bare DATA
-# VALUE rather than a synthesised parameter name -- the random-effect
+# VALUE instead of a synthesised parameter name, the random-effect
 # group levels (TRIAL, N_TRIAL) ranef() reads, verified below.
 
 test_that("brms fits the identical space-level model without legalisation, and its random-effect levels are the user's own unmangled values", {
@@ -330,7 +344,7 @@ test_that("brms fits the identical space-level model without legalisation, and i
     verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes_brms")
-  # No level_labels map on a brms fit -- there was nothing to legalise.
+  # No level_labels map on a brms fit, there was nothing to legalise.
   expect_null(fit$level_labels)
   re <- ranef(fit)
   expect_setequal(re$TRIAL$level, c("1", "2", "3", "4"))

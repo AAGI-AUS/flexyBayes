@@ -2,9 +2,9 @@
 # overall performance, stability, G x E BLUPs, and the environment
 # correlation matrix from the *realised* factor-analytic effects the
 # withdrawn native engine's fa(env, k):gen emit monitored (see NEWS.md,
-# 0.9.3). Neither active engine emits an fa() term at all -- INLA and brms
+# 0.9.3). Neither active engine emits an fa() term at all. INLA and brms
 # both refuse it as a structured-covariance term outside their
-# representable set -- so the function now abstains unconditionally with
+# representable set, so the function now abstains unconditionally with
 # `met_summary_not_available` regardless of what `fit` carries. These tests
 # were rewritten from a computational-correctness suite (pinned arithmetic
 # on a hand-built fit, a real MCMC-fitted end-to-end check) to a refusal
@@ -27,7 +27,7 @@ test_that("fb_met_summary() refuses unconditionally on a well-formed flexybayes 
 
 test_that("fb_met_summary() refuses unconditionally even without a factor-analytic term", {
   # Before 0.9.3 the absence of a fa() term raised a *different* refusal
-  # ("no factor-analytic term"); now the function abstains before it ever
+  # ("no factor-analytic term"). Now the function abstains before it ever
   # inspects `parse_info$random`, so the reason code is the same regardless
   # of what the fit carries.
   bad <- structure(
@@ -45,7 +45,7 @@ test_that("fb_met_summary() refuses a non-flexybayes object with the class-check
 
 test_that("fb_met_summary() refuses identically on an INLA-shaped and a brms-shaped fit", {
   # The refusal is unconditional on the class, not just the bare
-  # `flexybayes` parent -- confirms an inla/brms fit does not accidentally
+  # `flexybayes` parent, confirms an inla/brms fit does not accidentally
   # reach a different, class-specific method.
   for (cls in c("flexybayes_inla", "flexybayes_brms")) {
     fit <- structure(list(extras = list()), class = c(cls, "flexybayes", "list"))

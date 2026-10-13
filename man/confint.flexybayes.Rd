@@ -28,9 +28,9 @@ fixed-effect posterior draws the fit carries.
 }
 \details{
 No active engine stores its posterior in the shape this bare fallback
-method reads. A fit from an active engine reaches its own method --
+method reads. A fit from an active engine reaches its own method,
 \code{\link[=confint.flexybayes_inla]{confint.flexybayes_inla()}} for INLA, \code{\link[=confint.flexybayes_brms]{confint.flexybayes_brms()}} for
-brms -- so this method always refuses by name rather than returning an
-empty interval matrix, which would read as "no fixed effects" rather
-than "this fit cannot answer the question".
+brms: so this method always refuses by name instead of returning an
+empty interval matrix, which would read as "no fixed effects" and not
+"this fit cannot answer the question".
 }

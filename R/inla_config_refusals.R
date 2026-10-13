@@ -1,4 +1,4 @@
-# INLA configuration refusals --- registry population for the configuration
+# INLA configuration refusals: registry population for the configuration
 # Gaussian in R/methods_inla.R.
 #
 # Thrown by vcov(), predict(se.fit = TRUE), predict(classify = ) and the
@@ -15,7 +15,7 @@
       "is improper in some direction."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_0.16.0 DEF-205",
+    registered_in_adr = "0.16.0 INLA configuration checks",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )

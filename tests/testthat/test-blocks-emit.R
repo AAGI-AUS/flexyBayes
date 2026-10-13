@@ -1,17 +1,17 @@
 # test-blocks-emit.R --- ADR 0025 Decision 3 (v0.3.10) block-diagonal
 # carrier on INLA, plus the upgraded low_rank refusal-stub
 # (Decision 4) and the three first-migration entries into the v0.3.8
-# C7 refusal-registry scaffold.
+# refusal-registry scaffold.
 #
 # Activates ADR 0025 §8 subtests (f), (g), (h), (i), (j) end-to-end.
-# Heavy MCMC paths are stress-gated via FLEXYBAYES_RUN_STRESS; the
+# Heavy MCMC paths are stress-gated via FLEXYBAYES_RUN_STRESS. The
 # default-on subtests exercise validators, codegen, formula assembly,
 # fb_plan() shape, and registry surface --- all deterministic and
 # cheap.
 #
 # Fixture shape: two blocks of sizes 2 and 3 totalling 5 = nlevels(geno).
 # The validator's block_sizes + total_n contract holds independently
-# of K; the small fixture keeps the tests fast.
+# of K, and the small fixture keeps the tests fast.
 
 # ---------------------------------------------------------------- #
 # (a) Validator happy path                                          #
@@ -127,13 +127,13 @@ test_that(".validate_blocks_input() refuses with blocks_empty_list", {
 # Deleted (not rewritten): this test checked the Cholesky-square-root
 # code text the withdrawn native engine's codegen produced for a
 # block-diagonal carrier (see NEWS.md, 0.9.3). No active engine has a
-# successor -- brms refuses a block-diagonal vm() carrier outright
+# successor, brms refuses a block-diagonal vm() carrier outright
 # (stan_cannot_represent_structured_cov via `.capability_brms()`), and
 # `return_code = TRUE` on `backend = "auto"` resolves only to brms
-# ("the only active code-producing engine"; verified live: the auto
+# ("the only active code-producing engine", verified live: the auto
 # path raises `auto_no_active_route` for this exact call). INLA
 # represents the carrier (see subtest (e) below) but has no
-# code-generation stage to inspect via `return_code` at all -- it
+# code-generation stage to inspect via `return_code` at all, it
 # builds an R formula/call object directly, not a text blob.
 
 # ---------------------------------------------------------------- #
@@ -260,8 +260,8 @@ test_that("lgm_gate refuses vm() with cov_representation$format = 'blocks'", {
 # `vm(low_rank_factor =, low_rank_scheme =)` keyword spelling.
 # `.setup_env()` was the withdrawn native engine's model-environment
 # builder (see NEWS.md, 0.9.3) and had zero callers from any other
-# emit path even before the withdrawal -- confirmed via a caller sweep
-# of R/*.R during this session's orphan-detection pass -- so this
+# emit path even before the withdrawal, confirmed via a caller sweep
+# of R/*.R during this session's orphan-detection pass, so this
 # refusal never fired for an INLA or brms fit and is not a capability
 # either active engine ever had.
 

@@ -4,7 +4,7 @@
 # The weak-identification flag reads how much of the prior's probability the
 # posterior's 95% interval still spans. Measured on the default half-normal
 # prior, 10 seeds each: 3 levels 0.55 to 0.80, a random copy of a fixed
-# factor 0.88, 5 levels 0.19 to 0.36, 30 levels 0.07; the threshold is 0.4.
+# factor 0.88, 5 levels 0.19 to 0.36, 30 levels 0.07. The threshold is 0.4.
 
 .wv_silent_prior_note <- function(env = parent.frame()) {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE, .local_envir = env)
@@ -237,7 +237,7 @@ test_that("either reading flags a component, and only an sd_ row", {
 test_that("DEF-201: besag C2 and C5 read on the SD scale stay below the ratio threshold", {
   vc <- .wv_besag()
   med <- attr(vc, "posterior_median")
-  # The posterior medians are SDs; squared they are the variances 19.5 and
+  # The posterior medians are SDs. Squared, they are the variances 19.5 and
   # 19.6 that DEFECTS.tsv records.
   expect_equal(unname(med[c("sd_gen__envC2", "sd_gen__envC5")])^2,
                c(19.5, 19.6), tolerance = 0.02)

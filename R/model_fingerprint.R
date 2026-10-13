@@ -1,4 +1,4 @@
-# model_fingerprint -- the record of the question a fit answered.
+# model_fingerprint: the record of the question a fit answered.
 #
 # Each fit carries a fingerprint of the question it was asked: the
 # canonical formula triple, the family and link, a content digest of the
@@ -7,13 +7,13 @@
 # reads the prior record.
 #
 # The fingerprint is built at fit time, inside emit_brms() and emit_inla(),
-# from the IR and the analysis data -- not from the user's call, which two
+# from the IR and the analysis data, not from the user's call, which two
 # grammars spell differently for the same model. It is stored on
 # `fit$extras$fingerprint` on both engines.
 #
 # Nothing here is cryptographic. The data digest is a deterministic
 # column-wise summary designed to notice a different dataset, a reordered
-# dataset, or a changed column; it is not a defence against a constructed
+# dataset, or a changed column. It is not a defence against a constructed
 # collision, and the fingerprint is documented that way.
 
 # ---------------------------------------------------------------- #
@@ -21,10 +21,10 @@
 # ---------------------------------------------------------------- #
 
 # Build the fingerprint for one fit. `prior_vc_sd` is the legacy scalar
-# the caller would have used had no fb_prior() been supplied; it is
+# the caller would have used had no fb_prior() been supplied. It is
 # recorded so a legacy-bridge fit says which scalar it ran under.
 # `completion` is the record an INLA emit keeps of the priors it added to
-# what was stated (R/inla_default_priors.R); NULL on every other route.
+# what was stated (R/inla_default_priors.R). NULL on every other route.
 .fb_model_fingerprint <- function(fb, data, prior_vc_sd = NA_real_,
                                   completion = NULL) {
   forms <- .fb_canonical_model_strings(fb)
@@ -106,7 +106,7 @@
   # An absent residual side and a bare `units` residual are the same
   # model: the ASReml ingest writes the default residual out and the
   # brms-style ingest leaves it implicit. Normalising them together is
-  # what keeps the fingerprint a property of the model rather than of the
+  # what keeps the fingerprint a property of the model, not of the
   # grammar it was written in.
   resid <- fb$residual_terms %||% list()
   is_plain_units <- length(resid) == 1L &&
@@ -144,7 +144,7 @@
 # ---------------------------------------------------------------- #
 
 # Column-wise, order-sensitive content digest. Each column contributes a
-# handful of vectorised summaries; the order-sensitive term (sum of the
+# handful of vectorised summaries. The order-sensitive term (sum of the
 # values weighted by row position) is what makes a permuted dataset read
 # as a different dataset, which matters because a random effect indexed
 # by row position is a different model after a shuffle.
@@ -229,12 +229,12 @@
 #   "shared_default"  the package's own half-normal default, injected
 #                     identically for every engine before dispatch
 #   "explicit"        a user-supplied fb_prior() spec
-#   "engine_default"  no prior this package chose -- the term is outside
+#   "engine_default"  no prior this package chose, the term is outside
 #                     the default-prior walker, or the run used the legacy
 #                     scalar bridge, which reaches brms and not INLA
 #
 # Only the first two are comparable across engines. The third is recorded
-# rather than dropped so that prior_summary() can say *why* a parameter
+# and not dropped so that prior_summary() can say *why* a parameter
 # carries no prior this package chose.
 .fb_prior_record <- function(fb, prior_vc_sd = NA_real_) {
   targets <- .fb_default_prior_targets(fb)
@@ -251,12 +251,12 @@
     )
 
     # Legacy scalar bridge, explicitly requested. Both active engines now
-    # carry the same lognormal(0, prior_vc_sd) on the SD scale -- brms as
+    # carry the same lognormal(0, prior_vc_sd) on the SD scale, brms as
     # a prior row, INLA as the expression prior that writes the same
     # density in its log-precision parameterisation. Until 0.9.2 only
     # brms received it, so the record said no variance component was
     # matched, and it was right for the wrong reason: the INLA half was
-    # missing rather than different.
+    # missing, not different.
     if (.fb_prior_scalar_supplied(fb, "vc_sd") && is.finite(prior_vc_sd)) {
       density <- sprintf("lognormal(0, %s)", format(prior_vc_sd, digits = 6))
       unmatched <- c("sigma", paste0("sd_", .fb_legacy_vc_groups(fb)))
@@ -315,7 +315,7 @@
   }
 
   # A term the walker skipped may still have been given an explicit prior
-  # by hand; the recorded entry wins over the engine-default note.
+  # by hand. The recorded entry wins over the engine-default note.
   engine_default <- engine_default[
     !(names(engine_default) %in% names(recorded))
   ]

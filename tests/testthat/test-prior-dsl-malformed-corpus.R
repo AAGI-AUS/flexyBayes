@@ -1,20 +1,13 @@
 # =============================================================================
 # The prior mini-language refuses malformed specifications, by name.
 #
-# The 0.9.1 field-coverage sweep submitted 37 constructions to `fb_prior()`:
-# 31 malformed and 6 deliberate controls. Twenty-three of the 31 were
-# accepted without error or warning, and three of those reached a completed
-# fit under a silently substituted hyperparameter -- a prior-sensitivity
-# analysis run through that path compares the default prior with itself.
-#
-# The corpus below is that sweep section, kept verbatim as a regression
-# fixture. A mini-language is a public API: an argument name it does not
-# have is a specification it cannot honour, and the refusal has to carry a
-# class a caller can match on rather than a message a caller must parse.
+# 37 constructions passed to `fb_prior()`: 31 malformed and 6 controls. A
+# malformed prior accepted silently can reach a fit under a substituted
+# hyperparameter, so a prior-sensitivity analysis would compare the default
+# prior with itself. Each refusal carries a class a caller can match on.
 #
 # Each malformed row names the reason code it must raise. Each control row
-# must still construct -- the corpus is a two-sided contract, and a
-# constructor that refuses everything would pass a one-sided one.
+# must still construct, so a constructor that refuses everything fails.
 # =============================================================================
 
 # --- malformed corpus: every row refuses, with the named reason ---------- #
@@ -263,10 +256,9 @@ test_that("the family parameter table is the only list of prior families", {
 # and refuse at the fit. Kept in the same file because a caller reading
 # "which malformed priors does flexyBayes catch" should find one list.
 #
-# Sources: field-sweep FS-15 (the brms prior-emit layer was untyped),
-# FS-20 (a prior on a term the model does not have reached brms's parser),
-# FS-21 (an untranslatable INLA row was accepted, printed as applied, and
-# dropped). Append-only: a row here is a regression pin.
+# Cases: an untyped error from the brms prior emit, a prior on a term the
+# model does not have reaching brms's parser, and an untranslatable INLA
+# row accepted, printed as applied and dropped. Append-only.
 # =============================================================================
 
 .corpus_fit_entry_data <- function() {
@@ -448,7 +440,7 @@ test_that("the fit-entry controls reach a completed fit", {
 })
 
 
-# --- the b() target shape (review A24) ---------------------------------- #
+# --- the b() target shape ----------------------------------------------- #
 #
 # `b()` read its argument with as.character() on the unevaluated expression,
 # which deparses a call head-first. The consequences were the same three
@@ -459,12 +451,9 @@ test_that("the fit-entry controls reach a completed fit", {
 #   b(starts_with("x"))  -> c("starts_with", "x");
 #   b(1)                 -> "1".
 #
-# None refused. The length-3 target survived fb_prior() and fb_plan() intact
-# and failed inside the emitter with "the condition has length > 1" -- a base
-# R message about an if() in our internals, raised about a formula the user
-# wrote. Vector and tidy-select targets are a real feature; they need a typed
-# term resolver rather than a coercion, and until one exists the refusal says
-# so.
+# A length-3 target would fail inside the emitter with "the condition has
+# length > 1", a base R message about package internals. Vector and
+# tidy-select targets need a typed term resolver, so they are refused.
 
 test_that("b() refuses a target that is not one coefficient name", {
   malformed <- list(

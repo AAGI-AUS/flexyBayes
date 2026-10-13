@@ -179,7 +179,10 @@ fit_fa <- function(d, k, sectioned) {
   vc <- summary(m)$varcomp
   levs <- levels(d$env)
   prefix <- paste0("fa(env, ", k, "):gen!")
-  mat_l <- matrix(0, length(levs), k, dimnames = list(levs, paste0("fa", seq_len(k))))
+  mat_l <- matrix(
+    0, length(levs), k,
+    dimnames = list(levs, paste0("fa", seq_len(k)))
+  )
   vec_psi <- stats::setNames(numeric(length(levs)), levs)
   for (lev in levs) {
     vec_psi[[lev]] <- vc[paste0(prefix, lev, "!var"), "component"]

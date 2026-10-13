@@ -39,7 +39,7 @@ Most arguments and terms carry over unchanged.
 | `random = ~ at(design, "split"):mainplot` | the same | INLA or brms |
 | `random = ~ us(env):gen` | the same | brms |
 | `residual = ~ dsum(~ units \| env)` | the same | INLA or brms |
-| `random = ~ diag(trial):gen`, `residual = ~ dsum(~ units \| trial)` on many trials | the same; INLA uses empirical Bayes past 15 variance parameters | INLA or brms |
+| `random = ~ diag(trial):gen`, `residual = ~ dsum(~ units \| trial)` on many trials | the same, but INLA uses empirical Bayes past 15 variance parameters | INLA or brms |
 | none: ASReml estimates each trial's variances on their own | `prior = fb_prior(sd(group = "trial:gen", by = "trial") ~ pooled(...))` | brms |
 | `random = ~ units`, `residual = ~ ar1(row):ar1(col)` | `random = ~ ar1(row):ar1(col)` | INLA |
 | `residual = ~ ar1(row):ar1(col)`, with no `units` | the same | INLA |
@@ -442,7 +442,7 @@ plan_p$pooled
 ```
 
 `scale` is the prior on the pooling standard deviation and has no default.
-Only brms fits the model; `backend = "auto"` sends it there.
+Only brms fits the model, and `backend = "auto"` sends it there.
 
 A pooled fit is not ASReml's model C. On the 12 trials above, with a unit
 half-normal prior on each pooling standard deviation, the posterior median
@@ -742,7 +742,7 @@ c(
 | `at(trial):ar1(row):ar1(col)` with `backend = "brms"` | brms has no AR1 x AR1 field | `backend = "inla"` |
 
 flexyBayes stops on ASReml's `predict()` arguments `present`, `average`,
-`ignore`, `sed` and `vcov` rather than ignore them:
+`ignore`, `sed` and `vcov` instead of ignoring them:
 
 
 ``` r
@@ -785,7 +785,7 @@ vapply(names(asreml_args), function(a) {
   covers 40% or more of the prior's probability, that is, when the data
   have barely narrowed the prior, or when the interval is 4.24 or more
   times the posterior median on the standard deviation. Report such a
-  component as weakly identified rather than as an estimate. A large
+  component as weakly identified, not as an estimate. A large
   ASReml standard error relative to the component tells the same story,
   but the two checks do not always agree, as the `besag.met` counties
   above show.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/fb_terms.R
 \name{format.fb_terms}
 \alias{format.fb_terms}
-\title{Format method for fb_terms -- one-line summary}
+\title{Format method for fb_terms: one-line summary}
 \usage{
 \method{format}{fb_terms}(x, ...)
 }

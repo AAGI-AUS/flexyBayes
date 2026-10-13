@@ -21,7 +21,7 @@
 #   The scale. The stored mean is mapped back from the standardised response
 #   INLA was run on. On the engine's own coordinates the posterior mean of
 #   the field is the weight-averaged conditional mean over INLA's
-#   hyperparameter configurations; times the response standard deviation it
+#   hyperparameter configurations. Times the response standard deviation it
 #   must equal the drawn field.
 # =============================================================================
 
@@ -30,7 +30,7 @@
 .fbsf_ar1 <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
 
 # One observation per node of an n_row x n_col array, a separable AR1 field
-# plus a nugget; rows and columns labelled with the caller's own strings.
+# plus a nugget, with rows and columns labelled with the caller's strings.
 # The plots are in shuffled order and the column factor's levels run from
 # the last column to the first, so neither the order of the rows nor a sort
 # of the labels gives the index the emitter wrote.
@@ -124,7 +124,7 @@
   latent_names <- rownames(draws[[1L]]$latent)
   predictor <- grep("^Predictor:", latent_names)
   field <- grep(paste0("^", row_var, "_id:"), latent_names)
-  # INLA keeps its data as a list; model.matrix() of an intercept-only
+  # INLA keeps its data as a list. model.matrix() of an intercept-only
   # formula over a list would have no rows.
   X <- stats::model.matrix(fixed, as.data.frame(engine_data))
   gap <- vapply(draws, function(s) {
@@ -183,7 +183,7 @@ test_that("the drawn field is the posterior mean on the response scale, read aga
   out <- plot(fit, type = "spatial_field")
   engine <- .fbsf_engine_nodes(fit, "row", "range", n_draws = 10L)
 
-  # INLA was run on (y - mean(y)) / sd(y); read that scale off the data.
+  # INLA was run on (y - mean(y)) / sd(y).
   scale <- stats::sd(d$y)
   configs <- fit$inla$misc$configs
   tag <- which(configs$contents$tag == "row_id")
@@ -201,7 +201,7 @@ test_that("the drawn field is the posterior mean on the response scale, read aga
   drawn <- out$values[cbind(as.character(d$row), as.character(d$range))]
   # The stored means come from INLA's integrated marginals, the weighted
   # conditional means from its configurations. Measured on this fixture, in
-  # units of the field's smallest posterior sd: the two differ by 4.4e-4; a
+  # units of the field's smallest posterior sd: the two differ by 4.4e-4. A
   # field left on the engine's coordinates would sit 0.54 away, and a
   # transposed map 5.1 away.
   sd_min <- min(fit$inla$summary.random$row_id$sd)

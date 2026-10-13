@@ -1,15 +1,11 @@
 # Heterogeneous variance over an outer factor: diag(f):g, idh(f):g, at(f):g.
 #
-# These assert on the EMITTED MODEL, not on the class of the returned object.
-# A green suite of 2,571 tests once missed four P0 defects because every test
-# checked that a fit came back and none checked what had been fitted, so the
-# question here is always "what formula reached brms, and how many variance
-# parameters does it imply".
+# These assert on the emitted model: the formula that reached brms and the
+# number of variance parameters it implies.
 #
-# The mapping diag(f):g -> (0 + f || g) is validated against ASReml and lme4
-# in design-preserving-missingness/oracle_heterogeneous.R: all three fit
-# exactly k variances and 0 covariances, and the two REML arms agree to
-# 3.5e-05. These tests guard the wiring; that script grounds the semantics.
+# The mapping diag(f):g -> (0 + f || g) was checked against ASReml and lme4
+# in a separate script: all three fit exactly k variances and 0
+# covariances, and the two REML fits agree to 3.5e-05.
 
 .het_data <- function(n_site = 3L, n_gen = 8L, n_rep = 2L, seed = 1L) {
   set.seed(seed)
@@ -45,9 +41,8 @@ test_that("at(), diag() and idh() are the same structure", {
   a <- .emitted(~ at(site):gen, d)
   b <- .emitted(~ diag(site):gen, d)
   i <- .emitted(~ idh(site):gen, d)
-  # ASReml treats diag() and idh() as identical -- fitted side by side it
-  # returns the same components and the same standard errors -- so flexyBayes
-  # must not quietly give them different models.
+  # ASReml returns the same components and standard errors for diag() and
+  # idh(), so they must emit the same model.
   expect_identical(a, b)
   expect_identical(a, i)
 })
@@ -66,10 +61,8 @@ test_that("us(f):g keeps the correlations that diag(f):g drops", {
 test_that("at(f, level):g is not emitted as the diagonal structure", {
   skip_if_not_installed("brms")
   d <- .het_data()
-  # at(site, 2):gen gives the effect only where site == 2; diag(site):gen
-  # gives it everywhere with a per-level variance. Different models that
-  # share a spelling, which is precisely how one gets fitted under the
-  # other's name.
+  # at(site, 2):gen gives the effect only where site == 2. diag(site):gen
+  # gives it everywhere with a per-level variance.
   at_fb <- fb_from_asreml(
     fixed = y ~ site, random = ~ at(site, 2):gen, data = d
   )
@@ -91,10 +84,8 @@ test_that("the refusal code is registered in the taxonomy", {
 test_that("corh(f):g is refused by name, not approximated", {
   skip_if_not_installed("brms")
   d <- .het_data()
-  # corh() asks for k variances plus ONE shared correlation. brms has only
-  # the two ends -- uncorrelated or fully unstructured -- so approximating
-  # it either invents k(k+1)/2 - 1 free correlations or drops the one that
-  # was requested. Both are a different model under this one's name.
+  # corh() asks for k variances plus one shared correlation. brms offers
+  # only uncorrelated or fully unstructured, so it must refuse.
   err <- tryCatch(.emitted(~ corh(site):gen, d), error = function(e) e)
   expect_s3_class(err, "flexybayes_refusal_corh_no_equicorrelation_representation")
   # The refusal has to be actionable: it must name both available structures.
@@ -137,9 +128,8 @@ test_that("a heterogeneous residual is refused for a family with no sigma", {
   skip_if_not_installed("brms")
   d <- .het_data()
   d$cnt <- stats::rpois(nrow(d), 5)
-  # Poisson dispersion is a function of the mean; there is no residual scale
-  # to vary, so `sigma ~ f` would put a predictor on a parameter that does
-  # not exist.
+  # Poisson has no residual scale, so `sigma ~ f` names a parameter that
+  # does not exist.
   err <- tryCatch(
     flexybayes(cnt ~ site, random = ~ gen,
                residual = ~ dsum(~ units | site), data = d,
@@ -177,11 +167,10 @@ test_that("INLA refuses a heterogeneous residual for a family with no residual s
 test_that("the scalar sigma prior is retargeted, not left to match nothing", {
   skip_if_not_installed("brms")
   d <- .het_data()
-  # With `sigma ~ 0 + f` the scalar sigma parameter ceases to exist. A prior
-  # row still aimed at it makes brms refuse the whole fit -- "The following
-  # priors do not correspond to any model parameter" -- which is how this was
-  # found. Asserted on the emitted Stan program: the prior must land on the
-  # sigma COEFFICIENT block, and the program must compile at all.
+  # With `sigma ~ 0 + f` there is no scalar sigma. A prior aimed at it makes
+  # brms refuse the fit ("The following priors do not correspond to any
+  # model parameter"). The prior must land on the sigma coefficient block,
+  # and the program must compile.
   txt <- paste(utils::capture.output(print(flexybayes(
     y ~ site, random = ~ gen, residual = ~ dsum(~ units | site),
     data = d, backend = "brms", return_code = TRUE
@@ -201,10 +190,9 @@ test_that("a heterogeneous fit returns one variance per level and no correlation
     backend = "brms", chains = 1L, n_samples = 400L, warmup = 400L
   )))
   vc <- brms::VarCorr(fit$brms)
-  # The structural assertion: a diagonal over k levels is exactly k
-  # variances and zero correlations. Values are not asserted here -- with
-  # 400 draws on synthetic noise they carry no information, and the
-  # value-level check against ASReml lives in the oracle script.
+  # A diagonal over k levels is exactly k variances and zero correlations.
+  # Values are not asserted: 400 draws on synthetic noise carry no
+  # information.
   expect_equal(nrow(vc$gen$sd), nlevels(d$site))
   expect_null(vc$gen$cor)
 })
@@ -223,14 +211,13 @@ test_that("a sectioned residual reports its per-level variances", {
 
   tab <- flexyBayes:::.brms_residual_by_level_table(fit)
   expect_false(is.null(tab))
-  # Labelled by the sectioning factor's own levels, in its own order --
-  # the audit's complaint was that b_sigma_site2 reads as a variance to
-  # anyone coming from ASReml's site_2!R.
+  # Labelled by the sectioning factor's own levels, in its own order. A
+  # name such as b_sigma_site2 reads as a variance to an ASReml user.
   expect_identical(tab$level, levels(d$site))
   expect_identical(attr(tab, "factor"), "site")
 
-  # Consistent with a direct computation off the draws, and computed as
-  # the median of the transform rather than the transform of a mean.
+  # Matches a direct computation from the draws: the median of the
+  # transform, not the transform of a mean.
   draws <- as.matrix(posterior::as_draws_matrix(fit$brms))
   for (i in seq_along(tab$level)) {
     col <- paste0("b_sigma_site", tab$level[[i]])
@@ -276,16 +263,8 @@ test_that("a sectioned residual reports its per-level variances", {
 # =============================================================================
 # The per-level residual reaches the object, not only the printout.
 #
-# `print(summary(fit))` rendered a "Residual by level of `site`" block, and
-# `summary(fit)$varcomp` came back with the grouping factors and no residual
-# at all -- one row, `sd_gen`. There was no `$residual_by_level` slot, no
-# attribute carrying it, and no accessor in the namespace. The print method
-# recomputed the table from the draws each time and threw it away.
-#
-# The consequence sat squarely in the target use case: the exit gate asks
-# that a user work without opening `$brms`, and on this design the per-level
-# residual -- the entire point of fitting dsum() -- was reachable only by
-# opening `$brms` and transforming `b_sigma_*` draws by hand.
+# The per-level residual of a dsum() fit is read from the summary object,
+# without opening `$brms` or transforming `b_sigma_*` draws by hand.
 # =============================================================================
 
 test_that("the per-level residuals are rows of summary(fit)$varcomp", {
@@ -322,8 +301,8 @@ test_that("the per-level residuals are rows of summary(fit)$varcomp", {
 
   # The prior cell names what reached the sampler. The declared uniform on
   # the SD scale was retargeted onto the log-sigma coefficients at emit
-  # time, so a `sigma` spec would name a parameter this model does not
-  # have -- and "engine default" would claim the package set nothing.
+  # time. A `sigma` spec would name a parameter this model does not have,
+  # and "engine default" would claim the package set nothing.
   expect_false(any(resid$prior == "engine default"))
   expect_true(all(grepl("normal", resid$prior, fixed = TRUE)))
 
@@ -363,11 +342,8 @@ test_that("on INLA each residual section's prior cell names the prior it receive
 })
 
 test_that("a sectioned-residual fit answers the mean-model accessors", {
-  # The distributional coefficients used to be swept into the fixed-effect
-  # basis by a bare `^b_` match, which left coef() reporting `sigma_siteA`
-  # as if it were an effect on the response and made the fixed-effect
-  # design matrix irreconcilable with it -- so predict(classify = ) died
-  # in the estimability seam even for a plain fixed factor.
+  # A bare `^b_` match also catches the distributional coefficients, which
+  # are not effects on the response.
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("rstan")

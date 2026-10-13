@@ -20,6 +20,6 @@ A one-row data.frame whose columns follow the internal
 \code{.FB_PLAN_DF_COLS} order, with one column per recorded plan field.
 }
 \description{
-Stable column ordering by the internal vector \code{.FB_PLAN_DF_COLS};
-adding new fields appends rather than reorders.
+Stable column ordering by the internal vector \code{.FB_PLAN_DF_COLS}.
+New fields are appended, and existing columns keep their order.
 }

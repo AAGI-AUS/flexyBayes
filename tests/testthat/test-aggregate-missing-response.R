@@ -1,21 +1,14 @@
 # =============================================================================
 # The aggregated Gaussian path and missing responses.
 #
-# The aggregated path compresses rows into per-cell means and counts. A missing
-# response has no sufficient statistic to contribute, and the compression did
-# not account for that: the cell mean came back NA and a downstream test failed
-# with "missing value where TRUE/FALSE needed".
+# The aggregated path compresses rows into per-cell means and counts. A
+# missing response has no sufficient statistic to contribute, so a call with
+# one falls through to the per-row path. Skipping NA rows instead would make
+# the aggregated path mean complete-case deletion while the per-row path
+# means augmentation.
 #
-# The failure was reachable from an ordinary call -- a randomised complete
-# block design with a lost plot, fitted with the default aggregate = "auto" --
-# and it surfaced only when the augmentation layer began retaining
-# missing-response rows instead of letting them be dropped upstream.
-#
-# The repair is to fall through to the per-row path, NOT to teach the
-# compression to skip NA rows. Skipping them would make the aggregated path
-# mean complete-case deletion while the per-row path means augmentation, so
-# the same call would answer two different questions depending on a
-# compression ratio the user never chose.
+# The fixture is a randomised complete block design with lost plots, fitted
+# with the default aggregate = "auto".
 # =============================================================================
 
 .rcbd_with_hole <- function(n_row = 8L, n_col = 6L, n_missing = 7L,
@@ -55,12 +48,8 @@ test_that("auto and explicit aggregate = FALSE agree when a response is missing"
   ))
   h1 <- f_auto$inla$summary.hyperpar[, "mean"]
   h2 <- f_row$inla$summary.hyperpar[, "mean"]
-  # Both calls take the same route, so this is testing that the fallthrough
-  # lands on the per-row path rather than a third behaviour. The tolerance is
-  # not tight because INLA is not bitwise reproducible across runs under
-  # threading -- the same call here differs in the fourth decimal -- so a
-  # 1e-6 expectation would fail on the engine's own noise rather than on
-  # anything this test is about.
+  # Both calls take the per-row path. INLA under threading differs in the
+  # fourth decimal between identical calls, hence the tolerance.
   expect_equal(unname(h1), unname(h2), tolerance = 1e-2)
   expect_identical(
     f_auto$extras$backend_decision$path,
@@ -68,7 +57,7 @@ test_that("auto and explicit aggregate = FALSE agree when a response is missing"
   )
 })
 
-test_that("aggregate = TRUE refuses rather than compressing a missing response", {
+test_that("aggregate = TRUE refuses to compress a missing response", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .rcbd_with_hole()

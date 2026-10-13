@@ -25,5 +25,5 @@ a streamed fit. The values equal those of a per-row fit of the same model.
 \details{
 A streamed fit keeps only the first rows it read. When those are fewer than
 the rows it was fitted to, the method refuses by name
-(\code{streamed_rows_not_retained}) rather than return them as the data.
+(\code{streamed_rows_not_retained}), not return them as the data.
 }

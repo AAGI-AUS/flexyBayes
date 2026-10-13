@@ -1,4 +1,4 @@
-# Tests for the internal Stage 2 MVP `.fb_preflight()` design-memory
+# Tests for the internal `.fb_preflight()` design-memory
 # preflight layer (ADR 0021 / v0.3.0). Covers:
 #   - the accept path on small in-scope designs
 #   - the refusal path with the binding-term identity
@@ -13,7 +13,7 @@
 #   - the system-RAM probe's fallback to 8 GiB when probes absent
 #   - default ceiling resolution yields a positive byte count
 
-# Hand-build a minimal <fb_terms> IR for a given term spec; convenient
+# Hand-build a minimal <fb_terms> IR for a given term spec. Convenient
 # helper for the agg_candidate / smooth / refusal tests where we want
 # to bypass the brms walker's smooth refusal.
 .test_make_fb_ir <- function(
@@ -344,11 +344,11 @@ test_that("default ceiling resolves to a positive byte count", {
   pf <- .fb_preflight(fb, .fb_dataset(df))
 
   expect_true(pf$ceiling_bytes > 0)
-  # Host-robust: the default ceiling is the documented formula -- 60% of
-  # probed RAM, or an 8 GiB fallback when the probe returns NA -- so
-  # assert against the actual probe rather than assuming the host has
-  # >= 8 GiB (CI runners may have less). Audit P2.3 (2026-05-23) lowered
-  # the default fraction from 0.8 to 0.6.
+  # The default ceiling is the documented formula, 60% of
+  # probed RAM, or an 8 GiB fallback when the probe returns NA, so
+  # assert against the actual probe instead of assuming the host has
+  # >= 8 GiB (CI runners may have less). The default fraction was lowered from
+  # 0.8 to 0.6 on 2026-05-23.
   ram <- flexyBayes:::.fb_probe_system_ram()
   frac <- getOption("flexyBayes.preflight_ram_fraction", 0.6)
   expected <- if (is.na(ram)) 8 * 1024^3 else as.numeric(frac) * ram
@@ -425,7 +425,7 @@ test_that("class invariants: <fb_preflight> + <fb_preflight_refusal>", {
   expect_s3_class(pf_big$refusal, "fb_preflight_refusal")
 })
 
-test_that(".fb_preflight is internal -- no exported binding", {
+test_that(".fb_preflight is internal, no exported binding", {
   ns <- asNamespace("flexyBayes")
   exp <- getNamespaceExports(ns)
   expect_false(".fb_preflight" %in% exp)
@@ -445,7 +445,7 @@ test_that("fb_from_brms(data = NULL, carry_n_rows): metadata-only IR shape", {
   expect_s3_class(fb, "fb_terms")
   expect_identical(fb$source, "brms_metadata_only")
   expect_identical(fb$data_summary$n, 10000000L)
-  # Random-term level cache stripped -- preflight will read from
+  # Random-term level cache stripped, preflight will read from
   # <fb_dataset>$dictionaries.
   expect_true(is.na(fb$random_terms[[1L]]$var_n))
   expect_null(fb$random_terms[[1L]]$var_levels)
@@ -465,7 +465,7 @@ test_that("fb_from_brms(data, carry_n_rows): override path preserves real var_n"
 
   expect_identical(fb$source, "brms")
   expect_identical(fb$data_summary$n, 5000000L)
-  # Real var_n from the placeholder data is preserved -- it is the
+  # Real var_n from the supplied dataset is preserved, it is the
   # caller's responsibility to ensure dictionaries on the <fb_dataset>
   # match the actual large-scale workflow when they override n.
   expect_identical(fb$random_terms[[1L]]$var_n, 10L)
@@ -492,13 +492,13 @@ test_that("carry_n_rows round-trip: metadata-only IR + dataset -> preflight runs
 
 
 # ---------------------------------------------------------------- #
-# Phase B hardening (2026-05-23) -- audit-driven new estimators     #
+# New estimators (2026-05-23)                                      #
 # ---------------------------------------------------------------- #
 
 test_that("smooth_mgcv parser type estimates N x k dense basis", {
-  # Audit P1.2: parser emits type = "smooth_mgcv"; previously fell
+  # The parser emits type = "smooth_mgcv". Previously fell
   # through to random_other (12N + 16k) for a 3.3x under-estimate at
-  # N = 5000, k = 5. Expected estimate now matches the audit number.
+  # N = 5000, k = 5. The expected estimate is the measured number.
   ds <- .fb_dataset(
     data = NULL,
     n_rows = 5000L,
@@ -520,7 +520,7 @@ test_that("smooth_mgcv parser type estimates N x k dense basis", {
 })
 
 test_that("spline (spl) parser type estimates N x df dense basis at df=8", {
-  # Audit P1.2: parser emits type = "spline"; codegen hardcodes
+  # The parser emits type = "spline". Codegen hardcodes
   # df = 8. Previously fell through to random_other (12N + 16k) for
   # a 5.3x under-estimate at N = 5000.
   ds <- .fb_dataset(
@@ -542,9 +542,9 @@ test_that("spline (spl) parser type estimates N x df dense basis at df=8", {
 })
 
 test_that("factor:factor interaction sizes dense treatment-coded block", {
-  # Audit P1.3: high-cardinality factor:factor is the named scary
+  # High-cardinality factor:factor is the named scary
   # case. Previously fell through to a single-column estimate
-  # (8N + 8) -- the dense block is (K-1)x larger.
+  # (8N + 8), the dense block is (K-1)x larger.
   df <- data.frame(
     y = rnorm(1000),
     f1 = factor(rep(letters[1:10], 100)),
@@ -570,7 +570,7 @@ test_that("factor:factor interaction sizes dense treatment-coded block", {
 })
 
 test_that("factor:factor refuses when cardinality unresolvable", {
-  # Metadata-only dataset with no dictionaries -- the factor:factor
+  # Metadata-only dataset with no dictionaries, the factor:factor
   # estimator cannot compute K and flags unknown_representation.
   ds <- .fb_dataset(
     data = NULL,
@@ -671,8 +671,8 @@ test_that("expression term (I() / arithmetic) sizes one column", {
 
 test_that("interaction_generic random term triggers representation_unknown", {
   # parse_formula.R:214 fallback for random terms whose interaction
-  # shape didn't match any structured-cov pattern. The audit P1.3
-  # framing: unknown shape != "estimate a small column".
+  # shape didn't match any structured-cov pattern. An unknown shape
+  # is not the same as "estimate a small column".
   ds <- .fb_dataset(
     data = NULL,
     n_rows = 1000L,
@@ -753,7 +753,7 @@ test_that("preflight_ram_fraction scales the default ceiling", {
   expect_equal(c_high / c_low, 3, tolerance = 1e-9)
 })
 
-test_that("preflight_ram_fraction default is 0.6 (audit P2.3)", {
+test_that("preflight_ram_fraction default is 0.6", {
   ns <- asNamespace("flexyBayes")
   original <- get(".fb_probe_system_ram", envir = ns, inherits = FALSE)
   on.exit(assignInNamespace(
@@ -798,7 +798,7 @@ test_that("preflight_ram_fraction rejects out-of-range values", {
 
 
 # ---------------------------------------------------------------- #
-# print.fb_preflight_refusal -- representation_unknown shape         #
+# print.fb_preflight_refusal, representation_unknown shape         #
 # ---------------------------------------------------------------- #
 
 test_that("print.fb_preflight_refusal: NA bytes render cleanly", {
@@ -827,15 +827,15 @@ test_that("print.fb_preflight_refusal: NA bytes render cleanly", {
 
 
 # ---------------------------------------------------------------- #
-# Audit P1.3 (2026-05-24): .stop_preflight_refusal() must branch   #
-# its headline on refusal$reason_code so that an unknown-          #
+# 2026-05-24: .stop_preflight_refusal() must branch   #
+# its first line on refusal$reason_code so that an unknown-          #
 # representation refusal does NOT falsely advertise a memory-      #
 # ceiling excess (raising the ceiling cannot help) and does NOT    #
 # suggest a ceiling override. The detailed body via                #
 # print.fb_preflight_refusal() is exercised separately above.      #
 # ---------------------------------------------------------------- #
 
-test_that("dispatch refusal headline branches on reason_code", {
+test_that("dispatch refusal first line branches on reason_code", {
   ref_mem <- structure(
     list(
       reason_code = "design_memory_exceeds_ceiling",
@@ -871,14 +871,14 @@ test_that("dispatch refusal headline branches on reason_code", {
   expect_s3_class(err_mem, "flexybayes_preflight_refusal")
   expect_s3_class(err_unk, "flexybayes_preflight_refusal")
 
-  # design_memory_exceeds_ceiling: headline mentions the ceiling.
+  # design_memory_exceeds_ceiling: first line mentions the ceiling.
   expect_true(grepl(
     "exceeds the active memory ceiling",
     conditionMessage(err_mem),
     fixed = TRUE
   ))
 
-  # representation_unknown_for_preflight: headline must NOT mention
+  # representation_unknown_for_preflight: first line must NOT mention
   # ceiling excess, and must NOT suggest raising the ceiling.
   expect_false(grepl(
     "exceeds the active memory ceiling",
@@ -899,14 +899,14 @@ test_that("dispatch refusal headline branches on reason_code", {
 
 
 # ---------------------------------------------------------------- #
-# Audit P1.4 (2026-05-24): structured-covariance preflight split   #
-# -- known-indexed forms (vm, ped, ar1, ar1_spatial) keep the      #
-# tested indexed heuristic; every other structured-cov form        #
-# (at, us, fa, at_simple, us_gxe, fa_gxe, vm_gxe, ...) routes to   #
-# representation_unknown_for_preflight rather than silently        #
-# under-estimating at large N. The .preflight_term_level_count()   #
-# fallback that previously returned `1L` was removed; NA level     #
-# count escalates every consumer branch to unknown_representation. #
+# Structured-covariance preflight split (2026-05-24). Known-indexed   #
+# forms (vm, ped, ar1, ar1_spatial) keep the tested indexed          #
+# heuristic. Every other structured-cov form (at, us, fa, at_simple,  #
+# us_gxe, fa_gxe, vm_gxe, ...) routes to                              #
+# representation_unknown_for_preflight and is not silently            #
+# under-estimated at large N. The .preflight_term_level_count()       #
+# fallback that returned `1L` was removed, and an NA level count      #
+# escalates every consumer branch to unknown_representation.          #
 # ---------------------------------------------------------------- #
 
 test_that("vm() with resolvable k uses the indexed_structured_known estimator", {
@@ -949,7 +949,7 @@ test_that("ped() with resolvable k uses the indexed_structured_known estimator",
 
 test_that("vm() with NA k escalates to representation_unknown", {
   # Metadata-only dataset without a dictionary for the grouping
-  # factor -- the level count is unresolvable.
+  # factor, the level count is unresolvable.
   ds <- .fb_dataset(
     data = NULL,
     n_rows = 1000L,
@@ -971,7 +971,7 @@ test_that("vm() with NA k escalates to representation_unknown", {
 
 test_that("at() routes to representation_unknown regardless of k", {
   # at() is a known dense-matrix structured-cov form that the
-  # indexed heuristic under-estimates. Per P1.4 it routes to
+  # indexed heuristic under-estimates. It routes to
   # representation_unknown_for_preflight pending a term-specific
   # estimator.
   ds <- .fb_dataset(
@@ -1034,8 +1034,8 @@ test_that("fa() routes to representation_unknown regardless of k", {
 })
 
 test_that("random intercept with NA k escalates to representation_unknown", {
-  # Audit P1.4 (2026-05-24): the previous `1L` fallback masked
-  # this case; the random-intercept branch now treats NA k as
+  # The previous `1L` fallback masked
+  # this case. The random-intercept branch now treats NA k as
   # the signal to refuse via representation_unknown.
   ds <- .fb_dataset(
     data = NULL,
@@ -1058,7 +1058,7 @@ test_that("random intercept with NA k escalates to representation_unknown", {
 
 test_that("factor fixed term with NA k escalates to representation_unknown", {
   # Mirror of the random-intercept regression for the fixed-factor
-  # branch -- the dummy-block size depends on k - 1.
+  # branch, the dummy-block size depends on k - 1.
   ds <- .fb_dataset(
     data = NULL,
     n_rows = 5000L,
@@ -1091,7 +1091,7 @@ test_that("factor fixed term with NA k escalates to representation_unknown", {
 # number of shell-outs is one. Measured here before the cache: fb_plan()
 # resolved a ceiling on every call and each resolution spawned a child, five
 # calls for five children at about 9 ms each. A full flexybayes() fit called
-# it zero times, so the review's "fit hot path" framing did not reproduce --
+# it zero times, so the review's "fit hot path" framing did not reproduce,
 # the repetition is in plan resolution.
 #
 # The noise itself cannot be reproduced on Darwin, where the native sysctl
@@ -1135,7 +1135,7 @@ test_that("the RAM probe shells out once per session, not once per plan", {
   expect_identical(calls$n, 1L)
 
   # An unavailable probe is cached like any other answer, so a host with no
-  # probe pays one failed shell-out per session rather than one per plan.
+  # probe pays one failed shell-out per session instead of one per plan.
   flexyBayes:::.fb_reset_ram_cache()
   calls$n <- 0L
   assignInNamespace(
@@ -1158,7 +1158,7 @@ test_that("resolving a ceiling writes nothing to a child process's stderr", {
   rbin <- file.path(R.home("bin"), "R")
   skip_if_not(file.exists(rbin))
   # The child loads the *installed* package, which under `R CMD check` is the
-  # package under test -- and an installed as-cran run is where the review
+  # package under test, and an installed as-cran run is where the review
   # measured the noise. Under load_all() against a stale install the child
   # would be measuring different code, so the versions must agree first.
   installed <- tryCatch(
@@ -1180,7 +1180,7 @@ test_that("resolving a ceiling writes nothing to a child process's stderr", {
       # The positive control, in the same process. A detector that cannot
       # see the defect would pass this test vacuously, so the run also
       # spawns a command that does not exist, the way benchmarkme's Solaris
-      # branch spawns kstat -- without stderr control. Its noise must land
+      # branch spawns kstat, without stderr control. Its noise must land
       # in the captured stream, after the marker.
       "cat('CONTROL-BEGIN\\n')",
       "try(system2('flexybayes-no-such-probe-kstat', stdout = TRUE),",

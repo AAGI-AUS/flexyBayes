@@ -7,7 +7,7 @@
 # section. The claim was ours, not INLA's.
 #
 # Together with the interaction random effect this is the full
-# multi-environment-trial model -- the one ASReml is actually used for -- and
+# multi-environment-trial model, the one ASReml is actually used for, and
 # both halves refused on INLA before 0.10.0.9000.
 
 .sr_fixture <- function(seed = 31L, n_gen = 30L, n_rep = 6L,
@@ -62,7 +62,7 @@ test_that("INLA recovers one residual SD per section", {
     expect_equal(unname(got[[nm]]), sd_resid[[i]], tolerance = 0.20)
   }
   expect_equal(unname(got[["sd_gen"]]), 0.7, tolerance = 0.20)
-  # The scalar sigma is gone -- there is no single residual to report.
+  # The scalar sigma is gone, there is no single residual to report.
   expect_false("sigma" %in% names(got))
   # And the internal matrix-response column must not surface anywhere.
   expect_false(any(grepl("fb_sectioned_response", names(got), fixed = TRUE)))
@@ -125,12 +125,12 @@ test_that("a level-conditioned residual still refuses", {
   expect_false("lgm_compatible" %in% res$capabilities)
 })
 
-test_that("a residual prior reaches every section rather than being dropped", {
-  # The first working version passed `control_family[[1L]]` per section --
+test_that("a residual prior reaches every section instead of being dropped", {
+  # The first working version passed `control_family[[1L]]` per section,
   # the `hyper` element on its own. INLA warned that 'prec' was not a valid
   # control.family name and REMOVED it, so the residual prior was silently
   # discarded and the fit ran on INLA's default. The fit still "worked",
-  # which is why this needs a test rather than an eye.
+  # which is why this needs a test instead of an eye.
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)

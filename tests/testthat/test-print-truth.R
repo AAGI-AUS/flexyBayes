@@ -1,26 +1,15 @@
-# Tests for the ADR 0030 Decision 4 truth-display surface --- the
-# "Representation:" and "Engine:" two-line block on print.flexybayes(),
-# summary.flexybayes(), and print.flexybayes_aggregated(). v0.3.8.
-#
-# Three acceptance criteria per v038-plan-2026-05-25 section 5.2:
+# The "Representation:" and "Engine:" lines (ADR 0030 Decision 4) on
+# print.flexybayes(), summary.flexybayes() and print.flexybayes_aggregated():
 #
 #   (a) snapshot of print() on an INLA Laplace fit -> Engine: INLA Laplace
 #   (b) snapshot of print() on a brms / Stan HMC fit -> Engine: brms / Stan HMC
 #   (c) snapshot of print() on an aggregated-exact fit ->
 #       Representation: aggregated_exact (compression 5:1)
+#   (d) .engine_label_for_fit() returns the raw backend string for any
+#       engine name other than "inla" or "brms"
 #
-# 0.9.3 also adds a fourth: .engine_label_for_fit() falls through to the
-# raw backend string, unrecognised-verbatim, for any engine name that is
-# neither "inla" nor "brms" -- this used to be a real, engine-specific
-# branch for the native engine withdrawn entirely in 0.9.3 (see NEWS.md),
-# and is now the generic fallback for a future engine the display helper
-# has not been taught to label yet.
-#
-# The full-fit fixtures depend on INLA/brms being installed and would be
-# slow even when available; we instead snapshot-test the helper
-# functions directly with synthesised fit-shaped objects. This keeps
-# the test fast, deterministic, and resilient to engine version drift
-# while still verifying the user-visible label content + adjacency.
+# The helpers are tested on synthesised fit-shaped objects, so the tests
+# need no engine and do not depend on engine versions.
 
 # Helper: build a minimal flexybayes-shaped object carrying just the
 # slots the truth-display helpers consume ($exactness +

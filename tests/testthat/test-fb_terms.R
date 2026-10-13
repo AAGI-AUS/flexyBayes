@@ -1,8 +1,6 @@
-# Tests for fb_terms — flexyBayes intermediate representation (IR)
-#
-# Phase 0.A: skeleton class, constructor, validator, predicate,
-# accessors, print and format S3 methods. No ingest logic exercised
-# here; ingest tests land in phase 0.B (test-fb-from-asreml.R).
+# fb_terms, the flexyBayes intermediate representation (IR): class,
+# constructor, validator, predicate, accessors, print and format methods.
+# Ingest is tested in test-fb-from-asreml.R.
 
 # ---------------------------------------------------------------- #
 # Constructor                                                      #

@@ -10,7 +10,7 @@
 #
 #   * INLA's variance components reach the standard-deviation scale
 #     through the precision MARGINAL, never by transforming a tabulated
-#     posterior mean -- the transform is nonlinear, so the two answers
+#     posterior mean, the transform is nonlinear, so the two answers
 #     differ, and the difference grows exactly where the component is
 #     interesting. The bounds use the quantile identity, which a
 #     strictly monotone transform carries exactly.
@@ -118,7 +118,7 @@ test_that("summary() returns the eleven-slot object on an INLA fit", {
   # The corrected S3 contract: summary() computes and returns VISIBLY, so a
   # bare call at the console auto-prints through print.summary.flexybayes()
   # and an assignment is silent. These two lines used to assert the
-  # opposite -- an invisible return plus a side-effect print -- which is how
+  # opposite, an invisible return plus a side-effect print, which is how
   # the defect survived: it was written down as the expected behaviour.
   expect_true(res$visible)
   # And nothing was printed on the way: the whole expression is an
@@ -142,7 +142,7 @@ test_that("summary() returns the eleven-slot object on a brms fit", {
   # The corrected S3 contract: summary() computes and returns VISIBLY, so a
   # bare call at the console auto-prints through print.summary.flexybayes()
   # and an assignment is silent. These two lines used to assert the
-  # opposite -- an invisible return plus a side-effect print -- which is how
+  # opposite, an invisible return plus a side-effect print, which is how
   # the defect survived: it was written down as the expected behaviour.
   expect_true(res$visible)
   # And nothing was printed on the way: the whole expression is an
@@ -306,8 +306,8 @@ test_that("a wide-support precision marginal still yields a table", {
   # evaluated at inla.qmarginal((1:2048)/2049, m), whose extreme-left
   # values fall below the marginal's own support on a precision spanning
   # five orders of magnitude, so 1 / sqrt() returns NaN and the call
-  # errors. The fit here is an ordinary random intercept -- nothing
-  # exotic -- and before the quantile identity replaced the transformed
+  # errors. The fit here is an ordinary random intercept, nothing
+  # exotic, and before the quantile identity replaced the transformed
   # density it took the whole fit down with it, not just the table.
   skip_if_not_installed("INLA")
   skip_on_cran()
@@ -367,7 +367,7 @@ test_that("a correlation hyperparameter is not put through the SD transform", {
   hp <- fit$inla$summary.hyperpar
   expect_equal(rho$estimate, hp["Rho for row_id", "mean"], tolerance = 1e-10)
   expect_equal(rho$std.error, hp["Rho for row_id", "sd"], tolerance = 1e-10)
-  # A correlation lives on [-1, 1]; a botched SD transform would not.
+  # A correlation lives on [-1, 1], and a botched SD transform would not.
   expect_gte(rho$conf.low, -1)
   expect_lte(rho$conf.high, 1)
 })
@@ -464,7 +464,7 @@ test_that("a brms fit reports R-hat, both ESS flavours and divergences", {
 #
 # One pinned heuristic: flagged when the component's 97.5% quantile on
 # the SD scale sits below 1% of the posterior-median residual SD. The
-# fixtures below are constructed rather than fitted, because the point is
+# fixtures below are constructed instead of fitted, because the point is
 # the rule and not any engine's arithmetic.
 
 .sas_shell <- function(cls, vc, medians) {
@@ -512,7 +512,7 @@ test_that("the flag is a comparison against the residual scale", {
 
 test_that("with no residual scale to compare against, nothing is flagged", {
   # A sectioned residual leaves no scalar sigma, so there is no reference
-  # and every cell stays blank rather than being flagged against a
+  # and every cell stays blank instead of being flagged against a
   # number the model does not have.
   vc <- .sas_collapse_table()[-1L, ]
   shell <- .sas_shell("flexybayes_brms", vc, c(sd_g = 0.5, sd_block = 0.001))
@@ -599,11 +599,11 @@ test_that("tidy() column names are unchanged by the new summary", {
 #
 # The 0.9.0 INLA summary returned the AR1 field's parameters as
 # `$spatial_field`, and the unified object dropped it. The removal was
-# silent -- the caller got NULL and whatever arithmetic followed -- and
+# silent, the caller got NULL and whatever arithmetic followed, and
 # it broke the parameter-recovery table in the spatio-temporal vignette,
 # which no test reached. The slot is engine-native and conditional: on a
-# fit with a field it is there, on a fit without one it is absent rather
-# than NULL-valued, so the eleven names above stay a fixed contract.
+# fit with a field it is there, on a fit without one it is absent, not
+# NULL-valued, so the eleven names above stay a fixed contract.
 
 .sas_field_data <- function(seed = 20260818L, n_row = 8L, n_col = 8L) {
   set.seed(seed)
@@ -656,7 +656,7 @@ test_that("a fit without a field has no $spatial_field slot at all", {
 
 
 # ---------------------------------------------------------------- #
-# 6. A table that cannot be built warns; the posterior survives      #
+# 6. A table that cannot be built warns. The posterior survives      #
 # ---------------------------------------------------------------- #
 #
 # A summary table is a reading of the fit, not part of it, so a table
@@ -665,9 +665,9 @@ test_that("a fit without a field has no $spatial_field slot at all", {
 # tryCatch, warns naming the cause, and returns the fit with an empty
 # table.
 #
-# The failure is FORCED here rather than provoked, and that choice is
-# load-bearing. The model that reaches it in the wild -- a factor on both
-# the fixed and the random side, so confounded with itself -- does not
+# The failure is FORCED here instead of provoked, and that choice is
+# load-bearing. The model that reaches it in the wild, a factor on both
+# the fixed and the random side, so confounded with itself, does not
 # reach it reliably: INLA's solve on such a model is not bit-reproducible
 # between runs, and on ten runs with identical inputs the table came back
 # empty three times and built fine seven times. Pinning the contract on
@@ -716,7 +716,7 @@ test_that("an unbuildable variance-component table warns and keeps the fit", {
 # The unbuildable table is not only a reporting failure. On a Poisson model
 # with two random intercepts under the default uniform-SD(0, 3) bound, about
 # half of identical INLA runs put a precision mode at 4.7e-07 (an SD near
-# 1,450, where the prior's log-density is -1e10) and the table then fails;
+# 1,450, where the prior's log-density is -1e10) and the table then fails.
 # brms on the same model puts that SD at 0.53. The warning used to say the
 # posterior was unaffected, which is false for those fits.
 test_that("the unbuildable-table warning does not vouch for the posterior", {
@@ -786,14 +786,14 @@ test_that("the dropped-row warning does not vouch for the fit either", {
 # random term, so `summary(fit)$varcomp` being NULL on an aggregated fit
 # was not a corner case: it was the commonest fit the package produces.
 # `summary.flexybayes_aggregated()` returned its own list of the
-# aggregated posterior's raw pieces -- beta_means, sigma_means,
-# tau_means -- and carried no variance-component table at all.
+# aggregated posterior's raw pieces, beta_means, sigma_means,
+# tau_means, and carried no variance-component table at all.
 #
 # The aggregated emits record their components as posterior MEANS only,
 # so the table is rebuilt from the engine's own posterior: on the INLA
 # route through the same precision-marginal transform the per-row route
 # uses. That is what §3 above pins for a per-row fit and what the second
-# test here pins for an aggregated one -- the two routes must agree on
+# test here pins for an aggregated one, the two routes must agree on
 # what "the posterior mean of the standard deviation" is.
 
 .FB_RANDOM_COLS_EXPECTED <- c(
@@ -838,7 +838,7 @@ test_that("an aggregated fit returns the same eleven-slot object", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_agg_fit()
-  # The premise, asserted rather than assumed.
+  # The premise, asserted instead of assumed.
   expect_s3_class(fit, "flexybayes_aggregated")
   expect_identical(fit$exactness, "aggregated_exact")
 
@@ -848,7 +848,7 @@ test_that("an aggregated fit returns the same eleven-slot object", {
   # The corrected S3 contract: summary() computes and returns VISIBLY, so a
   # bare call at the console auto-prints through print.summary.flexybayes()
   # and an assignment is silent. These two lines used to assert the
-  # opposite -- an invisible return plus a side-effect print -- which is how
+  # opposite, an invisible return plus a side-effect print, which is how
   # the defect survived: it was written down as the expected behaviour.
   expect_true(res$visible)
   # And nothing was printed on the way: the whole expression is an
@@ -955,7 +955,7 @@ test_that("the aggregated summary names its representation and compression", {
   expect_true(any(grepl("aggregation:.*->.*cells", printed)))
   expect_true(any(grepl("ratio.*:1", printed)))
   # And the model slot carries the same story, so a caller reading the
-  # object rather than the print still learns the fit was aggregated.
+  # object instead of the print still learns the fit was aggregated.
   expect_match(s$model, "G: g iid", fixed = TRUE)
   expect_match(s$model, "aggregated: N = 1 000 rows ->", fixed = TRUE)
 })
@@ -1045,10 +1045,10 @@ test_that("an aggregated count fit carries the table too", {
   )))
 })
 
-test_that("a route that recorded only means says so rather than inventing", {
+test_that("a route that recorded only means says so instead of inventing", {
   # No live fixture reaches this branch: the aggregated INLA route always
   # carries marginals, and the only route that did not is a since-withdrawn
-  # engine (see NEWS.md). The contract is still the one that matters -- a
+  # engine (see NEWS.md). The contract is still the one that matters, a
   # point estimate with no interval is reported as a point estimate with
   # no interval.
   skip_if_not_installed("INLA")

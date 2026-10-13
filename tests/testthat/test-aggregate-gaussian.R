@@ -1,15 +1,15 @@
-# Tests for the Stage 3A foundation: .fb_aggregate_gaussian()
+# Tests for the aggregated-Gaussian foundation: .fb_aggregate_gaussian()
 # sufficient-statistics extractor + algebraic log-likelihood
 # equivalence (ADR 0022 / v0.3.2).
 #
-# These tests gate the core algebraic invariant of Stage 3A: the
+# These tests gate the core algebraic invariant of the aggregation: the
 # aggregated form must produce a bit-exact log-likelihood (to within
 # floating-point reassociation tolerance) for every in-scope IR. If
 # this property holds, every downstream emit (INLA and, later, brms) can be
 # verified against the per-row form via the same identity.
 #
-# Out of scope for this test file (deferred to the Stage 3A backend
-# wiring commit): the emit paths for the active engines, the dispatch branch
+# Out of scope for this test file (deferred to the aggregated backend
+# wiring tests): the emit paths for the active engines, the dispatch branch
 # that consumes the agg_candidate flag, the <flexybayes>$exactness
 # slot. This commit lands the math.
 
@@ -66,7 +66,7 @@ test_that("bit-exact log-lik equivalence: balanced y ~ f + (1|g)", {
   agg <- .fb_aggregate_gaussian(fb, .fb_dataset(df))
 
   # Per-row design matrix rebuilt locally for the equivalence check
-  # (audit P1.4 -- the aggregator no longer carries the N x p form).
+  # (the aggregator no longer carries the N x p form).
   X_row <- stats::model.matrix(~f, data = df)
   beta <- rnorm(ncol(X_row))
   u <- setNames(rnorm(J, sd = 0.5), levels(df$g))
@@ -91,7 +91,7 @@ test_that("bit-exact log-lik equivalence: balanced y ~ f + (1|g)", {
 })
 
 test_that("property-based: 20 random in-scope IRs all hit bit-exact equivalence", {
-  # Stage 3A's correctness rests on the algebraic identity holding
+  # The aggregation's correctness rests on the algebraic identity holding
   # for EVERY in-scope IR + every (beta, u, sigma) triple. Test
   # 20 randomly-generated cases at three N scales.
   set.seed(4L)
@@ -174,13 +174,13 @@ test_that("cell-mean shortcut produces a DIFFERENT log-lik", {
     sigma
   )
 
-  # The cell-mean log-lik should differ materially -- well above
+  # The cell-mean log-lik should differ materially, well above
   # the property-based gate's 1e-12 threshold
   expect_gt(abs(ll_raw - ll_cm) / abs(ll_raw), 1e-6)
 })
 
 test_that("compression ratio reporting: balanced factor design", {
-  # 5 factor levels x 10 reps each = 50 rows = 5 cells; compression
+  # 5 factor levels x 10 reps each = 50 rows = 5 cells. Compression
   # 10:1
   set.seed(6L)
   df <- data.frame(
@@ -278,7 +278,7 @@ test_that("refusal: uncorrelated random slope (x || g)", {
   expect_identical(err$scope_reason, "random_slope_not_aggregatable")
 })
 
-test_that("refusal: structured-covariance random term (audit P2.8)", {
+test_that("refusal: structured-covariance random term", {
   fb <- .test_make_aggregate_ir(
     random_terms = list(list(type = "vm", var = "geno", var_n = 50L))
   )

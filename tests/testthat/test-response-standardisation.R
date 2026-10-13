@@ -109,7 +109,7 @@ test_that("the mapped lognormal expression is the density of theta under it", {
                    .inla_lognormal_sd_expr(scale))
 })
 
-test_that("an unmapped prior family refuses rather than passing through", {
+test_that("an unmapped prior family refuses instead of passing through", {
   expect_error(
     .fb_inla_map_hyper_entry(list(prior = "gaussian", param = c(0, 1)), 2),
     "no standardisation rule"
@@ -302,7 +302,7 @@ test_that("draws are taken on the original scale", {
 # --- the aggregated route and the record ---------------------------------- #
 
 # [removed] "the aggregated route matches the per-row fixed effects at large
-# scale" -- an aggregated Gaussian fit now refuses by name, because the
+# scale", an aggregated Gaussian fit now refuses by name, because the
 # aggregated Gaussian route cannot carry the residual prior. The comparison
 # of its standardised fit with the per-row one returns with that composition.
 

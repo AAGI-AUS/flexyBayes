@@ -7,7 +7,7 @@
 #   fixed effect (Layer 2)      abs(b_fb - b_asr) <= 0.25 * se_asr
 #   variance component (V1-V2)  abs(median - v_asr) / v_asr <= 0.15
 #   variance ratio (Layer 2)    abs(diff) <= 0.05
-# The flexyBayes side is the posterior median on the variance scale; for a
+# The flexyBayes side is the posterior median on the variance scale. For a
 # fixed effect the posterior mean, which on a Gaussian response is the
 # median. A component is compared only where ASReml identifies it: bound
 # "P" and std.error / component < 0.5 (SPEC "Identification gate"). A
@@ -88,7 +88,7 @@
 
 # One row per ASReml variance component, the flexyBayes posterior median
 # beside it on the variance scale, and whether the pair is compared. The
-# covariances of a us() term are left out; its correlations are compared
+# covariances of a us() term are left out. Its correlations are compared
 # separately.
 .ap_varcomp_pairs <- function(rec, fit) {
   vc <- rec$varcomp
@@ -232,7 +232,7 @@ test_that("15 relative weights: fixed effects and residual agree with ASReml", {
   .ap_check_shape("15_weights", weak = "sd_rep")
 })
 
-test_that("03 diag(env):gen: residual agrees with ASReml; at() is the same model", {
+test_that("03 diag(env):gen: residual agrees with ASReml, and at() is the same model", {
   .ap_skip_engine()
   out <- .ap_check_shape("03_diag_gxe", weak = character(0))
   # ASReml fits at(env):gen and diag(env):gen to the same likelihood.
@@ -274,7 +274,7 @@ test_that("05 diag(env):gen with dsum residual: identified components agree", {
 test_that("DEF-201: a genotype variance REML cannot identify is flagged", {
   skip(paste(
     "DEF-201 open: on 03_diag_gxe sd_gen__envC2 has REML std.error 7.2",
-    "times its estimate; the posterior variance median is 19.5 and its SD",
+    "times its estimate. The posterior variance median is 19.5 and its SD",
     "interval 1.7 times its median, below both flag thresholds"
   ))
   .ap_skip_engine()

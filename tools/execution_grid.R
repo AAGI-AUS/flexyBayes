@@ -1,10 +1,10 @@
-# tools/execution_grid.R -- the F28 execution grid (recipe 62).
+# tools/execution_grid.R: the execution grid.
 #
 # A capability claim's oracle is an EXECUTION, not a registry. The
 # generated capability matrix proves that every public surface says what
 # the R table says; only a live call proves that the table says what the
 # code does. This script runs the claim-derived cross product against an
-# INSTALLED build and banks the per-cell ledger that gate F28 reads.
+# INSTALLED build and banks the per-cell ledger that the release gate reads.
 #
 # Sections, each with the claim surface its expectations come from:
 #
@@ -18,14 +18,14 @@
 #        accepted from a fit that must refuse.
 #   S3a  the entry allowlist against the installed engines' own rosters.
 #   S3b  every admitted family spelling x backend.
-#   S3c  the four response families field finding C2 named.
+#   S3c  the four response families named in the field review.
 #   S4   structure x family x backend breadth beyond the matrix cells.
 #   S5   grammar-surface parity: bar forms and their ASReml siblings.
 #   T    the prior-translation table (target x distribution x engine),
 #        each cell asserted to translate AND arrive, or to refuse typed.
 #   S6   diagnostic structuring on weakly identified fits.
 #
-# Harness constraints (recipe 62 "Harness pattern"), all load-bearing:
+# Harness constraints, all load-bearing:
 #
 #   * runs against an INSTALLED package, never `pkgload::load_all()` --
 #     load_all exports internals and resolves symbols the shipped
@@ -90,7 +90,7 @@ if (!file.exists(file.path(.pkg_root, "DESCRIPTION"))) {
 if (!nzchar(.lib) || !dir.exists(.lib)) {
   stop(
     "FB_GRID_LIB must point at the library holding the tarball install. ",
-    "The grid never runs against a source tree (recipe 62).",
+    "The grid never runs against a source tree.",
     call. = FALSE
   )
 }
@@ -126,7 +126,7 @@ dir.create(.raw_dir, recursive = TRUE, showWarnings = FALSE)
   if (file.exists(file.path(path, "DESCRIPTION.in"))) {
     stop(
       "Installed-build guard failed: ", path, " looks like a load_all() ",
-      "shim rather than an installed build.",
+      "shim instead of an installed build.",
       call. = FALSE
     )
   }
@@ -283,7 +283,7 @@ d_funnel <- data.frame(
   x = rnorm(24L), g = f_g
 )
 
-# Space-level fixture (C4/FS-26): a factor level containing a space --
+# Space-level fixture: a factor level containing a space,
 # the National Barley Agronomy tables NAPPLIED2 column ("nil N", "low
 # N", "high N") is the real-world trigger. Two crossed random-intercept
 # groups (TRIAL, N_TRIAL) at 4 and 3 levels with 8 reps per cell and a
@@ -310,7 +310,7 @@ d_space_level$GRAIN_YIELD_THA <- 3 +
   .sp_ntrial_u[as.integer(d_space_level$N_TRIAL)] +
   stats::rnorm(nrow(d_space_level), 0, 0.4)
 
-# Per-trial separable AR1 field fixture (C5/FS-27): three trials, each a
+# Per-trial separable AR1 field fixture: three trials, each a
 # complete 6 x 8 lattice, row / col labels reused identically across
 # trials (the INLA replicate = mechanism expects one field per replicate
 # of the SAME node count, not per-trial-distinct labels).
@@ -394,11 +394,11 @@ d_ar1_tg <- .tg_field(2001L)
 # --- M: the capability matrix, cell by cell ---------------------------- #
 #
 # The matrix is read from the INSTALLED package, so the expectations are
-# the shipped table's own verdicts rather than a transcription of them.
+# the shipped table's own verdicts instead of a transcription of them.
 # `.M_CALLS` maps each model class to the minimal live call that
 # exercises it; a matrix row with no entry here, or an entry naming a
 # row the matrix does not carry, stops the harness. The matrix is the
-# claim surface and this file is the execution -- neither may drift
+# claim surface and this file is the execution. Neither may drift
 # past the other silently. `.M_CALLS`, `.M_EXECUTED_ELSEWHERE` and the
 # capability_matrix.csv row builder live in tools/capability_grid_matrix.R,
 # shared with tools/generate_capability_matrix.R so the installed-evidence
@@ -492,19 +492,18 @@ for (spec in .M_CALLS) {
   }
 }
 
-# --- M (hand-added): a factor level containing a space (C4/FS-26) ------ #
+# --- M (hand-added): a factor level containing a space ------ #
 #
 # Not derived from the capability matrix (no `matrix_cell`, so the M/
-# matrix drift-check above does not expect a corresponding row) --
+# matrix drift-check above does not expect a corresponding row),
 # this is a specific regression scenario, not a model-class cross
 # product cell. `aggregate = FALSE` isolates the per-row emit_inla()
 # fix this cell exercises: the same space-level design is also
 # aggregation-eligible, and the aggregated INLA route (a different
 # code path, R/emit_gaussian_aggregated.R) carries the identical
-# untyped defect and has not been fixed in this slice -- see the WP-C
-# report's Handoffs. `backend = "auto"` under the fix now correctly
+# untyped defect and has not been fixed here. `backend = "auto"` under the fix now correctly
 # reaches INLA on this shape where it fell through silently before
-# (FS-26's "Class" note: "a user with spaces in a factor level gets
+# (the "Class" note: "a user with spaces in a factor level gets
 # brms silently where INLA was available and appropriate").
 .add_cell(
   id = "M-gaussian-lmm-space-level-inla",
@@ -520,7 +519,7 @@ for (spec in .M_CALLS) {
     "non-syntactic level ... is legalised internally (make.names()) ",
     "before the INLA emit ... this method restores the user's own, ",
     "unlegalised label in the names it returns, as do ranef(), ",
-    "summary() and predict(classify = ) on the same fit.' (C4/FS-26)"
+    "summary() and predict(classify = ) on the same fit.'"
   ),
   backend = "inla",
   family = "gaussian",
@@ -536,7 +535,7 @@ for (spec in .M_CALLS) {
   ),
   expected = "fit",
   expect_src = paste0(
-    "FS-26 control: the identical model fits on brms regardless of the ",
+    "control: the identical model fits on brms regardless of the ",
     "space in the level (brms/Stan formula construction never builds a ",
     "bare symbol from a variable name plus a factor level, so the ",
     "defect was INLA-path-specific throughout)."
@@ -546,7 +545,7 @@ for (spec in .M_CALLS) {
   variant = "space-level-factor"
 )
 
-# The per-trial separable AR1 field (C5/FS-27) is a capability-matrix row
+# The per-trial separable AR1 field is a capability-matrix row
 # and its two cells derive from .M_CALLS above.
 
 # --- S1: prior route x family x backend -------------------------------- #
@@ -608,17 +607,17 @@ for (rt in .s1_routes) {
 
 # --- S2 / S2F: the malformed-prior corpus ------------------------------ #
 #
-# Claim surface: man/fb_prior.Rd -- calls outside the supported set raise
+# Claim surface: man/fb_prior.Rd: calls outside the supported set raise
 # a structured error naming the supported list. `expected` is "error"
 # where the documented contract covers the malformation and "accept" for
 # the deliberate controls. Append-only: every field report's
-# reproduction joins this corpus permanently (recipe 62 G3).
+# reproduction joins this corpus permanently.
 
 .s2_cases <- list(
   list("wrong_arg_scale", 'sd(group = "g") ~ normal(scale = 2)', "error",
-       "field finding D2; man/fb_prior.Rd normal(mean =, sd =)"),
+       "man/fb_prior.Rd normal(mean =, sd =)"),
   list("wrong_arg_mu_sigma", 'sd(group = "g") ~ normal(mu = 0, sigma = 2)',
-       "error", "field finding D2; man/fb_prior.Rd normal(mean =, sd =)"),
+       "error", "man/fb_prior.Rd normal(mean =, sd =)"),
   list("positional_normal", 'sd(group = "g") ~ normal(0, 2)', "accept",
        "R/fb_prior.R .name_prior_args names positional args (control)"),
   list("wrong_arg_hn_sd", 'sd(group = "g") ~ half_normal(sd = 1.5)', "error",
@@ -711,9 +710,9 @@ for (cs in .s2_shape) {
 }
 
 # S2F: one fit per corpus entry. A construction the DSL legitimately
-# accepts and a fit that must refuse are not in conflict -- the two
+# accepts and a fit that must refuse are not in conflict. The two
 # controls whose target names a term the model does not have refuse at
-# fit entry (FS-20), and the three shape controls fit.
+# fit entry, and the three shape controls fit.
 .s2f_fit_expected <- c("positional_normal", "normal_reversed_named",
                        "sd_positional_group", "b_unquoted_target")
 
@@ -729,7 +728,7 @@ for (cs in .s2_cases) {
     ),
     expected = expected,
     expect_src = paste0(
-      "field finding D2 / FS-20: an accepted malformed prior must not ",
+      "an accepted malformed prior must not ",
       "reach a completed fit under defaults, and a prior naming a term ",
       "the model does not have refuses at fit entry. Construction ",
       "expectation: ", cs[[4]]
@@ -777,7 +776,7 @@ for (cs in .s2_cases) {
     "}"
   ),
   expected = "artefact",
-  expect_src = "recipe 62 G5: rosters read live from the installed engines",
+  expect_src = "rosters read live from the installed engines",
   variant = "rosters"
 )
 
@@ -787,7 +786,7 @@ for (cs in .s2_cases) {
 #
 # `Gamma` is deliberately NOT in this list. `.resolve_family()` lowercases
 # before matching, so the base-R spelling is ADMITTED while the refusal
-# message's allowlist is lower-case only -- the accepted set is wider than
+# message's allowlist is lower-case only. The accepted set is wider than
 # the documented one (recorded in the P0 and P3a reports). It gets its own
 # fitting cells below, on a response the family can take.
 .s3a_probe_families <- c(
@@ -842,7 +841,7 @@ for (fam in .s3b_families) {
 
 # The base-R `Gamma` spelling, which the entry allowlist admits through
 # `tolower()` while the refusal message lists only `gamma`. The cells
-# assert what the code does rather than what the message implies, so the
+# assert what the code does instead of what the message implies, so the
 # gap stays visible until the documented and accepted sets are one set.
 for (be in c("inla", "brms")) {
   .add_cell(
@@ -881,7 +880,7 @@ for (fm in .s3c_families) {
       ),
       expected = if (identical(be, "brms")) fm[[2]] else fm[[3]],
       expect_src = paste0(
-        "field finding C2 read against the installed rosters: ",
+        "response families read against the installed rosters: ",
         "hurdle_gamma is brms-native; the other three are not, and INLA ",
         "carries none of the four (inst/KNOWN_ISSUES.md)"
       ),
@@ -894,7 +893,7 @@ for (fm in .s3c_families) {
 #
 # The matrix cells run at gaussian in section M; this section carries the
 # same structures on a count response, plus the structures whose claim
-# lives in a refusal contract rather than in a matrix row.
+# lives in a refusal contract instead of in a matrix row.
 
 .s4_structures <- list(
   list(key = "simple", call = "random = ~ g", inla = "fit", brms = "fit",
@@ -925,13 +924,13 @@ for (fm in .s3c_families) {
   list(key = "spl", call = "random = ~ spl(x)", inla = "fit",
        brms = "refuse_typed",
        # `x` carries the smooth, so it must not also be a fixed term:
-       # INLA refuses a key used twice (FS-17), which is why the matrix
+       # INLA refuses a key used twice, which is why the matrix
        # row's own anchor writes the fixed part as an intercept.
        fixed = "1",
        src = "capability matrix: univariate P-spline fits | refuses"),
   list(key = "smooth_s", call = "fixed_override = y ~ s(x)",
        inla = "refuse_typed", brms = "refuse_typed",
-       src = paste0("FS-18: s(x) is the mgcv spelling, so the refusal is ",
+       src = paste0("s(x) is the mgcv spelling, so the refusal is ",
                     "typed on both engines and names spl(x)")),
   list(key = "met_combined",
        call = "random = ~ g + g:f, residual = ~ dsum(~ units | f)",
@@ -959,7 +958,7 @@ for (fm in .s3c_families) {
        # C6: weights are lowered for family = "gaussian" with the
        # identity link only. The count arm (poisson, ycount) is exactly
        # the family this row's own note excludes, so it refuses by name
-       # (weights_requires_gaussian) on both engines rather than fitting
+       # (weights_requires_gaussian) on both engines instead of fitting
        # something else.
        poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
        src = paste0("capability matrix: Observation weights (Gaussian, ",
@@ -979,7 +978,7 @@ for (st in .s4_structures) {
         rest <- paste0(", ", st$call)
       }
       # A per-family override where the structure's verdict depends on
-      # the response family rather than on the engine alone.
+      # the response family instead of on the engine alone.
       expected <- if (!is.null(st[[fam]])) st[[fam]][[be]] else st[[be]]
       .add_cell(
         id = sprintf("S4-%s-%s-%s", st$key, fam, be), section = "S4",
@@ -1011,15 +1010,15 @@ for (st in .s4_structures) {
        "capability matrix: (x || g) fits | fits"),
   list("bar_factor_slope", "y ~ trt + (trt | g)", NA, "refuse_typed",
        "refuse_typed",
-       "FS-6 / U1: typed refusal naming us(trt):g as the ASReml surface"),
+       "typed refusal naming us(trt):g as the ASReml surface"),
   list("bar_nested", "y ~ x + (1 | g:h)", NA, "fit", "fit",
        "capability matrix: nested / interaction fits | fits"),
   list("bar_zero_factor_slope", "y ~ trt + (0 + trt | g)", NA,
        "refuse_typed", "refuse_typed",
-       "FS-6 / U1: typed refusal naming us(trt):g"),
+       "typed refusal naming us(trt):g"),
   list("bar_multi_slope_uncor", "y ~ x + z + (x + z || g)", NA,
        "refuse_typed", "refuse_typed",
-       "FS-6: multi-variable uncorrelated slopes refuse typed, claiming no
+       "multi-variable uncorrelated slopes refuse typed, claiming no
         alternative"),
   list("asreml_simple", "y ~ x", "~ g", "fit", "fit",
        "capability matrix: random = ~ g fits | fits"),
@@ -1035,7 +1034,7 @@ for (st in .s4_structures) {
        "capability matrix: factor-by-numeric interaction fits | fits"),
   list("random_factor_numeric", "y ~ x", "~ f:x", "refuse_typed",
        "refuse_typed",
-       "field finding U2: a numeric in a random interaction is not a
+       "a numeric in a random interaction is not a
         grouping factor, and the refusal names the remedy")
 )
 
@@ -1061,7 +1060,7 @@ for (fm in .s5_forms) {
 # One cell per (target, distribution, engine). The expectation is read
 # from the package's own translation table and the child then asks the
 # ENGINE whether the prior arrived. A completed fit whose prior never
-# reached the engine argument is a silent drop -- the FS-21 class, and
+# reached the engine argument is a silent drop of the same class, and
 # the reason a table alone is not evidence.
 
 .t_specs <- list(
@@ -1122,7 +1121,7 @@ for (tg in names(.t_targets)) {
 }
 
 # Resolve the T expectations from the installed package's own table.
-# Reading the table here rather than re-listing it means a table edit
+# Reading the table here instead of re-listing it means a table edit
 # with no matching behaviour change surfaces as a divergent cell.
 .t_verdict <- function(engine, target, dist) {
   flexyBayes:::.fb_prior_translation_lookup(engine, target, dist)
@@ -1148,7 +1147,7 @@ for (i in seq_along(.cells)) {
   code = paste0('flexybayes(y ~ x, random = ~ g, data = d_weak, ',
                 'family = "gaussian", backend = "inla")'),
   expected = "fit",
-  expect_src = "field finding U3: a structured convergence record",
+  expect_src = "a structured convergence record",
   backend = "inla", family = "gaussian", variant = "weak_identification"
 )
 
@@ -1176,7 +1175,7 @@ for (i in seq_along(.cells)) {
                 "n_samples = 300L, warmup = 150L, seed = 1L, ",
                 "control = list(adapt_delta = 0.5, max_treedepth = 5))"),
   expected = "fit",
-  expect_src = "field finding U3: divergent transitions on the fit object",
+  expect_src = "divergent transitions on the fit object",
   backend = "brms", family = "gaussian", variant = "divergence"
 )
 
@@ -1187,7 +1186,7 @@ for (i in seq_along(.cells)) {
                 "n_samples = 300L, warmup = 50L, seed = 7L, ",
                 "control = list(adapt_delta = 0.4, max_treedepth = 4))"),
   expected = "fit",
-  expect_src = "field finding U3: divergent transitions on the fit object",
+  expect_src = "divergent transitions on the fit object",
   backend = "brms", family = "gaussian", variant = "divergence"
 )
 
@@ -1521,7 +1520,7 @@ utils::write.csv(
   row.names = FALSE
 )
 
-# (2) The ledger gate F28 reads. Lean on purpose -- it ships in the
+# (2) The ledger the release gate reads. Lean on purpose: it ships in the
 #     package, and the columns the gate names are `cell, expected,
 #     observed, class, sha, date`. Engine versions travel with it,
 #     since an engine upgrade is the commonest reason a green grid
@@ -1664,7 +1663,7 @@ utils::write.csv(
 
 # (6) The session record, captured in a child that has ATTACHED the
 #     packages under test, so it names the engines the cells ran
-#     against rather than the dispatcher's bare session.
+#     against instead of the dispatcher's bare session.
 writeLines(
   callr::r(function(lib) {
     .libPaths(c(lib, .libPaths()))
@@ -1756,7 +1755,7 @@ cat("\nartefacts written to", .out_dir, "\n")
 cat("wide record written to", .raw_dir, "\n")
 
 if (nrow(.div) > 0L || nrow(.eu) > 0L || nrow(.sd) > 0L) {
-  cat("\nGRID: NOT CLEAN -- see the misses register.\n")
+  cat("\nGRID: NOT CLEAN. See the misses register.\n")
 } else {
   cat("\nGRID: clean (0 divergent, 0 error_untyped, 0 silent drops).\n")
 }

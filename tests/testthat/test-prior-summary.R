@@ -1,4 +1,4 @@
-# Tests for prior_summary() -- user-facing accessor for the
+# Tests for prior_summary(), user-facing accessor for the
 # resolved prior on a flexyBayes fit.
 #
 # Contract:
@@ -10,7 +10,7 @@
 #     fb_prior + auto-default origin metadata.
 #
 # 0.9.3: this file used to carry four cases gated behind a skip on the
-# native engine withdrawn entirely in 0.9.3 (see NEWS.md) -- the
+# native engine withdrawn entirely in 0.9.3 (see NEWS.md), the
 # auto-default / user-origin / legacy-scalar-bridge tracking, and a
 # declaration-only flag specific to that engine's direct-model entry
 # point. All four routes are gone along with the engine (fitting a
@@ -40,7 +40,7 @@ test_that("prior_summary() default method refuses unknown classes", {
 #
 # The cost of that was not cosmetic. Reading the column was how the oracle
 # suite's first pass concluded that the prior layer did not reach diag() at
-# all -- a false finding, written up before the emitted formula was read. A
+# all, a false finding, written up before the emitted formula was read. A
 # column that misreports the fit is what the next reader reasons from.
 # =============================================================================
 

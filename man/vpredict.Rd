@@ -28,7 +28,7 @@ A \code{data.frame} with one row per functional and the columns
 \code{draws = TRUE}, a numeric matrix of draws instead.
 }
 \description{
-The exact posterior of any function of the fitted variance components --
+The exact posterior of any function of the fitted variance components:
 a heritability, a genetic correlation, a variance ratio, a repeatability.
 Each functional is written as a two-sided formula whose left side names
 the result and whose right side is an expression over the component

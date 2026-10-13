@@ -13,7 +13,7 @@
 # priors (`all.hyper`, through the manifest's read-back), with each expression
 # evaluated against the closed-form half-normal density on the log precision.
 # On brms: the Stan program and brms::prior_summary(). Every expected scale is
-# computed here from the data; none is read from the package.
+# computed here from the data. None is read from the package.
 
 .hn1_divisor <- 1
 
@@ -348,7 +348,9 @@ test_that("every default slot on INLA carries the closed-form half-normal, by mo
     flexyBayes.silence_default_prior_note = TRUE,
     # This test reads prior manifests, not posterior field identification.
     # Collapse behaviour and its warning have dedicated coverage.
-    flexyBayes.silence_spatial_collapse_warning = TRUE
+    flexyBayes.silence_spatial_collapse_warning = TRUE,
+    # y does not depend on x in the P-spline fixture, so the smooth's sd_x is weakly identified.
+    flexyBayes.silence_weak_identification_warning = TRUE
   )
   f <- .hn1_data()
   classes <- .hn1_inla_classes(f)
@@ -477,7 +479,7 @@ test_that("every default slot on brms carries normal(0, s) on a standard deviati
   classes <- .hn1_brms_classes(f)
 
   # The classes are the capability matrix's brms "fits" rows that a
-  # flexybayes() call reaches; the joint shrinkage rows are fb_select()'s.
+  # flexybayes() call reaches. The joint shrinkage rows are fb_select()'s.
   cap <- flexyBayes:::.fb_capability_matrix()
   reachable <- cap$model_class[
     cap$brms == "fits" & !grepl("shrinkage prior", cap$model_class)
@@ -609,7 +611,11 @@ test_that("john.alpha rep + rep:block fits on INLA under the default, REML insid
   skip_if_not_installed("agridat")
   skip_if_not_installed("lme4")
   skip_if_not_long_tier()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    # `rep` has three levels, so sd_rep is weakly identified on every repeat.
+    flexyBayes.silence_weak_identification_warning = TRUE
+  )
   d <- agridat::john.alpha
 
   reml <- lme4::lmer(yield ~ gen + (1 | rep) + (1 | rep:block), data = d, REML = TRUE)

@@ -14,7 +14,7 @@ model, the likelihood of a *cell* (the rows that share a linear predictor)
 depends on those rows only through a few sufficient statistics that add up
 across any partition of the rows. The statistics can therefore be
 accumulated one chunk at a time and each chunk discarded, and the fit that
-follows is a fit to `K` cells rather than `N` rows with the same posterior.
+follows is a fit to `K` cells, not `N` rows with the same posterior.
 
 In 0.12.0 this holds for the count families only. A Gaussian model is fitted
 per row: `aggregate = TRUE` and `flexybayes_stream()` refuse it by name

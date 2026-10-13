@@ -1,4 +1,4 @@
-# helper-genomic.R -- known-truth simulators for the genomics / MET
+# helper-genomic.R: known-truth simulators for the genomics / MET
 # parameter-recovery cells (G0c).
 #
 # Every recovery cell grounds the *config* as well as the data (the

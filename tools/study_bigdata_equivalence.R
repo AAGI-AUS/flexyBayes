@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# study_bigdata_equivalence.R -- Side-by-side numerical comparison of the
+# study_bigdata_equivalence.R: Side-by-side numerical comparison of the
 # per-row and the exact-aggregated fitting paths, on the same data and
 # matched priors, across moderate-to-border sample sizes. For each
 # parameter the script records the per-row estimate, the aggregated

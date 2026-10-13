@@ -3,11 +3,11 @@
 # A per-row INLA fit carries class
 # `c("flexybayes_inla", "flexybayes", "list")`. Before 0.9.0 it stood
 # outside the `flexybayes` parent, because its internal shape differs from
-# the brms fit -- it has no `$glm` shim -- and that left it without the
+# the brms fit (it has no `$glm` shim) and that left it without the
 # coef() / vcov() / predict() / formula() / family() interface the rest
 # of the R modelling ecosystem (emmeans, marginaleffects) dispatches on.
 # The methods below are the INLA-specific half of that interface and win
-# dispatch over the parent; the parent methods with no sibling here
+# dispatch over the parent. The parent methods with no sibling here
 # resolve from the slots the object carries or refuse by name (see
 # R/methods.R). This file supplies those methods, reading the
 # fixed-effect posterior
@@ -85,14 +85,11 @@
     numeric(length(fixed_names))
   )
   mat <- t(mat)
-  # C4/FS-26: `fixed_names` above is deliberately the legalised name --
-  # that is what the INLA latent field actually carries and what the
-  # `paste0(nm, ":1")` lookup has to match. The column names on the
-  # RETURNED matrix are the user's own, restored here at the very end,
-  # so vcov.flexybayes_inla()'s dimnames agree with
-  # coef.flexybayes_inla()'s (also restored) names -- the two are
-  # indexed against each other (e.g. `V[colnames(X), colnames(X)]` in
-  # the emmeans / marginaleffects seam) and must speak the same labels.
+  # `fixed_names` above is the legalised name: the INLA latent field
+  # carries it and the `paste0(nm, ":1")` lookup has to match it. The
+  # returned matrix gets the user's own labels, so its dimnames agree with
+  # coef.flexybayes_inla(). The two are indexed against each other (e.g.
+  # `V[colnames(X), colnames(X)]` in the emmeans / marginaleffects seam).
   colnames(mat) <- .inla_restore_term_labels(object$level_labels, fixed_names)
   # A column fixed_alias = "drop" fixed at zero draws within 1e-5 of it.
   aliased <- object$extras$fixed_alias$dropped$column
@@ -113,7 +110,7 @@
 # conditions a draw on the linear constraints A x = e.
 #
 # `reuse`, from an earlier configuration, refactorises a Q of the same pattern
-# on its ordering; the factor is the one Cholesky() would return.
+# on its ordering. The factor is the one Cholesky() would return.
 #
 # An intrinsic term (rw1, rw2, besag) leaves Q singular in a direction its
 # sum-to-zero constraint fixes, such as a constant shared by the smooth and
@@ -273,13 +270,13 @@
 #' [marginaleffects::predictions()] via the flexyBayes support methods.
 #'
 #' An INLA fit carries no `$glm` slot, so the fixed vector is read here
-#' rather than inherited; every other value of `what` is resolved by the
+#' and not inherited. Every other value of `what` is resolved by the
 #' shared body [coef.flexybayes()] uses, so the two engines answer the
 #' same question the same way.
 #'
 #' A factor with a non-syntactic level (for example a level containing a
 #' space, `"low N"`) is legalised internally (`make.names()`) before the
-#' INLA emit, so the fit itself never dies on it; this method restores
+#' INLA emit, so the fit itself never dies on it. This method restores
 #' the user's own, unlegalised label in the names it returns, as do
 #' [ranef()], `summary()` and `predict(classify = )` on the same fit.
 #'
@@ -289,7 +286,7 @@
 #'   shape of each.
 #' @param ... Ignored. Present for compatibility with the generic.
 #' @return For the default `what = "fixed"`, a named numeric vector of
-#'   fixed-effect posterior means; otherwise as documented for
+#'   fixed-effect posterior means. Otherwise as documented for
 #'   [coef.flexybayes()].
 #' @export
 coef.flexybayes_inla <- function(
@@ -298,11 +295,10 @@ coef.flexybayes_inla <- function(
   ...
 ) {
   sf <- object$inla$summary.fixed
-  # C4/FS-26: `rownames(sf)` carries the legalised (make.names()) level
-  # names the fit was actually built against when the model touches a
-  # non-syntactic factor level; restore the user's own labels here so
-  # coef() -- and ranef(), which delegates to coef(what = "random") via
-  # R/methods.R -- print what the user wrote.
+  # `rownames(sf)` carries the legalised (make.names()) level names the
+  # fit was built against when the model uses a non-syntactic factor
+  # level. Restore the user's own labels, so coef() and ranef() (which
+  # delegates to coef(what = "random")) print what the user wrote.
   fixed_names <- .inla_restore_term_labels(
     object$level_labels,
     rownames(sf)
@@ -403,7 +399,7 @@ vcov.flexybayes_inla <- function(object, n_samples = 2000L, ...) {
 #' frequentist confidence intervals and not a normal approximation to
 #' them. The bounds come from `INLA::inla.qmarginal()` applied to the
 #' marginal densities the fit stores, so any credible level is available
-#' rather than only the 0.95 that `summary.fixed` tabulates.
+#' and not only the 0.95 that `summary.fixed` tabulates.
 #'
 #' Before 0.9.0 an INLA fit did not inherit the `flexybayes` parent class,
 #' so `confint()` on one reached `stats::confint.default` and failed on a
@@ -447,9 +443,8 @@ confint.flexybayes_inla <- function(
     function(m) vapply(probs, INLA::inla.qmarginal, numeric(1), marginal = m),
     numeric(2)
   ))
-  # C4/FS-26: `names(marg)` is the legalised name; restore the user's
-  # own here so confint()'s rownames stay consistent with coef()'s and
-  # vcov()'s (also restored) names on the same fit.
+  # `names(marg)` is the legalised name. Restore the user's own, so
+  # confint() rownames match those of coef() and vcov() on the same fit.
   dimnames(bounds) <- list(
     .inla_restore_term_labels(object$level_labels, names(marg)),
     paste0(round(probs * 100, 1), "%")
@@ -483,7 +478,7 @@ formula.flexybayes_inla <- function(x, ...) {
   # A brms-grammar fit (`y ~ x + (1 | g)`) is stored whole in
   # call_info$fixed, so strip any random-effect bar terms here. The
   # downstream model-matrix reconstruction (predict / emmeans /
-  # marginaleffects) must see only the fixed-effect basis; a leftover
+  # marginaleffects) must see only the fixed-effect basis. A leftover
   # `(1 | g)` evaluates as `1 | g` (a logical op on the factor) and
   # injects a spurious column that fails coefficient reconciliation.
   # Idempotent on an already-fixed-only formula.
@@ -531,7 +526,7 @@ fitted.flexybayes_inla <- function(object, ...) {
     out <- out[seq_len(n_obs)]
   }
   # A known variance per row is a row effect in INLA's linear predictor and
-  # part of the likelihood on brms; the fitted value is the mean without it
+  # part of the likelihood on brms. The fitted value is the mean without it
   # (R/known_variance.R).
   known <- .fb_inla_known_variance_effect(object)
   if (!is.null(known)) {
@@ -589,7 +584,7 @@ residuals.flexybayes_inla <- function(object, ...) {
 logLik.flexybayes_inla <- function(object, ...) {
   message(
     "logLik() is not defined for INLA fits: INLA reports a *marginal* ",
-    "log-likelihood (model evidence; see summary()), not the conditional ",
+    "log-likelihood (model evidence, see summary()), not the conditional ",
     "log-likelihood logLik() denotes. Returning NA."
   )
   np <- tryCatch(nrow(object$inla$summary.fixed),
@@ -628,11 +623,11 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' `classify_argument_not_supported`.
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param newdata Optional data frame; defaults to the fit data. Ignored,
+#' @param newdata Optional data frame. Defaults to the fit data. Ignored,
 #'   with a warning, when `classify` is supplied. On a model with an
 #'   `offset()` the prediction includes the offset evaluated on `newdata`,
-#'   so `newdata` needs every column the offset reads; an absent one
-#'   refuses with `newdata_offset_missing` rather than being taken as zero.
+#'   so `newdata` needs every column the offset reads. An absent one
+#'   refuses with `newdata_offset_missing` instead of being taken as zero.
 #' @param type `"response"` or `"link"`.
 #' @param se.fit Logical: also return delta-method standard errors from
 #'   the fixed-effect covariance.
@@ -657,10 +652,10 @@ logLik.flexybayes_inla <- function(object, ...) {
 #'   draws. Default `1000`.
 #' @param re_formula `NA` (the default): the prediction is population-level,
 #'   the fixed part of the model, as `re_formula = NA` gives on a brms fit.
-#'   Any other value refuses with `method_argument_not_supported`; [fitted()]
+#'   Any other value refuses with `method_argument_not_supported`. [fitted()]
 #'   returns the predictions at the fitted levels of the random effects.
 #' @param summary `TRUE` (the default): the prediction is the posterior
-#'   mean. `FALSE` refuses with `method_argument_not_supported`;
+#'   mean. `FALSE` refuses with `method_argument_not_supported`.
 #'   [fb_as_draws_simple()] returns the posterior draws.
 #' @param ... Ignored, except that an argument of ASReml's `predict()`
 #'   given with `classify` is refused by name.
@@ -759,7 +754,7 @@ predict.flexybayes_inla <- function(
       reason_code = "predict_link_not_supported",
       message = paste0(
         "predict.flexybayes_inla() currently supports the identity ",
-        "link only; this fit uses link '",
+        "link only, and this fit uses link '",
         fam$link,
         "'. Work with ",
         "the posterior draws via fb_as_draws_simple() for non-identity ",
@@ -770,17 +765,14 @@ predict.flexybayes_inla <- function(
 
   supplied <- !is.null(newdata)
   if (is.null(newdata)) {
-    # C4/FS-26: .fb_fit_data(), not the raw object$data -- the latter is
-    # the level-legalised copy the fit was built against, and
-    # coef(object) below now carries the user's own (restored) names.
-    # Using the raw slot here would reintroduce the exact mismatch
-    # .fb_fixef_model_matrix()'s own reconciliation check exists to
-    # catch (the same one predict(classify = ) hit during development;
-    # see R/ecosystem_support.R's .fb_fit_data()).
+    # .fb_fit_data(), not the raw object$data: the raw slot is the
+    # level-legalised copy the fit was built against, while coef(object)
+    # below carries the user's own names. The raw slot would trigger the
+    # mismatch that .fb_fixef_model_matrix() checks for.
     newdata <- .fb_fit_data(object)
   }
   # The offset on the rows predicted at, read before the design matrix so an
-  # absent offset column refuses by name rather than inside model.frame().
+  # absent offset column refuses by name, not inside model.frame().
   off <- .fb_offset_values(.fb_fit_ir(object), newdata, newdata = supplied)
   trms <- stats::delete.response(stats::terms(formula(object)))
   bhat <- coef(object)
@@ -808,7 +800,7 @@ predict.flexybayes_inla <- function(
 }
 
 
-# .fb_with_seed() --- evaluate under a named seed and put the caller's random
+# .fb_with_seed(): evaluate under a named seed and put the caller's random
 # stream back exactly as it was found.
 .fb_with_seed <- function(seed, expr) {
   had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)

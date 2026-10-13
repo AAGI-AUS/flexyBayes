@@ -30,11 +30,11 @@
 )
 
 
-# .fb_fixed_alias() --- the fixed-effect columns aliased on the rows with a
+# .fb_fixed_alias(): the fixed-effect columns aliased on the rows with a
 # response, in the order and by the rule asreml 4.2 drops them.
 #
 # Returns NULL when the check does not apply (no fixed term beside the
-# intercept, or a term type outside `.FB_FIXED_ALIAS_TYPES`); otherwise
+# intercept, or a term type outside `.FB_FIXED_ALIAS_TYPES`). Otherwise
 # `list(columns, terms, n_columns, n_rows, nbasis)`, where `nbasis` has one
 # row per design column and one column per dropped column and spans the
 # directions the fitting rows do not estimate.
@@ -106,7 +106,7 @@
 }
 
 
-# .fb_fixed_alias_resolve() --- refuse an aliased fixed part, or record it
+# .fb_fixed_alias_resolve(): refuse an aliased fixed part, or record it
 # on the IR for the emit to drop.
 .fb_fixed_alias_resolve <- function(fb, data, fixed_alias, backend, aggregate) {
   alias <- .fb_fixed_alias(fb, data)
@@ -155,7 +155,7 @@
 }
 
 
-# .fb_inla_pin_aliased() --- control.fixed with each dropped column fixed at
+# .fb_inla_pin_aliased(): control.fixed with each dropped column fixed at
 # zero, on the coordinates INLA fits in. `names` are INLA's column names.
 .fb_inla_pin_aliased <- function(control_fixed, names) {
   if (length(names) == 0L) {
@@ -178,7 +178,7 @@
 }
 
 
-# .fb_inla_aliased_names() --- INLA's names for the dropped columns: the
+# .fb_inla_aliased_names(): INLA's names for the dropped columns: the
 # same positions in the design built on the data INLA is handed, whose
 # factor levels may have been made syntactic.
 .fb_inla_aliased_names <- function(fb, data) {
@@ -196,7 +196,7 @@
 }
 
 
-# .fb_fixed_alias_attach() --- the dropped columns recorded on an INLA fit,
+# .fb_fixed_alias_attach(): the dropped columns recorded on an INLA fit,
 # and reported as asreml reports them: estimate zero, no standard error.
 .fb_fixed_alias_attach <- function(fit, fb) {
   alias <- fb$fixed_alias
@@ -237,7 +237,7 @@
 }
 
 
-# .fb_fixed_alias_status() --- "Estimable" or "Aliased" for each row of a
+# .fb_fixed_alias_status(): "Estimable" or "Aliased" for each row of a
 # design, or NULL on a fit that dropped nothing. A row is estimable exactly
 # when it is a linear combination of the fitting rows.
 .fb_fixed_alias_status <- function(object, X) {

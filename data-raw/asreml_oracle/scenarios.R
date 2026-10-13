@@ -1,4 +1,4 @@
-# scenarios.R -- the paired scenario definitions of SPEC.md.
+# scenarios.R: the paired scenario definitions of SPEC.md.
 #
 # Each scenario supplies the data, the two calls, and the invariants to
 # compare. The calls sit side by side deliberately: a reader checking that the
@@ -156,11 +156,11 @@ scenario_registry <- function() {
       ratios = list(),
       blup = list(),
       # The quantity us() claims to represent, and the one the scenario
-      # existed to test. Without this the run banked "1 pass" -- the
-      # intercept -- while the genetic correlation was 0.14 against 0.93,
+      # existed to test. Without this the run banked "1 pass" (the
+      # intercept) while the genetic correlation was 0.14 against 0.93,
       # which is the instrument answering a question nobody asked. ASReml
       # reports the covariance directly, so the correlation is reconstructed
-      # from its three parameters rather than read off a row.
+      # from its three parameters, not read off a row.
       correlations = list(
         list(
           label = "gen, C1 vs C2",
@@ -306,7 +306,7 @@ scenario_registry <- function() {
     # `asreml` / `flexybayes` stay the extended fit, so every Layer 1 and
     # Layer 2 assertion above continues to apply unchanged.
     #
-    # `varcomp_map` is written out per scenario rather than inferred. ASReml
+    # `varcomp_map` is written out per scenario, not inferred. ASReml
     # names a variance component after the term; INLA names a hyperparameter
     # after the index column the emitter built for it, and the two
     # vocabularies agree by accident on some rows and not on others. An

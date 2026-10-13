@@ -1,19 +1,18 @@
 # =============================================================================
-# The restart probe (ASReml oracle suite, finding O01b).
+# The restart probe.
 #
-# `.lgm_check_numerical()` reported a fit as numerically confirmed on
-# `mode.status == 0` and a finite marginal likelihood. On
-# `agridat::besag.met` with `random = ~ diag(env):gen`, 24 fits across four
-# prior settings returned no genetic variance in any environment on 19 of
-# them and substantial variance on 5, and all 24 passed that gate. ASReml on
+# `mode.status == 0` and a finite marginal likelihood do not make a fit
+# trustworthy. On `agridat::besag.met` with `random = ~ diag(env):gen`, 24
+# fits across four prior settings returned no genetic variance in any
+# environment on 19 of them and substantial variance on 5, and all 24
+# passed that check. ASReml on
 # the same rows returns 5.84 and 5.45 in two of six environments, stably.
 #
 # Restarting from a mode where the pinned components carry real variance
-# finds a solution 65 to 154 marginal-log-likelihood units better. The
-# collapsed fits were not one mode among several; they were a much worse one.
+# finds a solution 65 to 154 marginal-log-likelihood units better.
 #
-# These tests pin the detector, its threshold, and -- the part that matters --
-# that a healthy fit is neither flagged nor charged for the extra fit.
+# These tests pin the detector, its threshold, and that a healthy fit is
+# neither flagged nor charged for the extra fit.
 # =============================================================================
 
 fake_hyper <- function(resid_prec, comp_precs, comp_low = NULL) {
@@ -30,8 +29,8 @@ fake_hyper <- function(resid_prec, comp_precs, comp_low = NULL) {
 }
 
 test_that("a component pinned at zero variance is detected from the raw table", {
-  # A component whose variance is below 1e-4 of the residual's -- the square
-  # of the package's 1% rule on the SD scale -- counts as pinned.
+  # A component whose variance is below 1e-4 of the residual's (the 1% rule
+  # on the SD scale, squared) counts as pinned.
   fit <- list(summary.hyperpar = fake_hyper(
     resid_prec = 0.0025,          # residual variance 400
     comp_precs = c(1e10, 0.01)    # first is pinned, second is healthy
@@ -91,9 +90,7 @@ test_that("the reason names how many components were affected", {
 
 test_that("a live fit that needed a restart returns the restarted fit", {
   skip_on_cran()
-  # Deliberately no skip_on_ci(): audit F04 is that CI skips the live backend
-  # paths the translation claims depend on, and this is one of them. Where
-  # INLA is installed, this runs.
+  # No skip_on_ci(): where INLA is installed, this live path runs.
   skip_if_not_installed("INLA")
   skip_if_not_installed("agridat")
   e <- new.env()
@@ -114,7 +111,7 @@ test_that("a live fit that needed a restart returns the restarted fit", {
   gen <- v$estimate[startsWith(v$component, "sd_gen__")]
   pinned <- sum(gen < 0.01 * sigma)
 
-  # The structure is bistable, so this asserts the invariant rather than a
+  # The structure is bistable, so this asserts the invariant, not a
   # particular outcome. Whichever mode the first optimisation reached, the
   # fit that comes back must be the better one and must say whether it was
   # swapped.

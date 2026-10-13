@@ -1,13 +1,10 @@
 # =============================================================================
 # One family gate for every entry.
 #
-# fb_from_brms() read `family$family` straight off a family object, so the
-# brms grammar skipped .resolve_family(), the gate the string spelling and
-# the ASReml grammar pass through. brms::lognormal() then reached both
-# engines while the string "lognormal" was refused; brms::bernoulli(),
-# brms::exponential() and brms::weibull() reached an engine the string could
-# not; and most other brms families, brms::student() among them, ended in an
-# untyped emitter error.
+# A family object passed to fb_from_brms(), such as brms::lognormal() or
+# brms::student(), goes through .resolve_family(), the same gate as the
+# string spelling and the ASReml grammar. It reaches the same engines as
+# its string, or refuses with a typed condition.
 #
 # The families are read from the engines: every family brms carries a
 # `.family_<name>()` definition for and brmsfamily() constructs, and the

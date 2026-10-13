@@ -106,7 +106,7 @@ quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
 REML can estimate a variance component as exactly zero, which reads as
 certainty that the effect is absent. When the whole credible interval of a
 standard deviation lies close to zero, flexyBayes warns, names the term, and
-suggests reporting it as not identified rather than as zero.
+suggests reporting it as not identified, not as zero.
 
 # Small trials
 

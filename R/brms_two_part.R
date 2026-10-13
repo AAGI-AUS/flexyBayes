@@ -5,7 +5,7 @@
 # model `y ~ a + b`, with part `a` holding the intercept, the fixed effects
 # and the random terms of the linear model and part `b` a block of further
 # fixed effects. brms names the draws of the parts `b_a_<coef>` and
-# `b_b_<coef>`; coef(), vcov(), confint(), the draws and the prior summary
+# `b_b_<coef>`, coef(), vcov(), confint(), the draws and the prior summary
 # read them under the names a linear fit of the same model carries.
 
 # The two parts: the linear model's own terms, and the added block.
@@ -34,9 +34,9 @@
 
 #' Draw names of a two-part fit under the names of the linear model
 #'
-#' `b_a_regionR2` and `b_b_x1` become `b_regionR2` and `b_x1`;
-#' `sdb_b_x1` becomes `sdb_x1`; `hs_global_b` becomes `hs_global`;
-#' `sd_g__a_Intercept` becomes `sd_g__Intercept`; `r_g__a[l,Intercept]`
+#' `b_a_regionR2` and `b_b_x1` become `b_regionR2` and `b_x1`.
+#' `sdb_b_x1` becomes `sdb_x1`, `hs_global_b` becomes `hs_global`.
+#' `sd_g__a_Intercept` becomes `sd_g__Intercept`, `r_g__a[l,Intercept]`
 #' becomes `r_g[l,Intercept]`.
 #'
 #' @param nm Draw names.

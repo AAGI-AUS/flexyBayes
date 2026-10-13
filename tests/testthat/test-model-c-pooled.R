@@ -3,11 +3,10 @@
 # `sd(group = "TRIAL:VARIETY", by = "TRIAL") ~ pooled(scale = ...)` gives the
 # log genotype-by-trial SDs a normal distribution with an estimated mean and
 # SD; `sigma(by = "TRIAL") ~ pooled(scale = ...)` does the same for the log
-# residual SDs. The reference is the hand-written brms call of route B1 in
-# review/units/c2_2026-10-08/spike_brms.R, with the package's parameter names.
-# Recovery fixtures come from .mc_simulate() (helper-model-c-sim.R); the
-# coverage check was declared in review/units/p1-pooling_2026-10-09/
-# RECOVERY_CRITERION.md before any recovery fit ran.
+# residual SDs. The reference is a hand-written brms call of the same model
+# (route B1), with the package's parameter names. Recovery fixtures come from
+# .mc_simulate() (helper-model-c-sim.R). The coverage check was fixed before
+# any recovery fit ran.
 
 .mcp_reference <- function() {
   file <- "model_c_reference.rds"
@@ -317,14 +316,16 @@ test_that("the package reproduces the B1 posterior to Monte Carlo error", {
   ref <- .mcp_reference()
   d <- ref$data
   trials <- levels(d$TRIAL)
-  fit <- .mcp_fit(d, .mcp_b1_prior())
+  # The z-score below divides by each fit's Monte Carlo standard error, so a
+  # low-ESS warning is muffled. Divergence and R-hat warnings still propagate.
+  fit <- .muffle_ess_warnings(.mcp_fit(d, .mcp_b1_prior()))
   .mcp_cache$fit <- fit
   hand <- .mcp_b1_hand(d)
-  b1 <- brms::brm(
+  b1 <- .muffle_ess_warnings(brms::brm(
     hand$formula, data = d, prior = hand$prior, stanvars = hand$stanvars,
     chains = 2, iter = 2000, warmup = 1000, seed = 20261009L,
     control = list(adapt_delta = 0.95), refresh = 0, silent = 2
-  )
+  ))
   a <- .mcp_sd_draws(fit$brms, trials)
   b <- .mcp_sd_draws(b1, trials)
   mcse <- function(m) {
@@ -405,7 +406,18 @@ test_that("auto fits a pooled model on brms and its decision says so", {
   sim <- .mc_simulate(seed)
   trials <- levels(sim$data$TRIAL)
   t0 <- proc.time()
-  fit <- .mcp_fit(sim$data, .mcp_prior(), seed = seed)
+  # Each row records the fit's divergences and largest R-hat, and
+  # RECOVERY_CRITERION.md keeps such fits in the count, so Stan's sampler
+  # warnings are muffled here.
+  fit <- withCallingHandlers(
+    .mcp_fit(sim$data, .mcp_prior(), seed = seed),
+    warning = function(w) {
+      if (grepl("mc-stan\\.org/misc/warnings|Examine the pairs\\(\\) plot",
+                conditionMessage(w))) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
   elapsed <- unname((proc.time() - t0)[["elapsed"]])
   dr <- .mcp_sd_draws(fit$brms, trials)
   q <- apply(dr, 2L, stats::quantile, probs = c(0.05, 0.95), names = FALSE)

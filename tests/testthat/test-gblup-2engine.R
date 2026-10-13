@@ -1,12 +1,9 @@
 # GBLUP across the active engines (G1). The genomic relationship random
 # effect vm(geno, G) reaches both active backends: brms via the dense
 # covariance (brms's native gr(cov = K) = the K = L L' decorrelation),
-# INLA via the precision carrier (generic0). GBLUP therefore fits on
-# both engines (a third native engine, withdrawn entirely in 0.9.3,
-# once made this a three-engine comparison -- see NEWS.md).
-# The fast tests pin the emit / gate behaviour; the gated recovery test
-# fits both engines on a simulated known-heritability dataset and checks
-# recovery + agreement.
+# INLA via the precision carrier (generic0). The fast tests pin the emit
+# and gate behaviour. The gated recovery test fits both engines on a
+# simulated known-heritability dataset and checks recovery and agreement.
 
 # ---------------------------------------------------------------- #
 # (a) Fast: brms vm() emit + the relaxed capability gate.           #

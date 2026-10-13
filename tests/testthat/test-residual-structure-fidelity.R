@@ -2,24 +2,16 @@
 # Residual-structure fidelity: a requested residual covariance must appear in
 # the emitted model, or the call must refuse.
 #
-# These tests exist because a green suite of 2571 tests did not catch a
-# requested AR1(row) x AR1(col) residual being emitted as an intercept-only
-# iid Gaussian Stan program. Every test that touched the path asserted on the
-# RETURNED OBJECT (its class, its recorded backend) rather than on the model
-# that was actually generated -- and the returned object looked perfect.
-#
-# The discipline here is therefore: assert on the emitted code string, and on
-# refusal reason codes. A wrapper's class is not evidence about its contents.
+# The tests assert on the emitted code and on refusal reason codes, not on
+# the class of the returned object, which says nothing about its contents.
 #
 # brms has no residual-structure lowering at all: .fb_to_brms_formula()
-# reconstructs the fixed and random blocks only. So for brms the fidelity
-# requirement can only be met by refusing.
+# reconstructs the fixed and random blocks only, so brms must refuse.
 #
-# 0.9.0 respelling: the separable AR1 field is written on the RANDOM side,
-# because that is what the INLA emit builds -- a latent autoregressive field
-# plus the Gaussian observation nugget. The residual spelling names ASReml's
-# three-parameter nugget-free process, which neither engine fits, and now
-# refuses on every route. Both halves are asserted here.
+# The separable AR1 field is written on the random side: the INLA emit builds
+# a latent autoregressive field plus the Gaussian observation nugget. The
+# residual spelling names ASReml's three-parameter nugget-free process, which
+# neither engine fits, and refuses on every route.
 # =============================================================================
 
 .mk_resid_ir <- function(residual_terms) {
@@ -48,7 +40,7 @@
 # ---------------------------------------------------------------- #
 
 test_that(".capability_brms() inspects residual_terms, not just random_terms", {
-  # The iid `units` residual is the one form brms carries -- as the family
+  # The iid `units` residual is the one form brms carries, as the family
   # scale parameter sigma.
   expect_true(
     isTRUE(flexyBayes:::.capability_brms(
@@ -74,7 +66,7 @@ test_that(".capability_brms() inspects residual_terms, not just random_terms", {
   )
 })
 
-test_that("an unrecognised residual type is refused rather than dropped", {
+test_that("an unrecognised residual type is refused, not dropped", {
   # The allowlist is deliberately positive: a residual type the parser
   # learns later must default to a refusal, not to silent omission.
   expect_identical(
@@ -86,7 +78,7 @@ test_that("an unrecognised residual type is refused rather than dropped", {
 })
 
 # ---------------------------------------------------------------- #
-# 2. Every route refuses rather than emitting a different model     #
+# 2. Every route refuses instead of emitting a different model      #
 # ---------------------------------------------------------------- #
 
 test_that("explicit brms refuses a random-side AR1 field", {
@@ -168,8 +160,8 @@ test_that("auto + review_code refuses when brms cannot represent the model", {
 # ---------------------------------------------------------------- #
 
 test_that("INLA emits the separable AR1xAR1 field for a complete grid", {
-  # The positive half of the contract. Refusing everything would pass every
-  # test above; this asserts the structure survives into the emitted model.
+  # Refusing everything would pass every test above. This one asserts the
+  # structure reaches the emitted model.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   g <- .complete_grid()

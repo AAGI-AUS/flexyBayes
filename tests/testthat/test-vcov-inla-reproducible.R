@@ -88,7 +88,7 @@ test_that("DEF-005: vcov() on an INLA fit matches INLA's posterior draws", {
     0.15
   )
 
-  # A Poisson fit standardises the covariate x; its SD on the original
+  # A Poisson fit standardises the covariate x. Its SD on the original
   # scale agrees with INLA's marginal to 3e-4.
   fit_pois <- flexybayes(
     count ~ trt + x,

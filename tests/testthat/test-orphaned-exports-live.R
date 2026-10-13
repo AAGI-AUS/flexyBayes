@@ -1,10 +1,10 @@
-# test-orphaned-exports-live.R -- the three exports with no live coverage.
+# test-orphaned-exports-live.R, the three exports with no live coverage.
 #
 # `prior_summary()`, `fb_met_summary()` and `fb_log_posterior()` were the
 # package's only exports whose behavioural tests were all gated by a skip
 # on the engine withdrawn entirely in 0.9.3 (see NEWS.md), which skipped
-# unconditionally once that engine was quarantined -- or which pinned a
-# stub's class rather than a fit's behaviour. Each is exercised here on a
+# unconditionally once that engine was quarantined, or which pinned a
+# stub's class instead of a fit's behaviour. Each is exercised here on a
 # live fit of an active engine.
 #
 # prior_summary() also needed a correctness fix before a test was worth
@@ -104,7 +104,7 @@ test_that("prior_summary() reports what reached Stan on a live brms fit", {
   expect_identical(ps$default_origin, "auto")
 
   # brms is the authority on what reached Stan, so its own table is
-  # carried rather than reconstructed from the declaration.
+  # carried instead of reconstructed from the declaration.
   expect_s3_class(ps$engine_prior_table, "brmsprior")
   txt <- utils::capture.output(print(ps))
   expect_true(any(grepl("As it reached Stan", txt, fixed = TRUE)))
@@ -170,14 +170,14 @@ test_that("prior_summary() lists parameters left to the engine's default", {
   rec <- flexyBayes:::.fb_prior_record(fb)
 
   # The AR1 field sits outside the default-prior walker, so it must be
-  # named as engine-default rather than dropped from the record.
+  # named as engine-default instead of dropped from the record.
   expect_true(length(rec$engine_default) > 0L)
   expect_true(all(nzchar(rec$engine_default)))
   expect_false(any(names(rec$engine_default) %in% names(rec$recorded)))
 })
 
 # ---------------------------------------------------------------- #
-# fb_met_summary() -- typed abstention on both active engines       #
+# fb_met_summary(), typed abstention on both active engines       #
 # ---------------------------------------------------------------- #
 
 test_that("fb_met_summary() abstains with a typed condition on INLA", {
@@ -196,8 +196,8 @@ test_that("fb_met_summary() abstains with a typed condition on INLA", {
   expect_s3_class(err, "flexybayes_refusal_met_summary_not_available")
   expect_s3_class(err, "flexybayes_refusal")
   # 0.9.3: the refusal is unconditional (no per-engine `$backend` field or
-  # wording any more -- the reason is identical on every active engine, so
-  # it is stated once rather than repeated per engine). Confirmed here on
+  # wording any more, the reason is identical on every active engine, so
+  # it is stated once instead of repeated per engine). Confirmed here on
   # an actual INLA fit, not just a hand-built stub.
   expect_null(err$backend)
   expect_match(conditionMessage(err), "active backend")
@@ -230,7 +230,7 @@ test_that("fb_met_summary() abstains with a typed condition on brms", {
 
   err <- tryCatch(fb_met_summary(fit), condition = function(e) e)
   expect_s3_class(err, "flexybayes_refusal_met_summary_not_available")
-  # Same unconditional refusal as the INLA fit above -- confirms an
+  # Same unconditional refusal as the INLA fit above, confirms an
   # actual brms fit reaches the identical typed condition, not a
   # brms-specific variant.
   expect_null(err$backend)
@@ -238,7 +238,7 @@ test_that("fb_met_summary() abstains with a typed condition on brms", {
 })
 
 # ---------------------------------------------------------------- #
-# fb_log_posterior() -- typed abstention, on fits not on stubs      #
+# fb_log_posterior(), typed abstention, on fits not on stubs      #
 # ---------------------------------------------------------------- #
 
 test_that("fb_log_posterior() abstains typed on a live INLA fit", {

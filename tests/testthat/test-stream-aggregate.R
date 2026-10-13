@@ -171,7 +171,7 @@ test_that("an .fst source streams and reports the same K and N", {
 test_that("the streamed row total is overflow-safe (carried as a double)", {
   # A partitioned dataset can exceed the 2^31 integer ceiling. The total
   # row count and the per-cell counts must therefore be doubles (exact to
-  # 2^53), not integers -- this test pins the type contract without
+  # 2^53), not integers, this test pins the type contract without
   # materialising billions of rows.
   set.seed(909L)
   chunks <- list(

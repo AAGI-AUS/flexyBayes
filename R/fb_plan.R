@@ -29,7 +29,7 @@
 #    dispatch layer would make, with a one-line justification). The
 #    summary form dumps the full preflight + representation tables.
 #    The as.data.frame() coercion is wide single-row for programmatic
-#    consumers; stable column ordering by the constant
+#    consumers, with stable column ordering by the constant
 #    `.FB_PLAN_DF_COLS` below.
 
 #' Plan a flexyBayes fit without firing the backend
@@ -42,16 +42,12 @@
 #' Accepts either grammar `flexybayes()` accepts: a single brms-style
 #' two-sided formula (`y ~ x + s(z) + (1 | g)`), or the ASReml triple
 #' (`formula` as the fixed-effects side, plus `random` / `residual`).
-#' Before 0.9.3, `fb_plan()` was brms-formula-only and silently dropped
-#' `random` / `residual` into its unused `...` when a caller supplied
-#' them ASReml-style, planning a fixed-effects-only model and reporting
-#' a backend the full model would not reach live (FS-22). Both
-#' spellings now route through the same grammar detection
+#' Both spellings route through the same grammar detection
 #' `flexybayes()` uses (`syntax = "auto"` by default), so
 #' `fb_plan(y ~ x, random = ..., residual = ..., data = ...)` and
 #' `flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ...,
-#' plan = TRUE)` plan the identical model. Note the two spellings of the
-#' fixed part: `fb_plan()` takes it positionally as `formula`, the entry
+#' plan = TRUE)` plan the identical model. The two spellings of the
+#' fixed part differ: `fb_plan()` takes it positionally as `formula`, the entry
 #' point takes it as `fixed`.
 #'
 #' @param formula     Either a brms-style two-sided formula such as
@@ -108,7 +104,7 @@
 #' p1 <- fb_plan(y ~ x + (1 | g), data = d)
 #' print(p1)
 #'
-#' # ASReml-style grammar plans the identical model (FS-22 parity).
+#' # ASReml-style grammar plans the identical model.
 #' p2 <- fb_plan(y ~ x, random = ~ g, data = d)
 #' identical(p1$backend_chosen, p2$backend_chosen)
 #'
@@ -143,20 +139,8 @@ fb_plan <- function(
   the_call <- match.call()
   data_name <- deparse(substitute(data))
 
-  # Grammar auto-detection (S6/FS-22): route through the same
-  # .build_ir_polymorphic() / .detect_grammar() machinery flexybayes()
-  # uses, so a plan built from either spelling reaches the identical IR
-  # a live fit would build. Before 0.9.3 this call was
-  # fb_from_brms(formula = formula, ...) unconditionally, which is why
-  # an ASReml-style `random =` / `residual =` passed to fb_plan() had
-  # nowhere to go.
-  # Grammar auto-detection (S6/FS-22): route through the same
-  # .build_ir_polymorphic() / .detect_grammar() machinery flexybayes()
-  # uses, so a plan built from either spelling reaches the identical IR
-  # a live fit would build. Before 0.9.3 this call was
-  # fb_from_brms(formula = formula, ...) unconditionally, which is why
-  # an ASReml-style `random =` / `residual =` passed to fb_plan() had
-  # nowhere to go.
+  # The same grammar detection flexybayes() uses, so a plan built from
+  # either spelling reaches the identical IR a live fit would build.
   fb <- .build_ir_polymorphic(
     fixed = formula,
     random = random,
@@ -196,9 +180,8 @@ fb_plan <- function(
 #   - fb_brms(plan = TRUE)       (brms-style; IR built upstream)
 #
 # Every caller hands in the IR + the dispatcher-relevant inputs. This
-# function never builds an IR itself; it consumes one. That way the
-# ingest-path choice (asreml vs brms) does not appear in the routing
-# decision.
+# function never builds an IR, so the ingest path (asreml vs brms) does
+# not enter the routing decision.
 .fb_plan_from_ir <- function(
   fb,
   data,
@@ -212,24 +195,17 @@ fb_plan <- function(
 ) {
   # ---- aliasing guard (before any planning work) ---------------- #
   # A factor on both the fixed and the random side is refused at
-  # dispatch on every engine. Planning is the surface a user reaches to
-  # find that out before paying for a fit, so it refuses with the same
-  # code rather than reporting a route for a model no engine will take.
+  # dispatch on every engine, so planning refuses with the same code.
   .refuse_term_in_fixed_and_random(fb)
 
-  # ---- weights guard (C6; before any planning work) -------------- #
+  # ---- weights guard (before any planning work) ------------------ #
   # .dispatch_backend() refuses a non-gaussian / non-identity-link
-  # weighted model by name (weights_requires_gaussian) before it
-  # reaches an emit. Without the same call here, fb_plan() on that
-  # exact model reported "Will fit: yes" -- a plan/live disagreement
-  # of the kind C3 (S6/FS-22) closed for grammar routing, reopened here
-  # by a refusal C3 predates. `weights = NULL` is deliberate: the IR
-  # .build_ir_polymorphic() built above already carries the weights
-  # argument as an addition_terms entry, so .fb_ir_weights(fb) alone
-  # recovers it.
+  # weighted model by name (weights_requires_gaussian), so the plan
+  # refuses it too. The IR already carries the weights as an
+  # addition_terms entry, which .fb_ir_weights(fb) recovers.
   .refuse_unsupported_weights(fb)
 
-  # ---- preflight (always; bypass dispatcher threshold) ---------- #
+  # ---- preflight (always, ignoring the dispatcher threshold) ----- #
   pf_dataset <- .fb_dataset(data)
   preflight <- .fb_preflight(
     fb_ir = fb,
@@ -347,11 +323,7 @@ fb_plan <- function(
   #
   # Eligibility of the aggregation plan is necessary but not sufficient:
   # the aggregated route runs on INLA, so the INLA gate must also have
-  # accepted the model. Without that clause the plan announced
-  # `aggregated_inla` for a model the gate had just refused structurally,
-  # and the live fit -- which never reaches the aggregated emitter for a
-  # gate-refused model -- went to brms instead. A plan that names a route
-  # dispatch would not take is worse than no plan at all.
+  # accepted the model. A gate-refused model goes to brms.
   #
   # A Gaussian model is not fitted on the aggregated representation, whose
   # Gaussian route cannot yet carry the residual prior: "auto" plans the
@@ -378,7 +350,7 @@ fb_plan <- function(
     chosen_reason <- "aggregation_residual_prior_not_composed"
   } else if (isTRUE(aggregate)) {
     # Dispatch refuses aggregate = TRUE wherever the aggregated route is
-    # not taken; it never falls back to the per-row route.
+    # not taken. It never falls back to the per-row route.
     chosen_backend <- NA_character_
     chosen_reason <- if (isTRUE(agg$eligible)) {
       "aggregation_route_unavailable"
@@ -417,13 +389,9 @@ fb_plan <- function(
   # ---- will_fit resolution ------------------------------------- #
   # `will_fit` reflects whether the *chosen route* can actually run. That
   # is a question about the route the router resolved, not about the LGM
-  # gate's verdict on INLA: under `backend = "auto"` a structural gate
-  # refusal is where the interesting routing starts, because the router
-  # then falls through to brms for the multi-stratum and
-  # heterogeneous-variance classes and that route fits. The earlier
-  # reading -- gate refused, therefore no fit -- told a user their
-  # multi-environment-trial model would not fit and then fitted it under
-  # the same call without `plan = TRUE`.
+  # gate's verdict on INLA. Under `backend = "auto"` a structural gate
+  # refusal sends the multi-stratum and heterogeneous-variance classes
+  # to brms, and that route fits.
   #
   # A route is resolved when the policy table (plus the pending-fallback
   # resolution) named a backend. Where it named none, `chosen_reason`
@@ -640,7 +608,7 @@ fb_plan <- function(
 
 # .fb_plan_predict_shape() --- derived prediction shape (rows, chunk
 # count, per-chunk memory ballpark) from a `predict_plan` arg. Reads
-# the supplied newdata dimensions; does not call predict.flexybayes().
+# the supplied newdata dimensions. Does not call predict.flexybayes().
 .fb_plan_predict_shape <- function(predict_plan, fb, data) {
   if (!is.list(predict_plan)) {
     stop(
@@ -815,13 +783,8 @@ fb_plan <- function(
 #
 # The preflight estimator walks the fixed and random terms only, because
 # its job is the design-memory ceiling and a residual carries no design
-# block. The consequence on the plan surface was that a sectioned
-# residual -- half of a multi-environment-trial model, and the half a
-# user is most likely to have got wrong -- did not appear in the plan at
-# all: the printed table listed `env`, `(1 | gen)` and `gen:env`, and
-# said nothing about the four residual variances the fit would estimate.
-# The entries added here are descriptive only; nothing downstream reads
-# them for a memory decision.
+# block. These entries put a sectioned residual on the plan. They are
+# descriptive only: nothing downstream reads them for a memory decision.
 .annotate_residual_terms <- function(representation_plan, fb) {
   terms <- Filter(
     function(t) !identical(t$type %||% "", "units"),
@@ -955,9 +918,8 @@ print.fb_plan <- function(x, ...) {
     "  Aggregation:             ",
     if (isTRUE(x$aggregation$eligible)) {
       # The planner's cell count is the product of the declared factor
-      # level counts -- the complete grid. The fitted object reports the
-      # realised count, which is smaller wherever a grid cell carries no
-      # rows. Both used to print as a bare `K`.
+      # level counts (the complete grid). The fitted object reports the
+      # realised count, smaller wherever a grid cell carries no rows.
       sprintf(
         "eligible (K = %s (estimated), N:K = %.0f:1)",
         format(x$aggregation$K, big.mark = " "),
@@ -976,14 +938,10 @@ print.fb_plan <- function(x, ...) {
     sep = ""
   )
 
-  # S6: N, K, rows-per-cell and a threshold-stated verdict, whenever the
-  # cell count is known -- not only when the model is eligible. Before
-  # 0.9.3 an ineligible-by-compression model (compression_unproductive)
-  # printed only its reason code with no numbers, so a user could not
-  # see WHY aggregation would not pay without reading the source. `agg$K`
-  # / `agg$ratio` (rows per cell) are populated whenever the cell count
-  # resolved, regardless of `eligible` -- see .fb_plan_from_ir()'s `agg`
-  # construction.
+  # N, K, rows-per-cell and a threshold-stated verdict, whenever the
+  # cell count is known, eligible or not. `agg$K` / `agg$ratio` (rows per
+  # cell) are populated whenever the cell count resolved (see
+  # .fb_plan_from_ir()'s `agg` construction).
   if (!is.na(x$aggregation$K)) {
     cat(
       "    ",
@@ -1073,10 +1031,8 @@ print.fb_plan <- function(x, ...) {
     )
   }
 
-  # v0.3.10: when the per-term
-  # INLA memory estimator ran, surface the breakdown rows directly
-  # under the headline memory line. Total + overhead make the
-  # representation-class contributions auditable at plan time.
+  # When the per-term INLA memory estimator ran, print its breakdown
+  # under the memory estimate line.
   mem <- x$preflight$memory_estimate
   if (
     inherits(mem, "fb_memory_estimate") &&
@@ -1117,7 +1073,7 @@ summary.fb_plan <- function(object, ...) {
   print(object)
   cat("\n-- Preflight detail ", strrep("-", 38), "\n", sep = "")
   if (is.null(object$preflight)) {
-    cat("  (no preflight; below the dispatch threshold)\n")
+    cat("  (no preflight: below the dispatch threshold)\n")
   } else {
     pt <- object$preflight$per_term_estimate
     if (length(pt) > 0L) {
@@ -1149,8 +1105,8 @@ summary.fb_plan <- function(object, ...) {
 
 #' Coerce an `<fb_plan>` to data.frame --- one row, stable columns
 #'
-#' Stable column ordering by the internal vector `.FB_PLAN_DF_COLS`;
-#' adding new fields appends rather than reorders.
+#' Stable column ordering by the internal vector `.FB_PLAN_DF_COLS`.
+#' New fields are appended, and existing columns keep their order.
 #'
 #' @param x         An `<fb_plan>` object as returned by `fb_plan()`.
 #' @param row.names Ignored. Present for compatibility with the generic.
@@ -1188,8 +1144,6 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
     engine_label = x$engine_label,
     representation_label = x$representation_label
   )
-  # Stable column ordering (defensive --- list above already follows
-  # .FB_PLAN_DF_COLS, but readers may rely on this contract).
   row <- row[.FB_PLAN_DF_COLS]
   out <- as.data.frame(
     row,

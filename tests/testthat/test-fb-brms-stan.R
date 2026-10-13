@@ -1,4 +1,4 @@
-# Tests for fb(backend = "brms") -- Stan-passthrough emit.
+# fb(backend = "brms"), the Stan-passthrough emit.
 #
 # Two layers:
 #   - Unit tests on .priors_to_brms_specs() (the pure spec-list
@@ -7,13 +7,11 @@
 #     table contract.
 #   - Round-trip tests via fb(backend = "brms") that DO
 #     require brms (+ a C++ toolchain for Stan). Skipped on CRAN
-#     / CI; opt-in via NOT_CRAN = "true".
+#     and CI. Opt in with NOT_CRAN = "true".
 #
-# Stan compile latency (typically 30-60 sec for the first call,
-# faster on cmdstanr cache reuse) means the round-trip subtests
-# are not part of the default check loop -- they run when the
-# developer runs `NOT_CRAN=true Rscript tools/tally.R` with
-# brms + a Stan toolchain installed.
+# The first Stan compile takes 30-60 sec, so the round-trip tests run
+# only under `NOT_CRAN=true Rscript tools/tally.R` with brms and a Stan
+# toolchain installed.
 
 # ---------------------------------------------------------------- #
 # Fixtures                                                          #
@@ -56,7 +54,7 @@ test_that("priors_to_brms_specs: legacy bridge for fixed-RI model", {
   )
 
   # Expect: Intercept(normal,100), b(normal,100), sigma(lognormal,1),
-  # sd_g(lognormal,1) -- four rows.
+  # sd_g(lognormal,1): four rows.
   expect_true(is.list(sp))
   expect_gte(length(sp), 3L)
 
@@ -159,11 +157,8 @@ test_that("priors_to_brms_specs: Intercept-named b spec routes to class Intercep
 # (6) priors_to_brms_specs: unsupported family raises structured    #
 # ---------------------------------------------------------------- #
 
-# This test asserted that `half_cauchy` on sigma refuses. It was a true
-# statement about the 0.9.1 emit and a false one about brms, which parses
-# `cauchy(0, s)` on a lower-bounded parameter perfectly well; at 0.9.2 the
-# variance-component table carries it, so the test now asserts the
-# translation and the refusal moves to a distribution brms genuinely
+# brms parses `cauchy(0, s)` on a lower-bounded parameter, so half_cauchy
+# on sigma translates. The refusal is tested on a distribution brms
 # cannot take on a variance component.
 test_that("priors_to_brms_specs: half_cauchy on sigma translates", {
   d <- mk_brms_stan_gaussian_data()
@@ -347,10 +342,8 @@ test_that("fb(backend='auto') does NOT route to Stan", {
 # ---------------------------------------------------------------- #
 
 test_that("fb(backend='stan') raises the typed unknown-backend refusal", {
-  # 0.9.3: an unrecognised backend name is now intercepted by
-  # .check_known_backend_name() before match.arg() runs, so the error is
-  # a typed flexyBayes refusal naming the active engines rather than a
-  # bare match.arg() message.
+  # .check_known_backend_name() runs before match.arg(), so the error is
+  # a typed refusal naming the active engines.
   d <- mk_brms_stan_gaussian_data()
   err <- tryCatch(
     flexybayes(y ~ x + (1 | g), data = d, backend = "stan"),
@@ -449,9 +442,8 @@ test_that("canonical_names.flexybayes_brms: registry dispatches", {
     class = c("flexybayes_brms", "flexybayes", "list")
   )
   cn <- canonical_names(stub)
-  # Without a live brmsfit the mapper returns an empty map; what we
-  # are testing here is the dispatch (S3 method registration + the
-  # "registry" source label, not "no_mapper").
+  # Without a live brmsfit the mapper returns an empty map. The test
+  # checks the dispatch: the "registry" source label, not "no_mapper".
   expect_identical(cn$source, "registry")
   expect_true(is.character(cn$map))
 })

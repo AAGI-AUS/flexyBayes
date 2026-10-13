@@ -2,9 +2,9 @@
 # Engine fits in a separate R process.
 #
 # `options(flexyBayes.isolation = "process")` runs the engine fit behind
-# flexybayes() -- and so behind fb(), fb_inla() and fb_brms() -- and the fit
-# behind proceed() in a separate R process started through callr. This file
-# holds that to four claims; test-isolated-lapply.R covers loops of jobs.
+# flexybayes() (and so behind fb(), fb_inla() and fb_brms()) and the fit
+# behind proceed() in a separate R process started through callr. Four
+# claims are tested here. test-isolated-lapply.R covers loops of jobs.
 #
 #   1. A process killed by a signal inside a fit ends in a typed refusal that
 #      names the engine, the entry point and the signal, and the session goes
@@ -17,12 +17,12 @@
 #   3. INLA does not return bit-identical numbers for two identical calls in
 #      one session on this build: over ten in-process fits of the fixture
 #      below, 36 of 45 pairs differed, by at most 2.18e-5 relative to the
-#      scale of the quantity (review/units/U-ISOLATE_2026-09-19, probe 03).
-#      The engine's numbers are therefore held to bounds derived from the
-#      measured in-process spread (probes 03 and 03b). What flexyBayes builds
+#      scale of the quantity (measured 2026-09-19). The engine's numbers
+#      are therefore held to bounds derived from the measured in-process
+#      spread. What flexyBayes builds
 #      around the engine is compared exactly, and the fields that differ only
 #      because an object crossed a process boundary (its environment is a
-#      copy) are named rather than skipped.
+#      copy) are named, not skipped.
 #   4. brms with a seed returns identical draws, and with no seed the draw
 #      comes from the session's random-number stream in both places.
 #
@@ -175,7 +175,7 @@ fbiso_get <- function(x, path) {
 }
 
 
-# The engine's numbers, and the scale-relative distance probe 03 measured.
+# The engine's numbers, and their scale-relative distance.
 fbiso_inla_numbers <- function(fit) {
   list(
     fixed_mean = fit$inla$summary.fixed$mean,
@@ -195,18 +195,15 @@ fbiso_distance <- function(a, b) {
   }, numeric(1))
 }
 
-# Derived in probe 03 from ten in-process fits (45 pairs, largest 2.18e-5),
-# about ten times the largest measured distance, and fixed before any
-# isolated fit was compared with it.
+# From ten in-process fits (45 pairs, largest 2.18e-5): about ten times
+# the largest measured distance, fixed before any isolated fit was compared.
 FBISO_INLA_BOUND <- 2e-4
 
 # The numbers flexyBayes derives from INLA's and keeps under $extras (the
-# summary tables, the variance components, the manifest's evidence). Probe
-# 03b measured their in-process spread over ten fits: largest 3.45e-4, on the
-# approximation's own kld diagnostic, and at most 7.07e-5 on every other
-# field. About ten times the largest. Probe 03 had not measured these fields,
-# so the bound above was never derived for them (review/units/
-# U-ISOLATE_2026-09-19, test correction 2).
+# summary tables, the variance components, the manifest's evidence). Their
+# in-process spread over ten fits: largest 3.45e-4, on the approximation's
+# own kld diagnostic, and at most 7.07e-5 on every other field. The bound is
+# about ten times the largest.
 FBISO_DERIVED_BOUND <- 3.5e-3
 
 
@@ -414,8 +411,8 @@ test_that("an isolated INLA fit matches in-process fits, exactly outside the eng
   isolated <- fbiso_with("process", fit_once())
   expect_s3_class(isolated, "flexybayes_inla")
 
-  # The one field isolation adds: where the fit ran, a record of the machine
-  # rather than of the model. It is set aside before the comparison below.
+  # The one field isolation adds records where the fit ran. It is set aside
+  # before the comparison below.
   expect_identical(isolated$extras$isolation$mode, "process")
   expect_false(identical(isolated$extras$isolation$pid, Sys.getpid()))
   expect_null(here_a$extras$isolation)

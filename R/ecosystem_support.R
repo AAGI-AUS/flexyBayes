@@ -2,38 +2,23 @@
 # (emmeans, marginaleffects). These reconcile the active backends' fixed-
 # effect parametrisations onto a single design-matrix contract:
 #
-#   * brms and INLA fits both carry a treatment-contrast basis
-#     (e.g. (Intercept), fb, fc) -- full rank. A since-withdrawn native
-#     engine (see NEWS.md, 0.9.3) carried an over-parameterised
-#     (cell-means + intercept) fixed-effect basis instead -- coef()
-#     names included every factor level (e.g. (Intercept), fa, fb, fc),
-#     needing all-levels coding to match, with emmeans handling the
-#     resulting rank deficiency through a non-estimability basis.
+#   * brms and INLA fits both carry a full-rank treatment-contrast basis
+#     (e.g. (Intercept), fb, fc).
 #
-# Rather than hard-code per backend, the design matrix is built to match
-# the names of the fit's own coef() vector, detecting per factor whether
-# the reference level is present (all-levels coding) or absent
-# (treatment coding). This keeps the reconciliation general -- both
-# active engines are full rank today, but the per-factor detection is a
-# defensive contract, not an assumption baked in for two backends.
-# Structures whose model matrix cannot be reconciled with the
-# coefficient names (e.g. factor interactions on an over-parameterised
-# basis) are refused rather than silently mis-mapped.
+# The design matrix is built to match the names of the fit's own coef()
+# vector, detecting per factor whether the reference level is present
+# (all-levels coding) or absent (treatment coding). Structures whose model
+# matrix cannot be reconciled with the coefficient names (e.g. factor
+# interactions on an over-parameterised basis) are refused, not silently
+# mis-mapped.
 
-# Data frame a fit was trained on (brms keeps it on the glm shim;
+# Data frame a fit was trained on (brms keeps it on the glm shim,
 # INLA keeps it at the top level).
 #
-# C4/FS-26: an INLA fit's `$data` is the level-legalised copy
-# emit_inla() built the fit against (`$level_labels` carries the map).
-# coef.flexybayes_inla() restores the user's own coefficient labels, so
-# every consumer here (recover_data()/emm_basis() for predict(classify
-# = ), marginaleffects' get_data()/get_predict(), plot(), the missing-
-# cell summary) needs the SAME labels to build a design matrix or
-# reference grid that lines up with those coefficient names --
-# .fb_fixef_model_matrix()'s own reconciliation check below exists to
-# catch exactly that kind of mismatch. .inla_restore_data_original_
-# levels() is a no-op for any fit `$level_labels` never touched
-# (every non-INLA engine, and an INLA fit with no non-syntactic level).
+# An INLA fit's `$data` is the copy with make.names() factor levels that
+# emit_inla() fitted against (`$level_labels` carries the map). The user's
+# own levels are restored here, so every consumer builds a design matrix
+# or reference grid that lines up with coef()'s restored labels.
 .fb_fit_data <- function(object) {
   data <- object$data %||% object$glm$data
   .inla_restore_data_original_levels(object$level_labels, data)
@@ -56,7 +41,7 @@
 # Decide, per factor in `trms`, whether the fit's coefficient names use
 # all-levels coding (reference-level column present) or treatment coding
 # (reference dropped). Returns a `contrasts.arg` list naming only the
-# factors that need all-levels coding; treatment-coded factors are left
+# factors that need all-levels coding. Treatment-coded factors are left
 # to model.matrix()'s default.
 .fb_detect_contrasts <- function(trms, target_names, data) {
   vars <- all.vars(trms)
@@ -71,7 +56,7 @@
     if (ref_col %in% target_names) {
       # All-levels (cell-means) coding. Use a level-labelled identity so
       # model.matrix() names the columns "<v><level>" (e.g. fa, fb, fc)
-      # to match the fit's coefficient names -- contr.treatment(n,
+      # to match the fit's coefficient names. contr.treatment(n,
       # contrasts = FALSE) would label them by position (f1, f2, f3).
       cm <- diag(length(lev))
       dimnames(cm) <- list(lev, lev)

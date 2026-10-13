@@ -1,14 +1,14 @@
-# test-nested-ar1-field.R -- a per-trial separable field.
+# test-nested-ar1-field.R, a per-trial separable field.
 #
 # `id(trial):ar1(row):ar1(col)` fits one separable AR1 x AR1 field per
 # level of `trial` on INLA, with the two correlations and the field
 # variance shared across trials (INLA's `replicate =` on the ar1 + group
 # `f()`), the model ASReml fits under the same spelling. ASReml reads
-# `at(trial):ar1(row):ar1(col)` as separate parameters for each trial;
-# that spelling is tested in test-at-fields.R.
+# `at(trial):ar1(row):ar1(col)` as separate parameters for each trial,
+# and that spelling is tested in test-at-fields.R.
 #
-# The term is an "ar1_spatial" node whose `at_var` names the trial factor;
-# `at_var` is NULL for a single field.
+# The term is an "ar1_spatial" node whose `at_var` names the trial factor,
+# and `at_var` is NULL for a single field.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
 skip_if_no_brms <- function() skip_if_not_installed("brms")
@@ -16,7 +16,7 @@ skip_if_no_brms <- function() skip_if_not_installed("brms")
 .ar1_mat <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
 
 # One trial's complete n_row x n_col separable AR1(row) x AR1(col) field
-# plus a Gaussian nugget -- the same generator test-inla-spatial-ar1.R
+# plus a Gaussian nugget, the same generator test-inla-spatial-ar1.R
 # uses for its own (independent, non-INLA) GLS/REML oracle.
 .at_trial_field <- function(n_row, n_col, rho_r, rho_c, sd_s, sd_e, seed, mu = 5) {
   set.seed(seed)
@@ -139,7 +139,7 @@ test_that("a hole in one trial's lattice refuses by name, naming only that trial
   skip_if_no_inla()
   sim <- .three_trial_data()
   d <- sim$data
-  # Drop one row from T2 only -- T1 and T3 stay complete.
+  # Drop one row from T2 only. T1 and T3 stay complete.
   d2 <- d[!(d$trial == "T2" & d$row == "1" & d$col == "1"), ]
   err <- tryCatch(
     flexybayes(
@@ -231,7 +231,7 @@ test_that("the fitted formula carries the replicate clause", {
 
 
 # ---------------------------------------------------------------- #
-# brms refuses unchanged; auto routes this to INLA                  #
+# brms refuses unchanged. Auto routes this to INLA                  #
 # ---------------------------------------------------------------- #
 
 test_that("brms refuses the per-trial field the same way it refuses the single field", {
@@ -286,8 +286,8 @@ test_that("backend = 'auto' still routes the pre-existing single-trial field to 
   # Guards the fb_preflight.R fix this item required: .preflight_term_
   # level_count() returned NA for EVERY ar1_spatial term (not only the
   # new at_var one), which escalated to representation_unknown_for_
-  # preflight and made auto refuse with no active route -- discovered
-  # while implementing C5's "auto routes this to INLA" requirement.
+  # preflight and made auto refuse with no active route, discovered
+  # while making `auto` route this to INLA.
   skip_if_no_inla()
   d <- expand.grid(row = factor(seq_len(6L)), col = factor(seq_len(8L)))
   d$y <- rnorm(nrow(d))
@@ -333,36 +333,36 @@ test_that(".preflight_term_level_count() sizes ar1_spatial with and without at_v
 # ---------------------------------------------------------------- #
 #
 # A per-node agreement check against three separate single-trial fits
-# was reviewed here (WP-C review F2) and removed: independently
+# was tried here and removed: independently
 # re-fitting the identical 3-trial fixture with rho_row / rho_col
 # FIXED at 0.95 / 0.90 (true 0.5 / 0.3, via INLA's own theta-fixing
 # mechanism on the same replicate = formula) still agreed with the
 # three single-trial fits on 100% of the 48 nodes per trial under the
-# 90%-within-3-pooled-SD rule -- the check could not tell a grossly
+# 90%-within-3-pooled-SD rule, the check could not tell a grossly
 # wrong shared rho from a correctly-recovered one, because a
 # single-trial fit's own posterior SD is itself wide at this N (48
 # observations is borderline for identifying an AR1 x AR1 field on its
 # own), which makes the 3-SD tolerance nearly vacuous regardless of
 # which fit it is compared against.
 #
-# A second per-node statistic -- comparing each fit's per-node
-# posterior mean against the actual simulated field draw `u` (rather
-# than a second, equally noisy fit) -- was also tried and also
+# A second per-node statistic, comparing each fit's per-node
+# posterior mean against the actual simulated field draw `u` (instead
+# of a second, equally noisy fit), was also tried and also
 # rejected: at this same N, the CORRECT joint fit's per-node means
 # correlate with the true `u` at r ~ 0 (essentially unidentifiable
 # node-by-node, only the pooled hyperparameters in (a) are
 # identifiable from 144 observations), and the forced-wrong-rho fit's
 # heavily over-smoothed (near-zero-variance) per-node means come out
-# LOWER in RMSE against `u` than the correct fit's -- a naive
+# LOWER in RMSE against `u` than the correct fit's, a naive
 # ground-truth-distance statistic would rank the wrong fit as the
 # *better* one, the opposite of what an oracle needs. Both induced-
-# defect runs are recorded in the WP-C fixes report.
+# defect runs gave this result.
 #
 # No per-node statistic was found that reliably discriminates a
 # grossly wrong shared rho from a correctly-recovered one at this
-# test's budget, so (a) -- both rhos inside their 95% credible
+# test's budget, so (a), both rhos inside their 95% credible
 # intervals, which the same induced-defect run above DOES fail on
-# (the forced 0.95 / 0.90 values sit far outside either CrI) -- is the
+# (the forced 0.95 / 0.90 values sit far outside either CrI), is the
 # test's sole correctness oracle.
 
 .inla_spatial_hyper <- function(fit) {
@@ -404,11 +404,11 @@ test_that("oracle: the nested fit recovers both rhos inside their 95% credible i
   # The forced-wrong-rho induced defect used to test the removed
   # per-node check (b) fixes rho_row / rho_col outright via INLA's own
   # theta-fixing mechanism, so it never estimates a credible interval
-  # for either quantity at all -- it cannot exercise this assertion,
+  # for either quantity at all, it cannot exercise this assertion,
   # only demonstrate why (b) had no power. This assertion's own
   # soundness rests on ordinary posterior-coverage properties, already
-  # exercised by every seed this file and test-inla-spatial-ar1.R run;
-  # see the WP-C fixes report for the forced-wrong-rho run itself.
+  # exercised by every seed this file and test-inla-spatial-ar1.R run,
+  # and a forced-wrong-rho run confirmed it.
   expect_true(
     hyp$rho_row[["0.025quant"]] <= rho_row_true &&
       rho_row_true <= hyp$rho_row[["0.975quant"]]

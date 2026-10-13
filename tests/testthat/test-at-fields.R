@@ -1,4 +1,4 @@
-# test-at-fields.R -- per-level at() terms and ASReml's nugget-free residual.
+# test-at-fields.R: per-level at() terms and ASReml's nugget-free residual.
 #
 # at(f, level):g gives the random effect g only where f takes the named
 # levels, each level with its own variance. at(trial):ar1(row):ar1(col)

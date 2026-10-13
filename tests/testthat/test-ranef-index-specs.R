@@ -8,9 +8,9 @@
 # and nothing else, so diag(), fa(), vm(), ped() and the AR1 fields reported
 # levels "1", "2", ... (review finding N5).
 #
-# The tests below take the set of generated indices from the EMITTER -- the
+# The tests below take the set of generated indices from the EMITTER, the
 # term types .build_inla_formula() branches on, and the f() terms it writes
-# for a fixture of each type -- and require a specification for every one.
+# for a fixture of each type, and require a specification for every one.
 # Reading the set off the specification registry instead would only prove the
 # registry agrees with itself.
 
@@ -272,8 +272,8 @@ test_that("the levels a specification reports are the data's, in index order", {
 
 # --- the accessor, on engine tables of a known shape --------------------- #
 #
-# A table shaped as INLA returns it -- `ID` 1..n and one row per index value
-# -- so the accessor's use of a specification is checked without a fit. The
+# A table shaped as INLA returns it (`ID` 1..n and one row per index value),
+# so the accessor's use of a specification is checked without a fit. The
 # row count is taken from the data, not from the specification.
 
 .ris_mock_fit <- function(fb, data, tables, known_matrices = list(),
@@ -320,7 +320,7 @@ test_that("ranef() puts the data's levels on a generated index without moving a 
 test_that("a table whose length disagrees with its specification is reported", {
   # A table of another length is not the field the term indexed. Its rows
   # are neither relabelled nor cut to fit, and the disagreement is said out
-  # loud rather than leaving integer levels to pass as a result.
+  # loud instead of leaving integer levels to pass as a result.
   fx <- .ris_fixtures()$at_simple
   n_gen <- nlevels(fx$data$gen)
   tables <- list(gen_at_env_E1 = .ris_table(n_gen + 1L))
@@ -439,7 +439,10 @@ test_that("every specification's index values are the IDs a fitted INLA table ca
     flexyBayes.silence_default_prior_note = TRUE,
     # This is an index-construction contract. Posterior spatial-collapse
     # diagnostics are exercised in test-spatial-field-collapse.R.
-    flexyBayes.silence_spatial_collapse_warning = TRUE
+    flexyBayes.silence_spatial_collapse_warning = TRUE,
+    # emit_inla() alone sets no prior, so a component without signal is
+    # weakly identified.
+    flexyBayes.silence_weak_identification_warning = TRUE
   )
   fixtures <- .ris_fixtures()
   checked <- 0L

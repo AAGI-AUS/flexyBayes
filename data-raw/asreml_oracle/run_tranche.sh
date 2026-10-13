@@ -1,11 +1,11 @@
 #!/bin/zsh
-# run_tranche.sh -- run paired ASReml / flexyBayes oracle scenarios.
+# run_tranche.sh: run paired ASReml / flexyBayes oracle scenarios.
 #
 # Durable companion to run_one.R. The environment this needs is not the
 # default one: ASReml and INLA are installed under R 4.5.2 on this machine
 # while R's Current link points at 4.6, so the run goes through the
 # user-space 4.5 home that r45_home.sh builds. That shim is ephemeral and is
-# rebuilt here rather than assumed.
+# rebuilt here, not assumed.
 #
 # Usage, from the package root:
 #
@@ -31,7 +31,7 @@
 #
 # Set FB_ORACLE_ALLOW_DIRTY=1 to run anyway. The record then carries
 # dirty = TRUE and the tarball is still built from the commit, so the run is
-# honest about being an exploration rather than evidence.
+# an exploration, not evidence.
 set -e
 
 WORK_IN="${1:?usage: run_tranche.sh <work-dir> [scenario ...]}"
@@ -67,9 +67,9 @@ STAMP="$(date +%Y%m%d_%H%M%S)"
 R45HOME="$WORK/r45home_$STAMP"
 sh "$SHIM_SRC" "$R45HOME"
 
-# The source under test, extracted from the commit rather than copied from
-# the tree. Everything downstream -- the tarball, the scenario code, the
-# comparator -- comes from here. The directory is stamped rather than reused,
+# The source under test, extracted from the commit, not copied from
+# the tree. Everything downstream (the tarball, the scenario code, the
+# comparator) comes from here. The directory is stamped, not reused,
 # so a previous extraction is never silently built on and nothing is removed.
 SRC="$WORK/src_${SHA:0:12}_$STAMP"
 mkdir -p "$SRC"
@@ -118,4 +118,4 @@ for sc in "${SCENARIOS[@]}"; do
   R_PROFILE_USER=/dev/null "$R45HOME/bin/R" --no-echo --no-restore \
     --file="$SRC/data-raw/asreml_oracle/run_one.R" 2>&1 | tail -1
 done
-echo "TRANCHE COMPLETE -- results in $OUT"
+echo "TRANCHE COMPLETE: results in $OUT"

@@ -2,8 +2,8 @@
 #
 # Contract: review_code = TRUE returns a `<flexybayes_review>`
 # deferred-execution token instead of fitting. cat_code() round-trips
-# the generated code string; proceed() advances into a fit (class
-# `flexybayes`); a second proceed() returns the cached fit. The R-RNG
+# the generated code string. proceed() advances into a fit (class
+# `flexybayes`), and a second proceed() returns the cached fit. The R-RNG
 # snapshot captured at construction is restored on the first proceed()
 # so that `set.seed(s); fit_direct <- flexybayes(...)` and
 # `set.seed(s); rev <- flexybayes(..., review_code = TRUE);
@@ -11,11 +11,11 @@
 # Mutual-exclusion guard: `return_code = TRUE` + `review_code = TRUE`
 # raises a structured refusal.
 #
-# Review mode only ever produces Stan code via brms (see NEWS.md, 0.9.3 --
-# the native engine this mode also once supported was withdrawn entirely;
+# Review mode only ever produces Stan code via brms (see NEWS.md, 0.9.3,
+# the native engine this mode also once supported was withdrawn entirely,
 # `backend = "auto"` under review_code now resolves to brms unconditionally,
 # since it is the only remaining code-producing engine). brms is required
-# for the proceed-into-fit assertions; the field / class / mutual-exclusion
+# for the proceed-into-fit assertions. The field / class / mutual-exclusion
 # checks run without it.
 
 .check_brms_review_prereqs <- function() {
@@ -128,7 +128,7 @@ test_that("cat_code(rev) emits and returns the stored code", {
 
 
 # ---------------------------------------------------------------- #
-# (d) proceed() returns a flexybayes-class fit; cache + (e) second #
+# (d) proceed() returns a flexybayes-class fit. Cache + (e) second #
 #     call returns the same fit identically.                       #
 # ---------------------------------------------------------------- #
 
@@ -141,7 +141,7 @@ test_that("proceed(rev) advances into a fit and caches the result", {
   # Structural test (does proceed() advance into a fit and cache it?),
   # not numeric agreement. The former one-chain budget produced a
   # genuine R-hat warning plus a residual low-ESS warning that carries
-  # flexyBayes's own convergence message rather than rstan's -- neither
+  # flexyBayes's own convergence message instead of rstan's, neither
   # is caught by .muffle_ess_warnings() (by design: it does not widen
   # to cover a real non-convergence signal), so the budget is raised
   # (with a higher adapt_delta) until the fit genuinely converges. The
@@ -208,10 +208,10 @@ test_that("return_code + review_code raises a structured refusal", {
 
 
 # ---------------------------------------------------------------- #
-# (g) Seed snapshot lets two review objects -- built at the same   #
-#     outer seed -- reproduce the same code string. The R-RNG      #
+# (g) Seed snapshot lets two review objects, built at the same   #
+#     outer seed, reproduce the same code string. The R-RNG      #
 #     state captured at construction is what matters for the       #
-#     proceed-cache contract; Stan-side non-determinism on the      #
+#     proceed-cache contract. Stan-side non-determinism on the      #
 #     brms chain is not part of the snapshot guarantee.            #
 # ---------------------------------------------------------------- #
 
@@ -294,8 +294,8 @@ test_that("flexybayes(): explicit review_code = TRUE, backend = 'inla' refuses",
 })
 
 # ADR 0031 Q1 (0.9.3: the native engine this mode once also supported was
-# withdrawn entirely -- see NEWS.md): review_code with backend = "auto"
-# resolves to brms (the only remaining code-producing engine) rather than
+# withdrawn entirely, see NEWS.md): review_code with backend = "auto"
+# resolves to brms (the only remaining code-producing engine), not
 # refusing. Explicit backend = "inla" still refuses (tests above/below).
 test_that("flexybayes(): review_code = TRUE, backend = 'auto' resolves to brms", {
   skip_if_not_installed("brms")

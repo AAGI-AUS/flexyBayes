@@ -1,7 +1,7 @@
-# priors_to_brms -- flexyBayes fb_prior -> brms prior translation.
+# priors_to_brms: flexyBayes fb_prior -> brms prior translation.
 #
 # Stan-passthrough emit on fb_brms(backend = "brms"). The translation
-# follows a ten-row table -- the original cross-engine table
+# follows a ten-row table, the original cross-engine table
 # (Intercept normal, b normal, sigma uniform / half_normal / pc,
 # sd half_normal / pc / uniform on the intercept-variance keyed by
 # group) plus a tenth row for the uncorrelated random-slope
@@ -25,13 +25,13 @@
 #     Calls the pure specs path and rbinds the rows into a single
 #     brms prior data.frame via brms::prior_string(). Requires brms.
 #     Returns NULL when the spec list is empty (brms then applies its
-#     own default flat priors -- caller may want to inject a fall-
-#     back; the Stan emit path always feeds the legacy-scalar bridge
+#     own default flat priors, caller may want to inject a fall-
+#     back. The Stan emit path always feeds the legacy-scalar bridge
 #     so the result is never empty in normal use).
 #
 # Which (target, distribution) pairs the table covers is declared once,
 # in `.fb_prior_translation_table()` (R/prior_translation.R), and read
-# from there by both this emit and the refusal messages -- a menu
+# from there by both this emit and the refusal messages, a menu
 # re-listed in prose is a menu that drifts. At 0.9.2 the variance-
 # component targets gained `normal`, `student_t`, `cauchy`,
 # `half_cauchy`, `exponential` and `gamma`, each round-tripped through
@@ -85,9 +85,9 @@
   # every random-slope term in the IR, correlated or not. The flexyBayes
   # default-prior expansion synthesises a group name `<slope_var>_<g>`
   # for the slope-variance hyperparameter so the per-group uniform-on-
-  # SD machinery reaches it; on the brms passthrough path we must
+  # SD machinery reaches it. On the brms passthrough path we must
   # translate that synthesised name back into brms's
-  # (class = "sd", coef = "<slope_var>", group = "<g>") row -- a bare
+  # (class = "sd", coef = "<slope_var>", group = "<g>") row, a bare
   # sd(group = "<slope_var>_<g>") row would not match any Stan-side
   # parameter and brms would refuse with "priors do not correspond
   # to any model parameter".
@@ -146,10 +146,10 @@
     specs[[length(specs) + 1L]] <- row
   }
 
-  # `prior_fixed_sd` covers the fixed effects; an fb_prior() covers the
-  # parameters it names. The two are not alternatives, and before 0.9.2
-  # supplying the scalar alongside the auto-default variance prior --
-  # which is what passing it alone produces -- silently dropped it: the
+  # `prior_fixed_sd` covers the fixed effects. An fb_prior() covers the
+  # parameters it names. The two are not alternatives. Supplying the scalar
+  # alongside the auto-default variance prior, which is what passing it alone
+  # produces, would silently drop it: the
   # legacy bridge is the only consumer of the scalar and the fb_prior
   # branch never reached it. The fixed-effect rows are added here when
   # the caller wrote the argument, and any coefficient the fb_prior names
@@ -206,17 +206,17 @@
 # Families brms parameterises with a residual `sigma` hyperparameter.
 # The roster lives in one place (`.fb_brms_families_with_sigma()`,
 # R/family_traits.R) because this predicate and the
-# heteroscedastic-residual gate in emit_brms.R used to carry separate
-# hand-maintained copies that disagreed about gamma and beta. Dropping a
+# heteroscedastic-residual gate in emit_brms.R must agree about gamma and
+# beta. Dropping a
 # sigma prior on a family that has no sigma keeps the cross-engine prior
-# surface uniform; sending one is a fit brms refuses.
+# surface uniform. Sending one is a fit brms refuses.
 .brms_family_has_sigma <- function(fam) {
   .fb_family_has_brms_sigma(fam)
 }
 
 # Translate a single fb_prior spec to a brms-prior row. Returns
 # NULL when the spec is recognised but maps to no brms row (no
-# such case in v0.2 -- structured refusal fires instead).
+# such case in v0.2, structured refusal fires instead).
 .one_brms_spec <- function(s) {
   target <- s$target
   spec <- s$spec
@@ -270,7 +270,7 @@
     grp <- target$group
     # Slope-variance row: when the target carries a `coef`
     # slot, the sd row is keyed on (class = "sd", coef = "<x>",
-    # group = "<g>") rather than the bare intercept-only
+    # group = "<g>") instead of the bare intercept-only
     # (class = "sd", group = "<g>") shape.
     coef_v <- target$coef %||% NA_character_
     dens <- .brms_vc_density(spec)
@@ -309,12 +309,10 @@
 }
 
 # The Stan density a variance-component prior becomes, plus the bounds
-# brms needs on the parameter. One builder for `sigma` and `sd()`: the
-# two targets differ in how the row is keyed, never in what the density
-# is, and before 0.9.2 they carried two copies of the same three
-# branches.
+# brms needs on the parameter. One builder for `sigma` and `sd()`: the two
+# targets differ in how the row is keyed, never in what the density is.
 #
-# NULL means the distribution has no brms row -- the caller raises the
+# NULL means the distribution has no brms row, the caller raises the
 # typed refusal, which names the target as well as the family.
 #
 # Every string here was round-tripped through `brms::make_stancode()`
@@ -414,7 +412,7 @@
 }
 
 # brms prior row for a b() / Intercept target. Intercept is class
-# "Intercept" in brms (no coef); other named coefficients are class
+# "Intercept" in brms (no coef). Other named coefficients are class
 # "b" with the coef field naming the column.
 .brms_b_row <- function(coef_name, string) {
   is_intercept <- coef_name %in% c("(Intercept)", "Intercept")
@@ -439,9 +437,9 @@
   }
 }
 
-# Numeric formatter -- writes a brms-parseable scalar without
+# Numeric formatter, writes a brms-parseable scalar without
 # scientific notation, leading whitespace, or trailing zeros.
-# Integers stay integer-shaped; fractional values use 15-digit
+# Integers stay integer-shaped. Fractional values use 15-digit
 # significand precision (matches Stan's double precision) with the
 # scientific suffix disabled.
 .fmt_num <- function(x) {
@@ -478,13 +476,10 @@
 # Refusal for a distribution the brms translation table does not carry
 # on a recognised target.
 #
-# Typed since 0.9.2. The message was already informative -- it named the
-# supported table -- but the condition was a bare `simpleError`, so a
-# gate or a wrapper could not tell "outside the translation table" from
-# "R fell over", which is the distinction the typed-refusal contract
-# exists to provide (field-sweep FS-15). The supported table is now
-# rendered from `.fb_prior_translation_table()` rather than re-listed
-# here, so the message cannot drift from what the emit actually does.
+# Typed, so a gate or a wrapper can tell "outside the translation table"
+# from "R fell over". The supported table is rendered from
+# `.fb_prior_translation_table()`, so the message cannot drift from what
+# the emit does.
 .brms_unsupported <- function(family, target_label) {
   stop(.fb_refusal_condition(
     reason_code = "prior_not_translatable_for_backend",
@@ -547,7 +542,7 @@
       why,
       "\n",
       .fb_prior_translation_menu("brms"),
-      "Two remedies: drop the row, or -- for a smooth -- pass ",
+      "Two remedies: drop the row, or, for a smooth, pass ",
       "backend = \"inla\",\n  which carries it."
     ),
     family_class = "flexybayes_prior_translation_refusal",
@@ -557,10 +552,10 @@
 
 # Legacy-scalar bridge: builds the spec list that mirrors the v0.1
 # legacy prior (normal(0, prior_fixed_sd) on every fixed-effect
-# coefficient incl. Intercept; lognormal(0, prior_vc_sd) on sigma and
+# coefficient incl. Intercept. lognormal(0, prior_vc_sd) on sigma and
 # every named sd group). Uses lognormal because the legacy prior on
 # variance components (from the since-withdrawn v0.1 engine) was
-# lognormal(0, vc_sd); the brms-side row preserves that shape without a
+# lognormal(0, vc_sd). The brms-side row preserves that shape without a
 # positivity bound (brms applies the natural sigma >= 0 anyway).
 .brms_legacy_specs <- function(
   fb,
@@ -599,7 +594,7 @@
   }
 
   # sigma: lognormal(0, prior_vc_sd) on the natural sigma scale.
-  # brms's lognormal is parsed as lognormal(meanlog, sdlog); the
+  # brms's lognormal is parsed as lognormal(meanlog, sdlog). The
   # legacy convention is lognormal(0, vc_sd) i.e. meanlog = 0.
   # Skip on families that do not parameterise a residual sigma
   # (Bernoulli, Poisson, ...) so brms's prior parser does not raise
@@ -615,17 +610,17 @@
     )
   }
 
-  # sd(group) -- one row per named random group.
+  # sd(group), one row per named random group.
   # The random-slope terms add a 10th row class to the
-  # legacy table -- the slope-variance prior, keyed on
+  # legacy table, the slope-variance prior, keyed on
   # (class = "sd", coef = "<slope_var>", group = "<grouping_factor>").
   # brms's set_prior() discriminates intercept- and slope-variance
-  # rows on the same grouping factor by the `coef` field; intercept
+  # rows on the same grouping factor by the `coef` field. Intercept
   # rows leave `coef` unset (NA / empty), slope rows set it to the
   # slope variable name. The double-pipe form (x || g) and the
   # double-pipe + intercept form (1 + x || g) both ship the slope
-  # row; only (1 + x || g) also ships the intercept row. The
-  # single-pipe form (x | g) always ships both -- the intercept is what
+  # row. Only (1 + x || g) also ships the intercept row. The
+  # single-pipe form (x | g) always ships both, the intercept is what
   # the correlation is with.
   for (term in fb$random_terms %||% list()) {
     if (is.null(term$type)) {
@@ -723,7 +718,7 @@
 # prior onto the parameters that actually exist when sigma is modelled.
 #
 # With a heterogeneous residual the emit becomes `sigma ~ 0 + f`, and the
-# scalar `sigma` parameter ceases to exist -- it is replaced by one
+# scalar `sigma` parameter ceases to exist, it is replaced by one
 # coefficient per level, on the LOG scale. A prior aimed at the scalar then
 # matches nothing, and brms refuses outright:
 #   "The following priors do not correspond to any model parameter:
@@ -736,39 +731,39 @@
 # .fb_to_brms_formula() lowers `weights=` as a known OFFSET on log(sigma)
 # (R/emit_brms.R documents why this, and not brms's own `weights()`
 # addition term, is the precision-weighting-correct mapping), which is
-# ALSO a `sigma ~ ...` distributional sub-formula -- `sigma ~ 1 +
+# ALSO a `sigma ~ ...` distributional sub-formula, `sigma ~ 1 +
 # offset(...)` when there is no heterogeneous residual alongside it. brms's
 # own parameter table for that shape (checked live via brms::get_prior(),
 # not assumed) carries `class = "Intercept", dpar = "sigma"` and no
-# `class = "b"` row, since offset() contributes no coefficient -- a
+# `class = "b"` row, since offset() contributes no coefficient, a
 # different target from the heterogeneous-residual case's `class = "b"`
 # (its `0 + f` has no intercept). Both reasons are handled by the same
-# retarget below; when both are present at once (a per-section residual
+# retarget below. When both are present at once (a per-section residual
 # on data that also carries observation weights) the `0 + f` shape wins,
 # so the target stays `class = "b"`.
 #
 # THE REPLACEMENT IS A CHOICE, AND IT IS ANNOUNCED. The default
 # half_normal(scale = s) on the residual SD has no exact counterpart on a
-# log-scale linear predictor, so it cannot be carried across unchanged; any
-# prior here is a new decision rather than a translation. brms's own default
+# log-scale linear predictor, so it cannot be carried across unchanged. Any
+# prior here is a new decision instead of a translation. brms's own default
 # for these coefficients is flat, which is not a decision this package is
-# willing to make silently either. So the scale that produced s is reused --
+# willing to make silently either. So the scale that produced s is reused,
 # the default sets s = .FB_DEFAULT_SD_MULTIPLIER * sd(y) on the identity
-# scale, hence sd(y) = s / .FB_DEFAULT_SD_MULTIPLIER -- and each log-sigma
+# scale, hence sd(y) = s / .FB_DEFAULT_SD_MULTIPLIER, and each log-sigma
 # coefficient gets
 # normal(log(sd(y)), 1): a prior whose median residual SD is sd(y) and whose
 # 95% range spans roughly a factor of seven either side. Weakly informative,
-# on the data's own scale, and stated in the prior note rather than inferred
+# on the data's own scale, and stated in the prior note instead of inferred
 # from behaviour.
 #
 # The divisor was written here as a literal 2.5 until 0.9.0, which was the
-# superseded PC default's multiplier rather than the then uniform default's 5.
+# superseded PC default's multiplier instead of the then uniform default's 5.
 # The location it produced was log(2 * sd(y)), so the prior's median residual
 # SD was twice the data SD instead of the sd(y) this paragraph claims. Reading
 # the multiplier off the constant that sets the default's scale keeps the
 # inversion exact and the two files from drifting again.
 #
-# On a user-supplied prior the inversion is a heuristic rather than an
+# On a user-supplied prior the inversion is a heuristic instead of an
 # identity: `upper` is whatever numeric the sigma spec ends with, and only a
 # half_normal(scale = s) built by the default machinery is guaranteed to
 # stand in the documented relation to sd(y).
@@ -811,10 +806,10 @@
     0
   }
   # `0 + f` (heterogeneous residual, with or without weights alongside)
-  # has no intercept -- brms::get_prior() gives it class "b". Weights
+  # has no intercept, brms::get_prior() gives it class "b". Weights
   # alone lower to `sigma ~ 1 + offset(...)`, which keeps the intercept
   # and gives class "Intercept" instead (verified live, see the function
-  # banner above) -- offset() itself contributes no coefficient to
+  # banner above), offset() itself contributes no coefficient to
   # retarget.
   target_class <- if (length(het) >= 1L) "b" else "Intercept"
   c(
@@ -831,7 +826,7 @@
 }
 
 # Stack the spec list into a single brms prior object. Each spec
-# maps to one brms::prior_string() call; we then rbind. Empty specs
+# maps to one brms::prior_string() call. We then rbind. Empty specs
 # return NULL so the caller can decide whether to fall back to brms's
 # own defaults.
 .brms_specs_to_object <- function(specs) {
@@ -854,7 +849,7 @@
     if (!is.na(s$group %||% NA_character_) && nzchar(s$group)) {
       args$group <- s$group
     }
-    # `dpar` targets a distributional parameter's own linear predictor --
+    # `dpar` targets a distributional parameter's own linear predictor,
     # class "b" with dpar "sigma" is the coefficient block created by
     # `sigma ~ 0 + f`, which is a different parameter from the scalar
     # class "sigma". Without this the row would land on the wrong block.
@@ -862,10 +857,10 @@
       args$dpar <- s$dpar
     }
     # brms refuses `Prior argument 'coef' may not be
-    # specified when using boundaries` -- when a coef-keyed sd row
+    # specified when using boundaries`, when a coef-keyed sd row
     # carries lb/ub the parser rejects the spec. For sd rows the
-    # natural sd >= 0 bound is implicit in brms's Stan emit anyway;
-    # drop the lb/ub when coef is set.
+    # natural sd >= 0 bound is implicit in brms's Stan emit anyway.
+    # Drop the lb/ub when coef is set.
     if (!has_coef) {
       if (!is.na(s$lb %||% NA_real_)) {
         args$lb <- s$lb

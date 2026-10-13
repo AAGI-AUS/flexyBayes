@@ -1,4 +1,4 @@
-# inla_best_of.R -- every INLA fit is run k times and the fit with the highest
+# inla_best_of.R: every INLA fit is run k times and the fit with the highest
 # marginal likelihood is kept.
 #
 # Identical one-thread INLA calls in fresh R processes can reach different
@@ -30,11 +30,15 @@
 #' Called before the first fit.
 #'
 #' @return A whole number, one or more: option `flexyBayes.inla_best_of`,
-#'   3 when unset.
+#'   or, when it is unset, 1 while `_R_CHECK_LIMIT_CORES_` is set and 3
+#'   otherwise.
 #' @noRd
 #' @keywords internal
 .fb_inla_best_of_k <- function() {
-  value <- getOption("flexyBayes.inla_best_of", 3L)
+  # Under R CMD check --as-cran, examples may not use more than two cores.
+  limit_cores <- Sys.getenv("_R_CHECK_LIMIT_CORES_", "")
+  default_k <- if (limit_cores %in% c("", "false", "FALSE")) 3L else 1L
+  value <- getOption("flexyBayes.inla_best_of", default_k)
   ok <- is.numeric(value) &&
     length(value) == 1L &&
     is.finite(value) &&
@@ -373,7 +377,7 @@
   invisible(NULL)
 }
 
-# The value of fit j, its messages and warnings re-signalled; a failure
+# The value of fit j, its messages and warnings re-signalled. A failure
 # stops with the fit's number.
 .fb_best_of_value <- function(pool, j, adopt_seed) {
   tryCatch(
@@ -430,7 +434,7 @@
   sequential <- pool$workers == 1L
   fits <- vector("list", k)
   fits[[1L]] <- fit
-  # Fits up to the first failure are waited for; one run at a time is
+  # Fits up to the first failure are waited for. One run at a time is
   # delivered as it finishes, so each process starts from the random-number
   # state the one before it left.
   repeat {
@@ -555,7 +559,7 @@
       "option flexyBayes.inla_best_of must be a whole number, one or more. ",
       "It is: %s."
     ),
-    registered_in_adr = "PLAN_0.17.0_repeatability_fa_speed_09Oct2026 (R1)",
+    registered_in_adr = "0.17.0 best-of-k INLA restarts",
     plan_field = NA_character_,
     since_version = "0.17.0"
   )

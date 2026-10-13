@@ -23,7 +23,7 @@ pass flag), and the registry's fallback hint.
 structure was lost to its approximation scheme, measured against the
 scheme's declared pass threshold. It is the user-facing entry to the
 per-scheme validation procedure registered for every approximate
-route; the contract surfaces the realised error number while the
+route, the contract surfaces the realised error number while the
 user keeps the accept / re-fit judgement.
 }
 \details{
@@ -36,10 +36,10 @@ against the default pass threshold of \code{0.99}, where \eqn{d_i} are
 the singular values of the full smooth basis.
 
 A fit carrying no recognised approximation (an exact fit) is
-refused rather than returned as a vacuous pass.
+refused instead of returned as a vacuous pass.
 }
 \examples{
-# An exact fit (no registered approximation) refuses rather than
+# An exact fit (no registered approximation) refuses instead of
 # returning a vacuous pass. \donttest{} + an INLA guard: this needs
 # a live fit and does not fire on a machine without INLA installed.
 \donttest{
@@ -56,7 +56,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
 
 # The low_rank_smooth verdict shape, on a plan-only object carrying
 # the scheme (no active engine reaches low_rank_smooth on the
-# current backends -- it was built for a since-withdrawn engine and
+# current backends: it was built for a since-withdrawn engine and
 # now refuses at dispatch; see R/emit_smooth_low_rank.R). This part
 # needs no engine and always runs.
 demo_fit <- structure(
@@ -77,6 +77,6 @@ print(v)
 v$pass
 }
 \seealso{
-\code{\link[=flexybayes]{flexybayes()}} for fitting; the approximation registry
+\code{\link[=flexybayes]{flexybayes()}} for fitting. The approximation registry
 records each scheme's bias bound and fallback.
 }

@@ -99,7 +99,7 @@ fbrf_expect_same_call <- function(a, b) {
 
 # Identical flexybayes() calls on these fixtures return medians that differ
 # by up to 2.4e-6 relative (3.7e-4 with a known variance), measured over six
-# repeats on INLA at "1:1"; the tolerances below are about ten times that.
+# repeats on INLA at "1:1". The tolerances below are about ten times that.
 FBRF_TOL <- 5e-5
 FBRF_TOL_KNOWN <- 5e-3
 
@@ -236,7 +236,7 @@ test_that("weights and a known variance follow new rows only when they can", {
 
   kv <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
                    known_variance = d$v, verbose = FALSE)
-  # The fit's own data carries the known variance in a column; other data
+  # The fit's own data carries the known variance in a column, and other data
   # does not, and the refit refuses before fitting.
   expect_error(
     fb_refit(kv, data = d[rows, ]),

@@ -1,7 +1,7 @@
 # The iidKd Wishart is scaled to the data, not left on INLA's identity.
 #
 # iid2d and iidKd carry one joint Wishart on theta1 whose scale matrix R
-# defaults to the identity -- a prior centred on unit variances. There is no
+# defaults to the identity, a prior centred on unit variances. There is no
 # standard-deviation slot for the prior DSL to write into, so the package's
 # own default was left unspliced, which left that unit-scale prior in force
 # whatever the response's scale.
@@ -18,7 +18,7 @@
 # identical Wishart Stan returns what INLA returns, so the prior itself couples
 # the variances and the correlation. Since 2026-09-13 the gate refuses both
 # structures on INLA and fits them on brms. The helpers below still build the
-# argument for the retained emit branches, and their tests stay; the recovery
+# argument for the retained emit branches, and their tests stay. The recovery
 # test that used to run on INLA now asserts the refusal and runs on brms.
 
 test_that("the Wishart argument carries the response's scale", {
@@ -28,14 +28,14 @@ test_that("the Wishart argument carries the response's scale", {
     g = factor(rep(letters[1:8], each = 10))
   )
   fb <- fb_from_brms(y ~ x + (x | g), data = d)
-  # The prior layer's own scale basis, which this reads rather than
-  # recomputing: U = 5 * sd(y).
+  # The prior layer's own scale basis, which this reads and
+  # does not recompute: U = 5 * sd(y).
   fb$priors <- structure(list(specs = list()), class = c("fb_prior", "list"))
   attr(fb$priors, "fb_prior_default_scale") <- 5 * 50
 
   sc <- .fb_inla_wishart_scale_slope(fb, fb$random_terms[[1L]])
   expect_length(sc, 2L)
-  # Intercept block on var(y); slope block on var(y) / var(x) -- the slope's
+  # Intercept block on var(y). Slope block on var(y) / var(x), the slope's
   # variance in the units the slope is measured in, so it is smaller than
   # the intercept's whenever x is more spread out than one unit.
   expect_equal(sc[[1L]], 50^2, tolerance = 0.01)
@@ -55,7 +55,7 @@ test_that("a k-block Wishart takes k diagonal entries and one dof", {
 
 test_that("an unusable scale falls back to INLA's own default", {
   # Better the identity than a fabricated number: the argument is dropped
-  # entirely rather than guessed at.
+  # entirely instead of guessed at.
   expect_identical(.fb_inla_wishart_arg(c(NA_real_, 1)), "")
   expect_identical(.fb_inla_wishart_arg(1), "")
 })
@@ -95,7 +95,7 @@ test_that("the correlated slope on sleepstudy is fitted on brms, near REML", {
   # deviation, 5.92 for the slope and 0.066 for the correlation. Eighteen
   # subjects make the posterior for a standard deviation right-skewed, so
   # the posterior mean sits above the REML estimate and the tolerance is
-  # relative and loose; the correlation is weakly identified at this size and
+  # relative and loose. The correlation is weakly identified at this size and
   # is held only to its neighbourhood.
   skip_if_not_installed("brms")
   skip_if_not_installed("lme4")

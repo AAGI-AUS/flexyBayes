@@ -3,27 +3,17 @@
 # Contract:
 #   - canonical_names(fit) returns a list(map, transform, source, unmapped)
 #     resolving the backend-native parameter names to canonical
-#     (brms-style) names; transforms carry value-side conversions
+#     (brms-style) names. Transforms carry value-side conversions
 #     such as INLA's sqrt(1/prec) precision-to-SD mapping.
 #   - The brms mapper translates raw Stan parameter names: b_Intercept ->
-#     (Intercept); b_<level> -> <level>; sd_<group>__Intercept ->
-#     sd_<group>; sigma stays sigma (already canonical).
+#     (Intercept), b_<level> -> <level>, sd_<group>__Intercept ->
+#     sd_<group>, and sigma stays sigma.
 #   - The INLA mapper translates summary.fixed (identity) +
 #     summary.hyperpar (Precision for ... -> sd_<group> / sigma)
 #     with the precision-to-SD transform attached.
 #   - The draws accessors (posterior::as_draws_df()) resolve both
 #     engines' names through the registry, with no user-supplied map.
 #   - register_canonical_mapper() round-trips a custom mapper.
-#
-# A prior contract clause -- the withdrawn native engine's pin
-# accepting a user-supplied canonical_names argument that won over a
-# verbatim fallback -- is removed at 0.9.3, not ported (see NEWS.md):
-# it was specific to hand-built native model graphs, which needed a
-# user-supplied map because there was no formula to parse names from.
-# That capability has no successor -- fb_from_brms() / fb_from_asreml()
-# both parse a real formula and resolve canonical names from the
-# registry automatically, so no ingest path needs (or accepts) a
-# user-supplied canonical_names argument today.
 
 
 mk_canon_data <- function() {
@@ -36,17 +26,6 @@ mk_canon_data <- function() {
   )
 }
 
-# ---------------------------------------------------------------- #
-# (a) [removed] canonical mapping for the withdrawn native engine   #
-# ---------------------------------------------------------------- #
-#
-# Deleted (not rewritten): the withdrawn native engine's raw-name
-# mapping (mu_atg, sigma_e_atg, tau_<tag>[i,1], ...) has no successor
-# -- there is no active engine with that naming convention to map from
-# (see NEWS.md, 0.9.3). The equivalent registry coverage for the two
-# active engines is subtests (b) (INLA) below and the brms mapping
-# exercised in (c)/(d).
-
 
 # ---------------------------------------------------------------- #
 # (b) INLA canonical mapping + sqrt(1/prec) transform               #
@@ -55,11 +34,8 @@ mk_canon_data <- function() {
 test_that("canonical_names() on an INLA fit translates Precision-for and attaches sqrt(1/prec)", {
   testthat::skip_if_not_installed("INLA")
   d <- mk_canon_data()
-  # aggregate = FALSE: this test exercises the per-row INLA fit's
-  # hyperparameter naming; the Stage 3A aggregated path (ADR 0022)
-  # uses a different fit-object shape (no `$inla$summary.hyperpar`
-  # of the per-row form). Aggregated-path canonical-name coverage
-  # ships with Phase C tests.
+  # aggregate = FALSE: the aggregated fit (ADR 0022) has no per-row
+  # `$inla$summary.hyperpar`.
   fit <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
@@ -94,7 +70,7 @@ test_that("canonical_names() on an INLA fit translates Precision-for and attache
   expect_null(cn$transform[["sigma"]]) # NOT keyed by canonical name
   expect_null(cn$transform[["sd_geno"]])
 
-  # sqrt(1/4) = 0.5 -- the transform is the precision-to-SD form.
+  # Precision to SD: sqrt(1/4) = 0.5.
   expect_equal(cn$transform[[prec_g]](4), 0.5)
   expect_equal(cn$transform[["Precision for geno"]](100), 0.1)
 })
@@ -236,18 +212,3 @@ test_that("register_canonical_mapper() round-trips a custom mapper", {
   )
 })
 
-
-# ---------------------------------------------------------------- #
-# (f) [removed] withdrawn engine's pin: user-supplied              #
-# ---------------------------------------------------------------- #
-#
-# Deleted (not rewritten): this test called the withdrawn engine's
-# pin and its native-model-graph ingest adapter directly, and the
-# setup code called that withdrawn package's own API to build the toy
-# model graph -- exactly the kind of call site the 0.9.3 withdrawal
-# removes (see NEWS.md). No successor: `fb_from_brms()` and
-# `fb_from_asreml()` both parse a real formula and resolve canonical
-# names from the registry automatically, so neither accepts (or
-# needs) a user-supplied `canonical_names` argument -- that capability
-# was specific to importing a hand-built native model graph, which no
-# longer exists as an ingest path.

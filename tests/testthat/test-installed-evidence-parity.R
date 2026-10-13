@@ -2,7 +2,7 @@
 # The installed capability CSV (inst/validation/execution_grid/
 # capability_matrix.csv) is a copy of .fb_capability_matrix(), kept in step
 # by tools/generate_capability_matrix.R using the row builder in
-# tools/capability_grid_matrix.R -- the same one tools/execution_grid.R
+# tools/capability_grid_matrix.R, the same one tools/execution_grid.R
 # drives its own cells from. Before 2026-09-16 the copy was frozen at commit
 # 4c81984 (0.9.3): it still said INLA refused the sectioned residual and the
 # combined MET model, four model classes short of the current registry,
@@ -11,7 +11,7 @@
 #
 # Two checks guard it. The first reads the CSV in the source tree and builds
 # the expected rows with the grid's own row builder in tools/, so it also
-# catches a missing row; it skips where tools/ is absent, as in an installed
+# catches a missing row. It skips where tools/ is absent, as in an installed
 # package. The second reads the CSV through system.file(), as an installed
 # user does, and checks every shipped row against the live registry on cell,
 # model_class, backend and verdict, so it runs under R CMD check.
@@ -26,7 +26,7 @@
 }
 
 # The row builder lives in tools/, outside the package namespace, so it is
-# sourced into its own environment rather than exported.
+# sourced into its own environment instead of exported.
 .iep_grid_builder <- function() {
   path <- .iep_pkg_file("tools", "capability_grid_matrix.R")
   testthat::skip_if(
@@ -39,7 +39,7 @@
 
 # Semantic-column parity: every row of `csv` names a real registry cell at
 # the verdict the registry itself records. Returns a character vector of
-# mismatch descriptions; empty means the two agree completely.
+# mismatch descriptions. Empty means the two agree completely.
 .iep_diff <- function(csv, cap, m_calls, builder) {
   expected <- builder$.fb_capability_grid_cells(cap, m_calls)
   cols <- c("cell", "model_class", "backend", "verdict")
@@ -83,7 +83,7 @@ test_that("the installed capability CSV agrees with the live registry", {
     character(0),
     label = paste0(
       "inst/validation/execution_grid/capability_matrix.csv disagrees with ",
-      ".fb_capability_matrix() -- re-run tools/generate_capability_matrix.R"
+      ".fb_capability_matrix(), re-run tools/generate_capability_matrix.R"
     )
   )
 })
@@ -113,7 +113,7 @@ test_that("the parity check rejects a CSV with one changed verdict", {
 # Each shipped row checked against the registry alone: the model class must be
 # a registry row, the cell id must be that class's slug and the backend, and
 # the verdict must be the registry's for that backend. Returns a character
-# vector of mismatch descriptions; empty means every shipped row agrees.
+# vector of mismatch descriptions. Empty means every shipped row agrees.
 .iep_installed_diff <- function(csv, cap) {
   slug <- function(x) {
     gsub("(^-|-$)", "", gsub("[^a-z0-9]+", "-", tolower(x)))

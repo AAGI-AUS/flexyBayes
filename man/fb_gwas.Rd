@@ -11,7 +11,7 @@ fb_gwas(formula, data, markers, K = NULL, marker_map = NULL, tol = 1e-08)
 and fixed-effect covariates (an intercept is included unless removed
 with \code{- 1}). Use \code{y ~ 1} for an intercept-only background.}
 
-\item{data}{A data frame with the response and covariates; one row per
+\item{data}{A data frame with the response and covariates. One row per
 individual (the association unit).}
 
 \item{markers}{A numeric \verb{n x m} matrix of marker genotypes (allele
@@ -23,10 +23,10 @@ marker. Column names are used as marker identifiers.}
 \eqn{G = Z_c Z_c^\top / m}, the average-allele-frequency genomic
 relationship (Astle & Balding 2009). This normalises by the marker
 count \code{m}, unlike VanRaden's (2008) first method, which divides by
-\eqn{2\sum_j p_j(1 - p_j)}; the two coincide only when every marker has
+\eqn{2\sum_j p_j(1 - p_j)}. The two coincide only when every marker has
 minor-allele frequency 0.5 and otherwise differ by a constant scale that
 the REML variance ratio absorbs, so the scan statistics are unaffected.
-Note that building \code{K} from the same markers being tested causes \emph{proximal
+Building \code{K} from the same markers being tested causes \emph{proximal
 contamination}: a marker's own signal enters the polygenic term and
 deflates its test statistic (conservative, but a power loss). For a
 well-calibrated scan supply \code{K} from an independent background panel
@@ -52,7 +52,7 @@ once to estimate the variance components by REML, then --- holding
 those components fixed (the P3D approximation of Kang et al. 2010) ---
 tests every marker by exact generalised least squares in the eigenbasis
 of the relationship matrix. The single eigendecomposition is the shared
-spectral primitive; each marker is then an \code{O(n)} weighted-least-squares
+spectral primitive. Each marker is then an \code{O(n)} weighted-least-squares
 score test, so a whole-genome scan is feasible without a per-marker
 model fit.
 }

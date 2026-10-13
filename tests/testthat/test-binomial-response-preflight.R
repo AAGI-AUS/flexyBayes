@@ -1,15 +1,11 @@
-# Tests for the non-binary binomial-response preflight refusal
-# (D14 / WP-D, found by WP-G's test sweep).
+# The non-binary binomial-response preflight refusal.
 #
-# Before this fix, family = "binomial" with a response outside {0, 1}
-# reached the engine unrefused on every route and failed there raw:
-# INLA with a subprocess death wrapped into an unrelated
-# inla_program_failed diagnosis, brms with an untyped condition, and
-# the aggregated route with its own untyped stop(). One typed
-# preflight refusal (binomial_response_not_binary,
-# flexybayes_binomial_response_not_binary_refusal) now fires before
-# any of the three, at the single dispatch choke point every route
-# passes through.
+# family = "binomial" with a response outside {0, 1} is refused before any
+# engine runs, at the dispatch choke point every route passes through, with
+# one typed refusal (binomial_response_not_binary,
+# flexybayes_binomial_response_not_binary_refusal). Unrefused, it fails
+# differently on each route: an INLA subprocess death, an untyped brms
+# condition, an untyped stop() on the aggregated route.
 
 test_that(".refuse_non_binary_binomial_response() is a no-op for a valid 0/1 response", {
   fb <- list(family = "binomial", response = "y")
@@ -131,9 +127,8 @@ test_that("the aggregated route (aggregate = TRUE) refuses with the typed class,
 
 test_that("flexybayes_stream()'s own trials = route is unaffected", {
   # The new guard runs only in .dispatch_backend(), the non-streaming
-  # entry's choke point; flexybayes_stream() calls the aggregated emit
-  # functions directly and has its own trials = contract, which this
-  # item must not break.
+  # entry's choke point. flexybayes_stream() calls the aggregated emit
+  # functions directly and has its own trials = contract.
   skip_on_cran()
   skip_if_not_installed("INLA")
   set.seed(20260826L)

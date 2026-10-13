@@ -1,6 +1,6 @@
 # The default variance-component prior is reported with its scale. A
 # Gaussian INLA fit runs on y / sd(y), and sigma ~ half-normal(a k) is
-# sigma / k ~ half-normal(a); the tests convert one to the other by hand.
+# sigma / k ~ half-normal(a). The tests convert one to the other by hand.
 
 .ps_data <- function() {
   set.seed(20260924L)

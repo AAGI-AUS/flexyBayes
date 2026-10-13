@@ -1,41 +1,19 @@
-# Convergence contract --- one tri-state verdict, read by every consumer
-#
-# Closes audit A25. Before this file there were two consumers of the
-# convergence evidence and they made opposite mistakes on the same absent
-# field:
-#
-#   run_one.R:82   isTRUE(s$converge$ok %||% TRUE)
-#                  `ok` never existed, and NULL %||% TRUE is TRUE, so this
-#                  was not a weak measurement -- it was a CONSTANT. No input
-#                  produced FALSE, and all eight banked fixtures carry a
-#                  field that measured nothing.
-#
-#   test-metamorphic-scale-invariance.R:203
-#                  expect_false(isTRUE(summary(fit)$converge$ok))
-#                  isTRUE(NULL) is FALSE, so this passed for every fit --- a
-#                  clean one, a failed one, and one with no diagnostics at
-#                  all were indistinguishable to it.
-#
-# There is a third, quieter version of the same error inside the package:
-# .fb_inla_diagnostics() computed ok = isTRUE(nc$pass), and nc$pass is
-# deliberately NA when no numerical confirm ran. isTRUE(NA) is FALSE, so a
-# fit whose confirmation was ABSENT was reported as having FAILED. Absent
-# and failed are different answers and only one of them is true.
-#
-# The contract here is tri-state and says so:
+# Convergence contract: one tri-state verdict, read by every consumer.
 #
 #   TRUE   evidence exists and all of it passes
 #   FALSE  some evidence says the fit did not converge
 #   NA     the evidence needed to decide is not there
 #
 # Missing evidence never becomes TRUE, and it never becomes FALSE either.
+# Two traps: `isTRUE(x$ok %||% TRUE)` is TRUE when `ok` is absent, and
+# `isTRUE(NA)` is FALSE, so a fit with no numerical confirm would read as
+# failed.
 
 
 # --- evidence items -------------------------------------------------- #
 
 # Each check returns "pass", "fail" or "absent" and a reason when it fails.
-# Keeping the vote and the reason together is what lets the verdict say
-# WHICH evidence failed rather than only that something did.
+# The reason lets the verdict say which evidence failed.
 .fb_conv_item <- function(state, reason = NULL) {
   list(state = state, reason = reason)
 }
@@ -84,7 +62,7 @@
 #
 # `required` names the items that must be PRESENT for a TRUE to be
 # defensible. A fit whose mode status is unknown has not been shown to
-# converge, whatever else passed, so the verdict is NA rather than TRUE.
+# converge, whatever else passed, so the verdict is NA, not TRUE.
 # Any failure anywhere is decisive: FALSE wins over a missing requirement,
 # because evidence of failure is still evidence.
 .fb_conv_combine <- function(items, required = character(0)) {
@@ -138,9 +116,8 @@
     error = function(e) NULL
   )
   nc <- fit$num_check
-  # The aggregated route builds its own object and skips the post-fit
-  # confirm, so read it off the raw INLA object rather than calling the
-  # evidence absent when it is merely elsewhere.
+  # The aggregated route skips the post-fit confirm, so it is read off the
+  # raw INLA object.
   if (is.null(nc) && !is.null(fit$inla)) {
     nc <- tryCatch(.lgm_check_numerical(fit$inla), error = function(e) NULL)
   }
@@ -289,16 +266,13 @@
 # the summary slot .brms_convergence() wrote at fit time. Three further
 # items are properties of the sampler's own trajectory and are read off
 # the live brmsfit instead: treedepth saturation, E-BFMI, and tail ESS.
-# They are read here rather than recomputed from the summary because the
-# summary does not carry them at all -- an absent field is what audit A25
-# was about, and inventing one from what is present is the same mistake in
-# a new place.
+# The summary does not carry them.
 
 # Stan's guidance, and the reason the three items are not treated alike:
 # a divergence, an E-BFMI below 0.2 and a starved tail are evidence the
-# posterior was not explored correctly; saturating max treedepth is
+# posterior was not explored correctly. Saturating max treedepth is
 # evidence the sampler was slow, not that the answer is wrong. The first
-# two join the failure vote; treedepth is recorded and reported as
+# two join the failure vote. Treedepth is recorded and reported as
 # evidence, and does not flip the verdict.
 .FB_CONV_EBFMI_MIN <- 0.2
 
@@ -318,7 +292,7 @@
 
 # The sampler's own treedepth ceiling, read from the arguments the fit was
 # run with. Saturation is `treedepth == max_depth`, so the ceiling has to
-# come from the run rather than from Stan's documented default: a fit with
+# come from the run, not from Stan's documented default: a fit with
 # `control = list(max_treedepth = 12)` saturates at 12 and a hard-coded 10
 # would count twelve-deep trajectories that never hit the ceiling.
 .fb_conv_brms_max_treedepth <- function(brmsfit) {
@@ -406,10 +380,6 @@
 
 .fb_conv_verdict_brms <- function(fit) {
   d <- .fb_brms_diagnostics(fit)
-  # .fb_brms_diagnostics() already applies the package's own thresholds and
-  # already reports NA where the sampler diagnostics are absent, so the
-  # verdict adopts its answer rather than re-deriving one with a second set
-  # of thresholds that could drift from the first.
   s <- .fb_conv_brms_sampler_evidence(fit)
 
   ok <- d$ok
@@ -487,11 +457,9 @@
   paste(class(fit), collapse = "/")
 }
 
-# .fb_convergence_verdict() --- the authoritative tri-state answer.
-#
-# summary(), the ASReml oracle runner, the live-backend tests and
-# fb_convergence() all read this and nothing else. A second implementation
-# anywhere is how A25 happened.
+# .fb_convergence_verdict(): the tri-state answer. summary(), the ASReml
+# oracle runner, the live-backend tests and fb_convergence() all read this
+# and nothing else.
 .fb_convergence_verdict <- function(fit) {
   if (inherits(fit, "flexybayes_inla")) {
     return(.fb_conv_verdict_inla(fit))

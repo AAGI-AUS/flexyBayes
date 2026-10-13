@@ -1,4 +1,4 @@
-# pp_check_support.R -- the posterior predictive check, or a refusal that
+# pp_check_support.R, the posterior predictive check, or a refusal that
 # names the diagnostics the fit can answer.
 #
 # `pp_check()` is registered for flexybayes fits on the bayesplot
@@ -56,7 +56,7 @@
     paste0(
       ", and its engine (",
       engine,
-      ") returns an approximation to the posterior rather than simulated ",
+      ") returns an approximation to the posterior instead of simulated ",
       "datasets. "
     )
   }
@@ -76,7 +76,7 @@
       "beside a normal quantile-quantile plot, and, on a fit carrying a ",
       "design index, plot(fit, type = \"variogram\"), the empirical ",
       "semivariance of the residuals over the array. For a posterior ",
-      "predictive check on this model, re-fit it on the brms engine -- ",
+      "predictive check on this model, re-fit it on the brms engine, ",
       "flexybayes(..., backend = \"brms\")."
     ),
     engine = engine
@@ -91,13 +91,13 @@
 #' [brms::pp_check()]: datasets are simulated from the posterior
 #' predictive distribution and shown against the observed response. The
 #' default display overlays the densities of the replicated datasets on
-#' the density of the response (`type = "dens_overlay"`); every other
+#' the density of the response (`type = "dens_overlay"`). Every other
 #' \pkg{bayesplot} check type, and every argument of
 #' [brms::pp_check()], is reachable through `...`.
 #'
 #' On a fit from the **INLA** engine the method refuses by name. A nested
 #' Laplace approximation returns marginal densities, not simulated
-#' datasets, so there is nothing to overlay -- and a display of observed
+#' datasets, so there is nothing to overlay, and a display of observed
 #' against fitted values shown under this name would be a different
 #' diagnostic wearing the check's title. The refusal names the residual
 #' displays the fit does answer: `plot(fit, type = "residuals")` and, on
@@ -107,16 +107,16 @@
 #' points cannot disagree about what a check is.
 #'
 #' @param object A fitted `flexybayes` object.
-#' @param ... Passed to [brms::pp_check()] on the brms path -- `type`,
-#'   `ndraws`, `group` and the rest; ignored on the refusal path.
+#' @param ... Passed to [brms::pp_check()] on the brms path, `type`,
+#'   `ndraws`, `group` and the rest. Ignored on the refusal path.
 #' @returns On a brms-engine fit, the \pkg{ggplot2} object
 #'   [brms::pp_check()] returns. Otherwise the method does not return: it
 #'   raises a refusal of class
 #'   `flexybayes_refusal_pp_check_requires_predictive_draws`.
 #'
 #' @seealso [plot.flexybayes()] for the other displays, including the
-#'   residual diagnostics this refusal points at;
-#'   [as_draws_df.flexybayes()] for the posterior itself;
+#'   residual diagnostics this refusal points at.
+#'   [as_draws_df.flexybayes()] for the posterior itself.
 #'   [summary.flexybayes()], whose `$converge` slot carries the engine's
 #'   own diagnostics.
 #'

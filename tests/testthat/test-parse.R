@@ -219,7 +219,7 @@ test_that("resolve_family maps each family name to its default link", {
 #                                                                   #
 # The early formula / spec validation in .parse_fixed() and the     #
 # term walker raises registered `flexybayes_refusal_*` conditions   #
-# rather than bare stop(), so downstream tooling can pattern-match   #
+# instead of bare stop(), so downstream tooling can pattern-match    #
 # on the class. The user-facing message text is preserved.          #
 # ---------------------------------------------------------------- #
 

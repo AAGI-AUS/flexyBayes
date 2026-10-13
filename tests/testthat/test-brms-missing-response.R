@@ -1,22 +1,15 @@
 # =============================================================================
 # A missing response on the brms backend.
 #
-# brms drops rows whose response is NA. Silently: a 48-row dataset with six
-# missing responses reached Stan as N = 42, with a warning easy to miss and no
-# trace in the returned object. That made `na_action = "augment"` on brms mean
-# complete-case deletion -- the argument promising the design is preserved,
-# delivering the opposite.
-#
-# The tests below assert on the NUMBER OF ROWS THE ENGINE ACTUALLY USED,
-# because that is where the defect lived. Every fit returned a valid object of
-# the right class with sensible estimates throughout; nothing about the wrapper
-# would have revealed it.
+# brms drops rows whose response is NA: a 48-row dataset with six missing
+# responses reaches Stan as N = 42, with a warning easy to miss. The tests
+# assert on the number of rows the engine used.
 #
 # brms's `mi()` addition term samples the missing values instead. brms accepts
 # it for more families than are admitted here, though not for poisson or
 # bernoulli ("Argument 'mi' is not supported for family 'poisson(log)'"). The
 # gaussian and lognormal families get augmentation, each checked by a live fit,
-# and every other family gets a refusal rather than silent deletion.
+# and every other family gets a refusal.
 # =============================================================================
 
 .brms_miss_data <- function(family = "gaussian", n_missing = 6L, seed = 1L) {
@@ -35,8 +28,8 @@
   d
 }
 
-# The lognormal fixture. Eight blocks of twelve rather than six of eight, so
-# the block standard deviation is estimable, with ten of the 96 responses
+# The lognormal fixture. Eight blocks of twelve, so the block standard
+# deviation is estimable, with ten of the 96 responses
 # missing completely at random.
 .brms_miss_lognormal_data <- function(seed = 11L) {
   set.seed(seed)
@@ -48,7 +41,7 @@
   d
 }
 
-test_that("brms samples a missing Gaussian response rather than dropping it", {
+test_that("brms samples a missing Gaussian response instead of dropping it", {
   skip_if_not_installed("brms")
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -245,8 +238,7 @@ test_that("a missing Student-t response is refused by name on brms", {
 })
 
 test_that("na_action = 'omit' still deletes on brms, for any family", {
-  # Deletion remains available and correct; what is refused is deletion
-  # wearing the name of augmentation.
+  # Deletion stays available under its own name.
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("poisson")

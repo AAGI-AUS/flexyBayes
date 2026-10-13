@@ -29,7 +29,7 @@ fb_decision(...)
 \item{...}{Ignored.}
 }
 \value{
-None; each function signals the refusal.
+None. Each function signals the refusal.
 }
 \description{
 These functions are deprecated. Penalised selection is no longer part of

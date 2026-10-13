@@ -18,6 +18,6 @@ prints.
 \description{
 Opens with the header every engine's print shares, then adds the
 sampler diagnostics and a brms-specific footer (the live \code{brmsfit}
-lives at \verb{$brms}; the GLM shim at \verb{$glm}; \verb{$extras} carries the same
+lives at \verb{$brms}. The GLM shim at \verb{$glm}; \verb{$extras} carries the same
 diagnostics as the INLA path).
 }

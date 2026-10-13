@@ -1,16 +1,16 @@
-# weak_identification.R -- a variance component the data barely identify
-# says so.
+# weak_identification.R: a warning for a variance component the data
+# barely identify.
 #
 # Since 0.13.0 the default prior on a standard deviation is a half-normal
 # with no upper bound, so a component the data cannot identify is reported
 # at whatever value the prior and the likelihood settle on. The boundary
-# check (R/boundary_collapse.R) catches a component pinned at zero; nothing
-# caught one that sits high because only the prior holds it there.
+# check (R/boundary_collapse.R) catches a component pinned at zero. This
+# file catches one that sits high because only the prior holds it there.
 #
 # The reading is the share of the prior's probability that the posterior's
 # 95% interval still spans: F(upper) - F(lower), with F the prior's
 # distribution function on the standard deviation. A posterior the data
-# have narrowed spans little of the prior; a posterior that is the prior
+# have narrowed spans little of the prior. A posterior that is the prior
 # spans 95% of it. The share is unchanged by any monotone transform of the
 # standard deviation and by any rescaling of the response or a covariate
 # that rescales the prior with it, which the package defaults do
@@ -99,7 +99,7 @@
     if (is.null(v)) {
       return(NULL)
     }
-    # The lognormal is quadratic in theta; the half-normal is not.
+    # The lognormal is quadratic in theta. The half-normal is not.
     if (grepl("theta*theta", prior, fixed = TRUE)) {
       return(function(x) stats::pnorm(log(x) / v[[1L]]))
     }
@@ -260,7 +260,7 @@
     return(invisible(NULL))
   }
   warning(
-    "flexyBayes: a variance component in this fit is weakly identified -- ",
+    "flexyBayes: a variance component in this fit is weakly identified: ",
     paste(reasons, collapse = "; "),
     ". Its 95% interval spans 40% or more of its prior's probability, or ",
     "is 4.24 or more times its posterior median, so the data say little ",
@@ -268,8 +268,8 @@
     "Common ",
     "causes are a grouping factor with few levels and a random term that ",
     "splits the rows as a fixed term already does. Report the component ",
-    "as weakly identified rather than as an estimate; state a prior you can ",
-    "defend with fb_prior(); or remove the term the data cannot separate. ",
+    "as weakly identified, not as an estimate, state a prior you can ",
+    "defend with fb_prior(), or remove the term the data cannot separate. ",
     "summary(fit)$varcomp marks the row `weakly identified`. Silence via ",
     "options(flexyBayes.silence_weak_identification_warning = TRUE).",
     call. = FALSE

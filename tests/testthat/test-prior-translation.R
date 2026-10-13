@@ -4,22 +4,21 @@
 # `priors_to_inla()` used to translate three distributions on three targets
 # and return nothing at all for every other pair, while `prior_summary()`
 # printed each of them as applied: five of the ten DSL distributions and two
-# of the five targets were inert on INLA, silently (field-sweep FS-21). The
-# brms side had the mirror-image defect -- real refusals, untyped, so no
-# caller could tell "outside the translation table" from "R fell over"
-# (FS-15).
+# of the five targets were inert on INLA, silently. The
+# brms side had the mirror-image defect, real refusals, untyped, so no
+# caller could tell "outside the translation table" from "R fell over".
 #
 # The tests below hold three things:
 #
-#   1. the table is total over the DSL -- every (engine, target,
+#   1. the table is total over the DSL, every (engine, target,
 #      distribution) triple has a verdict, so a distribution added without
-#      one fails here rather than dropping silently;
-#   2. every "translate" cell ARRIVES -- the hyper string is read back out
+#      one fails here instead of dropping silently;
+#   2. every "translate" cell ARRIVES, the hyper string is read back out
 #      of the fitted INLA object, or the density out of the Stan program;
 #   3. every "refuse" cell refuses TYPED at the fit, naming the row.
 #
 # The arrival half is the point. A translation test that asserts what
-# `priors_to_inla()` returns proves the function agrees with itself; these
+# `priors_to_inla()` returns proves the function agrees with itself. These
 # read the engine.
 # =============================================================================
 
@@ -160,15 +159,15 @@ test_that("every translatable INLA variance-component cell reaches the hyper str
   }
 })
 
-test_that("the sigma cell reaches control.family rather than the formula", {
+test_that("the sigma cell reaches control.family instead of the formula", {
   skip_if_not_installed("INLA")
   fit <- .pt_fit(fb_prior(sigma ~ exponential(rate = 3)), "inla")
   expect_false(inherits(fit, "condition"))
   # INLA rewrites the supplied `hyper` list into its own theta-indexed
   # slots, so the entry is found by the short name the likelihood declares
-  # (R/family_traits.R) rather than by the key we wrote.
+  # (R/family_traits.R) instead of by the key we wrote.
   # INLA stamps an `inla.read.only` attribute on each field, so the
-  # comparisons strip attributes rather than using identical().
+  # comparisons strip attributes instead of using identical().
   hyper <- fit$inla$.args$control.family[[1L]]$hyper
   slot <- Filter(function(h) isTRUE(h$short.name == "prec"), hyper)[[1L]]
   expect_true(grepl("pc.prec", slot$prior, fixed = TRUE))
@@ -183,7 +182,7 @@ test_that("the sigma cell reaches control.family rather than the formula", {
 test_that("exponential on an SD target IS the PC prior, checked numerically", {
   # The identity that makes the exponential row translatable: pc.prec(U,
   # alpha) states P(sigma > U) = alpha, i.e. Exp(-log(alpha) / U) on the
-  # standard-deviation scale. Grounded against the definition rather than
+  # standard-deviation scale. Grounded against the definition instead of
   # against the emit.
   tr <- flexyBayes:::priors_to_inla(
     fb_prior(sd(group = "g") ~ exponential(rate = 2.5))
@@ -220,7 +219,7 @@ test_that("the b() route composes with the prior_fixed_sd scalar", {
     verbose = FALSE
   ))
   cf <- fit$inla$.args$control.fixed
-  # The named entry wins for `x`; the scalar is the default for the rest.
+  # The named entry wins for `x`. The scalar is the default for the rest.
   s_y <- stats::sd(d$y)
   expect_equal(cf$prec$x, s_y^2 / 4)
   expect_equal(cf$prec$default, s_y^2 / 49)
@@ -229,7 +228,7 @@ test_that("the b() route composes with the prior_fixed_sd scalar", {
 test_that("the six full-specification INLA cells stay green", {
   # The regression pin. A blanket refusal of untranslatable rows would have
   # turned these red, because the documented full specification carries a
-  # b() row -- which is why the fix is a table and not a refusal.
+  # b() row, which is why the fix is a table and not a refusal.
   skip_if_not_installed("INLA")
   skip_if_not_long_tier()
   .pt_silence()
@@ -271,7 +270,7 @@ test_that("the six full-specification INLA cells stay green", {
     expect_false(inherits(fit, "condition"), label = fam)
     # Each cell is read on the coordinates its engine received. The Gaussian
     # fit runs on a standardised response, so a coefficient's precision
-    # multiplies by sd(y)^2; every other family runs on a standardised
+    # multiplies by sd(y)^2. Every other family runs on a standardised
     # covariate, so it divides by sd(x)^2. The prior stated on the original
     # scale is normal(0, 4) in every cell, and every cell maps back to it.
     expected <- if (identical(fam, "gaussian")) {
@@ -419,7 +418,7 @@ test_that("the refusal is registered and discoverable", {
 })
 
 test_that("no prior specification is accepted, printed, and then dropped", {
-  # The FS-21 contract in one line: whatever prior_summary() shows on an
+  # The contract in one line: whatever prior_summary() shows on an
   # INLA fit reached the engine, because anything that could not have is
   # refused before the fit exists.
   skip_if_not_installed("INLA")
@@ -446,7 +445,7 @@ test_that("no prior specification is accepted, printed, and then dropped", {
 })
 
 
-# --- (4) target existence (field-sweep FS-20) ---------------------------- #
+# --- (4) target existence ---------------------------------------------- #
 
 test_that("a prior naming a term the model does not have refuses typed on brms", {
   skip_if_not_installed("brms")
@@ -456,7 +455,7 @@ test_that("a prior naming a term the model does not have refuses typed on brms",
   )
   expect_s3_class(fit, "flexybayes_refusal_prior_target_not_in_model")
   expect_match(conditionMessage(fit), "nonexistent_term", fixed = TRUE)
-  # The model's actual terms, in the user's vocabulary -- not brms's
+  # The model's actual terms, in the user's vocabulary, not brms's
   # synthesised `b_nonexistent_term`.
   expect_match(conditionMessage(fit), "\"x\"", fixed = TRUE)
   expect_false(grepl("b_nonexistent_term", conditionMessage(fit), fixed = TRUE))
@@ -515,7 +514,7 @@ test_that("prior_summary() does not claim the engine default for a b() row", {
     collapse = " "
   )
   # `x` is numeric and unnamed, so it carries the covariate-scaled default and
-  # is listed; the engine-default sentence covers the other coefficients.
+  # is listed. The engine-default sentence covers the other coefficients.
   expect_match(txt2, "x ~ normal(0, ", fixed = TRUE)
   expect_match(txt2, "the other fixed effects carry", fixed = TRUE)
   expect_false(grepl("except", txt2, fixed = TRUE))

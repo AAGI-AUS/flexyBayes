@@ -13,15 +13,15 @@ is pinned to \code{"inla"} and must not be supplied.}
 }
 \value{
 An object of class \code{"flexybayes"} (specifically a
-\code{flexybayes_inla} fit); see \code{\link[=flexybayes]{flexybayes()}} for the structure.
+\code{flexybayes_inla} fit). See \code{\link[=flexybayes]{flexybayes()}} for the structure.
 }
 \description{
 Engine pin: fits the model with INLA (integrated nested Laplace
 approximation) only. This is sugar for
 \code{\link[=flexybayes]{flexybayes()}}\verb{(..., backend = "inla")} and accepts the same arguments
 and grammars (an ASReml \code{fixed} / \code{random} / \code{residual} specification or a
-brms-style bar-grouped formula -- see \code{\link[=flexybayes]{flexybayes()}} for the full
-argument list). The model must be latent-Gaussian feasible; if it is
+brms-style bar-grouped formula, see \code{\link[=flexybayes]{flexybayes()}} for the full
+argument list). The model must be latent-Gaussian feasible. If it is
 not, the shared \code{lgm_gate()} raises a structured refusal naming the
 offending term, exactly as \code{flexybayes(backend = "inla")} does.
 }
@@ -57,7 +57,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
 }
 \seealso{
 \code{\link[=flexybayes]{flexybayes()}} for the universal entry that picks a
-backend; \code{\link[=fb_from_asreml]{fb_from_asreml()}} / \code{\link[=fb_from_brms]{fb_from_brms()}} for the ingest layer.
+backend. \code{\link[=fb_from_asreml]{fb_from_asreml()}} / \code{\link[=fb_from_brms]{fb_from_brms()}} for the ingest layer.
 
 Other flexyBayes engine pins:
 \code{\link[=fb_brms]{fb_brms()}}

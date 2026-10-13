@@ -2,7 +2,7 @@
 #
 # Reads every test_that() block in this directory. A block must hold at
 # least one expectation that can fail: an expect_*() call, fail(), or a
-# call to a helper of the same file that holds one; succeed() alone does
+# call to a helper of the same file that holds one. succeed() alone does
 # not count, and a block that only calls skip() is reported as skipped.
 # No expectation may be true by construction: expect_true(TRUE),
 # expect_false(FALSE), the same expression on both sides of an equality,
@@ -11,7 +11,7 @@
 # several checks passed whatever the code did (DEF-098, DEF-117).
 #
 # A check that runs but is too weak for its defect (DEF-110, DEF-151,
-# DEF-160) is found only by planting the defect; that is what the
+# DEF-160) is found only by planting the defect. That is what the
 # register's falsification runs do.
 
 .g18_calls <- function(e) {

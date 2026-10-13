@@ -1,9 +1,5 @@
-# Tests for lgm_gate() — deliverable 2.
-#
-# Covers the structural-first 6 checks, the structured refusal
-# class, and the two-key override path. Numerical-confirm gate
-# (check 7) is post-fit and stubbed for v0.1; tests for it land
-# alongside emit_inla() (deliverable 5+).
+# lgm_gate(): the structural checks, the structured refusal class and
+# the two-key override path.
 
 # ---------------------------------------------------------------- #
 # Test fixtures                                                    #
@@ -31,7 +27,7 @@ mk_fb <- function(
 }
 
 # ---------------------------------------------------------------- #
-# Check 1 — family allowlist                                       #
+# Check 1: family allowlist                                        #
 # ---------------------------------------------------------------- #
 
 test_that(".lgm_check_family() passes a gaussian model", {
@@ -52,7 +48,7 @@ test_that(".lgm_check_family() passes binomial / poisson / gamma", {
 })
 
 test_that(".lgm_check_family() refuses lognormal, a brms-only family, by name", {
-  # INLA's roster carries a lognormal; the brms fit is the validated one.
+  # INLA has a lognormal family, but only the brms fit is validated.
   r <- flexyBayes:::.lgm_check_family(mk_fb(family = "lognormal"))
   expect_false(r$pass)
   expect_identical(r$rule_id, "family_allowlist")
@@ -68,7 +64,7 @@ test_that(".lgm_check_family() refuses an unsupported family", {
 })
 
 # ---------------------------------------------------------------- #
-# Check 2 — predictor linearity                                    #
+# Check 2: predictor linearity                                     #
 # ---------------------------------------------------------------- #
 
 test_that(".lgm_check_predictor() passes a linear asreml model", {
@@ -93,7 +89,7 @@ test_that(".lgm_check_predictor() refuses term tagged nl = TRUE", {
 })
 
 # ---------------------------------------------------------------- #
-# Check 3 — distributional regression                              #
+# Check 3: distributional regression                               #
 # ---------------------------------------------------------------- #
 
 test_that(".lgm_check_distributional() passes when no dpar terms", {
@@ -122,7 +118,7 @@ test_that(".lgm_check_distributional() passes intercept-only sigma RHS", {
 })
 
 # ---------------------------------------------------------------- #
-# Check 4 — RE Gaussian prior                                      #
+# Check 4: RE Gaussian prior                                       #
 # ---------------------------------------------------------------- #
 
 test_that(".lgm_check_re_prior() passes legacy asreml prior", {
@@ -147,7 +143,7 @@ test_that(".lgm_check_re_prior() refuses non-Gaussian RE prior in fb_prior", {
 })
 
 # ---------------------------------------------------------------- #
-# Check 5 — latent-class detection                                 #
+# Check 5: latent-class detection                                  #
 # ---------------------------------------------------------------- #
 
 test_that(".lgm_check_latent_class() passes a clean LMM", {
@@ -173,7 +169,7 @@ test_that(".lgm_check_latent_class() refuses a mixture family", {
 })
 
 # ---------------------------------------------------------------- #
-# Check 6 — hyperparameter budget                                  #
+# Check 6: hyperparameter budget                                   #
 # ---------------------------------------------------------------- #
 
 test_that(".lgm_check_hyperparam_budget() passes a small model", {
@@ -221,10 +217,9 @@ test_that(".lgm_count_hyperparams() charges us_gxe n(n+1)/2 hyperparameters", {
 })
 
 test_that(".inla_random_term_class_label() GxE labels use plain ASCII, not U+00D7", {
-  # FB-16 (D3): the multiplication sign renders as U+FFFD under xelatex +
-  # lmodern when these labels reach vignette/console output, and is
-  # forbidden house style. Assert the literal ASCII spelling directly, not
-  # just its absence, so a re-introduced Unicode glyph is caught by value.
+  # The multiplication sign renders as U+FFFD under xelatex + lmodern
+  # when these labels reach a vignette. The literal ASCII spelling is
+  # asserted, not just the absence of the glyph.
   expect_identical(
     flexyBayes:::.inla_random_term_class_label("fa_gxe"), "factor-analytic GxE"
   )
@@ -244,7 +239,7 @@ test_that(".inla_random_term_class_label() GxE labels use plain ASCII, not U+00D
 })
 
 # ---------------------------------------------------------------- #
-# Checks 7-9 — INLA emit-support allowlists (ADR 0017)             #
+# Checks 7-9: INLA emit-support allowlists (ADR 0017)              #
 # ---------------------------------------------------------------- #
 
 # Positive cases: each new check passes on its allowlist.
@@ -291,7 +286,7 @@ test_that(".lgm_check_residual_term_inla_support() passes the allowlist", {
 # Negative cases: each structured-covariance random-term class
 # triggers the random_term_type_inla rule with the class label in
 # the diagnostic. Six classes covered: vm / ped / at / us / fa /
-# ar1 — the asreml-style structured-covariance vocabulary.
+# ar1, the asreml-style structured-covariance vocabulary.
 
 test_that(".lgm_check_random_term_inla_support() refuses vm (GBLUP / kinship)", {
   fb <- mk_fb(random_terms = list(list(type = "vm", var = "geno")))
@@ -300,11 +295,8 @@ test_that(".lgm_check_random_term_inla_support() refuses vm (GBLUP / kinship)", 
   expect_identical(r$rule_id, "random_term_type_inla")
   expect_match(r$reason, "\"vm\"")
   expect_match(r$reason, "variance-matrix")
-  # What the OTHER engine does is asked, not assumed. brms lowers a
-  # dense-carrier vm() to (1 | gr(g, cov = K)), so the refusal has to say
-  # so: it read "no other active backend represents it either" until the
-  # 0.9.0 fidelity pass, which was false for every term brms had learned
-  # to emit -- vm, us(f):g, and every nested random effect.
+  # brms lowers a dense-carrier vm() to (1 | gr(g, cov = K)), so the
+  # refusal must point at brms.
   expect_match(r$reason, "flexyBayes fits this model on brms", fixed = TRUE)
 })
 
@@ -355,16 +347,16 @@ test_that(".lgm_check_random_term_inla_support() refuses fa (factor-analytic)", 
   expect_match(r$reason, "factor-analytic")
 })
 
-test_that(".lgm_check_random_term_inla_support() accepts ar1 (WP16 spatial field)", {
-  # WP16 (2026-07-25): AR1 (1D) and separable AR1xAR1 spatial latent fields
-  # are emitted on INLA (grouped-AR1 idiom); emit_inla() validates the
+test_that(".lgm_check_random_term_inla_support() accepts ar1 (spatial field)", {
+  # AR1 (1D) and separable AR1xAR1 spatial latent fields are emitted on
+  # INLA with the grouped-AR1 idiom. emit_inla() validates the
   # one-observation-per-node grid condition, so the gate accepts the class.
   fb <- mk_fb(random_terms = list(list(type = "ar1", var = "time")))
   r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
   expect_true(r$pass)
 })
 
-test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial (WP16)", {
+test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial", {
   fb <- mk_fb(random_terms = list(list(
     type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
   )))
@@ -372,10 +364,9 @@ test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial (WP16)", {
   expect_true(r$pass)
 })
 
-# Residual cases. at_units -- the sectioned residual, dsum(~units | f) --
-# reaches INLA through the multiple-likelihood interface from 0.10.0.9000,
-# so it is now an ACCEPTED type and the negative case moved to a residual
-# shape INLA genuinely does not carry.
+# Residual cases. at_units, the sectioned residual dsum(~units | f), reaches
+# INLA through the multiple-likelihood interface and is accepted. The
+# negative case uses a residual shape INLA does not carry.
 
 test_that(".lgm_check_residual_term_inla_support() accepts at_units", {
   fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
@@ -421,7 +412,7 @@ test_that("lgm_gate() accepts the sectioned residual it used to refuse", {
 })
 
 # ---------------------------------------------------------------- #
-# Integration — lgm_gate                                           #
+# Integration: lgm_gate                                            #
 # ---------------------------------------------------------------- #
 
 test_that("lgm_gate() passes a typical asreml mixed model", {
@@ -466,7 +457,7 @@ test_that("lgm_gate() passes warnings into capabilities (soft-limit budget)", {
 })
 
 # ---------------------------------------------------------------- #
-# Override path — two-key armed                                    #
+# Override path: two-key armed                                     #
 # ---------------------------------------------------------------- #
 
 test_that("lgm_gate() overrides structural refusal when fully armed", {
@@ -538,16 +529,11 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
   expect_true(any(grepl("\\[family_allowlist\\]", text)))
   expect_true(any(grepl("\\[latent_class\\]", text)))
   # The refusal names one route onward and one place to read the rest.
-  # It used to print four lines on what backend = "auto" already does, an
-  # unconditional roadmap sentence about mixtures, and a two-argument
-  # override incantation -- sixteen lines for a two-rule refusal, which is
-  # what the R Journal review read. The route onward is brms only when
-  # flexyBayes fits the model there, and a mixture term it does not.
+  # brms is named only when flexyBayes fits the model there, and a
+  # mixture term it does not.
   expect_false(any(grepl("backend = \"brms\"", text, fixed = TRUE)))
   expect_true(any(grepl("?lgm_gate", text, fixed = TRUE)))
-  # The citation still belongs to the latent-class rule's own reason, which
-  # this fixture triggers. What is gone is the unconditional advert that
-  # printed it on every refusal, mixture or not.
+  # The citation stays in the latent-class rule's own reason only.
   expect_false(any(grepl("on the roadmap", text, fixed = TRUE)))
   expect_lte(length(text), 8L)
 })
@@ -562,15 +548,12 @@ test_that("print.lgm_refusal() points at brms when flexyBayes fits the model the
 })
 
 # ---------------------------------------------------------------- #
-# The gate's refusals carry a class (A5.5)                         #
+# The gate's refusals carry a class                                #
 # ---------------------------------------------------------------- #
 #
-# lgm_gate() returns an <lgm_refusal> value, and under an explicit
-# backend = "inla" request dispatch turned it into a bare stop(). That
-# left one refusal in the package a caller could not catch by name while
-# every other refusal carried flexybayes_refusal_<code>. The value is
-# unchanged -- rule ids, check-list and print method all stand -- and the
-# throw site now wraps it in the shared condition hierarchy.
+# lgm_gate() returns an <lgm_refusal> value. Under an explicit
+# backend = "inla" request, dispatch raises it as a
+# flexybayes_refusal_<code> condition that carries the value.
 
 test_that("an explicit inla request refused by the gate raises a typed condition", {
   # The vehicle is a model the gate refuses, and it has to keep being one.
@@ -610,28 +593,15 @@ test_that("an explicit inla request refused by the gate raises a typed condition
   expect_match(conditionMessage(err), "?lgm_gate", fixed = TRUE)
 
   # The check-list object itself rides on the condition, so a caller can
-  # read the rules rather than parse the printed text.
+  # read the rules instead of parsing the printed text.
   expect_s3_class(err$lgm_refusal, "lgm_refusal")
   expect_true(err$lgm_refusal$n_failures >= 1L)
   expect_identical(err$rule_id, err$lgm_refusal$primary_rule)
 })
 
 test_that("a gate refusal through the fb_inla() pin is typed and names its rule", {
-  # Same throw site, reached through the engine pin rather than through
-  # backend = "inla", and carrying a DIFFERENT rule from the test above so
-  # the per-rule class is shown to track the rule rather than the site.
-  #
-  # The original vehicle here was the sectioned residual dsum(~units | f),
-  # refused by residual_term_type_inla. That residual now fits. So does
-  # every other residual spelling that reaches the gate: the structured
-  # ones are refused earlier, at dispatch, and `units` and `at_units` both
-  # pass. residual_term_type_inla is therefore no longer reachable from the
-  # formula surface -- it remains as a defence, and the unit test above
-  # exercises it directly on a hand-built IR.
-  #
-  # The second vehicle was a six-level us(), refused by the budget; us() is
-  # now refused first by the correlated-covariance rule. The third,
-  # diag(env):gen over twenty levels, now fits by empirical Bayes. Sixteen
+  # Same throw site through the engine pin, with a different rule from
+  # the test above, so the per-rule class follows the rule. Sixteen
   # separate random intercepts are 17 hyperparameters, refused by the
   # budget alone.
   d <- data.frame(y = stats::rnorm(200L), x = stats::rnorm(200L))
@@ -656,15 +626,11 @@ test_that("a gate refusal through the fb_inla() pin is typed and names its rule"
 })
 
 # ---------------------------------------------------------------- #
-# D11 / WP-D: a vignette("...") reference in R/ must exist          #
+# A vignette("...") reference in R/ must exist                     #
 # ---------------------------------------------------------------- #
-# lgm_gate.R's own refusal-help banner used to name
-# "flexyBayes-11-dispatch-and-refusals" after the 0.9.3 renumber moved
-# that page to -10-; the string was stale and nothing caught it. This
-# test scans every R/ source for a flexyBayes-<NN>-<slug> filename
-# token and asserts each one names a real vignettes/*.Rmd.orig file, so
-# a future renumber that misses one message fails CI instead of
-# shipping a broken vignette("...") pointer.
+# Every flexyBayes-<NN>-<slug> token in R/ must name a real
+# vignettes/*.Rmd.orig file, so a renumbered vignette cannot leave a
+# broken vignette("...") pointer in a message.
 
 .vignette_source_dir_d11 <- function() {
   cand <- testthat::test_path("..", "..", "vignettes")

@@ -4,7 +4,7 @@
 #
 # Rationale. plot.flexybayes() uses base R graphics, so the previous
 # vdiffr SVG diff path was tied to font metrics + margin defaults +
-# 0.5pt coordinate tolerance -- fragile against MCMC posterior-mean
+# 0.5pt coordinate tolerance, fragile against MCMC posterior-mean
 # drift of order 1e-6 from brms / Stan sampling non-determinism. The
 # Tier-1 replacement (per AMBITION_STAGE.md §1.1) snapshots the
 # numerical inputs that drive each plot: fixed-effect estimates +
@@ -12,10 +12,10 @@
 # for "variance", residuals shape for "residuals". The plot
 # functions are still exercised end-to-end (we call plot() and
 # capture the output device) to confirm the rendering pipeline did
-# not error; the *equality* check is on the numerics.
+# not error. The *equality* check is on the numerics.
 #
 # vdiffr stays in DESCRIPTION:Suggests (Tier-2 and Tier-3 paths in
-# §1.1 remain on the future-work list); this file gives equivalent
+# §1.1 remain on the future-work list). This file gives equivalent
 # coverage at the right level of abstraction.
 
 .check_brms_plot_prereqs <- function() {
@@ -101,7 +101,7 @@ test_that("plot.flexybayes(type = 'effects') numerical inputs are stable", {
   snapshot <- list(
     n_coef = n,
     coef_names = names(beta),
-    # Estimates are MCMC-noisy; sample size on the snapshot is the
+    # Estimates are MCMC-noisy. Sample size on the snapshot is the
     # right invariant. Names + count + matrix shape are the
     # structural invariants the plot depends on.
     ci_shape = dim(ci),
@@ -113,7 +113,7 @@ test_that("plot.flexybayes(type = 'effects') numerical inputs are stable", {
   on.exit(grDevices::dev.off(), add = TRUE)
   expect_silent(plot(fit, type = "effects"))
 
-  # Numerical-shape snapshot (structural invariants only; values
+  # Numerical-shape snapshot (structural invariants only. Values
   # absorbed in shape checks for MCMC tolerance).
   expect_snapshot_value(snapshot, style = "json2", tolerance = 1e-6)
 })
@@ -159,7 +159,7 @@ test_that("plot.flexybayes(type = 'residuals') numerical inputs are stable", {
     fitted_len = length(fitted_vals),
     # 1 sig fig: the brms/Stan residual sd drifts ~1e-2 across sessions
     # (0.89 <-> 0.90 flickered the old 2-sig-fig snapshot at the rounding
-    # boundary); 1 sig fig still catches a structural scale regression.
+    # boundary), and 1 sig fig still catches a structural scale regression.
     resid_round = .round_sig(stats::sd(resid_vals), digits = 1L)
   )
 

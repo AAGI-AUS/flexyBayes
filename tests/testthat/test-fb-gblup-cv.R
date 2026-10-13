@@ -3,7 +3,7 @@
 # brute-force full-matrix solve; the behavioural checks confirm accuracy is
 # positive, rises with heritability, and collapses to zero under a null.
 
-# Brute-force GBLUP prediction for one split (no spectral shortcut) -- the
+# Brute-force GBLUP prediction for one split (no spectral shortcut), the
 # exact reference .fb_gblup_predict() must reproduce, at the same REML
 # variance ratio.
 .brute_gblup_predict <- function(y, X, K, train, test, delta, beta) {

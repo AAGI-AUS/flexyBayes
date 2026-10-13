@@ -1,18 +1,18 @@
-# test-stream-overflow-and-hooks.R -- two small structural guards.
+# test-stream-overflow-and-hooks.R, two small structural guards.
 #
 # (a) flexybayes_stream() offers only inla as a backend choice, and a
 #     caller who names a withdrawn or otherwise unrecognised backend gets
-#     the unknown-backend refusal by name rather than match.arg's
+#     the unknown-backend refusal by name instead of match.arg's
 #     "'arg' should be one of".
 # (b) The single-file and in-memory streaming sources refuse a row count
 #     past R's integer limit instead of recording it as NA. The row count
-#     is mocked; nothing here allocates billions of rows.
+#     is mocked. Nothing here allocates billions of rows.
 #
 # (0.9.3: a third section here tested the S3 shim that registered
 # flexyBayes methods on a later load of the withdrawn native engine's
-# package -- that shim registrar and its two .onLoad() hook
+# package, that shim registrar and its two .onLoad() hook
 # registrations are deleted entirely (see NEWS.md), so that section is
-# removed rather than rewritten; there is no successor mechanism, since
+# removed instead of rewritten. There is no successor mechanism, since
 # no active engine needs a deferred-load S3 shim.)
 
 # ---------------------------------------------------------------- #
@@ -38,7 +38,7 @@ test_that("flexybayes_stream() defaults to inla and refuses an unrecognised back
   expect_identical(err$backend, "stan")
   expect_match(conditionMessage(err), "not a recognised flexyBayes engine")
   expect_match(conditionMessage(err), '"inla"', fixed = TRUE)
-  # The failure must not be argument matching -- that is the untyped
+  # The failure must not be argument matching, that is the untyped
   # outcome this change exists to avoid.
   expect_false(grepl("should be one of", conditionMessage(err)))
 })
@@ -73,8 +73,8 @@ test_that("row counts inside the integer range pass through unchanged", {
     flexyBayes:::.fb_checked_row_count(.Machine$integer.max, "src"),
     .Machine$integer.max
   )
-  # A generator source has no knowable row count and must stay NA rather
-  # than refuse.
+  # A generator source has no knowable row count and must stay NA and
+  # not refuse.
   expect_identical(
     flexyBayes:::.fb_checked_row_count(NA_integer_, "src"),
     NA_integer_
@@ -82,7 +82,7 @@ test_that("row counts inside the integer range pass through unchanged", {
 })
 
 test_that("an in-memory source with a mocked row count refuses", {
-  # The row count is mocked at the source constructor rather than
+  # The row count is mocked at the source constructor and not
   # materialised. The point of the guard is that nothing downstream ever
   # sees an NA where a count belongs.
   df <- data.frame(y = stats::rnorm(10L), g = factor(rep(1:2, 5L)))

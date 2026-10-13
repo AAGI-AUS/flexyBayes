@@ -1,48 +1,32 @@
 ## Submission
 
-This is a new submission of `flexyBayes`, version 0.18.0.
+This is a new submission of flexyBayes 0.18.0.
 
-The package specifies mixed models in ASReml-style or brms-style formula
-syntax and estimates them through one of two inference engines, INLA or
-brms (a Stan passthrough), returning one object whose accessors behave
-the same whichever engine ran. Model structures neither engine can
-represent are refused by name, with the nearest implemented alternative
-given in the refusal, rather than silently translated into something
-else.
+flexyBayes fits mixed models written in ASReml-style or brms-style formula
+syntax with one of two inference engines, INLA or brms (Stan). The fitted
+object has the same accessors whichever engine ran. A model structure that
+neither engine can represent is refused by name, and the refusal names the
+nearest structure the package does fit.
 
 ## Test environments
 
-- local: macOS Tahoe 26.6.2, aarch64-apple-darwin20 (Apple Silicon),
-  R 4.6.1 (2026-06-24). `R CMD check --as-cran` on the built tarball.
+- Local: macOS Tahoe 26.6.2, aarch64-apple-darwin23 (Apple Silicon),
+  R 4.6.1 (2026-06-24). `R CMD check --as-cran` on the built tarball, twice
+  with INLA, brms and cmdstanr installed and once with all three hidden.
 
 Windows R-devel (`devtools::check_win_devel()`) and the R-hub
-multi-platform check are to be run by the maintainer immediately before
-submission. They are not reported here because they had not been run
-when this file was written, and a check result is not worth quoting
-unless it happened.
+multi-platform check have not yet been run on this version. They will be run
+immediately before submission.
 
 ## R CMD check results
 
-The check artefacts for this release are
-`00check_v0.18.0_engines-present.log` and
-`00check_v0.18.0_engines-present_run2.log`, two runs with INLA, brms and
-cmdstanr installed, and `00check_v0.18.0_engines-absent.log`, one run with
-all three masked, since the package behaves differently, and is tested
-differently, in each case. All three are produced at the release bake and
-kept with the release records alongside the tarball; that is where to read the exact
-error/warning/note count for 0.18.0, rather than a number quoted here with
-no artefact behind it.
+0 errors | 0 warnings | 1 note
 
-The note below is the one the check produces. It is transcribed from this
-release's own engines-absent artefact rather than from an earlier release, so
-its shape is read off a run that happened and not asserted from memory.
-Both conditions that produce it are unchanged: `DESCRIPTION`'s
-`Additional_repositories:` names only the INLA repository, and its `URL:`
-field names the not-yet-public documentation site.
+All three local checks gave the same NOTE:
 
 ```
-* checking CRAN incoming feasibility ... NOTE
-Maintainer: 'Max Moldovan <max.moldovan@adelaide.edu.au>'
+* checking CRAN incoming feasibility ... [3s/22s] NOTE
+Maintainer: ‘Max Moldovan <max.moldovan@adelaide.edu.au>’
 
 New submission
 
@@ -55,58 +39,44 @@ Found the following (possibly) invalid URLs:
   URL: https://aagi-aus.github.io/flexyBayes/
     From: DESCRIPTION
           man/flexyBayes-package.Rd
+          README.md
+          NEWS.md
     Status: 404
     Message: Not Found
 ```
 
-A local run may show a second NOTE, `checking for future file
-timestamps ... unable to verify current time`. That is this machine, not
-this package: the check reaches an external time service to decide
-whether any file is future-dated, and the service is not reachable from
-the maintainer's network. It appears in whichever of the two runs happens
-to make the call while the service is unreachable, and it is absent from
-the other run on the same tree minutes apart. It is not reproduced here
-as an expected NOTE because it should not occur on a builder with
-network access.
+It has three parts.
 
-It carries three items.
+**New submission.**
 
-**New submission.** Expected, and it resolves on acceptance.
+**INLA is not in a mainstream repository.** INLA is distributed from its own
+repository, `https://inla.r-inla-download.org/R/stable`, which is declared in
+`Additional_repositories:` and which the check resolves. INLA is in
+`Suggests`, not `Imports`, and the package does not require it. Examples
+and tests that need INLA are guarded, so without it the examples run, those
+tests skip and the vignettes build. Requesting the INLA engine without INLA
+installed stops with a message naming the repository to install it from.
+brms is on CRAN, so one engine can always be installed.
 
-**INLA is not in a mainstream repository.** INLA is distributed from its
-own repository at `https://inla.r-inla-download.org/R/stable`, which is
-declared in `Additional_repositories:` and which the check resolves
-successfully on the line above. This is the established arrangement for
-packages that offer INLA as an inference engine, and INLA is in
-`Suggests`, never in `Imports`.
+**A 404 URL.** The documentation site named in `DESCRIPTION` is not yet
+published. It will resolve before the package is submitted.
 
-The package does not require it. Every call into INLA sits behind
-`requireNamespace("INLA", quietly = TRUE)`, and each of the three emit
-entry points opens with an installation check that stops with a typed
-message naming the repository to install from. Requesting the INLA
-backend without INLA installed therefore gives a refusal that says what
-to do, not a "there is no package called 'INLA'" error from somewhere
-inside the call stack. Every example, test and vignette path that would
-reach INLA is guarded, so on a machine without it the examples run, the
-INLA-dependent tests skip, and the vignettes build. brms is on CRAN, so
-a reviewer always has one installable engine.
-
-**A 404 URL.** The documentation site declared in `DESCRIPTION` does not
-resolve yet, because the repository it is built from is not yet public.
-The maintainer will not submit until that URL resolves. It is quoted
-here so the check output above is reproduced faithfully rather than
-edited.
+A local check can also report `checking for future file timestamps ...
+unable to verify current time` when the time server cannot be reached from
+the maintainer's network. It did not occur in the three checks above.
 
 ## Cores
 
-`Config/testthat/parallel` is `false`, so the check suite runs files in the
-calling process. User-requested concurrent selection is capped by
-`parallel::detectCores()` and is not activated by tests, examples or
-vignettes. Where a restricted host returns no core count, the package falls
-back to one selection worker and passes `num.threads = "1:1"` to INLA rather
-than allowing the malformed `NA:1` default. Both calls into INLA's posterior
-sampler also pin `num.threads = "1:1"`. No Stan sampler receives a `cores`
-argument during checks, examples or vignette rendering, so brms uses one core.
+`Config/testthat/parallel` is `false`, so test files run in one process.
+INLA fits run on one thread (`num.threads = "1:1"`), and the accessors that
+draw from an INLA posterior also use one thread. By default each INLA fit is
+run three times, once in the session and twice in separate R processes
+started through callr, and these run at the same time. While `R CMD check`
+limits cores (`_R_CHECK_LIMIT_CORES_` set), each fit runs once, so the
+examples use one process. The test suite sets
+`options(flexyBayes.inla_best_of = 1)`, so each test fits once. flexyBayes
+passes no `cores` argument to `brms::brm()` unless the user supplies one,
+and the tests that set `mc.cores` set it to 2.
 
 ## Reverse dependencies
 
@@ -114,30 +84,7 @@ None. This is a new submission.
 
 ## Vignettes
 
-The six vignettes ship pre-evaluated. Their sources carry live model
-fits, and those are run by the maintainer through
-`vignettes/_precompile.R`; what the tarball contains is the resulting
-static markdown, with the fitted output already in it. Building the
-vignettes at check time renders markdown and fits nothing, so the
-vignette build needs neither INLA nor a Stan toolchain.
-
-## `fb_log_posterior()`: no active producer, no oracle to skip
-
-`fb_log_posterior()` (the log-posterior producer downstream tools such as
-`proxymix` compress into a closed-form proxy) is internal in this release
-and dormant: brms and INLA both abstain with a typed, informative
-`fb_c4_unavailable` condition rather than a producer (INLA's posterior is
-a deterministic Laplace/grid approximation, not a sampling log-density,
-and brms's Stan-unconstrained-scale parameter mapping is version-fragile
--- a wrong mapping would return a plausible-but-wrong log-density
-silently, so both abstain per the package's own Independent Oracle
-Principle rather than guess). Up to and including 0.8.2, the greta
-backend was the one real producer, validated against an analytic
-conjugate log-posterior to machine precision (see `NEWS.md`, 0.8.2).
-That backend, and the conjugate-oracle test that validated it, were
-withdrawn from this release along with the rest of the greta engine
-(see `NEWS.md`) rather than carried forward unmaintained -- so there is
-presently no greta-gated code path in this package at all, and
-consequently nothing to skip on CRAN or CI: every `fb_log_posterior()`
-test in the shipped suite runs unconditionally on both active engines and
-asserts the abstention.
+The six vignettes ship pre-computed. Their model fits are run by the
+maintainer with `vignettes/_precompile.R`, and the tarball contains the
+resulting markdown with the output already in it. Building the vignettes at
+check time fits no model, so it needs neither INLA nor a Stan toolchain.

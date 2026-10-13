@@ -3,18 +3,15 @@
 #
 # One AR1 series along `t` within each level of `g`, independent across
 # levels, one correlation and one field SD shared by every level, plus the
-# Gaussian observation nugget -- three hyperparameters. It is the
+# Gaussian observation nugget: three hyperparameters. It is the
 # units-by-occasions repeated-measures covariance of Verbyla and Cullis
 # (1992) written on the random side, and it is emitted on INLA as
 #   f(<t>_id, model = "ar1", group = <g>_id,
 #     control.group = list(model = "iid")).
 #
-# The field has been reachable since the grouped-AR1 emit landed (ar1(t):g
-# folds to the same node as ar1(row):id(col)), but it was described on
-# every print surface as `ar1(t):ar1(g)` with four parameters, and the
-# commuted spelling `g:ar1(t)` -- ASReml's usual order for a set of plots
-# followed over seasons -- fell to an untyped interaction. This file pins
-# the spelling, the emitted term, the description and the fit.
+# ar1(t):g folds to the same node as ar1(row):id(col). The commuted spelling
+# `g:ar1(t)` is ASReml's usual order for plots followed over seasons. This
+# file pins the spelling, the emitted term, the description and the fit.
 #
 # FAITHFULNESS is checked against an INDEPENDENT oracle that does not call
 # INLA: REML for y ~ 1 with V = ss2 (I_g (x) R_t(rho)) + se2 I, profiled in

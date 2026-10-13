@@ -1,8 +1,8 @@
 # Class guard DC-04: every route of the fitting verb carries the whole input.
 #
 # One model, one data set and one set of arguments are sent down every route
-# that fits it -- flexybayes() per row, flexybayes() aggregated,
-# flexybayes_stream() and the fb_inla() pin -- for each of several inputs:
+# that fits it (flexybayes() per row, flexybayes() aggregated,
+# flexybayes_stream() and the fb_inla() pin) for each of several inputs:
 # the default prior, a stated prior, a missing response and observation
 # weights. A route either refuses with a classed refusal or returns the same
 # fit as the others: the same prior in every engine slot (read back from the
@@ -69,6 +69,10 @@ test_that("DC-04 guard: every route of the fitting verb carries the whole input"
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.inla_threads = "1:1"
   )
+  # The Poisson missing-response input empties the unobserved-cell table.
+  # That warning is tested in test-na-action-augment.R.
+  local_clean_emit_state()
+  set_emit_state("missing_link_scale_warning")
   d <- .g04_data()
   d_na <- d
   d_na$cnt[5] <- NA

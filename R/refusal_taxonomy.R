@@ -1,4 +1,4 @@
-# Refusal registry --- the canonical refusal-reason vocabulary
+# Refusal registry: the canonical refusal-reason vocabulary
 #
 # Container, registration helper, and the user-facing fb_refusals()
 # accessor. Populated: 136 codes registered across versioned
@@ -17,7 +17,7 @@
 # in one release.
 #
 # The registry is an environment (not a list) so .register_refusal()
-# can write idempotently without copy-on-modify cost; locked at the
+# can write idempotently without copy-on-modify cost. Locked at the
 # end of .onLoad() so user-side assign() raises a contract violation.
 
 # --- container ---------------------------------------------------- #
@@ -26,7 +26,7 @@
 # environment is `emptyenv()` so symbol lookup cannot accidentally
 # fall through to the package namespace and pick up an unrelated
 # binding. Filled by .register_refusal() during .onLoad() (currently
-# zero calls --- the scaffold-only posture); locked immediately
+# zero calls: the scaffold-only posture). Locked immediately
 # after by .lock_refusal_registry().
 .refusal_registry <- new.env(parent = emptyenv())
 
@@ -38,28 +38,28 @@
 
 # --- registration helper ------------------------------------------ #
 
-# .register_refusal() --- the one-shot registration call. Idempotent
-# only in the sense that a duplicate reason_code raises rather than
-# silently overwriting; intentional refusals (the v0.4.0 migration)
+# .register_refusal(): the one-shot registration call. Idempotent
+# only in the sense that a duplicate reason_code raises instead of
+# silently overwriting. Intentional refusals (the v0.4.0 migration)
 # fire once per reason at .onLoad() time and the registry then
 # locks.
 #
 # Arguments
-#   reason_code        canonical machine-readable identifier; the
+#   reason_code        canonical machine-readable identifier. The
 #                      same string that appears on the structured
 #                      condition object thrown by the refusal site.
 #                      Must be a single non-empty string.
-#   description        one-line human-readable description; what the
+#   description        one-line human-readable description. What the
 #                      refusal means in plain language.
 #   message_template   the template string used to render the
-#                      message; conventionally uses base::sprintf()
+#                      message, conventionally uses base::sprintf()
 #                      placeholders so the refusal site can fill in
 #                      the data-specific slots.
 #   registered_in_adr  the ADR number the refusal traces to (e.g.,
 #                      "ADR 0024" for the routing-policy refusals,
 #                      "ADR 0025" for the structured-cov refusals).
 #                      DESIGN_DECISIONS.md indexes every ADR number.
-#                      Free-form; this field documents provenance,
+#                      Free-form. This field documents provenance,
 #                      it does not gate registration.
 #   plan_field         optional name of the <fb_plan> slot that
 #                      surfaces this refusal at plan time (e.g.,
@@ -67,7 +67,7 @@
 #                      refusal is not surfaced by fb_plan() (e.g.,
 #                      runtime-only refusals).
 #   since_version      the flexyBayes version the refusal was
-#                      introduced; useful for backward-compat
+#                      introduced, useful for backward-compat
 #                      audits.
 #
 # Returns invisible NULL. Side effect: assign to .refusal_registry.
@@ -132,7 +132,7 @@
 
   if (environmentIsLocked(.refusal_registry)) {
     stop(
-      ".register_refusal(): refusal registry is locked; new ",
+      ".register_refusal(): refusal registry is locked. New ",
       "entries must be registered before .lock_refusal_registry() ",
       "fires at end of .onLoad().",
       call. = FALSE
@@ -144,8 +144,8 @@
       ".register_refusal(): reason_code '",
       reason_code,
       "' is ",
-      "already registered. Refusal vocabulary is append-only; ",
-      "use a distinct reason_code for new refusals.",
+      "already registered. Refusal vocabulary is append-only. ",
+      "Use a distinct reason_code for new refusals.",
       call. = FALSE
     )
   }
@@ -170,11 +170,11 @@
 
 # --- accessor ----------------------------------------------------- #
 
-# .lookup_refusal() --- internal accessor for refusal sites that
+# .lookup_refusal(): internal accessor for refusal sites that
 # want to consult the registry for a description or message template.
 # Returns the registered entry list, or NULL if the reason_code is
 # not yet registered (the v0.3.8 scaffold-only state returns NULL
-# for every code). Callers must tolerate NULL --- the legacy
+# for every code). Callers must tolerate NULL, the legacy
 # inline-message refusal sites continue to function untouched.
 .lookup_refusal <- function(reason_code) {
   if (
@@ -210,7 +210,7 @@
 
 # --- unified refusal-condition constructor ----------------------- #
 
-# .fb_refusal_condition() --- the single constructor every
+# .fb_refusal_condition(): the single constructor every
 # user-facing refusal site routes through (v0.4.0).
 # It assembles one canonical condition-class taxonomy so the whole
 # refusal surface is assertable the same way, and it gates on the
@@ -225,13 +225,13 @@
 #
 # The per-code class makes
 #   expect_error(class = "flexybayes_refusal_<reason_code>")
-# the preferred test contract; the retained family
+# the preferred test contract. The retained family
 # class keeps every pre-existing class-based handler and assertion
 # working unchanged (additive migration).
 #
 # Registry gate: `reason_code` MUST be registered (via
 # .register_refusal() at .onLoad()). An unregistered code is a
-# flexyBayes internal contract violation --- the refusal does not
+# flexyBayes internal contract violation: the refusal does not
 # silently surface under an unknown vocabulary. This is the
 # "register or the gate refuses it" closing posture.
 #
@@ -243,14 +243,14 @@
 # runtime straitjacket).
 #
 # Arguments
-#   reason_code   canonical machine-readable identifier; must be in
+#   reason_code   canonical machine-readable identifier. Must be in
 #                 the locked .refusal_registry or a plug-in partition.
 #   message       the fully-rendered, site-specific message string.
 #   family_class  zero or more legacy family-class strings to retain
 #                 below the per-code class (e.g.
 #                 "flexybayes_structured_cov_refusal"). Character
-#                 vector; default character(0).
-#   call          the condition call carried on the object; defaults
+#                 vector, default character(0).
+#   call          the condition call carried on the object. Defaults
 #                 to NULL (matching every site except the preflight
 #                 wrapper, which threads the originating call through).
 #   ...           extra named fields carried on the condition object
@@ -258,7 +258,7 @@
 #                 exactly as the pre-migration sites carried them.
 #
 # Returns the condition object, which also carries `package`, the
-# partition the code is registered in; the caller raises it via stop().
+# partition the code is registered in. The caller raises it via stop().
 .fb_refusal_condition <- function(
   reason_code,
   message,
@@ -314,22 +314,22 @@
 
 # --- v0.3.10 registry population ------------------------------- #
 
-# .populate_refusal_registry_v0310() --- the first migration of
+# .populate_refusal_registry_v0310(): the first migration of
 # existing refusal sites into the v0.3.8 scaffold. Called from
 # .onLoad() *before* .lock_refusal_registry() so the entries are
 # in place when user code first observes the registry.
 #
 # Three reason codes register at v0.3.10:
 #
-#   block_partition_incomplete         --- blocks structural refusal:
+#   block_partition_incomplete: blocks structural refusal.
 #                                          sum of block sizes !=
 #                                          grouping factor level count.
-#   block_not_positive_definite        --- blocks structural refusal:
+#   block_not_positive_definite: blocks structural refusal.
 #                                          at least one V_k fails the
-#                                          PD probe; the offending
+#                                          PD probe. The offending
 #                                          block index is named in
 #                                          the message text.
-#   approximate_route_not_yet_registered --- low-rank refusal-stub
+#   approximate_route_not_yet_registered: low-rank refusal-stub
 #                                            upgrade naming
 #                                            validate_approximation()
 #                                            as the v0.4.0 forward
@@ -388,34 +388,34 @@
 
 # --- v0.4.0 bulk migration --------------------------------------- #
 
-# .populate_refusal_registry_v0400() --- the bulk migration of the
+# .populate_refusal_registry_v0400(): the bulk migration of the
 # remaining 28 user-facing refusal codes into the registry.
 # Together with the 3 v0.3.10 codes the registry now
-# holds the complete user-facing refusal vocabulary (31 codes); the
+# holds the complete user-facing refusal vocabulary (31 codes). The
 # routing-decision reasons (backend_decision trace) and the internal
 # aggregate-out-of-scope control-flow signals are deliberately NOT
-# registered --- they are not refusals the user can hit, and listing
+# registered: they are not refusals the user can hit, and listing
 # them in fb_refusals() would misrepresent the surface.
 #
 # message_template here is documentation: a single representative
 # rendering surfaced by fb_refusals(). It is intentionally NOT the
-# runtime message --- five codes are raised at multiple sites with
+# runtime message: five codes are raised at multiple sites with
 # different bodies, and each site keeps its verbatim message via
 # .fb_refusal_condition(). plan_field follows the v0.3.10 precedent:
 # the representation-level (structured covariance) refusals carry
-# "representation_plan"; runtime-only refusals carry NA_character_.
+# "representation_plan", runtime-only refusals carry NA_character_.
 .populate_refusal_registry_v0400 <- function() {
-  # -- structured-covariance carriers (structured_cov.R,
+  # ---- structured-covariance carriers (structured_cov.R,
   #    emit_inla.R) --------------------------------------------------
   .register_refusal(
     reason_code = "vm_redundant_specification",
     description = paste0(
-      "vm()/ped(): more than one covariance carrier supplied; ",
-      "exactly one of V / chol / precision / blocks / ",
+      "vm()/ped(): more than one covariance carrier supplied. ",
+      "Exactly one of V / chol / precision / blocks / ",
       "low_rank_factor is allowed."
     ),
     message_template = paste0(
-      "%s(): exactly one covariance carrier may be supplied; got ",
+      "%s(): exactly one covariance carrier may be supplied. Got ",
       "%s. Pick one of V / chol / precision / blocks / ",
       "low_rank_factor."
     ),
@@ -457,7 +457,7 @@
     reason_code = "chol_not_square",
     description = "vm(..., chol = ): the Cholesky factor is not square.",
     message_template = paste0(
-      "vm(%s, chol = %s): the Cholesky factor must be square; got ",
+      "vm(%s, chol = %s): the Cholesky factor must be square. Got ",
       "dim %s."
     ),
     registered_in_adr = "ADR 0025",
@@ -498,8 +498,8 @@
     reason_code = "precision_not_square",
     description = "vm(..., precision = ): the precision matrix is not square.",
     message_template = paste0(
-      "vm(%s, precision = %s): the precision matrix must be square; ",
-      "got dim %s."
+      "vm(%s, precision = %s): the precision matrix must be square. ",
+      "Got dim %s."
     ),
     registered_in_adr = "ADR 0025",
     plan_field = "representation_plan",
@@ -559,7 +559,7 @@
     ),
     message_template = paste0(
       "vm(%s, blocks = %s): the block carrier must be a base-R list ",
-      "of K covariance matrices; got class '%s'."
+      "of K covariance matrices. Got class '%s'."
     ),
     registered_in_adr = "ADR 0025",
     plan_field = "representation_plan",
@@ -569,7 +569,7 @@
     reason_code = "blocks_empty_list",
     description = "vm(..., blocks = ): the block list is empty.",
     message_template = paste0(
-      "vm(%s, blocks = %s): the block list is empty; expected at ",
+      "vm(%s, blocks = %s): the block list is empty. Expected at ",
       "least one covariance matrix."
     ),
     registered_in_adr = "ADR 0025",
@@ -597,7 +597,7 @@
     message_template = paste0(
       "vm(%s): the known matrix '%s' has different rownames and ",
       "colnames. The matrix represents the per-level covariance / ",
-      "precision structure; rownames and colnames must be identical ",
+      "precision structure. Rownames and colnames must be identical ",
       "and must equal levels(`%s`)."
     ),
     registered_in_adr = "ADR 0025",
@@ -626,7 +626,7 @@
     ),
     message_template = paste0(
       "known_matrices entry/entries '%s' collide with data column ",
-      "names; rename to disambiguate (INLA's data-list lookup is ",
+      "names, rename to disambiguate (INLA's data-list lookup is ",
       "name-keyed)."
     ),
     registered_in_adr = "ADR 0025",
@@ -634,7 +634,7 @@
     since_version = "0.4.0"
   )
 
-  # -- approximation surface (parse_formula.R,
+  # ---- approximation surface (parse_formula.R,
   #    validate_approximation.R, emit_smooth_low_rank.R, dispatch.R) -
   .register_refusal(
     reason_code = "low_rank_smooth_unsupported",
@@ -663,7 +663,7 @@
     message_template = paste0(
       "s(%s, representation = ...): the representation spec must be ",
       "a list (or fb_approx() object) carrying a single-string ",
-      "`scheme`; e.g. representation = list(scheme = ",
+      "`scheme`, e.g. representation = list(scheme = ",
       "\"low_rank_smooth\", rank = 5L)."
     ),
     registered_in_adr = "ADR 0027",
@@ -678,7 +678,7 @@
     ),
     message_template = paste0(
       "s(%s, representation = ...): scheme '%s' is registered but ",
-      "has no smooth-basis emit path at this release; the only ",
+      "has no smooth-basis emit path at this release. The only ",
       "smooth approximation scheme with an emit path is ",
       "low_rank_smooth."
     ),
@@ -697,7 +697,7 @@
       "approximation to validate (exactness = '%s'). ",
       "validate_approximation() applies only to approximate fits ",
       "(those routed through a registered approximation scheme such ",
-      "as low_rank_smooth); an exact fit has no bias bound to ",
+      "as low_rank_smooth). An exact fit has no bias bound to ",
       "report."
     ),
     registered_in_adr = "ADR 0027",
@@ -727,8 +727,8 @@
       "integer."
     ),
     message_template = paste0(
-      "low_rank_smooth rank%s must be a single positive integer; ",
-      "got %s."
+      "low_rank_smooth rank%s must be a single positive integer. ",
+      "Got %s."
     ),
     registered_in_adr = "ADR 0027",
     plan_field = NA_character_,
@@ -744,7 +744,7 @@
     message_template = paste0(
       "low_rank_smooth rank%s (%d) exceeds the truncation ceiling ",
       "min(basis dimension k = %d, n = %d) = %d. A rank at or above ",
-      "the basis dimension reproduces the exact basis; request the ",
+      "the basis dimension reproduces the exact basis. Request the ",
       "exact smooth (drop the approximation) instead, or choose ",
       "rank <= %d."
     ),
@@ -753,10 +753,10 @@
     since_version = "0.4.0"
   )
   # (The dispatch-side approximate-route refusal reuses the existing
-  # v0.3.10 code approximate_route_not_yet_registered -- one code,
-  # two site-specific messages; nothing new to register here.)
+  # v0.3.10 code approximate_route_not_yet_registered, one code,
+  # two site-specific messages. Nothing new to register here.)
 
-  # -- aggregated-Gaussian emit (emit_gaussian_aggregated.R)
+  # ---- aggregated-Gaussian emit (emit_gaussian_aggregated.R)
   .register_refusal(
     reason_code = "heterogeneous_residual_factor_not_in_cell_key",
     description = paste0(
@@ -766,7 +766,7 @@
     ),
     message_template = paste0(
       "emit_gaussian_aggregated(): heterogeneous residual ",
-      "at(%s):units refused -- '%s' is not in the cell key {%s}. ",
+      "at(%s):units refused, '%s' is not in the cell key {%s}. ",
       "The cell-constant sigma property does not hold, so the ",
       "per-row / per-cell algebraic identity breaks. Pass ",
       "aggregate = FALSE for the per-row path."
@@ -792,12 +792,12 @@
     since_version = "0.4.0"
   )
 
-  # -- preflight refusals (fb_preflight.R, dispatch.R) -----
+  # ---- preflight refusals (fb_preflight.R, dispatch.R) -----
   .register_refusal(
     reason_code = "design_memory_exceeds_ceiling",
     description = paste0(
       "Preflight: the design matrix is estimated to exceed the ",
-      "active memory ceiling; dispatch is short-circuited before ",
+      "active memory ceiling. Dispatch is short-circuited before ",
       "any backend code runs."
     ),
     message_template = paste0(
@@ -818,7 +818,7 @@
     message_template = paste0(
       "flexyBayes preflight refused: the design representation is ",
       "not characterised by the preflight estimator. The dispatch ",
-      "was short-circuited before any backend code ran -- raising ",
+      "was short-circuited before any backend code ran, raising ",
       "the memory ceiling will not help."
     ),
     registered_in_adr = "ADR 0024",
@@ -826,14 +826,14 @@
     since_version = "0.4.0"
   )
 
-  # -- family support (utils.R::.resolve_family) ---------------------
+  # ---- family support (utils.R::.resolve_family) ---------------------
   # .resolve_family() is the single family gate every user entry
   # passes through (asreml via fb.R, brms via fb_from_brms.R), for a
   # family name and a family object alike. It
-  # admits only the families flexyBayes can emit; any other family --
-  # including those INLA's likelihood roster recognises but flexyBayes
-  # has no emit path for (e.g. survival / time-to-event) -- is refused
-  # up front, never silently fitted. The same holds for a link: each
+  # admits only the families flexyBayes can emit. Any other family is
+  # refused up front, never silently fitted, including those INLA's
+  # likelihood roster recognises but flexyBayes has no emit path for
+  # (e.g. survival / time-to-event). The same holds for a link: each
   # family is admitted with the links an engine receives as written
   # (.fb_family_links(), R/utils.R), and any other link is refused here.
   .register_refusal(
@@ -848,31 +848,31 @@
       "binomial, binary, poisson, negative_binomial, negbinom, ",
       "gamma, beta, hurdle_gamma, lognormal. Other families (including ",
       "survival / time-to-event and multivariate responses) are planned ",
-      "future work; see fb_refusals()."
+      "future work. See fb_refusals()."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
 
-  # -- formula / spec parse-time refusals (parse_formula.R) ----------
+  # ---- formula / spec parse-time refusals (parse_formula.R) ----------
   # Early model-spec and data-binding refusals raised by the formula
   # parser. Migrated from raw stop() to the structured registry so
-  # downstream tooling pattern-matches on the condition class rather
-  # than the free-text message. Missing-suggested-package errors
+  # downstream tooling pattern-matches on the condition class, not
+  # on the free-text message. Missing-suggested-package errors
   # (mgcv) and argument-combination guards stay as plain
-  # stop() --- they are environment / call-shape errors, not
+  # stop(): they are environment / call-shape errors, not
   # model-scope refusals.
   .register_refusal(
     reason_code = "formula_not_two_sided",
     description = paste0(
-      "The model formula must be two-sided (response ~ predictors); ",
-      "a formula carrying no left-hand-side response was supplied."
+      "The model formula must be two-sided (response ~ predictors). ",
+      "A formula carrying no left-hand-side response was supplied."
     ),
     message_template = paste0(
       "The model formula must be two-sided: response ~ predictors."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
@@ -885,7 +885,7 @@
     message_template = paste0(
       "Response variable \"%s\" not found in data."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
@@ -895,14 +895,14 @@
       "A factor-analytic term fa(x, k) was given a rank that is not a ",
       "positive whole number written in the formula. Registered at 0.4.0 ",
       "as the k < 1 floor and widened by the 0.10.0.9000 grammar contract ",
-      "to every non-count rank -- a symbol, a string, a logical, a ",
-      "fraction -- each of which as.integer() used to coerce into a rank ",
+      "to every non-count rank, a symbol, a string, a logical, a ",
+      "fraction, each of which as.integer() used to coerce into a rank ",
       "the user did not write."
     ),
     message_template = paste0(
-      "fa() requires k >= 1; got k = %s."
+      "fa() requires k >= 1. Got k = %s."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
@@ -920,10 +920,10 @@
       "data-free fa_rank_invalid (k < 1) check."
     ),
     message_template = paste0(
-      "fa() requires k < the number of levels of the outer factor; ",
+      "fa() requires k < the number of levels of the outer factor, ",
       "got k = %s with %s level(s)."
     ),
-    registered_in_adr = "audit-2026-06-06",
+    registered_in_adr = "06-06 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.7.0"
   )
@@ -936,7 +936,7 @@
     message_template = paste0(
       "Smooth s() variable \"%s\" not found in data."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
@@ -949,19 +949,19 @@
     ),
     message_template = paste0(
       "Tensor-product / multivariate smooth %s is not supported. ",
-      "flexyBayes fits univariate penalised splines only -- use ",
+      "flexyBayes fits univariate penalised splines only, use ",
       "s(x) or spl(x) per smooth dimension."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
 
-  # -- entry-point argument guards (flexybayes.R) -------------------
+  # ---- entry-point argument guards (flexybayes.R) -------------------
   # Call-shape guards on the review_code / return_code flags. They are
   # user-reachable refusals (the registry's inclusion criterion), so
   # they carry catchable classes even though they are argument-
-  # combination errors rather than model-scope refusals.
+  # combination errors instead of model-scope refusals.
   .register_refusal(
     reason_code = "review_code_backend_unsupported",
     description = paste0(
@@ -973,25 +973,25 @@
       "`review_code = TRUE` is supported with backend = \"brms\" ",
       "(Stan code). Pass backend = \"brms\", or drop review_code."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
   .register_refusal(
     reason_code = "code_flags_mutually_exclusive",
     description = paste0(
-      "return_code = TRUE and review_code = TRUE were both supplied; ",
-      "the two code-return modes are mutually exclusive."
+      "return_code = TRUE and review_code = TRUE were both supplied. ",
+      "The two code-return modes are mutually exclusive."
     ),
     message_template = paste0(
       "`return_code` and `review_code` are mutually exclusive."
     ),
-    registered_in_adr = "audit-2026-05-30",
+    registered_in_adr = "05-30 parse-time refusals",
     plan_field = NA_character_,
     since_version = "0.4.0"
   )
 
-  # -- fb_cov() constructor ----------
+  # ---- fb_cov() constructor ----------
   # Carrier-construction refusals reachable from both the standalone
   # fb_cov() constructor and the inline `cov = fb_cov(...)` formula
   # front door.
@@ -1037,12 +1037,12 @@
     since_version = "0.4.0"
   )
 
-  # -- backend capability gates (dispatch.R) -------
+  # ---- backend capability gates (dispatch.R) -------
   # Raised when flexybayes(backend = "brms") meets a structured-covariance
   # term the brms lowering does not take: a vm() / ped() term with a blocks
   # or low-rank carrier, or a structured term with no grouping factor. The
   # brms capability predicate (R/backend_registry.R, .capability_brms) is
-  # the declarative source; the dispatch brms branch raises this code and
+  # the declarative source. The dispatch brms branch raises this code and
   # uses the template below as the message.
   .register_refusal(
     reason_code = "stan_cannot_represent_structured_cov",
@@ -1063,10 +1063,10 @@
     since_version = "0.5.0"
   )
 
-  # Raised when a model carrying a STRUCTURED RESIDUAL reaches brms --
+  # Raised when a model carrying a STRUCTURED RESIDUAL reaches brms,
   # whether requested explicitly or reached through the auto fallback
   # after an INLA runtime failure. brms reconstructs the fixed and
-  # random blocks only; a residual covariance has no lowering, so
+  # random blocks only. A residual covariance has no lowering, so
   # emitting would silently return an iid model under the requested
   # model's name. Refusing is the only faithful outcome until a
   # residual lowering exists and is validated against an independent
@@ -1092,7 +1092,7 @@
   # Raised when a missing response reaches brms on a family whose
   # augmentation is not admitted. brms drops NA-response rows silently, so
   # without this the augmentation layer would quietly become complete-case
-  # deletion; its `mi()` addition term, which fixes that, is admitted only
+  # deletion, its `mi()` addition term, which fixes that, is admitted only
   # for the gaussian and lognormal families, the two validated by live fits.
   .register_refusal(
     reason_code = "brms_cannot_augment_nongaussian",
@@ -1104,7 +1104,7 @@
     message_template = paste0(
       "flexyBayes carries a missing response on brms only for the ",
       "gaussian and lognormal families, the two checked with brms's `mi()` ",
-      "term; for any other family brms would drop the rows whose response ",
+      "term, for any other family brms would drop the rows whose response ",
       "is NA, deleting the incomplete cells under the name of ",
       "augmentation. Use backend = \"inla\", which carries a missing ",
       "response as a prediction target for the families it fits, or pass ",
@@ -1115,7 +1115,7 @@
     since_version = "0.9.0"
   )
 
-  # -- missing responses (R/na_action.R) -----------
+  # ---- missing responses (R/na_action.R) -----------
   # The augmentation layer keeps a missing response as a latent quantity
   # so the design index set stays intact. These three mark its edges.
   .register_refusal(
@@ -1142,8 +1142,8 @@
       "which is both this package's default and ASReml's."
     ),
     message_template = paste0(
-      "A predictor has missing values and the covariate policy is `fail` ",
-      "-- ASReml's default too. A missing predictor is not a missing ",
+      "A predictor has missing values and the covariate policy is `fail`, ",
+      "ASReml's default too. A missing predictor is not a missing ",
       "observation: there is no latent quantity for a value nobody ",
       "recorded. Supply the values, drop the affected rows yourself, or ",
       "pass na_action = list(y = \"include\", x = \"omit\") to drop them ",
@@ -1187,9 +1187,9 @@
       "A cell of the design grid is absent from the data altogether, and ",
       "a model variable is not constant across the trial, so completing ",
       "the grid would mean inventing a level of it for a plot nobody ",
-      "recorded. ASReml's nin89 example codes such plots as LANCER; ",
+      "recorded. ASReml's nin89 example codes such plots as LANCER. ",
       "flexyBayes will not write a level you did not. Supply the ",
-      "field-book rows -- one row per sown plot, response set to NA -- ",
+      "field-book rows (one row per sown plot, response set to NA) ",
       "pad the array with fb_complete_grid(..., unused_level = ) to name ",
       "the level the empty cells carry, or use na_action = \"omit\"."
     ),
@@ -1198,15 +1198,15 @@
     since_version = "0.9.0"
   )
 
-  # A suggested-package guard that refuses by name rather than through a
+  # A suggested-package guard that refuses by name instead of through a
   # bare requireNamespace() error, so a caller can catch it by class and
   # the message can name the alternative the fit already answers.
   .register_refusal(
     reason_code = "classify_requires_emmeans",
     description = paste0(
       "predict(classify = ) builds its marginal-means table through the ",
-      "emmeans estimation seam, and emmeans is a suggested package rather ",
-      "than a hard dependency."
+      "emmeans estimation seam, and emmeans is a suggested package, not ",
+      "a hard dependency."
     ),
     message_template = paste0(
       "predict(classify = ) builds the marginal-means table through ",
@@ -1222,7 +1222,7 @@
 
   # A residual variogram measures separation along a design index. A
   # model with no such array has no lag to plot against, which is a
-  # property of the model rather than a gap in the display.
+  # property of the model instead of a gap in the display.
   .register_refusal(
     reason_code = "variogram_requires_design_index",
     description = paste0(
@@ -1233,18 +1233,18 @@
     message_template = paste0(
       "plot(type = \"variogram\") needs a design index to measure ",
       "separation along, and this fit carries none. A residual variogram ",
-      "is a picture of how far apart two plots are. Fit a spatial term -- ",
-      "random = ~ ar1(row):ar1(col) -- or use plot(fit, type = ",
+      "is a picture of how far apart two plots are. Fit a spatial term (",
+      "random = ~ ar1(row):ar1(col)) or use plot(fit, type = ",
       "\"residuals\") for the fitted-value diagnostics."
     ),
-    registered_in_adr = "WP16 / v6 S9",
+    registered_in_adr = "0.9.1 figures",
     plan_field = NA_character_,
     since_version = "0.9.1"
   )
 
   # The spatial field display draws the posterior mean of a separable
   # autoregressive field. A fit whose terms name no row-by-column array has
-  # no field, which is a property of the model rather than a gap in the
+  # no field, which is a property of the model instead of a gap in the
   # display.
   .register_refusal(
     reason_code = "spatial_field_requires_ar1_field",
@@ -1267,7 +1267,7 @@
   # The ingest adapters parse `weights` into an addition term, but no
   # active emitter consumes it: brms and INLA both generate identical
   # code with and without weights, so a weighted fit silently returns
-  # the unweighted posterior. "Weights" also has no single meaning --
+  # the unweighted posterior. "Weights" also has no single meaning:
   # inverse-residual-variance (the documented ASReml sense), frequency,
   # likelihood-power, trials and exposure are different models, and for
   # a Gaussian with unknown sigma raising each likelihood contribution
@@ -1278,14 +1278,14 @@
     reason_code = "weights_not_supported",
     description = paste0(
       "Observation weights are parsed but not consumed by any active ",
-      "emitter, so a weighted fit is refused rather than silently ",
+      "emitter, so a weighted fit is refused instead of silently ",
       "returning the unweighted posterior."
     ),
     message_template = paste0(
       "`weights` are not yet supported by the active backends. They are ",
       "parsed and recorded, but neither the brms nor the INLA emitter ",
-      "consumes them -- a weighted fit would return the UNWEIGHTED ",
-      "posterior with no indication. Refusing rather than fitting the ",
+      "consumes them, a weighted fit would return the UNWEIGHTED ",
+      "posterior with no indication. Refusing instead of fitting the ",
       "wrong model. Drop `weights`, or pre-scale the response if the ",
       "intended semantics is exactly Var(y_i) = sigma^2 / w_i."
     ),
@@ -1317,12 +1317,12 @@
   )
 
   # corh() is the structure between diag() and us(): k variances plus ONE
-  # shared correlation. flexyBayes lowers only the two ends -- uncorrelated,
-  # or fully unstructured -- so the middle has no emit. Approximating it in
+  # shared correlation. flexyBayes lowers only the two ends (uncorrelated,
+  # or fully unstructured) so the middle has no emit. Approximating it in
   # either direction changes the parameter count and the meaning, so it is
   # named and refused instead. (INLA has an exchangeable group model, with
-  # one variance and one shared correlation, that flexyBayes does not use;
-  # tests/testthat/test-engine-claims.R.)
+  # one variance and one shared correlation, that flexyBayes does not use.
+  # Tests/testthat/test-engine-claims.R.)
   .register_refusal(
     reason_code = "corh_no_equicorrelation_representation",
     description = paste0(
@@ -1346,12 +1346,12 @@
     reason_code = "heterogeneous_residual_multiple_factors",
     description = paste0(
       "More than one heterogeneous-residual term was supplied. A residual ",
-      "is sectioned by one factor; nesting several would require their ",
+      "is sectioned by one factor. Nesting several would require their ",
       "interaction, which the user must state explicitly."
     ),
     message_template = paste0(
       "More than one heterogeneous-residual term was supplied. A residual ",
-      "is sectioned by ONE factor; if the intent is a variance per ",
+      "is sectioned by ONE factor, if the intent is a variance per ",
       "combination, form the interaction and section by that."
     ),
     registered_in_adr = "ADR 0031",
@@ -1360,8 +1360,8 @@
   )
 
   # A residual variance can only vary where a residual variance exists.
-  # Poisson and binomial have no free scale parameter -- their dispersion is
-  # a function of the mean -- so `sigma ~ f` would put a predictor on a
+  # Poisson and binomial have no free scale parameter, their dispersion is
+  # a function of the mean, so `sigma ~ f` would put a predictor on a
   # parameter the model does not have.
   .register_refusal(
     reason_code = "heterogeneous_residual_family_has_no_sigma",
@@ -1372,7 +1372,7 @@
     ),
     message_template = paste0(
       "A heterogeneous residual variance was requested for a family that ",
-      "has no residual scale parameter to vary -- its dispersion is a ",
+      "has no residual scale parameter to vary, its dispersion is a ",
       "function of the mean. Model the dispersion directly for that family, ",
       "or fit a Gaussian on a transformed response."
     ),
@@ -1399,7 +1399,7 @@
     since_version = "0.9.0"
   )
 
-  # -- grammar polymorphism on the universal entry --
+  # ---- grammar polymorphism on the universal entry ----
   # fb() / flexybayes() detect the input grammar from the call shape.
   # These two guard the brms-grammar branch of
   # .build_ir_polymorphic() (R/fb.R).
@@ -1463,11 +1463,11 @@
     description = paste0(
       "Residual dsum() with a structured inner term (ar1, us, ...). ",
       "flexyBayes represents dsum() only as a per-region heteroscedastic ",
-      "variance, so a structured inner is refused rather than silently ",
+      "variance, so a structured inner is refused instead of silently ",
       "reduced to a heteroscedastic residual."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 design-fidelity",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1483,7 +1483,7 @@
       "brms. Pass backend = \"inla\" or backend = \"brms\" to see which ",
       "term each route refuses, and change that term."
     ),
-    registered_in_adr = "Reshape R1 / S4.1 / A3",
+    registered_in_adr = "Design specification",
     plan_field = "rejected_routes",
     since_version = "0.9.0"
   )
@@ -1496,7 +1496,7 @@
       "node. The data are an incomplete or replicated grid."
     ),
     message_template = "%s",
-    registered_in_adr = "WP16 / v6 S9",
+    registered_in_adr = "0.9.0 refusal registry",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1512,7 +1512,7 @@
 #
 # The second closes the parser: an unrecognised call, and every IR type that
 # parses for the formula catalogue without an emit path, now reaches a named
-# refusal instead of an untyped stop or -- worse -- a silent reinterpretation
+# refusal instead of an untyped stop or, worse, a silent reinterpretation
 # as a plain variable.
 .populate_refusal_registry_v0900_names <- function() {
   .register_refusal(
@@ -1524,7 +1524,7 @@
       "residual on a Gaussian response fits on INLA without a nugget."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 D-A",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1536,14 +1536,14 @@
       "for it."
     ),
     message_template = paste0(
-      "flexyBayes fits a random-side AR1 field -- ar1(t), or the separable ",
-      "ar1(row):ar1(col) -- on INLA only, as a latent autoregressive field ",
+      "flexyBayes fits a random-side AR1 field (ar1(t), or the separable ",
+      "ar1(row):ar1(col)) on INLA only, as a latent autoregressive field ",
       "plus the Gaussian observation nugget. It has no brms lowering for ",
       "the field, and fitting without it would return an ",
       "independent-effect model under the same name. Fit it with ",
       "backend = \"inla\" on a complete grid with one observation per node."
     ),
-    registered_in_adr = "Spec 2 D-A",
+    registered_in_adr = "Design specification",
     plan_field = "rejected_routes",
     since_version = "0.9.0"
   )
@@ -1555,7 +1555,7 @@
       "plain variable named after its own source text."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 S1",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1566,7 +1566,7 @@
       "either active engine."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 S1",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1578,7 +1578,7 @@
       "active engine."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 S1",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1590,7 +1590,7 @@
       "not fit a factor-analytic covariance in any form."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 S1",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1598,12 +1598,12 @@
     reason_code = "interaction_not_representable",
     description = paste0(
       "An interaction of two structured terms that matches none of the ",
-      "recognised interaction patterns -- us(trait):vm(gen), say. It parsed ",
+      "recognised interaction patterns, us(trait):vm(gen), say. It parsed ",
       "into the catalogue's generic-interaction node, which flexyBayes has ",
       "no lowering for on either engine."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 S1",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1611,11 +1611,11 @@
     reason_code = "brms_cannot_represent_term",
     description = paste0(
       "A random-effect term type reached the brms formula reconstruction ",
-      "with no branch to lower it. It is refused by name rather than ",
+      "with no branch to lower it. It is refused by name instead of ",
       "dropped from the emitted model."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 S2",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1624,11 +1624,11 @@
     description = paste0(
       "A numeric variable inside a nested or multi-way random interaction. ",
       "The spelling reads as a random regression to an ASReml user and as ",
-      "one independent deviation per cell to the emitted model; flexyBayes ",
-      "refuses rather than choosing one of the two readings."
+      "one independent deviation per cell to the emitted model, flexyBayes ",
+      "refuses instead of choosing one of the two readings."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 2 D-D",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1642,7 +1642,7 @@
       "no such ceiling."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 N8",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1656,7 +1656,7 @@
       "the call did not ask for."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 6c C3",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1669,7 +1669,7 @@
       "unconditional."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 A5.1",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1678,26 +1678,26 @@
     description = paste0(
       "An explicit backend = \"inla\" request that lgm_gate() refused. ",
       "The gate's structural check-list is the message and rides on the ",
-      "condition in its `lgm_refusal` slot; the failing rule supplies a ",
+      "condition in its `lgm_refusal` slot. The failing rule supplies a ",
       "second condition class so one rule can be caught on its own."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 A5.5",
+    registered_in_adr = "Design specification",
     plan_field = "rejected_routes",
     since_version = "0.9.0"
   )
   .register_refusal(
     reason_code = "fit_lacks_posterior_draws",
     description = paste0(
-      "A method needing the posterior itself -- draws on a sampling ",
-      "engine, marginal densities on INLA -- was called on a fit that ",
+      "A method needing the posterior itself (draws on a sampling ",
+      "engine, marginal densities on INLA) was called on a fit that ",
       "carries neither. The refusal replaces an empty result that would ",
       "read as an answer. Its sibling is loo_requires_sampler_draws, ",
       "raised when the fit does carry a posterior but not the pointwise ",
       "log-likelihood draws that PSIS-LOO reads."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 S14",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1705,8 +1705,8 @@
   # other so the taxonomy does not read as one reason registered twice.
   # The distinction is what the fit is missing: that code is raised when
   # there is no posterior to read at all, this one when the posterior is
-  # there but the quantity PSIS-LOO integrates -- the log-likelihood of
-  # each observation at each draw -- was never stored.
+  # there but the quantity PSIS-LOO integrates, the log-likelihood of
+  # each observation at each draw, was never stored.
   .register_refusal(
     reason_code = "loo_requires_sampler_draws",
     description = paste0(
@@ -1719,11 +1719,11 @@
       "loo() estimates the expected log pointwise predictive density by ",
       "importance-weighting the log-likelihood of each observation at ",
       "each posterior draw, and this fit does not store that quantity: ",
-      "the engine returned an approximation to the posterior rather than ",
+      "the engine returned an approximation to the posterior instead of ",
       "draws of the likelihood, so there is nothing to leave one ",
       "observation out of. An INLA fit does carry the information ",
-      "criteria it computed at fit time -- WAIC at fit$inla$waic$waic and ",
-      "DIC at fit$inla$dic$dic -- and a fit on the brms engine answers ",
+      "criteria it computed at fit time (WAIC at fit$inla$waic$waic and ",
+      "DIC at fit$inla$dic$dic) and a fit on the brms engine answers ",
       "loo() directly."
     ),
     registered_in_adr = "ADR 0031",
@@ -1759,7 +1759,7 @@
   # the random copy's deviations are identified only by their own prior.
   # ASReml accepts the spelling, so a translated script reaches it, and
   # nothing downstream says the two term sets are estimating the same
-  # thing. The failure it produces is not a clean one either -- the INLA
+  # thing. The failure it produces is not a clean one either, the INLA
   # marginal solve goes intermittently singular on it.
   .register_refusal(
     reason_code = "term_in_fixed_and_random",
@@ -1771,9 +1771,9 @@
     message_template = paste0(
       "The term `%1$s` is on both the fixed and the random side. The ",
       "fixed part already estimates one mean per level of %1$s, so the ",
-      "random copy has no information left to describe -- its deviations ",
+      "random copy has no information left to describe, its deviations ",
       "are held up by their prior alone, and the variance component ",
-      "reported for %1$s would be a reading of that prior rather than of ",
+      "reported for %1$s would be a reading of that prior, not of ",
       "the data. Two ways to write what was probably meant: drop `%1$s` ",
       "from `random` to keep population-level means for it, or drop it ",
       "from the fixed part to keep shrunk level effects (a variance ",
@@ -1805,14 +1805,14 @@
   .register_refusal(
     reason_code = "conditional_loglik_not_available",
     description = paste0(
-      "No plug-in conditional log-likelihood exists for this fit -- the ",
+      "No plug-in conditional log-likelihood exists for this fit, the ",
       "family has no implemented form, the response or family record is ",
       "absent, or the engine reports a marginal likelihood instead. ",
       "Returning NA would let AIC() and anova() present a comparison that ",
       "was never computed."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 S14",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1825,7 +1825,7 @@
       "built from the calling frame."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 S14",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1834,11 +1834,11 @@
     description = paste0(
       "update() was called on a fit whose recorded argument set is ",
       "incomplete. Re-fitting would substitute package defaults for the ",
-      "unrecorded arguments -- a relationship matrix or a prior scale ",
-      "among them -- and return a different model under the same name."
+      "unrecorded arguments, a relationship matrix or a prior scale ",
+      "among them, and return a different model under the same name."
     ),
     message_template = "%s",
-    registered_in_adr = "Spec 5 S14",
+    registered_in_adr = "Design specification",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
@@ -1857,7 +1857,7 @@
 # so a caller can distinguish "this specification is not representable"
 # from "R fell over".
 #
-# The prior-DSL codes cover the whole constructor surface rather than
+# The prior-DSL codes cover the whole constructor surface instead of
 # only the newly-caught classes: a mini-language is a public API, and a
 # refusal a wrapper cannot pattern-match on is not a contract.
 .populate_refusal_registry_field_hardening <- function() {
@@ -1869,7 +1869,7 @@
       "default."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1880,7 +1880,7 @@
       "shape is `target ~ distribution(...)`."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1891,7 +1891,7 @@
       "without naming the parameter it applies to."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1903,7 +1903,7 @@
       "opaque target and dropped at emit time."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1917,7 +1917,7 @@
       "emitter with an untyped base error."
     ),
     message_template = "%s",
-    registered_in_adr = "0.10.0.9000 prior-target contract (review A24)",
+    registered_in_adr = "0.10.0.9000 prior-target contract",
     plan_field = NA_character_,
     since_version = "0.10.0.9000"
   )
@@ -1925,11 +1925,11 @@
     reason_code = "prior_target_argument_missing",
     description = paste0(
       "A prior target call is missing the argument that identifies which ",
-      "parameter it targets -- sd() and cor() need `group`, b() and ",
+      "parameter it targets, sd() and cor() need `group`, b() and ",
       "smooth() need a name."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1940,7 +1940,7 @@
       "so it carries no hyperparameters."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1951,7 +1951,7 @@
       "is outside the DSL's supported set."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1964,7 +1964,7 @@
       "argument became a silently substituted prior."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2 / FS-12",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1975,7 +1975,7 @@
       "which of the two values applies is not decidable from the call."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-2",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -1988,7 +1988,7 @@
       "completed value reached the engine unannounced."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-12",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2000,21 +2000,21 @@
       "messages several layers downstream."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-14",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
   .register_refusal(
     reason_code = "prior_hyperparameter_out_of_domain",
     description = paste0(
-      "A prior hyperparameter lies outside the domain its family defines ",
-      "-- a non-positive scale, rate, shape or degrees of freedom, a tail ",
+      "A prior hyperparameter lies outside the domain its family defines: ",
+      "a non-positive scale, rate, shape or degrees of freedom, a tail ",
       "probability outside (0, 1), or reversed uniform bounds. A negative ",
       "standard deviation used to reach the sampler and surface as a ",
       "missing-draws error."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-13",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2027,7 +2027,7 @@
       "route refused it with an untyped error."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-15 / FS-21",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2036,11 +2036,11 @@
     description = paste0(
       "A prior names a coefficient or a variance component the model does ",
       "not have. The check reads the engine's own parameter list, so the ",
-      "refusal names the model's actual terms rather than a synthesised ",
+      "refusal names the model's actual terms instead of a synthesised ",
       "Stan parameter name."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-20",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2049,12 +2049,12 @@
     description = paste0(
       "An mgcv-style smoother (s(), te(), ti(), t2(), gp(), sos()) appears ",
       "in the fixed part of the formula. flexyBayes spells a univariate ",
-      "smooth `random = ~ spl(x)` on the INLA backend; before 0.9.2 the ",
+      "smooth `random = ~ spl(x)` on the INLA backend. Before 0.9.2 the ",
       "term reached the engine and surfaced as `could not find function ",
       "\"s\"`, on brms only after a completed sampling run."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-18",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2063,25 +2063,25 @@
     description = paste0(
       "The same variable indexes both a fixed-effect term and a latent ",
       "f() term in the emitted INLA formula. INLA refuses a duplicated ",
-      "key; before 0.9.2 the refusal surfaced as the generic ",
+      "key, before 0.9.2 the refusal surfaced as the generic ",
       "inla-program-exited message."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-17",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
   .register_refusal(
     reason_code = "brms_factor_random_slope_unsupported",
     description = paste0(
-      "A bar-grammar random slope on a factor -- (f | g), (0 + f | g), ",
-      "(f || g) -- is outside the brms ingest. The ASReml surface of the ",
-      "same model fits, so the refusal names it verbatim; before 0.9.2 the ",
+      "A bar-grammar random slope on a factor ((f | g), (0 + f | g), ",
+      "(f || g)) is outside the brms ingest. The ASReml surface of the ",
+      "same model fits, so the refusal names it verbatim. Before 0.9.2 the ",
       "message listed other bar spellings, none of which expresses the ",
       "model."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-6 / field finding U1",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2089,11 +2089,11 @@
     reason_code = "brms_random_effect_form_unsupported",
     description = paste0(
       "A bar-grammar random-effect specification outside the supported ",
-      "set -- multi-variable slopes and group-of-coefficients shorthand. ",
+      "set, multi-variable slopes and group-of-coefficients shorthand. ",
       "Untyped before 0.9.2."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-6",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2109,21 +2109,21 @@
       "parts were dropped with no message before 0.14.0."
     ),
     message_template = "%s",
-    registered_in_adr = "Field sweep FS-6",
+    registered_in_adr = "Field sweep",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
 
-  # -- aggregated-route entry gate (dispatch.R) ---------------------
+  # ---- aggregated-route entry gate (dispatch.R) ---------------------
   #
   # The execution grid's capability-matrix section reached three
   # aggregation refusals that the v0.4.0 bulk migration did not cover,
-  # because they sit above the plan gate rather than inside it: the two
+  # because they sit above the plan gate instead of inside it: the two
   # refusals below the plan gate already carry a condition class, these
   # three raised a bare stop(). They split on two boundaries, not one.
   # The response boundary is a property of the data (no sufficient
   # statistic exists), the route boundary is a property of the engine
-  # roster (no aggregated emit is reachable) -- a caller handling one
+  # roster (no aggregated emit is reachable), a caller handling one
   # has no business catching the other, so they get separate codes.
   .register_refusal(
     reason_code = "aggregation_response_incomplete",
@@ -2134,21 +2134,21 @@
       "the request has no aggregated reading. Untyped before 0.9.2."
     ),
     message_template = "%s",
-    registered_in_adr = "Execution grid EG-2026-08-19-001",
+    registered_in_adr = "2026-08-19 execution grid",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
   .register_refusal(
     reason_code = "aggregation_route_unavailable",
     description = paste0(
-      "aggregate = TRUE with no aggregated emit route available -- ",
+      "aggregate = TRUE with no aggregated emit route available, ",
       "either the named backend carries no aggregated path at all, or ",
       "no aggregated backend resolves for the model, including a family ",
       "or link flexybayes_stream() does not aggregate. Raised with ",
       "site-specific messages. Untyped before 0.9.2."
     ),
     message_template = "%s",
-    registered_in_adr = "Execution grid EG-2026-08-19-001",
+    registered_in_adr = "2026-08-19 execution grid",
     plan_field = NA_character_,
     since_version = "0.9.2"
   )
@@ -2158,10 +2158,10 @@
 
 # --- v0.9.3 registry population ---------------------------------- #
 
-# .populate_refusal_registry_v093() --- the 0.9.3 scale-strategy
-# refusals (WP-C): the cell-count integer-cast sibling of the 0.9.0
+# .populate_refusal_registry_v093(): the 0.9.3 scale-strategy
+# refusals: the cell-count integer-cast sibling of the 0.9.0
 # row-count guard, typed engine-death wraps for INLA and brms, and the
-# per-level AR1-field boundary this release still refuses; plus (WP-G)
+# per-level AR1-field boundary this release still refuses, plus
 # the unknown-backend refusal that replaces the two engine names this
 # release withdraws entirely (see NEWS.md). Called from .onLoad() before
 # .lock_refusal_registry().
@@ -2170,7 +2170,7 @@
     reason_code = "unknown_backend",
     description = paste0(
       "An explicit `backend` request named a value that is not a ",
-      "registered engine -- including a name this release withdrew ",
+      "registered engine, including a name this release withdrew ",
       "entirely (see NEWS.md). The active engines are inla and brms."
     ),
     message_template = paste0(
@@ -2190,30 +2190,30 @@
       "Recording it would coerce it to NA, so the plan's cell count and ",
       "compression estimate would both silently disappear. The row-count ",
       "sibling (row_count_exceeds_integer) fixed the identical defect for ",
-      "N; this is the cell-count member of the same class (FS-24)."
+      "N, this is the cell-count member of the same class."
     ),
     message_template = "%s",
-    registered_in_adr = "Scale strategy S1 / FS-24",
+    registered_in_adr = "0.9.3 scale strategy",
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
   .register_refusal(
     reason_code = "inla_program_failed",
     description = paste0(
-      "The INLA engine died -- a non-zero exit from the inla-program ",
+      "The INLA engine died, a non-zero exit from the inla-program ",
       "subprocess, an inla.core.safe failure, or an empty/NULL result ",
-      "with no R-level error at all -- past the design-memory preflight, ",
+      "with no R-level error at all, past the design-memory preflight, ",
       "which models per-term storage but not the sparse-Cholesky solver ",
       "cost of a large latent field. Before 0.9.3 this reached the user ",
       "as a raw pass-through of the engine's own message after tens of ",
-      "minutes of runtime, with no reason code and no remedy (FS-25). ",
+      "minutes of runtime, with no reason code and no remedy. ",
       "Carries the design size, the largest design this package has ",
       "verified an INLA fit to complete (read from ",
       "inst/validation/benchmark_scaling.csv), the binding random-effect ",
       "term where determinable, and the remedies."
     ),
     message_template = "%s",
-    registered_in_adr = "Scale strategy S2 / FS-25",
+    registered_in_adr = "0.9.3 scale strategy",
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
@@ -2222,15 +2222,15 @@
     description = paste0(
       "`weights` is lowered for family = \"gaussian\" with the identity ",
       "link only (brms's y | weights(w) addition term; INLA's ",
-      "scale = w per-observation precision multiplier -- both give ",
+      "scale = w per-observation precision multiplier, both give ",
       "Var(y_i) = sigma^2 / w_i on the Gaussian likelihood). Superseded ",
       "the all-families weights_not_supported refusal for this one ",
-      "well-defined mapping (C6); every other family, and a non-identity ",
-      "link on gaussian, still refuse -- weights_not_supported remains ",
+      "well-defined mapping. Every other family, and a non-identity ",
+      "link on gaussian, still refuse, weights_not_supported remains ",
       "registered for the historical all-families refusal text."
     ),
     message_template = "%s",
-    registered_in_adr = "C6",
+    registered_in_adr = "0.9.3 weights refusals",
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
@@ -2238,14 +2238,14 @@
     reason_code = "weights_not_aggregatable",
     description = paste0(
       "aggregate = TRUE with non-constant observation weights. Weights ",
-      "are lowered for the per-row Gaussian route only; the aggregated ",
+      "are lowered for the per-row Gaussian route only. The aggregated ",
       "route's sufficient statistics (per-cell sums and counts) do not ",
       "fold in a per-observation weight, so a weighted aggregated fit is ",
-      "refused rather than silently ignoring the weight or answering a ",
+      "refused instead of silently ignoring the weight or answering a ",
       "different question under the same name."
     ),
     message_template = "%s",
-    registered_in_adr = "C6",
+    registered_in_adr = "0.9.3 weights refusals",
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
@@ -2257,7 +2257,7 @@
       "reads them."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_0.16.0 C5",
+    registered_in_adr = "0.16.0 at() and AR1 residual checks",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )
@@ -2269,7 +2269,7 @@
       "the two per model."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_0.16.0 C5",
+    registered_in_adr = "0.16.0 at() and AR1 residual checks",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )
@@ -2292,7 +2292,7 @@
       "0/1 numeric vector for a per-row binary outcome."
     ),
     message_template = "%s",
-    registered_in_adr = "WP-D D14",
+    registered_in_adr = "0.9.3 argument checks",
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
@@ -2300,17 +2300,17 @@
     reason_code = "update_unnamed_argument_not_supported",
     description = paste0(
       "update() re-issues every recorded flexybayes() argument by name, ",
-      "matching an override in ... to it by name too; an unnamed ",
-      "argument -- stats::update()'s classic replacement-formula idiom, ",
-      "update(fit, . ~ . + z) -- has no name to match and was, before ",
+      "matching an override in ... to it by name too. An unnamed ",
+      "argument, stats::update()'s classic replacement-formula idiom, ",
+      "update(fit, . ~ . + z), has no name to match and was, before ",
       "this refusal, silently discarded: the re-fit ran with the ",
       "unchanged recorded call, a valid object answering a question ",
-      "nobody asked rather than a re-fit or a refusal. Name the slot ",
+      "nobody asked instead of a re-fit or a refusal. Name the slot ",
       "instead: update(fit, fixed = y ~ x + z) (brms-style), or ",
       "random = ~ ... / residual = ~ ... on the ASReml grammar."
     ),
     message_template = "%s",
-    registered_in_adr = "WP-D D16",
+    registered_in_adr = "0.9.3 argument checks",
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
@@ -2320,10 +2320,10 @@
 
 # --- lock helper -------------------------------------------------- #
 
-# .lock_refusal_registry() --- locks the environment so no further
+# .lock_refusal_registry(): locks the environment so no further
 # .register_refusal() calls or user-side assign()s can mutate it.
 # Called once at the end of .onLoad(). The lock is enforced by R's
-# environmentIsLocked() machinery; bindings registered before the
+# environmentIsLocked() machinery. Bindings registered before the
 # lock remain readable indefinitely.
 .lock_refusal_registry <- function() {
   if (!environmentIsLocked(.refusal_registry)) {
@@ -2339,7 +2339,7 @@
 #'
 #' `fb_refusals()` exposes the locked refusal-reason registry as a
 #' browsable table: the canonical vocabulary of conditions under which
-#' flexyBayes declines to fit, route, or validate a model --- each
+#' flexyBayes declines to fit, route, or validate a model, each
 #' with a one-line description and the release it was introduced in.
 #' It is the discovery surface for the structured refusals the package
 #' raises. Every such refusal carries
@@ -2351,7 +2351,7 @@
 #' Two optional filters narrow the listing. `reason_code` selects rows
 #' by exact reason-code match (a single code or a vector). The
 #' `since_version` filter selects reasons introduced in a matching
-#' release by version-string prefix --- `since_version = "0.4"`
+#' release by version-string prefix: `since_version = "0.4"`
 #' returns every reason added in the 0.4 series.
 #'
 #' Routing-decision reasons (surfaced by [fb_plan()] and
@@ -2493,7 +2493,7 @@ print.fb_refusals_table <- function(x, ...) {
 #' another package already registered is refused, and so is any attempt to
 #' register under the name `"flexyBayes"`. Registering the same code again
 #' from the same package with identical fields does nothing, so a package
-#' can be loaded twice in one session; registering it with different fields
+#' can be loaded twice in one session. Registering it with different fields
 #' is refused. A table that fails any check registers none of its rows.
 #'
 #' @param refusals A data frame with one row per reason and these
@@ -2514,11 +2514,11 @@ print.fb_refusals_table <- function(x, ...) {
 #'     reports the refusal before a fit, if any.
 #' @param package The package that owns the reasons. `NULL` (default)
 #'   takes the package whose code makes the call, which is the right value
-#'   inside `.onLoad()`; outside a package it must be given.
+#'   inside `.onLoad()`. Outside a package it must be given.
 #'
 #' @return The registered reasons as an `fb_refusals_table`, invisibly.
 #'
-#' @seealso [fb_refuse()] to raise a registered reason; [fb_refusals()] to
+#' @seealso [fb_refuse()] to raise a registered reason, [fb_refusals()] to
 #'   list them.
 #'
 #' @examples
@@ -2696,7 +2696,7 @@ fb_register_refusals <- function(refusals, package = NULL) {
 #'
 #' @param reason_code A registered reason code (see [fb_refusals()]).
 #' @param message The message shown to the user. Defaults to the reason's
-#'   registered description; a message that names the user's own
+#'   registered description. A message that names the user's own
 #'   variables or values is usually more helpful.
 #' @param ... Further named fields to carry on the condition object, for
 #'   handlers that need the offending value. The names `message`,
@@ -2707,7 +2707,7 @@ fb_register_refusals <- function(refusals, package = NULL) {
 #' @param call The call to record on the condition. Defaults to `NULL`,
 #'   as for the core's refusals.
 #'
-#' @return Does not return; it signals an error. The condition carries
+#' @return Does not return. It signals an error. The condition carries
 #'   `message`, `reason_code`, `package` (the package that registered the
 #'   code), `call` and the fields given in `...`.
 #'
@@ -2768,7 +2768,7 @@ fb_refuse <- function(
     stop(
       "fb_refuse() sets ",
       paste0("`", reserved, "`", collapse = ", "),
-      " itself; give the extra field another name.",
+      " itself, give the extra field another name.",
       call. = FALSE
     )
   }
@@ -2797,7 +2797,7 @@ fb_refuse <- function(
   unname(getNamespaceName(top))
 }
 
-# Removes a plug-in partition; used by tests to clean up fake plug-ins.
+# Removes a plug-in partition. Used by tests to clean up fake plug-ins.
 .unregister_refusal_partition <- function(package) {
   if (exists(package, envir = .refusal_plugin_registry, inherits = FALSE)) {
     rm(list = package, envir = .refusal_plugin_registry)
@@ -2806,8 +2806,8 @@ fb_refuse <- function(
 }
 
 
-# 0.10.0.9000 -- the transformed response. A left-hand side that is an
-# expression over columns rather than a column name is now accepted on the
+# 0.10.0.9000, the transformed response. A left-hand side that is an
+# expression over columns instead of a column name is now accepted on the
 # per-row route (issue #14, fit1), and the streaming route, which reads named
 # columns off disk, refuses it by name instead of asking a reader for a column
 # that does not exist.
@@ -2816,9 +2816,9 @@ fb_refuse <- function(
     reason_code = "stream_response_must_be_a_column",
     description = paste0(
       "Streaming aggregation reads named columns from the source chunk by ",
-      "chunk, so a transformed response -- log(yield) -- has no column to ",
-      "read. The per-row route evaluates the expression against the data; ",
-      "the streaming route cannot, and says so rather than failing inside ",
+      "chunk, so a transformed response, log(yield), has no column to ",
+      "read. The per-row route evaluates the expression against the data. ",
+      "The streaming route cannot, and says so instead of failing inside ",
       "the reader."
     ),
     message_template = paste0(
@@ -2849,7 +2849,7 @@ fb_refuse <- function(
     description = paste0(
       "us(f):g on INLA is an iidKd field carrying a joint Wishart prior over ",
       "the whole covariance. It has no standard-deviation slot, so a ",
-      "supplied SD prior cannot be translated. Refused rather than dropped."
+      "supplied SD prior cannot be translated. Refused instead of dropped."
     ),
     message_template = paste0(
       "A prior was supplied for `%s`, and us() on INLA carries a joint ",
@@ -2866,8 +2866,8 @@ fb_refuse <- function(
       "Fitting an interaction random effect on INLA generates an index ",
       "column, and the data already carries a column of that name. ",
       "Overwriting it would index the field by whatever that column holds ",
-      "with nothing downstream saying so, which is why this refuses rather ",
-      "than renaming silently."
+      "with nothing downstream saying so, which is why this refuses ",
+      "instead of renaming silently."
     ),
     message_template = paste0(
       "Fitting the interaction random effect `%s` on INLA needs an index ",
@@ -2883,7 +2883,7 @@ fb_refuse <- function(
       "(x | g) on INLA is an iid2d field whose hyperparameters are a single ",
       "joint Wishart over the 2-by-2 covariance of the intercept and the ",
       "slope. It has no standard-deviation slot, so a supplied SD prior ",
-      "cannot be translated. Refused rather than dropped."
+      "cannot be translated. Refused instead of dropped."
     ),
     message_template = paste0(
       "A prior was supplied for `%s`, and (x | g) on INLA carries a joint ",
@@ -2942,14 +2942,14 @@ fb_refuse <- function(
     reason_code = "brms_stan_toolchain_compile_failure",
     description = paste0(
       "The brms path compiles a Stan program, and a broken C++ toolchain ",
-      "reaches R as a downstream symptom -- `invalid connection` -- rather ",
-      "than as the compiler's own message. On a failed fit the toolchain ",
+      "reaches R as a downstream symptom, `invalid connection`, not ",
+      "as the compiler's own message. On a failed fit the toolchain ",
       "is probed directly, and this code is raised only when the probe ",
       "confirms it cannot compile."
     ),
     message_template = paste0(
       "brms::brm() failed, and this machine cannot compile a three-line ",
-      "C++ file either -- so the fault is in the C++ toolchain, not in the ",
+      "C++ file either, so the fault is in the C++ toolchain, not in the ",
       "model. backend = \"inla\" compiles nothing and needs no toolchain."
     ),
     registered_in_adr = "0.10.0.9000 Stan toolchain diagnostic",
@@ -2960,23 +2960,23 @@ fb_refuse <- function(
 }
 
 
-# 0.10.0.9000 grammar contract -- the special-form argument shape.
+# 0.10.0.9000 grammar contract, the special-form argument shape.
 #
 # A grammar fuzz corpus over all 22 ASReml special forms found four ways a
 # malformed call escaped this taxonomy: an untyped base error from a branch's
 # own indexing, a silent lowering to a plausible neighbour, a term carrying no
 # variable, and a silently discarded surplus argument. The contract in
-# R/grammar_contract.R closes all four at one locus; these are the codes it
+# R/grammar_contract.R closes all four at one locus. These are the codes it
 # raises. See also .fb_check_grammar_arity() and .fb_literal_count().
-# 2026-09-13 -- INLA containment. Estimated correlation matrices are fitted
+# 2026-09-13: INLA containment. Estimated correlation matrices are fitted
 # on brms only. An offset() in the fixed formula,
 # which was dropped without a message on both engines, refuses at ingest.
 .populate_refusal_registry_inla_containment <- function() {
   .register_refusal(
     reason_code = "correlated_covariance_requires_brms",
     description = paste0(
-      "An estimated correlation matrix -- a correlated random slope (x | g) ",
-      "or an unstructured us(f):g -- was sent to INLA. INLA carries it as an ",
+      "An estimated correlation matrix (a correlated random slope (x | g) ",
+      "or an unstructured us(f):g) was sent to INLA. INLA carries it as an ",
       "iid2d or iidKd field under a joint Wishart prior that couples the ",
       "variances and the correlations, and on that route the fitted ",
       "covariance did not match REML's and was not invariant to rescaling ",
@@ -2987,9 +2987,7 @@ fb_refuse <- function(
       "correlation matrices on brms only. Pass backend = \"brms\", or leave ",
       "backend = \"auto\", which routes there."
     ),
-    registered_in_adr = paste0(
-      "cairn 2026-09-13-estimated-correlation-matrices-brms-only"
-    ),
+    registered_in_adr = "2026-09-13 estimated correlation matrices",
     plan_field = "rejected_routes",
     since_version = "0.11.0.9000"
   )
@@ -2998,14 +2996,14 @@ fb_refuse <- function(
     description = paste0(
       "An offset() term in the fixed formula on a route that cannot carry ",
       "it. The parser records every offset on the model description, and a ",
-      "route with no exact lowering for it refuses by name rather than ",
+      "route with no exact lowering for it refuses by name instead of ",
       "fitting the model without the offset, which is what happened before ",
       "offsets were recorded."
     ),
     message_template = paste0(
       "The fixed formula carries %s, and %s does not carry an offset."
     ),
-    registered_in_adr = "cairn 2026-09-13-fixed-formula-offset-refused",
+    registered_in_adr = "2026-09-13 fixed-formula offsets refused",
     plan_field = "rejected_routes",
     since_version = "0.11.0.9000"
   )
@@ -3045,7 +3043,7 @@ fb_refuse <- function(
   invisible(NULL)
 }
 
-# 2026-09-15 -- Gaussian aggregation containment. The aggregated Gaussian
+# 2026-09-15: Gaussian aggregation containment. The aggregated Gaussian
 # route cannot carry a residual prior, so Gaussian models are fitted per row,
 # and no fit on the aggregated representation reports a marginal likelihood.
 .populate_refusal_registry_model_manifest <- function() {
@@ -3104,21 +3102,21 @@ fb_refuse <- function(
       "priors it received, and a fit outside its prior's support is refused."
     ),
     message_template = "%s",
-    registered_in_adr = "U-SUPPORT-1 (2026-09-16), universal support audit",
+    registered_in_adr = "2026-09-16 universal support audit",
     plan_field = NA_character_,
     since_version = "0.12.1"
   )
   invisible(NULL)
 }
 
-# .populate_refusal_registry_stream_shape() -- flexybayes_stream()'s own
+# .populate_refusal_registry_stream_shape(), flexybayes_stream()'s own
 # model-shape and data-availability refusals, untyped before 0.13.0
-# (U-FAM-GATE-1 finding 2). The route-availability boundary reuses
+# (2026-09-16). The route-availability boundary reuses
 # aggregation_route_unavailable at its call site (R/stream_aggregate.R,
 # .fb_stream_aggregate()): an intercept-only model has no factor cell-key
 # term to aggregate by, which is the same "nothing routes into the
 # aggregated representation" fact as a family or link the streamed path
-# does not carry, and the remedy is identical -- fit the model per row
+# does not carry, and the remedy is identical, fit the model per row
 # with flexybayes(). The two codes below cover the two boundaries that
 # fact does not reach: a named model column absent from the source, and
 # a source that returns no rows to build from or fold.
@@ -3127,12 +3125,12 @@ fb_refuse <- function(
     reason_code = "stream_model_column_not_in_source",
     description = paste0(
       "flexybayes_stream() reads named columns off the source chunk by ",
-      "chunk, so every column the model names -- the response, a fixed ",
-      "or random term, `trials`, or `exposure` -- has to be present in ",
+      "chunk, so every column the model names (the response, a fixed ",
+      "or random term, `trials`, or `exposure`) has to be present in ",
       "the source's head sample. Untyped before 0.13.0."
     ),
     message_template = "%s",
-    registered_in_adr = "U-STREAM-SHAPE-1 (2026-09-16)",
+    registered_in_adr = "2026-09-16 streaming model shape",
     plan_field = NA_character_,
     since_version = "0.13.0"
   )
@@ -3145,24 +3143,24 @@ fb_refuse <- function(
       "aggregate. Untyped before 0.13.0."
     ),
     message_template = "%s",
-    registered_in_adr = "U-STREAM-SHAPE-1 (2026-09-16)",
+    registered_in_adr = "2026-09-16 streaming model shape",
     plan_field = NA_character_,
     since_version = "0.13.0"
   )
   invisible(NULL)
 }
 
-# .populate_refusal_registry_family_support() -- the response-domain gate
+# .populate_refusal_registry_family_support(), the response-domain gate
 # (R/na_action.R, .fb_refuse_family_response_domain()). Admitting a family
 # onto .fb_family_links() (R/utils.R) was necessary and sufficient to
-# reach an engine; nothing checked the response against the domain the
+# reach an engine. Nothing checked the response against the domain the
 # family's likelihood is defined over. lognormal (added b979c5d) on a
 # non-positive response reached brms::brm() and stopped there untyped
-# ("Family 'lognormal' requires response greater than 0."); gamma,
+# ("Family 'lognormal' requires response greater than 0."). Gamma,
 # hurdle_gamma and beta reached the same untyped brms death, and (bar
 # lognormal, brms-only) an unrelated inla_program_failed diagnosis on
 # INLA that named neither the family nor the offending row
-# (U-FAM-SUPPORT, 2026-09-16).
+# (2026-09-16).
 .populate_refusal_registry_family_support <- function() {
   .register_refusal(
     reason_code = "family_response_domain_violation",
@@ -3170,12 +3168,12 @@ fb_refuse <- function(
       "The requested family's likelihood is defined over a response ",
       "domain (gamma / lognormal strictly positive, hurdle_gamma non-",
       "negative, beta an open unit interval) that the observed response ",
-      "violates. Refused before any backend code runs; a missing (NA) ",
-      "response is exempt -- it is na_action's concern, not a domain ",
+      "violates. Refused before any backend code runs. A missing (NA) ",
+      "response is exempt, it is na_action's concern, not a domain ",
       "violation. Untyped before 0.13.0."
     ),
     message_template = "%s",
-    registered_in_adr = "U-FAM-SUPPORT-1 (2026-09-16)",
+    registered_in_adr = "2026-09-16 family support",
     plan_field = NA_character_,
     since_version = "0.13.0"
   )
@@ -3191,11 +3189,11 @@ fb_refuse <- function(
       "route composes the within-cell sum of squares with a fixed gamma ",
       "prior on the residual precision, so a stated or default residual ",
       "prior would not be the prior fitted while prior_summary() reported ",
-      "it. Gaussian models are fitted per row; binomial and Poisson models ",
+      "it. Gaussian models are fitted per row. Binomial and Poisson models ",
       "still aggregate."
     ),
     message_template = "%s",
-    registered_in_adr = "DEC-AGG-01 (2026-09-14), strict Gaussian containment",
+    registered_in_adr = "0.14.0 strict Gaussian containment",
     plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )
@@ -3207,10 +3205,10 @@ fb_refuse <- function(
       "under response standardisation, scales by the number of cells ",
       "instead of the number of rows, so it is not the marginal likelihood ",
       "of the rows. summary() reports it as not available, naming this ",
-      "reason, rather than printing a number that cannot be compared."
+      "reason, instead of printing a number that cannot be compared."
     ),
     message_template = "%s",
-    registered_in_adr = "DEC-AGG-01 (2026-09-14), strict Gaussian containment",
+    registered_in_adr = "0.14.0 strict Gaussian containment",
     plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )
@@ -3280,7 +3278,7 @@ fb_refuse <- function(
       "happened to index, or escaped as an untyped matcher error."
     ),
     message_template = "%s",
-    registered_in_adr = "0.10.0.9000 grammar contract (review A22)",
+    registered_in_adr = "0.10.0.9000 grammar contract",
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )
@@ -3288,13 +3286,13 @@ fb_refuse <- function(
     reason_code = "dsum_malformed",
     description = paste0(
       "A dsum() body carrying no grouping bar. dsum(~ units | env) requests ",
-      "one residual variance per section; written without the bar there is ",
+      "one residual variance per section. Written without the bar there is ",
       "nothing to section on, and the parser used to fall through to a ",
-      "homogeneous `units` residual -- a plausible neighbour that survives ",
+      "homogeneous `units` residual, a plausible neighbour that survives ",
       "convergence checks and prints credible output."
     ),
     message_template = "%s",
-    registered_in_adr = "0.10.0.9000 grammar contract (audit F01)",
+    registered_in_adr = "0.10.0.9000 grammar contract",
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )
@@ -3305,24 +3303,24 @@ fb_refuse <- function(
       "so it is named separately from the general arity refusal."
     ),
     message_template = "%s",
-    registered_in_adr = "0.10.0.9000 grammar contract (audit F08)",
+    registered_in_adr = "0.10.0.9000 grammar contract",
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )
   # fa()'s invalid-rank code has existed since 0.4.0 as the k < 1 floor. The
-  # grammar contract widens what reaches it -- a symbol, a string, a logical,
-  # a fraction -- rather than minting a second code for the same condition.
-  # The rank-versus-levels bound has a code already -- fa_rank_exceeds_dim,
+  # grammar contract widens what reaches it (a symbol, a string, a logical,
+  # a fraction) instead of minting a second code for the same condition.
+  # The rank-versus-levels bound has a code already, fa_rank_exceeds_dim,
   # registered at 0.4.0 and raised from .enrich() where the level count is
-  # known. It was reachable only from the fa(f, k):g interaction form; the
-  # bare fa(f, k) branch now raises the same code rather than a synonym.
+  # known. It was reachable only from the fa(f, k):g interaction form. The
+  # bare fa(f, k) branch now raises the same code instead of a synonym.
   .register_refusal(
     reason_code = "grammar_argument_empty",
     description = paste0(
       "A special form written with a trailing or doubled comma, leaving ",
       "R's empty symbol where a value belongs. Touching it raised ",
       "\"argument is missing, with no default\" from wherever it was first ",
-      "read -- a base error about flexyBayes internals rather than a ",
+      "read, a base error about flexyBayes internals instead of a ",
       "statement about the formula."
     ),
     message_template = "%s",
@@ -3345,7 +3343,7 @@ fb_refuse <- function(
     reason_code = "multivariate_smooth_unsupported",
     description = paste0(
       "s() written over more than one variable. flexyBayes fits univariate ",
-      "penalised splines only; this used to raise an untyped names-attribute ",
+      "penalised splines only. This used to raise an untyped names-attribute ",
       "error from mgcv's call handling."
     ),
     message_template = "%s",
@@ -3436,7 +3434,7 @@ fb_refuse <- function(
 }
 
 
-# 2026-09-16 -- the factor-analytic covariance leaves the fitting route.
+# 2026-09-16: the factor-analytic covariance leaves the fitting route.
 #
 # The structure was admitted on INLA at 0.10.0.9000 on a simulated recovery
 # at k = 1 and k = 2. What was never established is that a second identical
@@ -3466,7 +3464,7 @@ fb_refuse <- function(
       "fits on both engines, and us(f):g fits on brms."
     ),
     message_template = "%s",
-    registered_in_adr = "U-FA-1 (2026-09-16)",
+    registered_in_adr = "2026-09-16 factor-analytic covariance",
     plan_field = "rejected_routes",
     since_version = "0.13.0"
   )

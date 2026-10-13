@@ -15,10 +15,10 @@ list with \code{family} (the canonical string \code{"dirichlet"}), \code{paramet
 \description{
 Constructs the family descriptor for the Dirichlet distribution, the
 natural model for compositional (simplex) data. The object mirrors the
-shape of the other flexyBayes family descriptors -- a named list carrying
-the family name, the parameter description, and the support -- while
+shape of the other flexyBayes family descriptors, a named list carrying
+the family name, the parameter description, and the support, while
 signalling that the Dirichlet is fitted through the dedicated
-\code{fb_dirichlet()} entry point rather than the GLM-link emit path.
+\code{fb_dirichlet()} entry point instead of the GLM-link emit path.
 }
 \details{
 The Dirichlet on the \eqn{K}-simplex is parameterised by a vector of

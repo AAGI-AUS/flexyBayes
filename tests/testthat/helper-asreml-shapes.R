@@ -1,4 +1,4 @@
-# helper-asreml-shapes.R -- recorded shapes of ASReml-R objects the
+# helper-asreml-shapes.R, recorded shapes of ASReml-R objects the
 # na_action normaliser has to recognise.
 #
 # flexyBayes never depends on asreml, not even in Suggests: it is
@@ -28,7 +28,7 @@
 #
 #   1. The returned object is a PLAIN list. class() is "list", the only
 #      attribute is `names`, and the names come back in the order
-#      c("x", "y") -- x first, whatever order the caller supplied.
+#      c("x", "y"), x first, whatever order the caller supplied.
 #
 #   2. na.method() does NOT reduce an unsupplied argument to its default
 #      scalar. It returns that argument's whole default vector, so
@@ -49,7 +49,7 @@
 # specified call an ASReml user writes on a field trial with missing
 # plots and is the primary fixture. The remaining cases exist so the
 # normaliser is tested against partial specification, where the
-# unsupplied slot arrives as a length-3 vector rather than a scalar.
+# unsupplied slot arrives as a length-3 vector instead of a scalar.
 #
 # @returns The list asreml returned for that call, transcribed verbatim
 #   from dput() output.
@@ -103,7 +103,7 @@
 # .asreml_na_method_version() --- the asreml build the shapes came from
 #
 # Recorded so a future re-grounding run can say which version it is
-# re-checking against rather than diffing against an unnamed baseline.
+# re-checking against instead of diffing against an unnamed baseline.
 #
 # @returns A single string.
 # @noRd

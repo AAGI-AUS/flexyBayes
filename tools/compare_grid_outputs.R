@@ -1,8 +1,7 @@
-# tools/compare_grid_outputs.R -- normalised grid-output comparator.
+# tools/compare_grid_outputs.R: normalised grid-output comparator.
 #
-# The release gate confirms a candidate-tarball grid run reproduces a
-# reference run (recipe 62 / U-EVID-1's acceptance: "the final tarball's
-# grid must reproduce them under a declared normalisation"). This script
+# The release gate confirms that a candidate-tarball grid run reproduces a
+# reference run under a declared normalisation. This script
 # compares ledger.csv and misses.csv between two
 # inst/validation/execution_grid/-shaped directories on that declared
 # normalisation, which drops run-specific noise (commit sha, date,
@@ -10,14 +9,14 @@
 # a re-run on a different day, against a different INLA point release,
 # compares clean when the outcomes themselves agree:
 #
-#   ledger.csv  -- cell, verdict, class. `class` is the typed outcome
-#                  (fit, refuse_typed, error_untyped, crash, timeout,
-#                  silent_drop, translated, construct_accept, value);
-#                  `verdict` is as_claimed / DIVERGENT.
-#   misses.csv  -- cell, observed, class. `class` is the typed miss code
-#                  (M1-M6); misses.csv carries no `verdict` column, so
-#                  `observed` stands in for it -- every row already
-#                  records a divergence from `expected`.
+#   ledger.csv: cell, verdict, class. `class` is the typed outcome
+#               (fit, refuse_typed, error_untyped, crash, timeout,
+#               silent_drop, translated, construct_accept, value);
+#               `verdict` is as_claimed / DIVERGENT.
+#   misses.csv: cell, observed, class. `class` is the typed miss code
+#               (M1-M6); misses.csv carries no `verdict` column, so
+#               `observed` stands in for it. Every row already
+#               records a divergence from `expected`.
 #
 # Usage:
 #
@@ -111,13 +110,13 @@ for (d1 in c(ref_dir, cand_dir)) {
     file, nrow(only_ref), ref_dir, nrow(only_cand), cand_dir
   ))
   if (nrow(only_ref) > 0L) {
-    cat("  -- reference only --\n")
+    cat("  [reference only]\n")
     for (i1 in seq_len(nrow(only_ref))) {
       cat("  ", paste(only_ref[i1, ], collapse = " | "), "\n")
     }
   }
   if (nrow(only_cand) > 0L) {
-    cat("  -- candidate only --\n")
+    cat("  [candidate only]\n")
     for (i1 in seq_len(nrow(only_cand))) {
       cat("  ", paste(only_cand[i1, ], collapse = " | "), "\n")
     }

@@ -12,7 +12,7 @@
 \arguments{
 \item{x}{A flexyBayes fit (\code{flexybayes} or \code{flexybayes_brms}).}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 A one-row \code{data.frame} with \code{nobs}, \code{npar}, \code{logLik}, \code{family},

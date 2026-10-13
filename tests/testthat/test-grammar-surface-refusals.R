@@ -2,16 +2,16 @@
 # Grammar-surface refusals: the bar grammar, the smoother spellings, and the
 # INLA duplicate key.
 #
-# The register's shared complaint across FS-6, FS-17 and FS-18 is that a
+# The shared complaint across the three cases below is that a
 # model the package cannot fit as written raised a bare `simpleError` whose
-# text sent the user in a circle -- listing bar spellings none of which
+# text sent the user in a circle, listing bar spellings none of which
 # expresses the model, or naming a function R could not find, or quoting the
 # INLA subprocess's generic exit message. Where the same model has a spelling
 # that DOES fit, the refusal has to name it (`DESCRIPTION`: a typed refusal
 # naming the nearest implemented alternative).
 #
-# The grid below is the field sweep's S5 grammar-surface section plus the two
-# smoother cells from S4, each row asserting the condition class and the
+# The grid below covers the grammar-surface cases plus the two smoother
+# cells, each row asserting the condition class and the
 # sibling surface the message must name verbatim.
 # =============================================================================
 
@@ -45,7 +45,7 @@
 }
 
 
-# --- bar-grammar factor slopes (field-sweep FS-6 / finding U1) ---------- #
+# --- bar-grammar factor slopes ---------- #
 
 test_that("a correlated factor slope names `us(f):g` verbatim, on both backends", {
   d <- .gs_data()
@@ -78,7 +78,7 @@ test_that("an uncorrelated factor slope names `diag(f):g` verbatim", {
   expect_match(conditionMessage(err), "random = ~ us(trt):g", fixed = TRUE)
 })
 
-test_that("the named ASReml surfaces do fit -- the refusal is not a dead end", {
+test_that("the named ASReml surfaces do fit, the refusal is not a dead end", {
   # Fits on brms: a Stan compile, so it is out of the
   # devtools::check() path and runs under devtools::test().
   skip_on_cran()
@@ -142,7 +142,7 @@ test_that("the supported bar forms are untouched by the factor-slope branch", {
 test_that("a correlated NUMERIC slope is no longer a refusal", {
   # The neighbouring refusals in this file are all real. This one was not:
   # `(x | g)` is the uncorrelated slope with the correlation freed, and
-  # both engines carry it. It stays here as the boundary of the sweep --
+  # both engines carry it. It stays here as the boundary of the sweep,
   # a FACTOR slope still refuses (above), a numeric one does not.
   d <- .gs_data()
   fb <- fb_from_brms(y ~ x + (x | g), data = d, family = "gaussian")
@@ -150,7 +150,7 @@ test_that("a correlated NUMERIC slope is no longer a refusal", {
 })
 
 
-# --- smoother in the fixed part (field-sweep FS-18) ---------------------- #
+# --- smoother in the fixed part ---------------------- #
 
 test_that("s(x) in the fixed part refuses typed on both backends", {
   d <- .gs_data()
@@ -193,7 +193,7 @@ test_that("an ordinary transformation in the fixed part still parses", {
 })
 
 
-# --- the INLA duplicate key (field-sweep FS-17) ------------------------- #
+# --- the INLA duplicate key ------------------------- #
 
 test_that("a spline on a variable that is also fixed refuses typed on INLA", {
   # The duplicate-key guard lives in the INLA emit, so the emit has to be
@@ -220,7 +220,11 @@ test_that("a spline on a variable that is also fixed refuses typed on INLA", {
 
 test_that("the same spline without the duplicate fixed term still fits", {
   skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    # y is linear in x, so the smooth's sd_x is weakly identified.
+    flexyBayes.silence_weak_identification_warning = TRUE
+  )
   d <- .gs_data()
   fit <- suppressMessages(flexybayes(
     y ~ 1,
@@ -237,7 +241,7 @@ test_that("the earlier fixed-and-random guard still owns the factor case", {
   # A grouping factor on both sides would also be a duplicate INLA key, but
   # it is caught upstream and backend-independently by
   # `term_in_fixed_and_random`, which explains the identifiability problem
-  # rather than the engine's key restriction. The duplicate-key guard is
+  # instead of the engine's key restriction. The duplicate-key guard is
   # the residual case that guard does not reach: a smooth of a variable
   # that is also a fixed covariate.
   d <- .gs_data()

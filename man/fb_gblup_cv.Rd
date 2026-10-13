@@ -18,7 +18,7 @@ used when \code{NULL}).}
 \item{folds}{Number of cross-validation folds (default 5).}
 
 \item{repeats}{Number of independent fold partitions to average over
-(default 1); repeated CV stabilises the estimate.}
+(default 1). Repeated CV stabilises the estimate.}
 
 \item{seed}{Optional integer seed for reproducible fold assignment.}
 
@@ -38,14 +38,14 @@ components are estimated by REML on the training genotypes, the held-out
 breeding values are predicted from the genomic relationship matrix
 (\eqn{\hat{u}_V = K_{VT}(K_{TT} + \delta I)^{-1}(y_T - X_T\hat\beta)}),
 and the predictions are compared with the observed phenotypes. The
-headline metric is \emph{prediction accuracy}, the correlation between
-predicted and observed across the held-out genotypes; \emph{bias} is the
+main metric is \emph{prediction accuracy}, the correlation between
+predicted and observed across the held-out genotypes. \emph{bias} is the
 slope of observed on predicted (1 is unbiased).
 }
 \examples{
 \donttest{
 set.seed(1)
-n <- 80L; m <- 400L
+n <- 80L. M <- 400L
 Z <- matrix(rbinom(n * m, 2L, 0.3), n, m)
 Zc <- scale(Z, scale = FALSE)
 G <- tcrossprod(Zc) / m + diag(n) * 1e-3

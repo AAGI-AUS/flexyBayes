@@ -1,9 +1,9 @@
-# emit_inla -- flexyBayes INLA backend emit.
+# emit_inla: the flexyBayes INLA backend emit.
 #
-# v0.1 MINIMUM SUBSET: takes an fb_terms object (the IR --
-# intermediate representation; see R/fb_terms.R) that has passed
-# lgm_gate() and runs INLA -- Integrated Nested Laplace
-# Approximations -- via INLA::inla() to produce a posterior fit.
+# v0.1 MINIMUM SUBSET: takes an fb_terms object (the intermediate
+# representation, see R/fb_terms.R) that has passed lgm_gate() and
+# runs INLA (Integrated Nested Laplace Approximations) via
+# INLA::inla() to produce a posterior fit.
 #
 # v0.1 supported model classes:
 #   - Gaussian / binomial / binary / poisson / Gamma / beta /
@@ -14,9 +14,9 @@
 #     emitted as `f(group, model = "iid")`.
 #   - Random walk / spline smoothers (term type "spline") emitted
 #     as `f(var, model = "rw2")`.
-#   - Heterogeneous residual via `at_units` -- v0.1 refused;
-#     re-route via lgm_gate or backend = "brms".
-#   - Spatial / GxE structured covariances -- v0.1 refused; route
+#   - Heterogeneous residual via `at_units`: refused in v0.1.
+#     Re-route via lgm_gate or backend = "brms".
+#   - Spatial / GxE structured covariances: refused in v0.1. Route
 #     via brms.
 #
 # Anything not in the supported set raises an INLA-side refusal
@@ -26,29 +26,24 @@
 # mode.status == 0 and a finite marginal likelihood (mlik). Failures
 # escalate to a structured warning.
 #
-# INLA is not on CRAN; ships via inla.r-inla-download.org. Added to
-# DESCRIPTION:Suggests with Additional_repositories declaration.
+# INLA is not on CRAN. It ships via inla.r-inla-download.org and is in
+# DESCRIPTION:Suggests with an Additional_repositories declaration.
 
 # ---------------------------------------------------------------- #
-# S2 -- no engine death without a typed refusal (C2, FS-25)         #
+# No engine death without a typed refusal                          #
 # ---------------------------------------------------------------- #
 
 # .inla_call() --- thin, mockable wrapper around the one INLA engine
-# call site. Exists so (a) there is exactly one place the death-
-# pattern classification below has to route through, and (b) tests
-# can substitute a controlled failure via
-# testthat::local_mocked_bindings(.inla_call = ...) without needing a
-# real INLA program crash (slow, and not reliably reproducible on
-# demand). Carries no error handling of its own -- the caller's
-# tryCatch is what turns a raw engine death into a typed refusal, so
-# mocking this function alone exercises that translation exactly as a
-# real crash would.
+# call site. Tests substitute a controlled failure via
+# testthat::local_mocked_bindings(.inla_call = ...). It has no error
+# handling of its own: the caller's tryCatch turns an engine death
+# into a typed refusal.
 .inla_call <- function(args) {
   .fb_inla_force_closures(do.call(INLA::inla, args))
 }
 
 # INLA's all.hyper functions keep frames whose unevaluated arguments hold the
-# inla() call frame; evaluating them keeps that frame out of a saved fit.
+# inla() call frame. Evaluating them keeps that frame out of a saved fit.
 .fb_inla_force_closures <- function(fit) {
   visit <- function(x) {
     if (is.function(x)) {
@@ -108,9 +103,9 @@
 # different variance components where the likelihood is flat: on the barley
 # base B1 (22 localities) eight identical fits at "4:1" gave a LOCATION
 # variance from 0.58 to 42.3, and at "1:1" from 0.75 to 0.79; "2:1" and "1:4"
-# moved it as well (review/release_0.14.3/). So the package default is
-# "1:1", set by option flexyBayes.inla_threads; "inla" hands the choice back
-# to INLA, and a `num.threads` the caller passes to the fit always wins.
+# moved it as well. So the package default is "1:1", set by option
+# flexyBayes.inla_threads. "inla" hands the choice back to INLA, and a
+# `num.threads` the caller passes to the fit always wins.
 .fb_inla_thread_plan <- function(explicit = NULL) {
   if (!is.null(explicit)) {
     return(explicit)
@@ -137,14 +132,12 @@
 }
 
 # .inla_is_program_death_message() --- TRUE when an error message
-# names the INLA program dying, rather than a flexyBayes-side argument
-# or formula error. Deliberately narrow: FS-25's observed failure text
-# is "The inla-program exited with an error. Unless you interrupted it
-# yourself, ..."; the alternate spelling `inla.core.safe` is INLA's
-# other reporting path for the same class of event. Only these
-# patterns route to `inla_program_failed` -- any other message is
-# flexyBayes's own code and must propagate unwrapped (own-code errors
-# must not be misnamed as an engine death).
+# names the INLA program dying, not a flexyBayes-side argument or
+# formula error. The observed failure text is "The inla-program exited
+# with an error. Unless you interrupted it yourself, ...". The spelling
+# `inla.core.safe` is INLA's other reporting path for the same event.
+# Any other message comes from flexyBayes's own code and must
+# propagate unwrapped.
 .inla_is_program_death_message <- function(msg) {
   if (!is.character(msg) || length(msg) != 1L || is.na(msg)) {
     return(FALSE)
@@ -153,23 +146,15 @@
 }
 
 # .inla_design_latent_effect_summary() --- best-effort tally of the
-# failed design's random-effect "nodes", read directly from the random
-# terms' grouping variable(s) against the data already in scope at the
-# emit call. This is NOT a re-invocation of .fb_preflight()'s byte-cost
-# model: that object is computed upstream in .dispatch_backend() (only
-# above the 1e5-row threshold) and is not threaded down to emit_inla()
-# through the backend-registry dispatch table, so it is not available
-# here without new cross-file plumbing (recorded as a Handoff). This
-# tally is a plain sum of observed level counts per random term,
-# best-effort -- a term this function cannot size (no resolvable
-# grouping variable in `data`) contributes nothing rather than aborting
-# the refusal it is building.
+# failed design's random-effect "nodes": the sum of observed level
+# counts of each random term's grouping variables in `data`. A term
+# whose grouping variable is not in `data` contributes nothing, and
+# the refusal is still built.
 #
 # Returns list(total = <double or NA>, binding_term = <character or
-# NA>, binding_n = <double or NA>) -- `binding_term` names the single
-# random term contributing the most nodes, mirroring the preflight's
-# own "binding term" vocabulary (R/fb_preflight.R
-# design_memory_exceeds_ceiling).
+# NA>, binding_n = <double or NA>). `binding_term` names the random
+# term contributing the most nodes, as in the preflight's
+# design_memory_exceeds_ceiling (R/fb_preflight.R).
 .inla_design_latent_effect_summary <- function(fb, data) {
   empty <- list(
     total = NA_real_, binding_term = NA_character_, binding_n = NA_real_
@@ -220,8 +205,8 @@
 
 # .inla_largest_verified() --- the largest per-row INLA rung this
 # package has verified to complete, read from
-# inst/validation/benchmark_scaling.csv (S4/C2, FS-25 -- see the
-# "inla-ceilings" study rows added there). Returns
+# inst/validation/benchmark_scaling.csv (the "inla-ceilings" study
+# rows). Returns
 # list(n =, random_effects =, run_date =) for the largest `n` among
 # `method == "per_row"` rows carrying `outcome == "success"` AND a
 # recorded `random_effects` count.
@@ -229,18 +214,13 @@
 # The `random_effects` filter matters: this artefact also carries the
 # `boundary` / `boundary-confirm` studies, which grow N on a FIXED,
 # small random-effect structure (`random = ~ geno`, 6 genotypes) to
-# measure the aggregated-vs-per-row row-count boundary -- a different
-# question from the one an inla_program_failed refusal is answering.
-# Their per_row rows reach a larger raw N (up to 1e6) than the
-# genotype-growth ceilings study, but they say nothing about how large
-# a LATENT FIELD this package has verified, which is what actually
-# killed the FS-25 fit (a sparse-Cholesky solver cost, not a design-
-# memory cost). Restricting to rows that recorded a random-effect
-# count isolates the study that measured what matters here.
+# measure the aggregated-vs-per-row row-count boundary. Their per_row
+# rows reach a larger raw N (up to 1e6) but say nothing about how
+# large a LATENT FIELD has been verified, and latent-field size is
+# what kills a fit (a sparse-Cholesky solver cost, not a memory cost).
 #
-# NULL if the artefact is missing, unreadable, or carries no such row
-# -- a refusal message then degrades to "not yet measured" rather than
-# erroring on a missing CSV.
+# NULL if the artefact is missing, unreadable, or carries no such
+# row. The refusal message then says "not yet measured".
 .inla_largest_verified <- function() {
   path <- system.file(
     "validation", "benchmark_scaling.csv",
@@ -266,9 +246,9 @@
   if (!any(done)) {
     return(NULL)
   }
-  # Prefer a completed fit that recorded its latent-field size; fall back to
-  # the largest completed per-row fit on record, flagging that its field
-  # size was not recorded. Since the 2026-08-26 correction of the ceilings
+  # Prefer a completed fit that recorded its latent-field size. Otherwise
+  # use the largest completed per-row fit on record, flagging that its
+  # field size was not recorded. Since the 2026-08-26 correction of the ceilings
   # study no completed fit on the genotype-growth ladder exists, so the
   # fallback is what a refusal reports today (5,000,000 rows, 360 cells, the
   # per-row Poisson fit of the 2026-09-15 boundary study).
@@ -310,13 +290,10 @@
 }
 
 # .inla_program_failed_condition() --- builds (does not raise) the
-# `inla_program_failed` typed refusal condition object (S2/C2, FS-25),
-# mirroring .fb_refusal_condition()'s own build-then-stop() idiom --
-# every call site wraps this in stop(). Carries the design size, the
-# largest size this package has verified, the binding quantity if
-# known, and the remedies -- so the user never receives a raw engine-
-# death string with no reason code and no next step
-# (SCALE_STRATEGY_2026-08-22 S2).
+# `inla_program_failed` typed refusal condition object. Every call
+# site wraps this in stop(). Carries the design size, the largest size
+# this package has verified, the binding quantity if known, and the
+# remedies.
 .inla_program_failed_condition <- function(fb, data, engine_message) {
   n_rows <- if (is.data.frame(data)) as.numeric(nrow(data)) else NA_real_
   latent <- .inla_design_latent_effect_summary(fb, data)
@@ -407,51 +384,36 @@
 
 
 # ---------------------------------------------------------------- #
-# C4 -- legalise non-syntactic factor levels (FS-26)                 #
+# Legalise non-syntactic factor levels                              #
 # ---------------------------------------------------------------- #
 
 # .inla_legalise_factor_levels() --- rewrite every factor level the
 # model touches to a syntactic name on a COPY of `data`, and return the
-# copy alongside a per-variable map so the caller can print the user's
-# own labels back through the accessors. A level was already syntactic
-# in the common case (breeding-trial factor labels usually are, and
-# level counts are small) -- this is a no-op there -- the map is still
-# recorded uniformly so the accessors have one lookup path rather than
-# a conditional one.
+# copy with a per-variable map so the accessors can print the user's
+# own labels. The map is recorded even when no level changes.
 #
 # The syntax check is NOT bare make.names(level) == level. INLA names a
 # fixed-effect coefficient by concatenating the VARIABLE name onto the
 # level with no separator (e.g. `env` + `2` -> `env2`), and that
-# concatenated string is what has to survive INLA's own formula
-# round-trip -- not the level alone. A purely-numeric level like `"2"`
-# fails make.names() in isolation (a name cannot start with a digit),
-# but `env2` is a perfectly valid, unambiguous identifier; legalising
-# `"2"` to `"X2"` here anyway is a FALSE POSITIVE that broke the
-# per-row vs. streamed-aggregated equivalence test the moment a design
-# used integer-coded factor levels
-# (test-aggregation-equivalence-backend.R uses `env <- factor(env)` on
-# an integer vector) -- the streamed/aggregated route
-# (R/emit_gaussian_aggregated.R) does not run this legalisation at all,
-# so the two routes' coefficient names silently diverged. The check
-# below probes with a throwaway letter-led prefix (any real `t$var` is
-# itself already a legal R name, i.e. letter- or dot-led, so a letter
-# prefix always reproduces the actual concatenation context) and only
-# legalises a level whose PREFIXED form still changes under
-# make.names() -- true for a space or other symbol-breaking character,
+# concatenated string is what has to survive INLA's formula round-trip.
+# A purely-numeric level like `"2"` fails make.names() alone, but
+# `env2` is a valid identifier. The streamed/aggregated route
+# (R/emit_gaussian_aggregated.R) does not legalise, so relabelling
+# `"2"` to `"X2"` here would make the two routes' coefficient names
+# differ. The check therefore probes with a letter-led prefix and
+# legalises only a level whose PREFIXED form still changes under
+# make.names(): true for a space or other symbol-breaking character,
 # false for a level that merely starts with a digit.
 #
 # Scans fixed_terms, random_terms and residual_terms for every
-# variable name the model actually references (`$var` scalar terms,
-# `$vars` interaction / at() terms), not just the response's immediate
-# predictors -- a level living only inside a random or residual term
-# (like FS-26's own `TRIAL`) is exactly as unrepresentable to INLA as
-# one on the fixed side.
+# variable name the model references (`$var` scalar terms, `$vars`
+# interaction / at() terms). A level inside a random or residual term
+# is as unrepresentable to INLA as one on the fixed side.
 #
 # Returns list(data = <copy of `data`, factor columns relabelled>,
 # maps = <named list, one entry per relabelled variable, each a
 # character vector keyed by the LEGAL label with the ORIGINAL label as
-# its value -- .inla_restore_level_labels() reads it in that
-# direction>).
+# its value, the direction .inla_restore_level_labels() reads>).
 .inla_legalise_factor_levels <- function(fb, data) {
   if (!is.data.frame(data)) {
     return(list(data = data, maps = list()))
@@ -479,8 +441,7 @@
   # A fixed, unlikely-to-collide letter-led prefix. Its only job is to
   # make every probed string start with a letter, so make.names()'s
   # verdict reflects whether the LEVEL's own characters are a problem,
-  # not whether it happens to start with a digit -- concatenation onto
-  # a real (letter-led) variable name already solves that part.
+  # not whether it happens to start with a digit.
   probe_prefix <- "Q9zZ"
 
   maps <- list()
@@ -503,8 +464,7 @@
 # map .inla_legalise_factor_levels() recorded on the fit
 # (`object$level_labels`). Values not present in the map (a level the
 # legalisation pass never touched, or a variable it never carried) pass
-# through unchanged -- this is a display-time convenience, not a gate,
-# so an unmapped value is not an error.
+# through unchanged. An unmapped value is not an error.
 .inla_restore_level_labels <- function(level_labels, var, values) {
   map <- level_labels[[var]]
   if (is.null(map) || !length(values)) {
@@ -515,24 +475,20 @@
   values
 }
 
-# .inla_restore_term_labels() --- the composite-name sibling of
-# .inla_restore_level_labels(), for fixed-effect / interaction TERM
-# strings rather than bare factor values. INLA (via R's own default
-# treatment-contrast dummy coding) names a fixed-effect coefficient by
-# pasting the variable name directly onto its level with no separator
-# (e.g. `NAPPLIED2X.low.N`... in practice `NAPPLIED2low.N`, the legal
-# level with no punctuation between var and level), so restoring the
-# user's own label is a substring replace, once per relabelled
-# variable x legal-level pair, over every term string. Order does not
-# matter across variables (a legal level string is always prefixed by
-# its own variable name in a term, so distinct variables cannot
-# collide on the same substring); handles interaction terms (`a:b`)
-# the same way, because the replace runs on the whole string.
+# .inla_restore_term_labels() --- .inla_restore_level_labels() for
+# fixed-effect / interaction TERM strings instead of bare factor
+# values. INLA (via R's default treatment-contrast coding) names a
+# fixed-effect coefficient by pasting the variable name onto its level
+# with no separator (e.g. `NAPPLIED2low.N`), so restoring the user's
+# label is a substring replace, once per relabelled variable x
+# legal-level pair, over every term string. A legal level string is
+# always prefixed by its own variable name, so distinct variables
+# cannot collide. Interaction terms (`a:b`) are handled because the
+# replace runs on the whole string.
 #
-# `object$level_labels` is `NULL` / empty for a fit this legalisation
-# never touched (every non-INLA fit, and an INLA fit with no
-# non-syntactic level) -- returns `terms` unchanged in that case, so
-# call sites do not need their own NULL guard.
+# `object$level_labels` is `NULL` / empty for every non-INLA fit and
+# for an INLA fit with no non-syntactic level. `terms` is then returned
+# unchanged.
 .inla_restore_term_labels <- function(level_labels, terms) {
   if (!length(level_labels) || !length(terms)) {
     return(terms)
@@ -566,19 +522,11 @@
 # order-preserving (make.names(..., unique = TRUE) never reorders or
 # merges levels), so this round-trips exactly.
 #
-# The one consumer this exists for: .fb_fit_data()
-# (R/ecosystem_support.R) is the single shared read-point every
-# downstream-ecosystem integration (emmeans, marginaleffects, plot(),
-# the missing-cell summary) uses for "the data to build a design
-# matrix / reference grid from". Once coef.flexybayes_inla() restores
-# the user's own coefficient names (C4/FS-26), a design matrix built
-# from the still-legalised data would name its columns by the legal
-# labels and no longer line up with the fit's own (now-original)
-# coefficient names -- .fb_fixef_model_matrix()'s own reconciliation
-# check exists precisely to catch a mismatch like that. Feeding it the
-# original-labelled data keeps both sides speaking the same labels
-# again, and every consumer of .fb_fit_data() gets the user's own
-# labels for free rather than needing its own restoration call.
+# Used by .fb_fit_data() (R/ecosystem_support.R), the data source for
+# emmeans, marginaleffects, plot() and the missing-cell summary. A
+# design matrix built from the legalised data would name its columns
+# by the legal labels and not match the restored coefficient names,
+# which .fb_fixef_model_matrix() checks.
 .inla_restore_data_original_levels <- function(level_labels, data) {
   if (!length(level_labels) || !is.data.frame(data)) {
     return(data)
@@ -597,7 +545,7 @@
 
 
 # ---------------------------------------------------------------- #
-# Public-style entry -- internal in v0.1                           #
+# Public-style entry, internal in v0.1                             #
 # ---------------------------------------------------------------- #
 
 emit_inla <- function(
@@ -628,15 +576,12 @@ emit_inla <- function(
 ) {
   .check_fb_terms(fb, "`fb` must be an fb_terms object.")
 
-  # Legalise non-syntactic factor levels (C4/FS-26). INLA expands a
-  # factor fixed term to per-level names built as paste0(var, level)
-  # and evaluates them internally; a level containing a space (or
-  # anything else make.names() would touch, e.g. "low N") then fails
-  # deep inside the retried inla-program call with an untyped
-  # `object 'NAPPLIED2low N' not found`. Legalise every factor the
-  # model uses on a COPY of `data` before anything below builds a
-  # formula, an index column, or the data list INLA reads -- every
-  # subsequent use of `data` in this function sees the legalised copy.
+  # Legalise non-syntactic factor levels. INLA expands a factor fixed
+  # term to per-level names built as paste0(var, level) and evaluates
+  # them internally. A level containing a space (or anything else
+  # make.names() would touch, e.g. "low N") then fails inside the
+  # inla-program call with `object 'NAPPLIED2low N' not found`. Every
+  # later use of `data` in this function sees the legalised copy.
   # The map travels on the fit so summary() / coef() / ranef() /
   # predict(classify =) can translate the legal labels back to the
   # user's own before printing.
@@ -647,9 +592,8 @@ emit_inla <- function(
 
   # `seed` and `control` are Stan sampler settings threaded through from
   # the public entry point. INLA's nested Laplace approximation has no
-  # random stream and no adaptation phase to tune, so both are genuine
-  # no-ops here. Saying so once beats letting a user believe a fit was
-  # pinned by a seed that never reached an engine.
+  # random stream and no adaptation phase to tune, so both are no-ops
+  # here.
   .note_sampler_args_ignored("INLA", seed = seed, control = control)
 
   .check_installed(
@@ -669,20 +613,14 @@ emit_inla <- function(
   hyper_ctrl <- if (inherits(fb$priors, "fb_prior")) {
     priors_to_inla(fb$priors)
   } else if (.fb_prior_scalar_supplied(fb, "vc_sd")) {
-    # The legacy scalar route. Until 0.9.2 this branch did not exist: the
-    # INLA path read only an fb_prior, so a fit passed `prior_vc_sd` ran
-    # under INLA's own log-gamma precision default while
-    # `prior_summary()` printed the lognormal in its header -- the
-    # accessor built to answer "what prior did this fit use?" naming a
-    # prior the fit did not use.
+    # The scalar `prior_vc_sd` route.
     .priors_legacy_to_inla(fb, prior_vc_sd)
   } else {
     list()
   }
   # An `sd(group = ...)` row whose group is not a variance component of
-  # this model would key a `hyper` entry no f() term reads -- the INLA
-  # half of field-sweep FS-20, where the same mistake on brms surfaced as
-  # brms's own parser error and here was not reported at all.
+  # this model would key a `hyper` entry no f() term reads, and INLA
+  # would not report it.
   .check_inla_hyper_keys_reachable(fb, hyper_ctrl, known_matrices)
   # Every random-effect standard deviation the caller left unstated takes the
   # package's bounded default, and a default bound on a slope follows its
@@ -691,10 +629,8 @@ emit_inla <- function(
   completion <- .fb_inla_complete_priors(fb, hyper_ctrl, data)
   hyper_ctrl <- completion$hyper_ctrl
   # A variable that keys both a fixed term and an f() term is a formula
-  # INLA refuses -- its own message is "Key [x] is used twice and that is
-  # not allowed". Caught here so the user is told which variable and what
-  # to do, rather than reading the generic subprocess-exit message
-  # (field-sweep FS-17).
+  # INLA refuses with "Key [x] is used twice and that is not allowed".
+  # Caught here so the user is told which variable and what to do.
   .check_inla_variable_not_used_twice(fb)
   # `prior_fixed_sd` reaches INLA through control.fixed, which is where
   # INLA keeps the fixed-effect prior, and so do the `b()` rows of an
@@ -705,13 +641,9 @@ emit_inla <- function(
     prior_fixed_sd,
     data = data
   )
-  # v0.3.10: the formula builder consults
-  # known_matrices to count blocks per blocks-format vm/ped term,
-  # so it must run AFTER the data_inla setup loop (which validates
-  # the blocks structure). The previous v0.3.7 ordering --- formula
-  # build first, then data_inla setup --- is preserved for legacy
-  # paths that do not carry blocks-format terms via the
-  # known_matrices default empty list.
+  # The formula builder consults known_matrices to count blocks per
+  # blocks-format vm/ped term, so it must run AFTER the data_inla setup
+  # loop, which validates the blocks structure.
   inla_family <- .resolve_inla_family(fb)
   # A Gaussian fit with the identity link runs on a standardised response,
   # with every prior restated on those coordinates and the result mapped
@@ -826,18 +758,17 @@ emit_inla <- function(
   }
   # Each standardised covariate, divided in the data list INLA reads. The
   # column keeps its name, so the formula, the design and every coefficient
-  # label are the ones the fit would otherwise have carried; only the numbers
-  # in the column change, and every reading of them is mapped back below.
+  # label are unchanged. Only the numbers in the column change, and every
+  # reading of them is mapped back below.
   for (nm in names(covariate_std$divisor %||% numeric(0))) {
     data_inla[[nm]] <- as.numeric(data_inla[[nm]]) /
       covariate_std$divisor[[nm]]
   }
-  # v0.3.10: blocks-format vm/ped terms generate
-  # K per-block precision matrices that need to live in `data_inla`
-  # alongside the integer index columns, since INLA looks up Cmatrix
-  # symbols from the data list at fit time. The slot is also keyed by
-  # the term's variable name so multiple blocks-format terms do not
-  # collide on a generic name.
+  # Blocks-format vm/ped terms generate K per-block precision matrices
+  # that live in `data_inla` beside the integer index columns, since
+  # INLA looks up Cmatrix symbols from the data list at fit time. The
+  # slot is keyed by the term's variable name so several blocks-format
+  # terms do not collide.
   blocks_precision_for_inla <- list()
   for (term in fb$random_terms) {
     if (term$type %in% c("vm", "ped")) {
@@ -845,20 +776,12 @@ emit_inla <- function(
       f <- factor(data[[term$var]])
       data_inla[[idx_name]] <- as.integer(f)
 
-      # v0.3.8: enforce known-matrix dim + level
-      # alignment on the INLA emit path. Pre-v0.3.8 the
-      # .build_inla_formula() body deferred this to the user (it
-      # documented `f(<var>_id, model =
-      # "generic0", Cmatrix = Q)` and the user-responsibility
-      # caveat). The validator refuses cleanly when (a) the matrix
-      # dim does not match the level count, (b) the matrix carries
-      # dimnames that do not match levels(<var>), or (c) the matrix
-      # carries dimnames that match the level set but in a different
-      # order from levels(<var>) -- INLA's generic0 requires
-      # positional alignment with the integer index column built
-      # above. When dimnames are absent the alignment downgrades to
-      # the dim check + a future <fb_plan>-surfaced caution
-      # (planned at v0.3.8).
+      # Known-matrix dim and level alignment. The validator refuses
+      # when (a) the matrix dim does not match the level count, (b) the
+      # matrix dimnames do not match levels(<var>), or (c) the dimnames
+      # match the level set in a different order. INLA's generic0
+      # aligns by position with the integer index column built above.
+      # Without dimnames only the dim is checked.
       cov <- term$cov_representation
       if (
         !is.null(cov) &&
@@ -935,11 +858,9 @@ emit_inla <- function(
     data_inla <- c(data_inla, blocks_precision_for_inla)
   }
   if (length(known_matrices)) {
-    # v0.3.10: blocks-format carriers are
-    # lists-of-matrices, not single matrices --- they belong in
-    # blocks_precision_for_inla (in their per-block Q_k form), not
-    # in data_inla under their user-facing symbol. Drop them before
-    # the bulk append so INLA does not see a list column.
+    # Blocks-format carriers are lists of matrices. They go in
+    # blocks_precision_for_inla in their per-block Q_k form, so drop
+    # them before the bulk append and INLA does not see a list column.
     blocks_symbols <- character(0L)
     for (term in fb$random_terms) {
       if (
@@ -973,17 +894,16 @@ emit_inla <- function(
   }
 
   # AR1 / separable AR1xAR1 spatial latent-field index columns. INLA's ar1
-  # model + grouped-AR1 need consecutive-integer indices; build <var>_id for
+  # model + grouped-AR1 need consecutive-integer indices: <var>_id for
   # the 1D term and <row>_id / <col>_id for the separable term.
   #
   # The field is read from the random terms only. ASReml's nugget-free
   # residual arrives here as a random-side field marked `residual = TRUE`
   # (R/fb.R), with the observation precision fixed in control.family.
   #
-  # The field is faithful only with one observation per grid node: with a
-  # gap or a replicate the latent index no longer matches the design, so the
-  # instance is validated here (the class is admitted by the gate) and an
-  # incomplete or replicated grid refuses rather than being approximated.
+  # The field is faithful only with one observation per grid node. With a
+  # gap or a replicate the latent index no longer matches the design, so an
+  # incomplete or replicated grid is refused here.
   for (term in fb$random_terms) {
     ttype <- term$type %||% ""
     if (!ttype %in% c("ar1", "ar1_spatial")) {
@@ -998,8 +918,7 @@ emit_inla <- function(
       data_inla[[paste0(v, "_id")]] <- as.integer(factor(data[[v]]))
     }
     if (identical(ttype, "ar1_spatial")) {
-      # C5/FS-27: the per-trial spelling's replicate index. Built the
-      # same way as the row / col index columns; INLA's replicate =
+      # The per-trial spelling's replicate index. INLA's `replicate =`
       # reads it to fit one independent realisation of the field per
       # distinct value.
       if (!is.null(term$at_var)) {
@@ -1018,13 +937,9 @@ emit_inla <- function(
         one_obs_per_node <- nrow(data) == n_nodes && !any(duplicated(combos))
         bad_at_levels <- if (one_obs_per_node) character(0L) else "<the design>"
       } else {
-        # C5/FS-27: "the complete-lattice check runs per level" -- one
-        # field per level of at_var means each level's OWN subset must
-        # independently form a complete row x col lattice; the global
-        # row count check the single-field case uses does not
-        # generalise (every level legitimately re-uses the same row /
-        # col labels, so the whole table is n_at times n_nodes, not
-        # n_nodes).
+        # One field per level of at_var: each level's own subset must
+        # form a complete row x col lattice. Levels re-use the same row
+        # and col labels, so the whole table has n_at * n_nodes rows.
         at_levels <- unique(data[[term$at_var]])
         bad_at_levels <- character(0L)
         for (lev in at_levels) {
@@ -1068,14 +983,14 @@ emit_inla <- function(
             } else {
               ""
             },
-            " -- the same requirement ASReml states for ",
+            ". This is the requirement ASReml states for ",
             "`residual = ~ ar1:ar1`, and the same reason it refuses a ",
             "trial with plots deleted. Keep the unobserved plots as ",
             "design cells with na_action = \"augment\" (the default), ",
-            "which is ASReml's na.method(y = \"include\"); supply the ",
+            "which is ASReml's na.method(y = \"include\"). Supply the ",
             "field-book rows for any plot absent from the data, with the ",
-            "design columns filled in and the response set to NA, or pad ",
-            "the array with fb_complete_grid(); or aggregate replicates ",
+            "design columns filled in and the response set to NA, pad ",
+            "the array with fb_complete_grid(), or aggregate replicates ",
             "to node means."
           ),
           family_class = "flexybayes_ar1_spatial_refusal"
@@ -1143,10 +1058,10 @@ emit_inla <- function(
     }
   }
 
-  # fa(f, k):g -- a factor-analytic covariance. Each common factor is one
+  # fa(f, k):g: a factor-analytic covariance. Each common factor is one
   # latent field over the inner levels, entered once per level of f. INLA's
   # copy= carries an ESTIMATED scaling, and that scaling IS the loading, so
-  # the loadings arrive with a posterior rather than a point estimate.
+  # the loadings have a posterior, not a point estimate.
   #
   # Factor j is anchored at the j-th level of .fb_fa_levels() (its loading
   # there is fixed at 1) and entered only from that position onward, which is
@@ -1154,7 +1069,7 @@ emit_inla <- function(
   # against rotation. The anchors are chosen from the data at ingest.
   #
   # The per-level specific variances are the same structure diag(f):g emits,
-  # so they are built here too rather than asking the user to write both.
+  # so they are built here too and the user does not write both.
   for (term in fb$random_terms) {
     if (!identical(term$type, "fa_gxe")) {
       next
@@ -1188,7 +1103,7 @@ emit_inla <- function(
     }
   }
 
-  # us(f):g -- an unstructured covariance across the levels of f. INLA holds
+  # us(f):g: an unstructured covariance across the levels of f. INLA holds
   # it as ONE field of length k * n_inner, arranged as k blocks, carrying a
   # k-by-k unstructured covariance across blocks (iid2d..iid5d). Each row
   # indexes exactly one element, so a single f() term holds the structure.
@@ -1284,7 +1199,7 @@ emit_inla <- function(
   # share one 2-by-2 unstructured covariance, which INLA holds as a single
   # iid2d field of length 2 * n_g: the first block is the intercepts, the
   # second the slopes. The slope block enters the linear predictor scaled by
-  # x, as a COPY of the same field -- copy with the default fixed scaling,
+  # x, as a COPY of the same field (copy with the default fixed scaling),
   # so it contributes the same latent values, not a second set.
   for (term in fb$random_terms) {
     if (!identical(term$type, "simple_slope_cor")) {
@@ -1315,10 +1230,9 @@ emit_inla <- function(
   }
 
   # Nested / interaction random effects, `a:b` and `a:b:c`. INLA has no
-  # interaction syntax of its own and does not need one: the term is an iid
-  # field over the interaction index, which is exactly what brms's
-  # `(1 | a:b)` means. drop = TRUE so only observed cells get a level, which
-  # matches lme4 and brms rather than inventing empty strata.
+  # interaction syntax. The term is an iid field over the interaction
+  # index, which is what brms's `(1 | a:b)` means. drop = TRUE so only
+  # observed cells get a level, as in lme4 and brms.
   for (term in fb$random_terms) {
     if (!term$type %in% c("nested", "combo")) {
       next
@@ -1340,9 +1254,7 @@ emit_inla <- function(
       ))
     }
     idx_name <- .fb_inla_interaction_index(vars)
-    # A generated index must not silently overwrite a user column of the
-    # same name -- the fit would then be indexed by whatever that column
-    # holds, and nothing downstream would say so.
+    # A generated index must not overwrite a user column of the same name.
     if (idx_name %in% names(data)) {
       stop(.fb_refusal_condition(
         reason_code = "nested_index_name_collision",
@@ -1372,16 +1284,16 @@ emit_inla <- function(
   sectioned <- .fb_inla_sectioned_residual(fb)
   if (!is.null(sectioned)) {
     # A residual variance per section exists only for a likelihood that has
-    # a residual scale. Poisson and binomial have none, so splitting their
-    # response into one likelihood per section fitted the unsectioned model
-    # under the sectioned model's name. brms refuses the same request.
+    # a residual scale. Poisson and binomial have none, and splitting their
+    # response into one likelihood per section would fit the unsectioned
+    # model under the sectioned model's name.
     if (is.null(.fb_inla_hyper_keyword(inla_family[[1L]]))) {
       stop(.fb_refusal_condition(
         reason_code = "heterogeneous_residual_family_has_no_sigma",
         message = paste0(
           "A heterogeneous residual variance was requested for family '",
           inla_family[[1L]],
-          "', which has no residual scale parameter to vary -- its ",
+          "', which has no residual scale parameter to vary. Its ",
           "dispersion is a function of the mean. Model the dispersion ",
           "directly for that family, or fit a Gaussian on a transformed ",
           "response."
@@ -1461,9 +1373,7 @@ emit_inla <- function(
   #
   # control.fixed is spliced in only when it carries something. An empty
   # list means the caller did not supply `prior_fixed_sd`, and the
-  # argument is then left out of the call entirely rather than passed
-  # empty, so a fit that asks for nothing is byte-identical to the call
-  # this emit made before the argument was wired.
+  # argument is then left out of the call.
   t0 <- proc.time()
   # Inside fb_refit(readout = ) the refit computes only that readout
   # (R/fold_refit.R); everywhere else `fold_refit` is NULL.
@@ -1485,15 +1395,15 @@ emit_inla <- function(
   }
   inla_args$num.threads <- .fb_inla_thread_plan(inla_args$num.threads)
   # The offset reaches INLA through inla()'s `offset` argument, evaluated
-  # here from the model description, rather than as `offset()` in the
-  # formula. INLA 26.8.7 honours the two identically -- in the fixed
-  # effects, the stored linear predictor and fitted values, and the
-  # Predictor rows of inla.posterior.sample(), for the Gaussian, Poisson,
-  # binomial, negative binomial, gamma, beta and lognormal families -- but
-  # the formula spelling would have INLA evaluate the expression a second
-  # time in its own environment, where a name that is not a column can bind
-  # to a workspace object. On the standardised response the offset is o / s;
-  # the centre is absorbed by the intercept (R/inla_standardise.R).
+  # here from the model description, not as `offset()` in the formula.
+  # INLA 26.8.7 honours the two identically (fixed effects, stored linear
+  # predictor and fitted values, and the Predictor rows of
+  # inla.posterior.sample(), for the Gaussian, Poisson, binomial, negative
+  # binomial, gamma, beta and lognormal families). The formula spelling
+  # would have INLA evaluate the expression again in its own environment,
+  # where a name that is not a column can bind to a workspace object. On
+  # the standardised response the offset is o / s, and the centre is
+  # absorbed by the intercept (R/inla_standardise.R).
   if (!is.null(offset_values)) {
     inla_args$offset <- if (is.null(standardisation)) {
       offset_values
@@ -1501,24 +1411,16 @@ emit_inla <- function(
       offset_values / standardisation$scale
     }
   }
-  # C6: weights lowered for the Gaussian family, identity link only --
-  # INLA's scale = is a per-observation precision multiplier on the
-  # Gaussian / Student-T likelihood (?INLA::inla: "Fixed (optional)
-  # scale parameters of the precision ... default rep(1, n.data)"),
-  # giving the same Var(y_i) = sigma^2 / w_i semantics brms's sigma
-  # distributional offset lowers to on that engine (R/emit_brms.R's
-  # .FB_BRMS_WEIGHTS_OFFSET_COL -- NOT brms's own weights() addition
-  # term, a different quantity; that constant's banner carries the
-  # grounding trail). Everything this emit cannot honour (non-gaussian,
-  # non-identity link, the aggregated route) is already refused
-  # upstream by .refuse_unsupported_weights() / the aggregation gate
-  # (R/dispatch.R) before this call is reached -- this site only
-  # carries the value through. Spliced in only when weights are
-  # actually non-constant, for the same "byte-identical to the
-  # unweighted call" reason control.fixed follows above -- a constant
-  # vector (any value, not only 1) is the unweighted model under a
-  # different spelling, and scale = <constant != 1> would silently
-  # rescale the reported sigma rather than leaving it unweighted.
+  # Weights, Gaussian family and identity link only. INLA's scale = is a
+  # per-observation precision multiplier on the Gaussian / Student-T
+  # likelihood (?INLA::inla: "Fixed (optional) scale parameters of the
+  # precision ... default rep(1, n.data)"), giving Var(y_i) = sigma^2 /
+  # w_i, as brms's sigma offset does (R/emit_brms.R
+  # .FB_BRMS_WEIGHTS_OFFSET_COL, not brms's weights() addition term).
+  # Other families, links and the aggregated route are refused upstream
+  # (R/dispatch.R). Spliced in only when weights are non-constant: a
+  # constant vector is the unweighted model, and scale = <constant != 1>
+  # would rescale the reported sigma.
   ir_weights <- .fb_ir_weights(fb) %||% weights
   if (.fb_weights_nonconstant(ir_weights)) {
     inla_args$scale <- ir_weights
@@ -1537,12 +1439,8 @@ emit_inla <- function(
           engine_message = conditionMessage(e)
         ))
       }
-      # Not a recognised engine-death signature -- this is flexyBayes's
-      # own code (a bad argument the emit built, a formula it mis-
-      # constructed) or an INLA-side argument-validation error triggered
-      # by one. Re-raise verbatim: wrapping it as an engine-death refusal
-      # would misname the failure and hide it from anyone debugging the
-      # emit itself (S2 draws this line explicitly).
+      # Not an engine death: an error in flexyBayes's own code, or an
+      # INLA argument-validation error it triggered. Re-raised verbatim.
       stop(e)
     }
   )
@@ -1575,8 +1473,8 @@ emit_inla <- function(
   # not that it stopped in the right place. Where a component came back
   # pinned at zero variance, the fit is restarted from a mode where that
   # component has real variance and the two marginal likelihoods are
-  # compared -- see R/inla_restart_probe.R for the measurement that made
-  # this necessary. Costs one extra fit, and only in the suspicious case.
+  # compared (R/inla_restart_probe.R). Costs one extra fit, only in that
+  # case.
   num_check <- .lgm_check_numerical(fit)
   restart_probe <- tryCatch(
     .fb_inla_restart_probe(fit, inla_args, .fb_inla_collapsed_hyper(fit)),
@@ -1584,16 +1482,13 @@ emit_inla <- function(
   )
   restart_adopted <- FALSE
   if (!is.null(restart_probe) && isTRUE(restart_probe$better)) {
-    # Adopt. Given two converged modes, returning the one with a materially
-    # worse marginal likelihood is not defensible: on besag.met the gap ran
-    # from 65 to 154 log units, and the inferior mode reported no genetic
-    # variance in any environment where ASReml found substantial variance in
-    # two. Flagging alone would leave the user holding the wrong answer with
-    # a caveat attached.
+    # Adopt the mode with the better marginal likelihood. On besag.met the
+    # gap ran from 65 to 154 log units, and the inferior mode reported no
+    # genetic variance in any environment where ASReml found substantial
+    # variance in two.
     #
-    # The gate is then re-run against the fit actually returned, so `pass`
-    # describes that fit rather than the one just discarded. The adoption
-    # itself is recorded and surfaced, never silent.
+    # The gate is re-run against the fit returned, so `pass` describes
+    # that fit. The adoption is recorded and reported.
     fit <- restart_probe$fit
     restart_adopted <- TRUE
     num_check <- .lgm_check_numerical(fit)
@@ -1617,7 +1512,7 @@ emit_inla <- function(
 
   # Every reading of the fit below is taken on the original scale. The
   # restart probe compared two fits on the standardised scale, where their
-  # difference is the same; its recorded levels are moved with the fit.
+  # difference is the same. Its recorded levels are moved with the fit.
   if (!is.null(standardisation)) {
     fit <- .fb_inla_back_transform(fit, standardisation)
     mlik_shift <- standardisation$n_obs * log(standardisation$scale)
@@ -1635,7 +1530,7 @@ emit_inla <- function(
   if (!is.null(covariate_std)) {
     fit <- .fb_inla_covariate_back_transform(fit, covariate_std)
   }
-  # isFALSE, not `!`: `pass` is tri-state now and `if (NA)` is an error.
+  # isFALSE, not `!`: `pass` is tri-state and `if (NA)` is an error.
   # An unverified fit is not warned about as though it had failed.
   if (isFALSE(num_check$pass)) {
     warning(
@@ -1665,12 +1560,10 @@ emit_inla <- function(
     list(
       inla = fit,
       fb = fb,
-      # `data` carries the level-legalised copy (C4/FS-26) -- internal
-      # consumers (predict()'s design-matrix reconstruction chief among
-      # them) need the same labels the INLA fit itself was built
-      # against. `level_labels` is the map back to the user's own,
-      # which summary() / coef() / ranef() / predict(classify =) read
-      # at the display boundary.
+      # `data` carries the level-legalised copy, the labels the INLA fit
+      # was built against (predict() rebuilds its design matrix from
+      # it). `level_labels` is the map back to the user's own, which
+      # summary() / coef() / ranef() / predict(classify =) read.
       data = data,
       level_labels = level_map$maps,
       num_check = num_check,
@@ -1706,18 +1599,12 @@ emit_inla <- function(
         inla_integration = if (!is.null(integration)) {
           c(integration, list(n_hyper = nrow(fit$summary.hyperpar)))
         },
-        # The argument record update() rebuilds the call from. Before
-        # 0.9.1 this held six fields against brms's fifteen, and the
-        # difference -- not anything about the engine -- is why update()
-        # refused every INLA fit as `update_call_not_reconstructable`.
+        # The argument record update() rebuilds the call from.
         #
-        # `n_samples`, `warmup` and `chains` are recorded as what INLA
-        # actually used, which is nothing: the nested Laplace
-        # approximation has no chains to run and no warmup to discard, so
-        # the record is NULL rather than the sampler settings the
-        # call happened to carry. update() passes each recorded field
-        # straight back to flexybayes(), where a NULL sampler setting is
-        # a no-op on this engine.
+        # `n_samples`, `warmup` and `chains` are NULL: the nested Laplace
+        # approximation has no chains and no warmup. update() passes each
+        # field back to flexybayes(), where a NULL sampler setting is a
+        # no-op on this engine.
         call_info = list(
           fixed = fixed,
           random = random,
@@ -1736,27 +1623,21 @@ emit_inla <- function(
           prior_vc_sd = prior_vc_sd,
           na_action = na_action,
           # The engine and the representation the call ASKED for, and the
-          # reporting it ran under. update() re-issues all three; without
-          # them an identity re-fit of a per-row fit came back aggregated,
-          # whose summary speaks a different dialect and carries no
-          # $varcomp. `backend` is the request ("auto"), not the engine
-          # the request landed on: it is a policy, and a re-fit of a
-          # changed model must be free to route again.
+          # reporting it ran under. update() re-issues all three, so a
+          # re-fit of a per-row fit stays per-row. `backend` is the request
+          # ("auto"), not the engine it landed on, so a re-fit of a
+          # changed model can route again.
           backend = requested_backend,
           aggregate = requested_aggregate,
           verbose = verbose
         ),
-        # Thread the IR's smooth-objects slot through to the
-        # extras so predict() on the INLA path can also use
-        # mgcv::Predict.matrix() when smooths are present. The INLA
-        # backend itself does not currently fit s() smooths via mgcv
-        # (it uses INLA's own rw2 path), so this slot will normally be
-        # an empty list; threaded for shape uniformity with emit_brms.
+        # The IR's smooth objects, for mgcv::Predict.matrix() in
+        # predict(). Normally an empty list: INLA fits smooths with its
+        # own rw2 model. Same shape as emit_brms.
         parse_info = list(
           smooths = .collect_smooths(fb$random_terms),
-          # Threaded for shape uniformity with emit_brms so
-          # cross-backend accessors (genomic_summary(), fb_structured_cov())
-          # can locate the random terms the same way on every engine.
+          # Read by genomic_summary() and fb_structured_cov() on every
+          # engine.
           random = fb$random_terms
         ),
         run_time = elapsed,
@@ -1782,8 +1663,8 @@ emit_inla <- function(
           )
         ),
         # What has to match before this fit can be compared with another
-        # engine's -- the same slot, built by the same function, as the
-        # brms emit fills. See R/model_fingerprint.R.
+        # engine's. The brms emit fills the same slot with the same
+        # function (R/model_fingerprint.R).
         fingerprint = .fb_model_fingerprint(
           fb,
           data,
@@ -1801,13 +1682,10 @@ emit_inla <- function(
         reproducibility = .fb_repro_record_inla(fit, seed, best_of)
       )
     ),
-    # The INLA fit wears the shared `flexybayes` parent, as the brms fit
-    # does. Before 0.9.0 it did not, which split the class graph in two and
-    # forced a parallel S3 method for every generic. The parent is safe only
-    # because the five parent methods with no INLA sibling
-    # (confint, model.matrix, update, anova, logLik) now resolve their inputs
-    # from the slots an object actually carries and refuse by name when it
-    # carries none -- see R/methods.R.
+    # The shared `flexybayes` parent, as on the brms fit. The parent
+    # methods with no INLA sibling (confint, model.matrix, update, anova,
+    # logLik) read the slots an object carries and refuse by name when it
+    # carries none (R/methods.R).
     class = c("flexybayes_inla", "flexybayes", "list")
   )
 
@@ -1890,7 +1768,7 @@ emit_inla <- function(
   standardisation = NULL,
   with_slots = FALSE
 ) {
-  # The formula keeps this frame; an unevaluated argument here would keep
+  # The formula keeps this frame. An unevaluated argument here would keep
   # the caller's frame, data and fit included, in every saved fit.
   force(known_matrices)
   rhs_terms <- character(0)
@@ -1936,26 +1814,19 @@ emit_inla <- function(
       "continuous" = term$var,
       "interaction" = paste(term$vars, collapse = ":"),
       "factor_interaction" = paste(term$vars, collapse = ":"),
-      # v0.2.6 -- factor:continuous indexed
-      # interaction. INLA's native `f:x` notation produces the same
-      # treatment-coded indexed-slope shape as base R model.matrix();
-      # the verification gate
-      # (.lgm_check_factor_numeric_interaction_inla_verified) confirmed
-      # posterior agreement with lme4 (and a since-withdrawn engine) on a
-      # gaussian-identity fixture before this branch became reachable.
+      # factor:continuous indexed interaction. INLA's native `f:x`
+      # notation gives the same treatment-coded indexed-slope shape as
+      # base R model.matrix(). Reachable only when
+      # .lgm_check_factor_numeric_interaction_inla_verified() passes.
       "factor_numeric_interaction" = paste(term$vars, collapse = ":"),
       "expression" = term$label,
-      # This stop() is an internal contract-violation
-      # assertion. The gate's .lgm_check_fixed_term_inla_support()
-      # refuses any fixed term type outside the allowlist before
-      # we reach here. A fired assertion means the gate and the
-      # emit are out of sync -- a flexyBayes-side bug, not a
-      # user-facing refusal.
+      # Internal assertion. .lgm_check_fixed_term_inla_support() refuses
+      # any fixed term type outside the allowlist before this point.
       stop(
         "lgm_gate broken contract: fixed term type \"",
         term$type,
         "\" reached emit_inla() despite a passing ",
-        "gate. This is a flexyBayes internal bug -- the gate's ",
+        "gate. This is a flexyBayes internal bug: the gate's ",
         ".lgm_check_fixed_term_inla_support() allowlist is out ",
         "of sync with .build_inla_formula()'s switch(). Please ",
         "file an issue.",
@@ -1970,14 +1841,14 @@ emit_inla <- function(
   # splice it in as `hyper = list(prec = list(prior = ..., param = ...))`
   # so the user's prior actually reaches INLA.
   for (term in fb$random_terms) {
-    # Uncorrelated random slope `(x || g)`
-    # maps to two independent IID hyperparameter slots --
+    # Uncorrelated random slope `(x || g)` maps to two independent IID
+    # hyperparameter slots:
     #   f(<g>, model = "iid") + f(<g>_for_slope, <x>, model = "iid")
     # `<g>_for_slope` is a fresh INLA index keyed off the same
     # grouping factor so the two precisions remain independent
     # (INLA aggregates two `f()` calls under the same name).
-    # Only reachable when the verification artefact records
-    # pass = TRUE -- the emit_inla() entry refuses upfront otherwise.
+    # Reachable only when the verification artefact records
+    # pass = TRUE. The emit_inla() entry refuses otherwise.
     if (identical(term$type, "simple_slope_uncor")) {
       sv <- term$slope_var
       gtag <- term$var
@@ -2017,15 +1888,14 @@ emit_inla <- function(
 
     # Correlated random slope `(x | g)`. One iid2d field over the two-block
     # index carries both standard deviations and the correlation between
-    # them; the slope block is a fixed-scaling copy of that same field,
+    # them. The slope block is a fixed-scaling copy of that same field,
     # entered with `x` as its weight.
     if (identical(term$type, "simple_slope_cor")) {
       sv <- term$slope_var
       gtag <- term$var
       # No `data` fallback: this function is called with the IR alone, so
-      # `data` here resolves to utils::data() and the fallback could only
-      # ever raise. term$var_n is set by every ingest path that builds this
-      # term; a term without it is a broken IR and should say so.
+      # `data` here resolves to utils::data(). Every ingest path that
+      # builds this term sets term$var_n.
       n_g <- term$var_n
       if (!is.numeric(n_g) || length(n_g) != 1L || !is.finite(n_g)) {
         stop(
@@ -2038,29 +1908,20 @@ emit_inla <- function(
       # theta2 and theta3 carrying prior = "none" (read from
       # INLA::inla.models()). There is no standard-deviation slot, so a
       # prior written in the DSL cannot be translated and an EXPLICIT one
-      # refuses by name rather than vanishing.
+      # is refused by name.
       #
-      # What the default does is a different question, and getting it wrong
-      # cost this package a capability it had already advertised. Leaving
-      # theta1 unspliced leaves INLA's own Wishart, whose scale matrix is
-      # the IDENTITY -- a prior centred on unit variances. On data that is
-      # not on unit scale that prior fights the likelihood, and the mode
-      # stops being unique: on lme4::sleepstudy, whose response has a
-      # standard deviation near 50, eight identical calls returned
-      # intercept standard deviations from 0.50 to 54.8 and correlations
-      # from -1.00 to +0.75, with marginal likelihoods 31 units apart.
-      # None was near lme4's REML answer of 24.7. It was reported as an
-      # INLA limitation. It was our default.
+      # INLA's own Wishart has the IDENTITY as scale matrix, a prior
+      # centred on unit variances. On lme4::sleepstudy (response SD near
+      # 50) eight identical calls under it returned intercept SDs from
+      # 0.50 to 54.8 and correlations from -1.00 to +0.75, against lme4's
+      # REML 24.7.
       #
-      # Scaling the Wishart to the data made the calls agree with each other
-      # and did not make them right. R is on the VARIANCE scale (established
-      # by fitting the three candidates), so the intercept block takes
-      # var(y) and the slope block var(y)/var(x). With that, the same eight
-      # calls agree to three decimal places, and the answer they agree on is
-      # still wrong: a slope variance of 46.4 at the mode against REML's
-      # 35.07, and an intercept-slope correlation that moves from 0.02 to
-      # 0.969 when the response is multiplied by ten. The Wishart couples
-      # the variances and the correlation at any scale, and INLA reproduces
+      # R is on the VARIANCE scale, so the intercept block takes var(y)
+      # and the slope block var(y)/var(x). The eight calls then agree to
+      # three decimal places but give a slope variance of 46.4 against
+      # REML's 35.07, and a correlation that moves from 0.02 to 0.969 when
+      # the response is multiplied by ten. The Wishart couples the
+      # variances and the correlation at any scale, and INLA reproduces
       # Stan under an identical Wishart, so lgm_gate() refuses this
       # structure on INLA (check 1b) and this branch is not reached from a
       # user call.
@@ -2126,31 +1987,26 @@ emit_inla <- function(
     # "pedigree_sparse_precision" route through INLA's user-defined
     # precision interface, f(idx, model = "generic0", Cmatrix = Q).
     # INLA's generic0 model requires the first arg to be an integer
-    # index into the rows/cols of Cmatrix; we pre-compute the index
-    # column <var>_id in data_inla (see emit_inla() body above) and
-    # reference it here so summary.random[[<var>_id]] carries the
-    # natural name in the fit object. v0.3.8:
-    # the level ordering of the factor against the row ordering of Q
-    # is now enforced by .validate_precision_input() (called from
-    # emit_inla() body above with expected_n = nlevels(f) and
-    # fit_levels = levels(f)) when Q carries dimnames; the
-    # pre-v0.3.8 user-responsibility caveat is no longer load-bearing.
+    # index into the rows/cols of Cmatrix. emit_inla() builds the index
+    # column <var>_id in data_inla, so summary.random[[<var>_id]] carries
+    # the natural name. When Q carries dimnames,
+    # .validate_precision_input() has checked the factor's level order
+    # against the row order of Q.
     if (term$type %in% c("vm", "ped")) {
       cov <- term$cov_representation
       key <- term$var
       hyper_str <- .inla_hyper_arg(hyper_ctrl[[key]])
 
-      # v0.3.10: blocks-format vm/ped emits K
-      # independent f() calls, one per block, each with its own
-      # generic0 precision and its own precision hyperparameter. The
-      # K integer index columns + K per-block precision matrices are
-      # pre-computed in emit_inla()'s data_inla setup loop; here we
-      # only need the block count, which the resolved known_matrices
-      # entry surfaces directly. Every block's hyperparameter takes the
-      # one prior keyed by term$var: the caller's fb_prior() entry when
-      # it names the term, and otherwise the package's bounded default,
-      # which .fb_inla_complete_priors() fills for that key whenever the
-      # fit carries a prior of any kind (R/inla_default_priors.R).
+      # Blocks-format vm/ped emits K independent f() calls, one per
+      # block, each with its own generic0 precision and precision
+      # hyperparameter. emit_inla() builds the K index columns and K
+      # per-block precision matrices, so only the block count is needed
+      # here, read from known_matrices. Every block's hyperparameter
+      # takes the one prior keyed by term$var: the caller's fb_prior()
+      # entry when it names the term, and otherwise the package's bounded
+      # default, which .fb_inla_complete_priors() fills for that key
+      # whenever the fit carries a prior of any kind
+      # (R/inla_default_priors.R).
       if (!is.null(cov) && identical(cov$format, "blocks")) {
         blocks_value <- known_matrices[[cov$data]]
         K <- if (is.list(blocks_value)) length(blocks_value) else 0L
@@ -2160,7 +2016,7 @@ emit_inla <- function(
             "reached .build_inla_formula() but known_matrices[[\"",
             cov$data,
             "\"]] is empty or not a list. This is a ",
-            "flexyBayes internal bug --- the gate or emit_inla()'s ",
+            "flexyBayes internal bug: the gate or emit_inla()'s ",
             "validator should have refused first.",
             call. = FALSE
           )
@@ -2222,7 +2078,7 @@ emit_inla <- function(
       }
       next
     }
-    # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
+    # AR1 (1D) / separable AR1xAR1 spatial random field.
     if (term$type %in% c("ar1", "ar1_spatial")) {
       if (identical(term$type, "ar1")) {
         note(
@@ -2248,18 +2104,17 @@ emit_inla <- function(
       )
       next
     }
-    # fa(f, k):g -- k common factors as scaled copies, plus one specific
+    # fa(f, k):g: k common factors as scaled copies, plus one specific
     # variance per level. The copy's beta is the loading.
     if (identical(term$type, "fa_gxe")) {
       levs <- .fb_fa_levels(term, term$outer_levels)
       n_inner <- term$n_inner
-      # The prior is not decoration here. Left on INLA's default log-gamma
-      # precision, a specific variance whose level carries a large loading
-      # collapses to zero -- measured on this very structure: with four
+      # Under INLA's default log-gamma precision, a specific variance whose
+      # level carries a large loading collapses to zero. With four
       # environments and a true specific SD of 0.25 throughout, the
       # environment with the largest loading came back at 0.007. The
-      # package's own SD prior reaches these terms and holds them off the
-      # boundary, so it is spliced rather than omitted.
+      # package's SD prior holds these terms off the boundary, so it is
+      # spliced in.
       hyper_str <- .inla_hyper_arg(hyper_ctrl[[term$inner]])
       hyper_sfx <- if (nzchar(hyper_str)) paste0(", ", hyper_str) else ""
       load_key <- paste0("loading:", term$inner)
@@ -2316,20 +2171,15 @@ emit_inla <- function(
       next
     }
 
-    # us(f):g -- one iidKd field carrying the whole k-by-k covariance.
+    # us(f):g: one iidKd field carrying the whole k-by-k covariance.
     if (identical(term$type, "us_gxe")) {
       k <- term$n_outer
       # INLA's iidKd hyperparameters are prec1..preck and cor12..cor(k-1)k
-      # under a joint Wishart prior; there is no `prec` slot for a scalar SD
-      # prior to occupy. Rather than splice one in and have INLA drop it --
-      # the silent-prior-loss this package fixed in the sectioned residual --
-      # a supplied prior on this group refuses by name.
-      # The package's auto-default reaches this group because brms CAN take
-      # an SD prior on `(0 + f | g)`. INLA cannot, so the default is left
-      # unspliced and INLA's Wishart governs. An EXPLICIT prior is a
-      # different matter: dropping one the user wrote would be the
-      # silent-prior-loss this package fixed in the sectioned residual, so
-      # it refuses by name.
+      # under a joint Wishart prior. There is no `prec` slot for a scalar
+      # SD prior, and INLA would drop one.
+      # The package default reaches this group because brms can take an
+      # SD prior on `(0 + f | g)`. On INLA the default is left unspliced
+      # and INLA's Wishart governs. An EXPLICIT prior is refused by name.
       user_prior <- .inla_hyper_stated(hyper_ctrl[[term$inner]]) &&
         is.null(attr(fb$priors, "fb_prior_default_basis"))
       if (isTRUE(user_prior)) {
@@ -2378,7 +2228,7 @@ emit_inla <- function(
     }
 
     # Heterogeneous variance by factor level. One iid field per level of the
-    # outer factor, each with its own precision -- k variances, no
+    # outer factor, each with its own precision: k variances, no
     # covariance, which is what diag() / idh() / at() ask for.
     if (identical(term$type, "at_simple")) {
       hyper_str <- .inla_hyper_arg(hyper_ctrl[[term$inner]])
@@ -2446,14 +2296,13 @@ emit_inla <- function(
       "ide" = ,
       "id" = "iid",
       "spline" = "rw2",
-      # Internal contract-violation assertion. See the
-      # fixed-term site above for the rationale; the gate's
+      # Internal assertion. The gate's
       # .lgm_check_random_term_inla_support() owns this guard.
       stop(
         "lgm_gate broken contract: random term type \"",
         term$type,
         "\" reached emit_inla() despite a passing ",
-        "gate. This is a flexyBayes internal bug -- the gate's ",
+        "gate. This is a flexyBayes internal bug: the gate's ",
         ".lgm_check_random_term_inla_support() allowlist is ",
         "out of sync with .build_inla_formula()'s switch(). ",
         "Please file an issue.",
@@ -2475,21 +2324,20 @@ emit_inla <- function(
   }
 
   # Residual terms contribute nothing to the formula on either route. The
-  # homogeneous residual is the likelihood's own variance; a sectioned
+  # homogeneous residual is the likelihood's own variance. A sectioned
   # residual (at_units, from dsum(~ units | f)) is carried by the matrix
   # response and the family vector emit_inla() builds, not by a term here.
   # The separable autoregressive residual refuses at dispatch and the field
   # is written on the random side.
   for (term in fb$residual_terms) {
     if (!term$type %in% c("units", "at_units")) {
-      # Internal contract-violation assertion. See the
-      # fixed-term site above for the rationale; the gate's
+      # Internal assertion. The gate's
       # .lgm_check_residual_term_inla_support() owns this guard.
       stop(
         "lgm_gate broken contract: residual term type \"",
         term$type,
         "\" reached emit_inla() despite a passing ",
-        "gate. This is a flexyBayes internal bug -- the gate's ",
+        "gate. This is a flexyBayes internal bug: the gate's ",
         ".lgm_check_residual_term_inla_support() allowlist is out ",
         "of sync with .build_inla_formula()'s residual guard. ",
         "Please file an issue.",
@@ -2579,11 +2427,10 @@ emit_inla <- function(
 # The uniform-on-SD expression prior is -1e10 outside its support, flat, so
 # an optimiser that starts there has no gradient leading in. A bound of 0.05
 # on a Poisson group standard deviation near 0.6 came back at 0.61, with the
-# mode outside the support; started inside, the same fit returned 0.049999
+# mode outside the support. Started inside, the same fit returned 0.049999
 # (INLA 26.8.7). The start is the middle of the support on the
-# standard-deviation scale, and it is written only when the default lies
-# outside the support, so a fit whose start was already inside is sent as it
-# was before.
+# standard-deviation scale, written only when the default lies outside the
+# support.
 .fb_inla_uniform_start <- function(entry, default_initial) {
   meta <- entry$meta
   if (!identical(meta$family, "uniform") || is.null(meta$upper)) {
@@ -2604,16 +2451,13 @@ emit_inla <- function(
 # ---------------------------------------------------------------- #
 #
 # A uniform-on-SD prior reaches INLA as a C expression evaluated per
-# hyperparameter -- roughly a hundred characters of `theta`, `-1.0e10`
-# and `return(...)` spliced into the formula. That is the right thing to
-# send the engine and the wrong thing to show a reader: it buries the
-# model in the encoding of one prior, and the two displays that print the
-# formula (the emit-time banner and print()) were unreadable on any fit
-# carrying a non-default variance prior.
+# hyperparameter: roughly a hundred characters of `theta`, `-1.0e10` and
+# `return(...)` spliced into the formula. The emit-time banner and print()
+# show each such block as a short tag.
 #
 # The compression is for those two displays only. `$extras$formula` and
-# the formula INLA itself holds keep every character, because they are
-# what the fit was actually run from.
+# the formula INLA holds keep every character, because the fit was run
+# from them.
 
 # .fb_signif_string() --- a number at display precision.
 #
@@ -2629,7 +2473,7 @@ emit_inla <- function(
 # engine: the uniform-on-SD, half-normal-on-SD and lognormal-on-SD
 # expressions carry their own bounds, scale and location, and a named INLA
 # prior carries its name and parameters. An encoding this does not recognise
-# is tagged as an expression rather than guessed at. With `response_scale`,
+# is tagged as an expression. With `response_scale`,
 # the fit ran on the response divided by it, and an SD-scale prior is shown
 # on both scales.
 #
@@ -2714,7 +2558,7 @@ emit_inla <- function(
 
 # .fb_compress_hyper_blobs() --- swap each hyper block for its tag.
 #
-# The blocks are found by scanning rather than by regular expression: a
+# The blocks are found by scanning, not by regular expression: a
 # prior expression contains its own parentheses and quotes, so a balanced
 # match has to know which of them are inside a string literal.
 #
@@ -2778,10 +2622,10 @@ emit_inla <- function(
 }
 
 # The spelling a user wrote for an AR1 field term, rebuilt from the IR so a
-# refusal quotes the formula back rather than a canonical form the user never
-# typed. ar1(env):geno and ar1(row):ar1(col) parse to the same IR type and
-# differ only in `col_ar1`, so the second dimension is quoted plain when it
-# carries no correlation of its own.
+# refusal quotes the formula as the user typed it. ar1(env):geno and
+# ar1(row):ar1(col) parse to the same IR type and differ only in
+# `col_ar1`, so the second dimension is quoted plain when it carries no
+# correlation of its own.
 .ar1_term_spelling <- function(term) {
   if (identical(term$type, "ar1")) {
     return(paste0("ar1(", term$var, ")"))
@@ -2811,25 +2655,22 @@ emit_inla <- function(
   base
 }
 
-# WP16: build the INLA f() latent-field term for an AR1 / separable
-# AR1xAR1 spatial term. A 1D ar1(t) maps to f(<t>_id, model = "ar1"); a
-# separable ar1(row):ar1(col) maps to INLA's grouped-AR1 idiom --
+# Build the INLA f() latent-field term for an AR1 / separable AR1xAR1
+# spatial term. A 1D ar1(t) maps to f(<t>_id, model = "ar1"). A separable
+# ar1(row):ar1(col) maps to INLA's grouped-AR1 idiom,
 # f(<row>_id, model = "ar1", group = <col>_id,
-#   control.group = list(model = "ar1" | "iid")) -- whose precision is the
+#   control.group = list(model = "ar1" | "iid")), whose precision is the
 # Kronecker AR1(row) (x) AR1(col) (col_ar1 = FALSE gives AR1 x iid). The
-# idiom's faithfulness was validated against a hand-built AR1(x)AR1 GLS/REML
-# oracle (rebuild/wp16_inla_spatial_oracle.R). The <..>_id integer index
-# columns are pre-built in emit_inla()'s data_inla setup. `hyper_str` is the
-# field precision's prior, keyed `spatial`; the correlations keep INLA's own.
+# idiom was checked against a hand-built AR1(x)AR1 GLS/REML oracle. The
+# <..>_id integer index columns are built in emit_inla()'s data_inla setup.
+# `hyper_str` is the field precision's prior, keyed `spatial`. The
+# correlations keep INLA's own.
 #
-# C5/FS-27: id(trial):ar1(row):ar1(col) -- one separable field per
-# level of `trial` -- adds `replicate = <at_var>_id` to the same f().
-# INLA's replicate mechanism fits K independent realisations of the
-# identical model (same node count, same hyperparameters shared across
-# every replicate) -- exactly "one field per level, shared
-# hyperparameters", with no second f() call and no per-replicate
-# hyperparameter block to keep in sync. `<at_var>_id` is pre-built in
-# emit_inla()'s data_inla setup alongside the row / col index columns.
+# id(trial):ar1(row):ar1(col), one separable field per level of `trial`,
+# adds `replicate = <at_var>_id` to the same f(). INLA's replicate
+# mechanism fits K independent realisations of the same model with
+# hyperparameters shared across replicates. `<at_var>_id` is built in
+# emit_inla()'s data_inla setup beside the row / col index columns.
 .inla_ar1_field_term <- function(term, hyper_str = "") {
   hyper_clause <- if (nzchar(hyper_str)) paste0(", ", hyper_str) else ""
   if (identical(term$type, "ar1")) {
@@ -2903,15 +2744,14 @@ emit_inla <- function(
 # Build the control.family list passed to INLA::inla(). When the user
 # supplies an fb_prior() spec keyed under "sigma", attach it as the
 # residual-scale hyperprior under the keyword the likelihood actually
-# declares -- `prec` for gaussian, lognormal, logistic, t and gamma, and
+# declares: `prec` for gaussian, lognormal, logistic, t and gamma, and
 # `phi` for beta. The keyword roster lives in
 # `.fb_inla_residual_hyper()` (R/family_traits.R) and is read from
-# INLA's own `inla.models()` declaration; writing `prec` for beta is what
-# made a beta fit on INLA fail with a raw engine error rather than fit.
+# INLA's own `inla.models()` declaration. `prec` on beta makes INLA fail.
 #
-# A likelihood with no residual-scale hyperparameter -- poisson,
-# binomial, and the overdispersion-parameterised nbinomial and
-# betabinomial -- takes no hyper input at all, so the sigma prior is
+# A likelihood with no residual-scale hyperparameter (poisson, binomial,
+# and the overdispersion-parameterised nbinomial and betabinomial)
+# takes no hyper input at all, so the sigma prior is
 # dropped, as it is on the brms side for a family with no sigma. Returns
 # an empty list when no residual prior is specified, so INLA's own
 # default applies.
@@ -2946,7 +2786,7 @@ emit_inla <- function(
 # Empty unless the caller wrote `prior_fixed_sd` or supplied a `b()`
 # prior row. Applying the documented default of 100 unconditionally would
 # replace INLA's flat intercept prior on every fit, which is a different
-# model for a response far from zero; supplied means honoured, and
+# model for a response far from zero. A supplied value is used, and
 # prior_summary() names the engine default otherwise.
 #
 # The two routes compose the way INLA composes them: the scalar sets the
@@ -2988,7 +2828,7 @@ emit_inla <- function(
     stop(.fb_refusal_condition(
       reason_code = "prior_hyperparameter_out_of_domain",
       message = paste0(
-        "`prior_fixed_sd` must be a single positive number -- it is the ",
+        "`prior_fixed_sd` must be a single positive number. It is the ",
         "standard deviation of the fixed-effect normal prior. Got ",
         paste(format(prior_fixed_sd), collapse = ", "),
         "."
@@ -3021,9 +2861,9 @@ emit_inla <- function(
 
 # The fixed-effect coefficient names INLA will build from this model:
 # the design-matrix columns of the fixed part, minus the intercept.
-# Used to check a `b()` prior row against the model the fit will run
-# (field-sweep FS-20). NULL when the names cannot be derived, which the
-# caller reads as "no check possible" rather than "no coefficients".
+# Used to check a `b()` prior row against the model the fit will run.
+# NULL when the names cannot be derived, which the caller reads as "no
+# check possible", not "no coefficients".
 .fb_inla_fixed_coef_names <- function(fb, data) {
   if (is.null(data) || !is.data.frame(data)) {
     return(NULL)
@@ -3085,21 +2925,19 @@ emit_inla <- function(
 
 
 # ---------------------------------------------------------------- #
-# Duplicate-key guard (field-sweep FS-17)                           #
+# Duplicate-key guard                                               #
 # ---------------------------------------------------------------- #
 
 # Refuse a model whose emitted INLA formula would key the same variable
-# twice -- once as a fixed term and once as the index of an f() term.
+# twice: once as a fixed term and once as the index of an f() term.
 #
 # INLA's own message for this is "Key [x] is used twice and that is not
 # allowed. A typical example where this happens is: y ~ x + f(x). Change
 # this formula into: y ~ x + f(x2) where you define x2 = x", but it
 # reaches the caller only as the generic "the inla-program exited with an
-# error" wrapper, which names neither the variable nor the remedy. Both
-# of INLA's remedies are repeated here, plus the one that is specific to
+# error" wrapper. Both of INLA's remedies are repeated here, plus one for
 # a spline: an rw2 smooth already carries a linear trend in its null
-# space, so the fixed copy of the same variable is usually redundant
-# rather than needed.
+# space, so the fixed copy of the same variable is usually redundant.
 .check_inla_variable_not_used_twice <- function(fb) {
   fixed_keys <- unlist(lapply(
     fb$fixed_terms %||% list(),
@@ -3149,11 +2987,11 @@ emit_inla <- function(
       "used twice.\n\n",
       if (is_spline) {
         paste0(
-          "Two remedies. Drop the fixed copy -- `y ~ 1, random = ~ spl(",
+          "Two remedies. Drop the fixed copy (`y ~ 1, random = ~ spl(",
           clash[[1L]],
-          ")` -- because\n  an rw2 smooth already carries a linear ",
-          "trend in its null space, so the\n  fixed term is redundant ",
-          "rather than additional. Or duplicate the column\n  (`",
+          ")`), because\n  an rw2 smooth already carries a linear ",
+          "trend in its null space, so the\n  fixed term is ",
+          "redundant. Or duplicate the column\n  (`",
           clash[[1L]],
           "2 <- ",
           clash[[1L]],
@@ -3267,15 +3105,14 @@ emit_inla <- function(
 # INLA reports an autoregressive field on the precision scale and names its
 # correlations after the integer index column the emit built, so the raw
 # hyperparameter table reads `Precision for row_id`, `Rho for row_id`,
-# `GroupRho for row_id` -- three lines that do not say which correlation
-# runs along rows, which along columns, or which variance belongs to the
-# field rather than to the observation nugget.
+# `GroupRho for row_id`. These do not say which correlation runs along
+# rows, which along columns, or which variance belongs to the field and
+# which to the observation nugget.
 #
-# All four are the model. The whole difference between what flexyBayes fits
-# (a latent field plus an independent nugget) and ASReml's separable
-# residual (one correlated residual, no nugget) is the fourth parameter, so
-# a spatial fit prints all four under names that carry their meaning. A user
-# who acts on the correlations can then see what they are acting on.
+# What flexyBayes fits (a latent field plus an independent nugget) differs
+# from ASReml's separable residual (one correlated residual, no nugget) by
+# the fourth parameter, so a spatial fit prints all four under names that
+# carry their meaning.
 
 # ---------------------------------------------------------------- #
 # Variance components, on the scale a reader thinks in               #
@@ -3284,33 +3121,26 @@ emit_inla <- function(
 # INLA reports its hyperparameters as PRECISIONS. A standard deviation is
 # 1 / sqrt(precision), a nonlinear and decreasing transform, so the
 # posterior mean of the SD is not 1 / sqrt() of the posterior mean
-# precision -- and the gap grows with the posterior spread, which is
-# exactly where a variance component matters. Every SD-scale row below is
-# therefore computed from the precision MARGINAL:
+# precision, and the gap grows with the posterior spread. Every SD-scale
+# row below is therefore computed from the precision MARGINAL:
 #
-#   estimate   inla.emarginal(1 / sqrt(x), m)   -- posterior mean of the
-#                                                  SD, integrated over
-#                                                  the marginal
-#   std.error  sqrt(E[1/x] - E[1/sqrt(x)]^2)    -- posterior SD of the SD
-#   bounds     1 / sqrt(inla.qmarginal(1 - p))  -- the quantile identity
+#   estimate   inla.emarginal(1 / sqrt(x), m)   posterior mean of the SD,
+#                                               integrated over the
+#                                               marginal
+#   std.error  sqrt(E[1/x] - E[1/sqrt(x)]^2)    posterior SD of the SD
+#   bounds     1 / sqrt(inla.qmarginal(1 - p))  the quantile identity
 #
-# The bounds use the identity rather than a numerically transformed
-# density because a strictly monotone transform carries quantiles
-# EXACTLY: the 2.5% quantile of the SD is 1 / sqrt() of the 97.5%
-# quantile of the precision, with the order reversed because the
-# transform is decreasing. This is not the forbidden operation, which is
-# transforming a posterior MEAN -- a mean is not equivariant under a
-# nonlinear transform and a quantile is. It is also the route the
-# spatial-field table has taken since 0.9.0.
+# A strictly monotone transform carries quantiles EXACTLY: the 2.5%
+# quantile of the SD is 1 / sqrt() of the 97.5% quantile of the
+# precision, the order reversed because the transform is decreasing. A
+# mean is not equivariant under a nonlinear transform, and a quantile is.
 #
-# Building the transformed density with INLA::inla.tmarginal() and
-# reading quantiles off that was tried first and rejected on evidence:
-# it evaluates the transform at inla.qmarginal((1:2048)/2049, m), whose
-# extreme-left values fall slightly below the marginal's own support on a
-# wide-support precision marginal -- 17 non-positive precisions on an
-# ordinary random-intercept fit -- so 1 / sqrt() returns NaN and the call
-# errors out. Where it does succeed it agrees with the identity above to
-# about 1e-3 relative, being the interpolated answer to the exact one.
+# INLA::inla.tmarginal() is not used: it evaluates the transform at
+# inla.qmarginal((1:2048)/2049, m), whose extreme-left values can fall
+# below the support of a wide precision marginal (17 non-positive
+# precisions on an ordinary random-intercept fit), so 1 / sqrt() returns
+# NaN and the call errors. Where it succeeds it agrees with the identity
+# above to about 1e-3 relative.
 #
 # Correlations (`Rho`, `GroupRho`) are not transformed: they are already
 # on their own scale.
@@ -3433,7 +3263,7 @@ emit_inla <- function(
 
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
-  # Posterior medians travel as an attribute rather than a sixth column:
+  # Posterior medians travel as an attribute, not a sixth column:
   # the five column names are a broom contract. The boundary-collapse
   # display flag in summary() reads them.
   attr(out, "posterior_median") <- medians
@@ -3465,8 +3295,7 @@ emit_inla <- function(
 # reported absent: the model without it is favoured 100 to 1 (Jeffreys'
 # "decisive"). On a 10 x 8 grid, 13 seeds per fixture, it flags 13 of 13
 # fields with no signal and 0 of 26 fields of SD 1 and 1.5, and agrees
-# with a REML likelihood-ratio test at 5% on all 52 data sets
-# (review/evidence_0.14.5_field_exists/).
+# with a REML likelihood-ratio test at 5% on all 52 data sets.
 .FB_FIELD_LOG_BF_THRESHOLD <- -log(100)
 
 # The fit-only reading used when a fit carries no comparison: a field SD
@@ -3673,9 +3502,9 @@ emit_inla <- function(
     return(invisible(NULL))
   }
   warning(
-    "flexyBayes: the autoregressive field in this fit did not identify -- ",
+    "flexyBayes: the autoregressive field in this fit did not identify (",
     paste(reasons, collapse = ", "),
-    ". The field carries no spatial signal the data can detect: with its ",
+    "). The field carries no spatial signal the data can detect: with its ",
     "correlations near zero it is the same model as the residual, so the ",
     "fit is effectively an independent-errors model and the split of that ",
     "variance between the field and the residual is not identified. The ",
@@ -3939,11 +3768,10 @@ emit_inla <- function(
 #' Internal S3 method. Brief one-screen description of an INLA fit
 #' produced via `fb(... backend = "inla")` or `emit_inla()`.
 #'
-#' Opens with the header every engine's print shares, so the three prints
-#' cannot disagree about what the fit is or how many rows it saw, then
-#' adds what belongs to this engine alone: the formula as it reached
-#' `INLA::inla()`, the post-fit numerical-confirm verdict, and -- on a fit
-#' carrying a latent autoregressive field -- the field's own parameters
+#' Opens with the header every engine's print shares, then adds what
+#' belongs to this engine alone: the formula as it reached
+#' `INLA::inla()`, the post-fit numerical-confirm verdict, and, on a fit
+#' carrying a latent autoregressive field, the field's own parameters
 #' on the correlation and standard-deviation scales.
 #'
 #' @param x   A `flexybayes_inla` object, the fit an INLA run returns.
@@ -3957,7 +3785,7 @@ print.flexybayes_inla <- function(x, ...) {
   .fb_print_header(x, "Bayesian mixed model", "-")
   # The full formula, prior expressions and all, stays on the object at
   # `$extras$formula`; what prints is the same formula with each prior
-  # block named rather than spelled out.
+  # block named, not spelled out.
   cat(
     "  INLA formula: ",
     .fb_display_inla_formula(
@@ -3997,8 +3825,8 @@ print.flexybayes_inla <- function(x, ...) {
   .print_inla_spatial_hypers(x)
   cat(strrep("-", 62), "\n")
   cat("  Object of class <flexybayes_inla>\n")
-  cat("  $inla -- raw INLA fit (use INLA's summary, plot, etc.)\n")
-  cat("  $fb   -- the fb_terms IR used for dispatch\n")
+  cat("  $inla: raw INLA fit (use INLA's summary, plot, etc.)\n")
+  cat("  $fb:   the fb_terms IR used for dispatch\n")
   invisible(x)
 }
 
@@ -4006,14 +3834,11 @@ print.flexybayes_inla <- function(x, ...) {
 #'
 #' Internal S3 method. Builds and prints the same `summary.flexybayes`
 #' object every active engine returns, so `summary(fit)$varcomp` answers
-#' on an INLA fit as it does on a brms one. Before 0.9.1 this method had
-#' its own dialect -- a bare four-slot list of INLA's own tables, not
-#' comparable with what the other engine returned and carrying no
-#' variance-component table at all.
+#' on an INLA fit as it does on a brms one.
 #'
 #' The variance components reach the standard-deviation scale through
-#' INLA's precision marginals rather than by transforming a tabulated
-#' point estimate; see `.inla_variance_comps()`. INLA's own
+#' INLA's precision marginals, not by transforming a tabulated point
+#' estimate (see `.inla_variance_comps()`). INLA's own
 #' precision-scale hyperparameter table still prints, unmodified,
 #' beneath them.
 #'
@@ -4029,13 +3854,13 @@ summary.flexybayes_inla <- function(object, ...) {
   # Compute and return, visibly. print.summary.flexybayes() does the
   # printing, so a bare summary(fit) at the console still prints via
   # auto-print, `s <- summary(fit)` is silent, and print(summary(fit))
-  # prints once rather than twice.
+  # prints once.
   .fb_summary_object(object)
 }
 
 
 # The variables an interaction random effect is indexed by. `nested` is the
-# two-way form carrying outer / inner; `combo` is the multi-stratum form
+# two-way form carrying outer / inner. `combo` is the multi-stratum form
 # carrying a vars vector.
 .fb_nested_vars <- function(term) {
   if (identical(term$type, "nested")) {
@@ -4070,7 +3895,7 @@ summary.flexybayes_inla <- function(object, ...) {
 
 
 # The column name the sectioned-residual matrix response occupies in the
-# INLA data list. Fixed rather than derived, so the formula and the data
+# INLA data list. Fixed, not derived, so the formula and the data
 # list agree without passing a name between them.
 .FB_INLA_SECTIONED_RESPONSE <- "fb_sectioned_response"
 
@@ -4087,19 +3912,17 @@ summary.flexybayes_inla <- function(object, ...) {
 # theta prior = "none", so there is no per-component slot to write a
 # standard-deviation prior into. The scale matrix R is on the VARIANCE scale
 # and defaults to the identity, which is a prior centred on unit variances.
-# That default is only reasonable when the data happens to be on unit scale,
-# and when it is not the posterior mode stops being unique -- see the note in
-# the simple_slope_cor branch for the measurement that established this.
+# When the data is not on unit scale the posterior mode stops being unique
+# (see the simple_slope_cor branch for the measurement).
 #
-# These helpers put R on the data's own scale, the same basis the package
-# already uses for its half-normal SD default.
+# These helpers put R on the data's own scale, the basis of the package's
+# half-normal SD default.
 
-# Read off `fb` rather than off `data`: the formula builder is called with
-# the IR alone, including by the tests, so a scale derived from anything else
-# would make the emitted formula differ between the test path and the fit
-# path. The prior layer already carries the response's scale -- the
-# half-normal default's scale is .FB_DEFAULT_SD_MULTIPLIER * sd(y) -- so this
-# recovers sd(y) from it and uses the same basis rather than a second one.
+# Read off `fb`, not `data`: the formula builder is called with the IR
+# alone, so a scale derived from anything else would make the emitted
+# formula differ between the test path and the fit path. The half-normal
+# default's scale is .FB_DEFAULT_SD_MULTIPLIER * sd(y), so this recovers
+# sd(y) from it.
 .fb_inla_response_var <- function(fb) {
   scale <- attr(fb$priors, "fb_prior_default_scale")
   if (is.null(scale) || !is.finite(scale) || scale <= 0) {
@@ -4109,8 +3932,8 @@ summary.flexybayes_inla <- function(object, ...) {
 }
 
 # Intercept block on the response's variance, slope block on the response's
-# variance per unit of the slope variable -- the scale a slope actually lives
-# on. The slope's own values ride on the term from ingest.
+# variance per unit of the slope variable, the scale a slope lives on. The
+# slope's own values ride on the term from ingest.
 .fb_inla_wishart_scale_slope <- function(fb, term) {
   vy <- .fb_inla_response_var(fb)
   xs <- term$slope_var_values
@@ -4124,7 +3947,7 @@ summary.flexybayes_inla <- function(object, ...) {
 
 # `wishart<k>d` takes param = c(r, R11..Rkk, upper-triangle covariances).
 # r = k + 2 is INLA's own default degrees of freedom at k = 2 and the
-# lightest proper choice; the off-diagonals stay at zero, so the prior is
+# lightest proper choice. The off-diagonals stay at zero, so the prior is
 # scaled but says nothing about the correlations. NULL when no scale can be
 # written.
 .fb_inla_wishart_param <- function(diag_scale) {

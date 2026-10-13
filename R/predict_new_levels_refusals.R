@@ -1,4 +1,4 @@
-# New-level prediction refusals --- registry population for
+# New-level prediction refusals: registry population for
 # R/predict_new_levels.R.
 #
 # Thrown by predict(allow_new_levels = TRUE) on either engine, and triggered
@@ -13,7 +13,7 @@
       "which the draw at a new level is not built. The refusal names them."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_0.16.0 C1",
+    registered_in_adr = "0.16.0 predicting new levels",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )
@@ -26,7 +26,7 @@
       "AR1 field."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_0.16.0 C1",
+    registered_in_adr = "0.16.0 predicting new levels",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )
@@ -37,7 +37,7 @@
       "Gaussian on the identity link."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_0.16.0 C1",
+    registered_in_adr = "0.16.0 predicting new levels",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )

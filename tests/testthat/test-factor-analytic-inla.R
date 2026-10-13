@@ -1,6 +1,6 @@
 # Factor-analytic genotype-by-environment covariance: fa(f, k):g.
 #
-# ASReml's headline multi-environment-trial model. INLA has no latent model
+# ASReml's main multi-environment-trial model. INLA has no latent model
 # called "factor analytic" and does not need one: each common factor is a
 # single latent field entered once per level of the outer factor as a SCALED
 # COPY, and `copy=`'s scaling parameter IS the loading. Factor j is anchored
@@ -20,10 +20,10 @@
 # ratio of 1.10 on each diagonal entry of G and a range of 0.05 on each
 # genetic correlation. The two simulated designs this file used to assert
 # recovery on repeated to 1.003 and 1.007, and agridat::dasilva.maize to
-# 1.0001; agridat::besag.met at 30 genotypes, where the genetic signal is
+# 1.0001. Agridat::besag.met at 30 genotypes, where the genetic signal is
 # weak, spanned 1.23 and 0.12 on INLA's default threads and 1.20 and 0.09 on
 # one thread. Every call reported mode.status = 0 and a passing numerical
-# confirm. Evidence: review/units/U-FA-1_2026-09-16/.
+# confirm.
 #
 # The live-fit recovery blocks that stood here (loadings at k = 1 including a
 # negative one, the k = 2 anchoring pattern, the specific variance under the
@@ -85,7 +85,7 @@ test_that("the emitted formula carries scaled copies and specific variances", {
   anchor <- paste0("gen_fa1_env_", fb$random_terms[[1L]]$fa_order[[1L]])
   # The anchor is an ordinary iid field.
   expect_match(txt, paste0("f(", anchor, ", model = \"iid\""), fixed = TRUE)
-  # Every other level is a scaled copy of it -- that scaling is the loading.
+  # Every other level is a scaled copy of it, that scaling is the loading.
   expect_match(txt, paste0("copy = \"", anchor, "\", fixed = FALSE"),
                fixed = TRUE)
   # And one specific variance per level.
@@ -150,7 +150,7 @@ test_that("with k = 2 the second anchor is a different level carrying factor 2",
     family = "gaussian"
   )
   ord <- fb$random_terms[[1L]]$fa_order
-  # Levels 2 and 3 carry the largest loadings on the two factors; level 1,
+  # Levels 2 and 3 carry the largest loadings on the two factors. Level 1,
   # which factor order would anchor first, carries almost none.
   expect_identical(ord[1:2], c(2L, 3L))
   expect_setequal(ord, seq_len(5L))
@@ -208,7 +208,7 @@ test_that("the chosen anchor recovers G on a fixture with a near-zero first load
 test_that("fa(f, k):g is refused on inla, brms and auto alike", {
   # One reason code for all three. Before 0.13.0 backend = "inla" fitted,
   # backend = "brms" gave that engine's own brms_cannot_represent_term, and
-  # backend = "auto" fitted on INLA -- three different answers to one
+  # backend = "auto" fitted on INLA, three different answers to one
   # question about whether the package will report this covariance.
   tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
   for (be in c("inla", "brms", "auto")) {
@@ -293,7 +293,7 @@ test_that("the refusal is targeted: the same data still fits without fa()", {
 
 test_that("the bare fa(v, k) spelling keeps its own refusal", {
   # fa(v, k) with no grouping factor has no covariance to apply and no emit
-  # anywhere; it is a different refusal and must not be swallowed by the new
+  # anywhere. It is a different refusal and must not be swallowed by the new
   # one.
   tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
   err <- tryCatch(

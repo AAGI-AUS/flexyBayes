@@ -57,7 +57,7 @@ fb_fixed_design <- function(formula, data, train_rows = NULL) {
 }
 
 
-# .fb_fixed_asreml_order() --- the columns in the order ASReml 4.2 enters
+# .fb_fixed_asreml_order(): the columns in the order ASReml 4.2 enters
 # them. A term whose column names do not parse into factor levels keeps the
 # design's order.
 .fb_fixed_asreml_order <- function(design) {
@@ -96,7 +96,7 @@ fb_fixed_design <- function(formula, data, train_rows = NULL) {
 }
 
 
-# .fb_fixed_column_terms() --- the term label of each column.
+# .fb_fixed_column_terms(): the term label of each column.
 .fb_fixed_column_terms <- function(design) {
   labels <- c("(Intercept)", attr(design$terms, "term.labels"))
   labels[design$assign + 1L]

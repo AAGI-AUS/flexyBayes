@@ -1,4 +1,4 @@
-# Tests for fb_approx() -- the approximation-scheme constructor noun
+# Tests for fb_approx(): the approximation-scheme constructor noun
 # (v0.4.0 Wave 1 Phase 1D).
 
 suppressPackageStartupMessages(library(testthat))
@@ -71,11 +71,11 @@ test_that("fb_approx() is accepted as a smooth representation spec", {
   d <- data.frame(x = runif(80))
   d$y <- sin(2 * pi * d$x) + rnorm(80, 0, 0.3)
   # plan = TRUE parses + resolves the approximation spec without fitting
-  # (and without needing an active engine -- the low_rank_smooth scheme
+  # (and without needing an active engine, the low_rank_smooth scheme
   # has no consumer on either active engine, so this only checks that
   # the fb_approx() form and the equivalent list form both build a
   # plan; neither backend is asked to fit it). Smooths live in `random`,
-  # not `fixed` -- flexyBayes refuses a smoother written in the fixed
+  # not `fixed`, flexyBayes refuses a smoother written in the fixed
   # part with fixed_smoother_not_supported.
   p_obj <- suppressMessages(flexybayes(
     fixed = y ~ 1,

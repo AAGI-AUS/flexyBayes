@@ -4,7 +4,7 @@
 #
 # Two defects met on the same cells. The gate compared a flexyBayes family
 # spelling against INLA's own likelihood roster, and the reconciler that
-# maps between the two vocabularies runs after the gate -- so
+# maps between the two vocabularies runs after the gate, so
 # `negative_binomial`, `negbinom` and `binary` were refused for a naming
 # reason on an engine that carries every one of those likelihoods, three of
 # the eight supported spellings. And the residual hyperparameter for the
@@ -138,7 +138,11 @@ test_that("the control.family block carries the declared keyword", {
 test_that("every admitted family spelling fits on INLA", {
   skip_if_not_installed("INLA")
   skip_if_not_long_tier()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    # On 60 binary responses the 10-level sd_g is weakly identified.
+    flexyBayes.silence_weak_identification_warning = TRUE
+  )
   d <- .ifr_data()
   spellings <- list(
     gaussian = "gaussian",

@@ -1,6 +1,4 @@
-# Tests for fb_plan() --- the plan-only verb (ADR 0030 C1; v0.3.8).
-#
-# Covers the 12 acceptance criteria from v038-plan-2026-05-25 section 5.2:
+# fb_plan(), the plan-only verb (ADR 0030 C1). Twelve criteria:
 #
 #   (a) returns <fb_plan> classed object
 #   (b) idempotence: two consecutive calls return identical objects
@@ -9,10 +7,10 @@
 #   (e) flight-checklist print form on a refused model
 #   (f) representation_plan matches Phase A known-matrix alignment policy
 #   (g) rejected_routes equals backend_decision()$rejected_routes on
-#       a subsequently-fitted version (shape-only check; no fit)
+#       a subsequently-fitted version (shape-only check, no fit)
 #   (h) as.data.frame() produces stable column ordering
 #   (i) cov_validation_policy reports correctly
-#   (j) chunked-predict planning surface --- predict_plan arg honoured
+#   (j) chunked-predict planning: the predict_plan argument is honoured
 #   (k) malformed formula raises with refusal-registry-eligible code
 #   (l) backward-compat: backend_decision() on a v0.3.7-saved fit (no
 #       <fb_plan> slot) returns the legacy 8-field shape
@@ -142,11 +140,10 @@ test_that("representation_plan carries per-term entries with class + justificati
       expect_true("justification" %in% names(rp))
     }
   } else {
-    # Below the 1e5-row dispatcher threshold the per_term_estimate
-    # is built only when fb_plan() ran preflight directly --- which
-    # it does. So expect non-empty here.
+    # Below the 1e5-row dispatcher threshold the per_term_estimate is
+    # built only when fb_plan() runs preflight directly, which it does.
     skip(
-      "representation_plan empty -- preflight returned no per-term estimates"
+      "representation_plan empty: preflight returned no per-term estimates"
     )
   }
 })
@@ -191,7 +188,7 @@ test_that("cov_validation_policy follows the flexyBayes.trust_pd option", {
   expect_equal(p$cov_validation_policy, "n/a")
 
   # With trust_pd = TRUE and no known matrices the answer is still
-  # "n/a" --- the policy only matters when known matrices are present.
+  # "n/a": the policy only matters when known matrices are present.
   old <- options(flexyBayes.trust_pd = TRUE)
   on.exit(options(old), add = TRUE)
   p2 <- fb_plan(y ~ x + (1 | g), data = d, backend = "auto")
@@ -237,10 +234,8 @@ test_that("malformed formula raises (refusal-registry-eligible at v0.4.0)", {
 # ---------------------------------------------------------------- #
 
 test_that("backend_decision() backward-compat: legacy fits return 8-field shape", {
-  # Synthesise a v0.3.7-shaped fit object (the 8-field <backend_decision>
-  # shape introduced by ADR 0024 at v0.3.6). No <fb_plan> slot --- the
-  # plan surface is v0.3.8-and-later. backend_decision() must return
-  # the legacy 8-field list without raising.
+  # A fit with the 8-field <backend_decision> of ADR 0024 and no <fb_plan>
+  # slot. backend_decision() must return the 8-field list without raising.
   fake_fit <- structure(
     list(
       extras = list(
@@ -260,8 +255,7 @@ test_that("backend_decision() backward-compat: legacy fits return 8-field shape"
   )
   bd <- backend_decision(fake_fit)
   expect_true(is.list(bd))
-  # Either the 4-field legacy shape OR the 8-field extended shape;
-  # both are accepted at v0.3.8 per the backward-compat invariant.
+  # Either the 4-field legacy shape or the 8-field extended shape.
   required_legacy <- c("backend", "path", "gate_checks", "reason")
   expect_true(all(required_legacy %in% names(bd)))
 })
@@ -270,13 +264,9 @@ test_that("backend_decision() backward-compat: legacy fits return 8-field shape"
 # (m) the plan agrees with dispatch on the combined MET model        #
 # ---------------------------------------------------------------- #
 #
-# `fb_plan()` used to read the LGM gate's verdict as the fit's verdict.
-# Under `backend = "auto"` that is wrong for every class the router
-# hands to brms: the gate refuses INLA, the router resolves brms, the
-# model fits, and the plan said "Will fit: no  (preflight refused)" --
-# wrong twice over, since the preflight had sized every term. A user who
-# plans before fitting was told the model would not run and then watched
-# it run.
+# Under `backend = "auto"` the LGM gate's verdict is not the fit's
+# verdict: when the gate refuses INLA, the router resolves brms and the
+# model fits. The plan must say it will fit.
 
 .test_plan_met_data <- function(seed = 20260815L) {
   set.seed(seed)
@@ -299,11 +289,8 @@ test_that("the plan says a combined MET model fits, because it does", {
   )
 
   expect_true(p$will_fit)
-  # It fits on INLA now. Both halves of the baseline MET model -- the
-  # interaction random effect and the sectioned residual -- were refused
-  # there before 0.10.0.9000, so the combination was unreachable and the
-  # plan named brms after a structural gate refusal. The gate passes, so
-  # the plan names the engine the model actually lands on.
+  # The interaction random effect and the sectioned residual both fit on
+  # INLA, so the plan names INLA.
   expect_identical(p$backend_chosen, "inla")
   expect_identical(p$gate_outcome, "accept")
   out <- utils::capture.output(print(p))

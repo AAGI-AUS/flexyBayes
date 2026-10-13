@@ -120,7 +120,7 @@
 #' those components fixed (the P3D approximation of Kang et al. 2010) ---
 #' tests every marker by exact generalised least squares in the eigenbasis
 #' of the relationship matrix. The single eigendecomposition is the shared
-#' spectral primitive; each marker is then an `O(n)` weighted-least-squares
+#' spectral primitive. Each marker is then an `O(n)` weighted-least-squares
 #' score test, so a whole-genome scan is feasible without a per-marker
 #' model fit.
 #'
@@ -132,7 +132,7 @@
 #' @param formula A two-sided formula `y ~ covariates` for the response
 #'   and fixed-effect covariates (an intercept is included unless removed
 #'   with `- 1`). Use `y ~ 1` for an intercept-only background.
-#' @param data A data frame with the response and covariates; one row per
+#' @param data A data frame with the response and covariates. One row per
 #'   individual (the association unit).
 #' @param markers A numeric `n x m` matrix of marker genotypes (allele
 #'   dosages), one row per individual aligned to `data`, one column per
@@ -142,10 +142,10 @@
 #'   \eqn{G = Z_c Z_c^\top / m}, the average-allele-frequency genomic
 #'   relationship (Astle & Balding 2009). This normalises by the marker
 #'   count `m`, unlike VanRaden's (2008) first method, which divides by
-#'   \eqn{2\sum_j p_j(1 - p_j)}; the two coincide only when every marker has
+#'   \eqn{2\sum_j p_j(1 - p_j)}. The two coincide only when every marker has
 #'   minor-allele frequency 0.5 and otherwise differ by a constant scale that
 #'   the REML variance ratio absorbs, so the scan statistics are unaffected.
-#'   Note that building `K` from the same markers being tested causes *proximal
+#'   Building `K` from the same markers being tested causes *proximal
 #'   contamination*: a marker's own signal enters the polygenic term and
 #'   deflates its test statistic (conservative, but a power loss). For a
 #'   well-calibrated scan supply `K` from an independent background panel
@@ -213,12 +213,12 @@ fb_gwas <- function(
   }
 
   spec <- if (is.null(K)) {
-    # Build the full n x n genomic relationship (avg-allele-frequency, /m;
+    # Build the full n x n genomic relationship (avg-allele-frequency, /m.
     # Astle & Balding 2009) and take its *complete*
     # eigendecomposition. REML and the EMMAX rotation need the full
-    # n-dimensional eigenbasis -- including the zero-eigenvalue directions
+    # n-dimensional eigenbasis, including the zero-eigenvalue directions
     # that exist when there are fewer markers than individuals (a
-    # rank-deficient G) -- which the marker-SVD shortcut, truncated to rank
+    # rank-deficient G), which the marker-SVD shortcut, truncated to rank
     # min(n, m), does not provide. The covariance V = sigma_g^2 G +
     # sigma_e^2 I is full rank regardless, so .fb_reml_vc() needs every
     # eigenvector.
@@ -303,7 +303,7 @@ fb_gwas <- function(
   ss <- colSums(M_perp^2)
   xy <- as.vector(crossprod(M_perp, y_perp))
   # Markers with no residual variance (e.g. collinear with covariates)
-  # cannot be tested; flag as NA rather than divide by zero.
+  # cannot be tested. Flag as NA instead of divide by zero.
   ok <- ss > .Machine$double.eps^0.5
   effect <- rep(NA_real_, length(ss))
   se <- rep(NA_real_, length(ss))

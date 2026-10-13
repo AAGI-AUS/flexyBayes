@@ -3,15 +3,15 @@
 # Fitted on brms as `(0 + f | g)`, one standard deviation per level of `f`
 # and every correlation between levels.
 #
-# INLA refuses it by name. The INLA lowering is still in the emitter -- the
+# INLA refuses it by name. The INLA lowering is still in the emitter, the
 # whole k-by-k covariance as one iidKd field over a blocked index, each row
-# indexing one element of a length k*n_inner field -- and its structural
+# indexing one element of a length k*n_inner field, and its structural
 # tests stay below, but the gate refuses the structure
 # (correlated_covariance_requires_brms). Finding O04 measured the genetic
 # correlation on that route at 0.142 against ASReml's 0.930, rescaling the
 # response by ten did not reproduce it, and under an identical Wishart prior
 # Stan returns what INLA returns: the joint prior couples the variances and
-# the correlations, which is why the structure moved to brms rather than
+# the correlations, which is why the structure moved to brms instead of
 # being tuned on INLA.
 
 .us_fixture <- function(seed = 41L, n_gen = 60L, n_rep = 5L,
@@ -109,7 +109,7 @@ test_that("brms fits us(f):g with one SD per level and the correlations", {
     verbose = FALSE,
     mcmc_verbose = FALSE
   )))
-  # `auto` routes the structure to brms rather than refusing it.
+  # `auto` routes the structure to brms instead of refusing it.
   expect_s3_class(fit, "flexybayes_brms")
 
   v <- summary(fit)$varcomp

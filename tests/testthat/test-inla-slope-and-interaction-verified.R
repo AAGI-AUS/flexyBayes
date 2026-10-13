@@ -1,7 +1,7 @@
 # The verification that replaces the retired runtime artefact gate.
 #
-# Until 0.10.0.9000 two INLA mappings -- the uncorrelated random slope
-# `(x || g)` and the factor-by-numeric fixed interaction `y ~ f * x` -- were
+# Until 0.10.0.9000 two INLA mappings: the uncorrelated random slope
+# `(x || g)` and the factor-by-numeric fixed interaction `y ~ f * x`, were
 # refused at run time unless an on-disk artefact recorded that a
 # "three-arbitrator" comparison had passed. One of those arbitrators was an
 # engine withdrawn at 0.9.3, so the criterion could not be re-run and the
@@ -11,7 +11,7 @@
 # The criterion's purpose was "the INLA mapping agrees with an independent
 # reference". That is a test, not a runtime check, and this is it. lme4 fits
 # the same models by REML and never sees this package's parser or emit, so it
-# is a genuine oracle rather than a restatement of our own arithmetic.
+# is a genuine oracle instead of a restatement of our own arithmetic.
 
 .slope_fixture <- function(seed = 7L, n_g = 25L, n_per = 12L) {
   set.seed(seed)

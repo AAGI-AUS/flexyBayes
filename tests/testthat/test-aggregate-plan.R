@@ -1,8 +1,8 @@
-# Tests for the Stage 3A model-level aggregation plan (audit P1.5,
-# 2026-05-23). Per-term `aggregated_likelihood_candidate` flags
+# Tests for the Stage 3A model-level aggregation plan (2026-05-23).
+# Per-term `aggregated_likelihood_candidate` flags
 # remain the dispatcher contract through v0.3.1; this plan is the
 # v0.3.2 supersedure path. At v0.3.0.9000 the plan is attached to
-# `.fb_preflight()` results for diagnostic visibility -- no dispatch
+# `.fb_preflight()` results for diagnostic visibility, no dispatch
 # consumer yet.
 
 # Hand-build minimal <fb_terms> IR (avoids the brms walker's pre-
@@ -147,7 +147,7 @@ test_that("out of scope: uncorrelated random slope (x || g)", {
   expect_true("random_slope_not_aggregatable" %in% plan$reason_codes)
 })
 
-test_that("out of scope: structured-covariance random term (audit P2.8)", {
+test_that("out of scope: structured-covariance random term", {
   fb <- .test_make_plan_ir(
     n = 100L,
     random_terms = list(list(type = "vm", var = "g", var_n = 10L))
@@ -188,7 +188,7 @@ test_that("data-dependent: numeric fixed term forces requires_materialisation", 
 })
 
 test_that("unproductive: K/N above threshold (factor levels close to N)", {
-  # Hand-built IR with explicit var_n = 80 -- fb_from_brms re-factors
+  # Hand-built IR with explicit var_n = 80, fb_from_brms re-factors
   # group columns via factor() which drops unused levels, so a real-
   # data path cannot guarantee 80 levels on 100 rows.
   fb <- .test_make_plan_ir(
@@ -296,7 +296,7 @@ test_that("print.fb_aggregation_plan: NA fields render cleanly", {
 # Internal-only contract                                            #
 # ---------------------------------------------------------------- #
 
-test_that(".fb_aggregation_plan is internal -- no exported binding", {
+test_that(".fb_aggregation_plan is internal, no exported binding", {
   ns <- asNamespace("flexyBayes")
   exp <- getNamespaceExports(ns)
   expect_false(".fb_aggregation_plan" %in% exp)

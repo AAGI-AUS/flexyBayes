@@ -26,7 +26,7 @@ test_that(".fb_fa_g() is the closed form and ignores rotation and sign", {
 
 test_that(".fb_fa_identified() reads the anchors and the zero triangle in fa order", {
   # Three levels, k = 2, anchors at levels B then A. Factor 1 is entered at
-  # B, A, C; factor 2 at A and C only.
+  # B, A, C, and factor 2 at A and C only.
   fit <- list(fb = list(random_terms = list(list(
     type = "fa_gxe", outer = "env", inner = "gen", k = 2L,
     outer_levels = c("A", "B", "C"), fa_order = c(2L, 1L, 3L)
@@ -160,7 +160,7 @@ test_that("the stored records say which ASReml fits converged", {
        mode = list(mode.status = 0L, theta = theta))
 }
 
-# The k - 1 fresh-process fits replaced by `fits`, numbered by start; fit j
+# The k - 1 fresh-process fits replaced by `fits`, numbered by start. Fit j
 # finishes `delays[[j]]` seconds after it starts.
 .fag_mock <- function(fits, delays = 0, env = parent.frame()) {
   delays <- rep_len(delays, length(fits))
@@ -219,7 +219,7 @@ test_that("the gate records disagreement when one fit lands elsewhere", {
 
 test_that("the gate is recorded when the k fits ran in parallel", {
   # Launched before the session fit, run beside it, and finishing in reverse
-  # order of start; fit 3 lands on another mode.
+  # order of start. Fit 3 lands on another mode.
   .fag_mock(list(.fag_fake(-10), .fag_fake(-11, beta_c = -0.5)),
             delays = c(0.3, 0.05))
   pool <- .fb_inla_best_of_launch(list(), 3L, NULL, NULL)

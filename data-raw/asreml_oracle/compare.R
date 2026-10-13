@@ -1,4 +1,4 @@
-# compare.R -- the Layer 1 and Layer 2 comparisons of
+# compare.R: the Layer 1 and Layer 2 comparisons of
 # data-raw/asreml_oracle/SPEC.md.
 #
 # Every tolerance here is quoted from that document, which was written before
@@ -107,7 +107,7 @@ cmp_variance_ratio <- function(name, v_asr, v_fb, se_asr) {
     identified = identified,
     asreml_cv = cv,
     pass = if (!identified) NA else abs(r_fb - r_asr) <= TOL$variance_ratio,
-    note = if (!identified) "not asserted -- weakly identified" else ""
+    note = if (!identified) "not asserted: weakly identified" else ""
   )
 }
 
@@ -140,7 +140,7 @@ cmp_blup <- function(blup_asr, blup_fb, label) {
   if (length(common) < 3L) {
     return(list(
       quantity = paste0("BLUP agreement: ", label),
-      pass = NA, note = "not asserted -- fewer than three shared levels"
+      pass = NA, note = "not asserted: fewer than three shared levels"
     ))
   }
   r <- stats::cor(blup_asr[common], blup_fb[common])
@@ -157,7 +157,7 @@ cmp_sigma_matrix <- function(S_asr, S_fb, label) {
         !identical(dim(S_asr), dim(S_fb))) {
     return(list(
       quantity = paste0("covariance: ", label), pass = NA,
-      note = "not asserted -- matrices not both available at equal dimension"
+      note = "not asserted: matrices not both available at equal dimension"
     ))
   }
   rel <- abs(S_fb - S_asr) / pmax(abs(S_asr), .Machine$double.eps)
@@ -181,7 +181,7 @@ cmp_correlation <- function(r_asr, r_fb, label) {
 # ---- manifest ---------------------------------------------------------- #
 
 # SHA-256 of the serialised data frame, as SPEC.md requires. Computed by
-# shelling out to shasum rather than approximating with md5 under a sha256
+# shelling out to shasum instead of approximating with md5 under a sha256
 # name: the digest is the manifest's claim that both systems saw the same
 # bytes, and a digest that is not what it says it is cannot support it.
 data_digest <- function(d) {
@@ -200,7 +200,7 @@ file_digest <- function(path) {
 
 # ---- Layer 3: the selection-validation comparisons ---------------------- #
 #
-# SPEC.md Amendment 5. A third layer rather than a relaxation of the second:
+# SPEC.md Amendment 5. A third layer, not a relaxation of the second:
 # Layer 2 asks whether the translation is faithful and answers it on a quarter
 # of a standard error; Layer 3 asks whether a reader of the two systems'
 # reports would draw the same scientific conclusion, and allows a posterior
@@ -300,7 +300,7 @@ cmp_fixed_v1 <- function(asr, fb_summary, model_label) {
       pass = if (!resolved) NA else
         abs(diff) / abs(b_asr) <= TOL_V1$fixed_relative,
       note = if (!resolved)
-        "not asserted -- the ASReml effect is not resolved from zero" else ""
+        "not asserted: the ASReml effect is not resolved from zero" else ""
     )
   }
   out
@@ -311,7 +311,7 @@ cmp_fixed_v1 <- function(asr, fb_summary, model_label) {
 #
 # `map` is a named character vector: names are ASReml varcomp rownames, values
 # are the INLA hyperparameter the same quantity arrives under. The map is
-# written per scenario rather than inferred, because a wrong automatic match
+# written per scenario, not inferred, because a wrong automatic match
 # between two naming systems is the exact defect this suite exists to catch.
 cmp_varcomp_v1 <- function(asr, moments, map, model_label) {
   v <- summary(asr)$varcomp
@@ -322,7 +322,7 @@ cmp_varcomp_v1 <- function(asr, moments, map, model_label) {
       out[[length(out) + 1L]] <- list(
         quantity = paste0("V1-V variance component (", model_label, "): ", nm),
         pass = NA,
-        note = "not asserted -- absent from the ASReml varcomp table"
+        note = "not asserted: absent from the ASReml varcomp table"
       )
       next
     }
@@ -330,7 +330,7 @@ cmp_varcomp_v1 <- function(asr, moments, map, model_label) {
       out[[length(out) + 1L]] <- list(
         quantity = paste0("V1-V variance component (", model_label, "): ", nm),
         pass = NA,
-        note = paste0("not asserted -- no INLA hyperparameter named `", hyper,
+        note = paste0("not asserted: no INLA hyperparameter named `", hyper,
                       "` on this fit")
       )
       next
@@ -351,7 +351,7 @@ cmp_varcomp_v1 <- function(asr, moments, map, model_label) {
         tolerance = TOL_V1$varcomp_relative,
         pass = if (at_boundary) NA else rel <= TOL_V1$varcomp_relative,
         note = if (at_boundary)
-          paste0("not asserted -- the REML estimate is at a boundary (bound = ",
+          paste0("not asserted: the REML estimate is at a boundary (bound = ",
                  bound, ")") else ""
       )
     }
@@ -365,19 +365,19 @@ cmp_varcomp_v1 <- function(asr, moments, map, model_label) {
 # Levels are matched by name and never by position. `strip` removes the
 # decoration one system puts on a level label so the two vocabularies can be
 # compared as the same words; where one side returns integer indices there is
-# no name to match and the comparison is recorded as blocked rather than
+# no name to match and the comparison is recorded as blocked, not
 # guessed.
 cmp_blup_v1 <- function(blup_asr, blup_fb, label) {
   if (length(blup_fb) == 0L || length(blup_asr) == 0L) {
     return(list(quantity = paste0("V1-B1 BLUP agreement: ", label), pass = NA,
-                note = "not asserted -- one system returned no predictions"))
+                note = "not asserted: one system returned no predictions"))
   }
   common <- intersect(names(blup_asr), names(blup_fb))
   if (length(common) < 3L) {
     return(list(
       quantity = paste0("V1-B1 BLUP agreement: ", label), pass = NA,
       n_asreml = length(blup_asr), n_flexybayes = length(blup_fb),
-      note = paste0("not asserted -- levels cannot be matched by name (",
+      note = paste0("not asserted: levels cannot be matched by name (",
                     length(common), " of ", length(blup_asr),
                     " ASReml levels found among the flexyBayes labels)")
     ))

@@ -2,14 +2,14 @@
 #
 # The brms path compiles a Stan program. When the C++ toolchain is missing
 # or mismatched, the compiler writes its own message to the console and
-# what reaches R is a downstream symptom -- `invalid connection`. Reported
+# what reaches R is a downstream symptom, `invalid connection`. Reported
 # verbatim that sends the reader looking for a fault in their model, and
 # the R Journal review of 0.10.0 arrived carrying exactly that reading.
 #
 # The diagnosis is not a pattern match against error strings from compilers
 # this machine cannot produce. It is a probe: compile a three-line program
 # and see. So both branches are tested, and the branch that matters is the
-# NEGATIVE one -- a healthy toolchain must not be blamed for a fit that
+# NEGATIVE one, a healthy toolchain must not be blamed for a fit that
 # failed for some other reason.
 
 test_that("the probe compiles a three-line program where a toolchain exists", {

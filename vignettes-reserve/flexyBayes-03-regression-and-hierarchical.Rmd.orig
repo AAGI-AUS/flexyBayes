@@ -108,8 +108,8 @@ A single average slope assumes deprivation affects everyone equally. It
 does not. Allowing the slope to vary by subject needs a second variance
 component.
 
-The correlated form -- `(Days | Subject)`, which estimates the
-correlation between a subject's intercept and their slope -- is refused
+The correlated form, `(Days | Subject)`, which estimates the
+correlation between a subject's intercept and their slope, is refused
 by both engines. The uncorrelated form fits on brms.
 
 ```{r fit2, eval = lme4_ok && brms_ok}
@@ -182,7 +182,7 @@ most of these need no decision.
 
 **Too few levels.** A random effect over three or four levels cannot
 identify its variance well. The posterior will be wide and lean on the
-prior, which is honest but not informative. Five is a common rule of
+prior, which is accurate but not informative. Five is a common rule of
 thumb and it is only that.
 
 **A term on both sides.** `y ~ g` with `random = ~ g` is refused: the

@@ -18,7 +18,7 @@ A \code{logLik} object: the scalar log-likelihood with \code{df} and
 }
 \description{
 Evaluates the conditional log-likelihood at the posterior-mean fitted
-values -- a plug-in quantity, not a posterior summary, and not the
+values: a plug-in quantity, not a posterior summary, and not the
 marginal likelihood. It exists so \code{AIC()}-style comparisons of two fits
 from the same engine have something to read.
 }
@@ -29,7 +29,7 @@ runs: the response vector in \verb{$glm$y}, the fitted values from
 \code{\link[=fitted]{fitted()}}, and a recorded family. A Gaussian fit uses the residual
 root-mean-square as its plug-in scale. Families outside the Gaussian,
 binomial and Poisson set have no plug-in form here and are refused
-rather than reported as \code{NA}, because a silent \code{NA} propagates into
+and not reported as \code{NA}, because a silent \code{NA} propagates into
 \code{anova()} and \code{AIC()} as though the comparison had been made.
 
 brms fits reach \code{\link[=logLik.flexybayes_brms]{logLik.flexybayes_brms()}} instead (brms's own

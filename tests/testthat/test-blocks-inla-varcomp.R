@@ -5,7 +5,7 @@
 # each block as its own generic0 field with its own precision, which for two
 # or more blocks is a different model, and the one-block fit, identical to the
 # precision carrier of the same matrix, did not meet its brms oracle within
-# the tolerance fixed for it (unit U-VC-1). The gate refuses the carrier on
+# the tolerance fixed for it. The gate refuses the carrier on
 # INLA and names the precision carrier of the block-diagonal inverse, which
 # fits the covariance with one standard deviation.
 #
@@ -13,7 +13,7 @@
 # matrix, three records per individual (90 rows, 30 levels).
 
 .vc1_fixture <- function() {
-  # Numerator relationship matrix by the tabular method; parents precede
+  # Numerator relationship matrix by the tabular method. Parents precede
   # their offspring and 0 marks an unknown parent.
   a_matrix <- function(sire, dam) {
     n <- length(sire)
@@ -119,8 +119,8 @@ test_that("the precision carrier the refusal names fits the covariance with one 
     expect_equal(sum(vc$component != "sigma"), 1L, label = nm)
     expect_true(all(is.finite(c(vc$estimate, vc$q2.5, vc$q97.5))), label = nm)
     expect_true(all(fits$named$extras$support_audit$inside), label = nm)
-    # Q_named and solve(A) are the same matrix (U-VC-1, probe 03), and INLA
-    # repeats on one thread to within 3e-6 of the value (study A).
+    # Q_named and solve(A) are the same matrix, and INLA repeats on one
+    # thread to within 3e-6 of the value.
     full <- fits$full$extras$variance_comps
     expect_lte(max(abs(c(vc$q2.5, vc$q97.5) - c(full$q2.5, full$q97.5)) /
                      abs(c(full$q2.5, full$q97.5))), 1e-5, label = nm)

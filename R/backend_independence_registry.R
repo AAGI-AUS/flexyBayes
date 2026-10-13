@@ -10,29 +10,24 @@
 # internal registry the backends populate, snapshot-gated against silent
 # vocabulary drift.
 #
-# Independence is a *pair* property, not a *backend* property -- "brms
-# is HMC" tells you nothing about which other backend it is HMC-against
-# -- so the registry is keyed by the canonicalised (sorted) backend
-# pair. The vocabulary is closed; adding a fourth axis or splitting one
-# of the three requires a deliberate vocabulary amendment.
+# Independence is a property of a pair of backends, not of one backend,
+# so the registry is keyed by the canonicalised (sorted) backend pair.
 
 # --- closed axis vocabulary --------------------------------------- #
 
-# The three controlled axis values. Closed;
-# expansion requires a deliberate vocabulary amendment. Glossary:
-#   algorithmic    -- different inference paradigms (HMC vs Laplace vs
+# The three axis values. Glossary:
+#   algorithmic:    different inference paradigms (HMC vs Laplace vs
 #                     VI vs Gibbs). Catches algorithm-specific failure
 #                     modes (mixing pathologies, tail-approximation
 #                     error, mode-finding vs tail-coverage tradeoffs).
-#   implementation -- same paradigm, different code base (different AD
+#   implementation: same paradigm, different code base (different AD
 #                     framework, codegen, numerical-precision regime).
 #                     Catches numerical bugs, prior-translation bugs,
 #                     indexing errors at codegen boundaries.
-#   specification  -- same likelihood, different parameterisation
+#   specification:  same likelihood, different parameterisation
 #                     (centred vs non-centred RE, marginal vs
 #                     conditional). No current backend pair exercises
-#                     this axis alone; it is the placeholder for future
-#                     within-backend reparameterisation cross-checks.
+#                     this axis alone.
 .AXIS_VOCABULARY <- c("algorithmic", "implementation", "specification")
 
 # --- container ---------------------------------------------------- #
@@ -68,10 +63,8 @@
 
 # .register_pair_independence() --- the one-shot registration call.
 # Validates `axes` against the closed vocabulary (an unknown axis is a
-# hard error naming the offending value); canonicalises the pair;
-# refuses a duplicate; refuses once the registry is locked. Backend
-# additions register their independence axes against every existing
-# backend at the same call site that introduces the new backend label.
+# hard error naming the offending value), canonicalises the pair, and
+# refuses a duplicate or a locked registry.
 .register_pair_independence <- function(
   pair,
   axes,
@@ -79,10 +72,8 @@
   justification,
   registered_in_adr
 ) {
-  # Validate inputs (vocabulary, shape) before checking the registry's
-  # mutability state, so a caller passing an unknown axis sees the
-  # vocabulary error -- the actionable problem -- rather than a lock
-  # error, even on a loaded (locked) package.
+  # Inputs are checked before the lock, so an unknown axis reports the
+  # vocabulary error even on a loaded (locked) package.
   if (!is.character(axes) || length(axes) == 0L || anyNA(axes)) {
     stop(
       ".register_pair_independence(): `axes` must be a non-empty ",
@@ -97,7 +88,7 @@
       paste0("'", unknown, "'", collapse = ", "),
       ". The closed vocabulary is ",
       paste(.AXIS_VOCABULARY, collapse = ", "),
-      "; expanding it requires an ADR 0029 amendment.",
+      ". Expanding it requires an ADR 0029 amendment.",
       call. = FALSE
     )
   }
@@ -115,7 +106,7 @@
   if (environmentIsLocked(.backend_independence_registry)) {
     stop(
       ".register_pair_independence(): the backend-independence ",
-      "registry is locked; pairs must be registered before ",
+      "registry is locked. Pairs must be registered before ",
       ".lock_backend_independence_registry() fires at end of ",
       ".onLoad().",
       call. = FALSE
@@ -173,8 +164,8 @@
 # --- v0.4.0 population --------------------------------------------- #
 
 # .populate_backend_independence_registry_v0400() --- registers the pair
-# between the two active backends (inla = Laplace approximation
-# on C; brms = HMC on Stan via the fb_brms() surface). The axis
+# between the two active backends (inla, Laplace approximation
+# on C, and brms, HMC on Stan via the fb_brms() surface). The axis
 # assignment follows the authoritative table: a Laplace-vs-HMC pair
 # differs on BOTH paradigm and code base (algorithmic + implementation).
 .populate_backend_independence_registry_v0400 <- function() {

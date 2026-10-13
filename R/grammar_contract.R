@@ -4,37 +4,23 @@
 #
 # Every ASReml special form in .asreml_function_vocabulary() has a fixed
 # argument shape: how many positional arguments it takes, and which named
-# arguments it answers to. Until 0.10.0.9000 that shape lived only inside
-# each switch() branch of .walk(), expressed as whatever indexing the branch
-# happened to do -- and a malformed call fell through whichever way that
-# indexing happened to fall.
+# arguments it answers to. The shape is declared once, here, and checked
+# once, in .walk(), before the switch() dispatches, so a branch can index
+# what its contract guarantees. Unchecked, a malformed call escapes the
+# refusal taxonomy in one of four ways:
 #
-# A grammar fuzz corpus over all 22 forms (129 malformed variants) found four
-# distinct ways a malformed call escaped the refusal taxonomy:
+#   1. an untyped base error: fa(), dsum(), str(), pol(a, b), s(a, b, c)
+#      raise subscriptOutOfBounds or a coercion error.
+#   2. a silent neighbour: dsum(~units), dsum(a), dsum(1) lower to a
+#      homogeneous `units` residual, a one-variance model where a sectioned
+#      one was written.
+#   3. a silent NA variable: zero-argument forms (us(), vm(), ar1(), ...)
+#      parse to an IR node carrying var = NA_character_.
+#   4. a silently dropped argument: surplus arguments are discarded.
 #
-#   1. an untyped base error      -- fa(), dsum(), str(), pol(a, b), s(a, b, c)
-#                                    raised subscriptOutOfBounds or a coercion
-#                                    error from the branch's own indexing;
-#   2. a silent neighbour         -- dsum(~units), dsum(a), dsum(1) lowered to
-#                                    a homogeneous `units` residual, fitting a
-#                                    one-variance model where a sectioned one
-#                                    was written;
-#   3. a silent NA variable       -- fifteen zero-argument forms (us(), vm(),
-#                                    ar1(), ...) parsed to an IR node carrying
-#                                    var = NA_character_;
-#   4. a silently dropped argument -- thirty-two calls carrying more arguments
-#                                    than the branch reads had the surplus
-#                                    discarded without comment.
-#
-# Classes 1, 3 and 4 are all the same defect seen from three sides: the branch
-# reads the arguments it expects and never asks whether that is what it was
-# given. So the contract is declared once, here, and checked once, in .walk(),
-# before the switch() dispatches. A branch can then index what its contract
-# guarantees.
-#
-# te() / ti() / t2() are deliberately absent. They refuse at parse with
+# te() / ti() / t2() are absent. They refuse at parse with
 # tensor_smooth_unsupported whatever their arity, and that refusal names an
-# alternative, so it is the more useful of the two.
+# alternative.
 #
 # @noRd
 .fb_grammar_contract <- function() {
@@ -54,25 +40,23 @@
     spl = one(),
     # diag() / idh() take no level: conditioning on selected levels is what
     # at()'s second argument is for, and accepting one here would let a
-    # conditioned model wear a diagonal model's name. That intent was a
-    # comment in .walk() before it was a contract.
+    # conditioned model wear a diagonal model's name.
     diag = one(),
     idh = one(),
     # at(f) or at(f, level).
     at = list(min_pos = 1L, max_pos = 2L, named = character(0)),
-    # fa(f, k) -- both required; k is validated as a literal count below.
+    # fa(f, k): both required, and k is validated as a literal count below.
     fa = list(min_pos = 2L, max_pos = 2L, named = character(0)),
     # pol(x) or pol(x, degree).
     pol = list(min_pos = 1L, max_pos = 2L, named = character(0)),
-    # dsum(~ units | f) -- one formula body.
+    # dsum(~ units | f): one formula body.
     dsum = list(min_pos = 1L, max_pos = 1L, named = character(0)),
     # str(~terms) or str(~terms, ~structure).
     str = list(min_pos = 1L, max_pos = 2L, named = character(0)),
     # The known-covariance carriers take the variable positionally, the
     # matrix positionally or as `V =` or through `cov = fb_cov(...)`, and
     # their keyword carriers by name. The keyword set is read from
-    # .STAGE5A_VM_RESERVED_NAMES rather than copied: a second list of the
-    # same names is the drift this contract exists to prevent.
+    # .STAGE5A_VM_RESERVED_NAMES, not copied, so the two cannot drift.
     vm = list(
       min_pos = 1L,
       max_pos = 2L,
@@ -133,15 +117,14 @@
 
   # `fa(site, )` parses in R as a call carrying the empty symbol. Reading it
   # raises "argument is missing, with no default" from wherever it is first
-  # touched, which is a base error about our internals rather than a
-  # statement about the formula.
+  # touched, a base error about our internals and not about the formula.
   args <- as.list(expr)[-1L]
   if (length(args) && any(vapply(args, .fb_arg_is_empty, logical(1L)))) {
     stop(.fb_refusal_condition(
       reason_code = "grammar_argument_empty",
       message = sprintf(
         paste0(
-          "`%s` has an empty argument -- a trailing or doubled comma leaves ",
+          "`%s` has an empty argument: a trailing or doubled comma leaves ",
           "a gap where %s() expects a value. Remove the comma, or write the ",
           "argument it is holding a place for."
         ),
@@ -153,15 +136,12 @@
     ))
   }
 
-  # A named argument written twice. The 0.10.0.9000 contract validated the
-  # *set* of names and never their multiplicity, which left the same defect
-  # alive in two shapes: `vm(g, V = G, V = G)` was accepted and lowered to one
-  # vm term, with the surviving copy an accident of how .walk() indexes; and
-  # `s(x, k = 5, k = 9)` reached mgcv's own matcher and raised "formal
-  # argument 'k' matched by multiple actual arguments" -- a base error about
-  # our internals, which is escape class 1 of the four this contract closes.
-  # Checked before arity so a doubled name is named as one, and independent of
-  # `contract$named` so the open-ended s() set is covered too.
+  # A named argument written twice. Unchecked, `vm(g, V = G, V = G)` lowers
+  # to one vm term with an arbitrary surviving copy, and `s(x, k = 5, k = 9)`
+  # raises mgcv's untyped "formal argument 'k' matched by multiple actual
+  # arguments". Checked before arity so a doubled name is named as one,
+  # and independent of `contract$named` so the open-ended s() set is
+  # covered too.
   if (length(split$named)) {
     dup <- unique(split$named[duplicated(split$named)])
     if (length(dup)) {
@@ -170,9 +150,8 @@
         message = sprintf(
           paste0(
             "`%s` writes %s twice. %s() reads each named argument once, so ",
-            "which copy takes effect is an accident of the parser rather ",
-            "than a choice -- write the argument once with the value you ",
-            "mean."
+            "which copy takes effect is an accident of the parser, not a ",
+            "choice. Write the argument once with the value you mean."
           ),
           written,
           paste0("`", dup, "`", collapse = " and "),
@@ -233,7 +212,7 @@
         message = sprintf(
           paste0(
             "`%s` smooths more than one variable, and flexyBayes fits ",
-            "univariate penalised splines only -- use s(x) or spl(x) per ",
+            "univariate penalised splines only. Use s(x) or spl(x) per ",
             "smooth dimension. Multivariate smooths are planned for a ",
             "future release."
           ),
@@ -318,14 +297,13 @@
 # .fb_literal_count() --- read a positive whole number written in the formula.
 #
 # fa()'s rank and pol()'s degree are counts the user writes into the call.
-# Both used to be read with as.integer(), which turns TRUE into 1, 1.5 into 1,
-# "1" into 1, and raises an untyped coercion error on a symbol. Each of those
-# is a different model from the one written, or no model at all.
+# as.integer() would turn TRUE into 1, 1.5 into 1 and "1" into 1, and raise
+# an untyped coercion error on a symbol. Each of those is a different model
+# from the one written, or no model at all.
 #
-# `symbol` is how the count is spelled in the documentation -- k for fa(),
-# degree for pol() -- so the refusal can say "fa() requires k >= 1" in the
-# package's own vocabulary. The floor message is the wording this refusal has
-# carried since 0.4.0; only the set of inputs that reach it is wider.
+# `symbol` is how the count is spelled in the documentation (k for fa(),
+# degree for pol()), so the refusal can say "fa() requires k >= 1" in the
+# package's own vocabulary.
 #
 # Returns the integer. Raises `reason_code` when the argument is not a
 # positive whole number literal.
@@ -341,9 +319,9 @@
       message = sprintf(
         paste0(
           "`%s` gives %s as the %s. %s() requires %s to be a positive whole ",
-          "number written in the formula -- %s(%s, 1) or %s(%s, 2). A %s ",
-          "that is not a literal count used to be coerced into one, which ",
-          "fits a different model from the one written."
+          "number written in the formula, such as %s(%s, 1) or %s(%s, 2). ",
+          "A %s that is not a literal count would fit a different model ",
+          "from the one written."
         ),
         written, saw, what, fn, symbol,
         fn, .dep(expr, 2), fn, .dep(expr, 2), what

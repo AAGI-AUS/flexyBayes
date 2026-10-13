@@ -1,4 +1,4 @@
-# emit_gaussian_aggregated -- aggregated backend wiring (v0.3.2).
+# emit_gaussian_aggregated: aggregated backend wiring.
 #
 # Aggregated emit path: gaussian-identity LMMs in scope route through the
 # `<fb_aggregated>` sufficient-statistics object instead of the per-row
@@ -32,7 +32,7 @@
 # aggregation closure breaks and the emit refuses with reason code
 # `heterogeneous_residual_factor_not_in_cell_key`.
 #
-# Internal -- not exported. Called from .dispatch_backend() when the
+# Internal, not exported. Called from .dispatch_backend() when the
 # `<fb_aggregation_plan>` declares eligibility.
 
 emit_gaussian_aggregated <- function(
@@ -72,13 +72,11 @@ emit_gaussian_aggregated <- function(
     "from .fb_aggregate_gaussian()."
   )
 
-  # Defensive scope re-check (the caller -- .dispatch_backend() --
-  # already gates on <fb_aggregation_plan>$eligible, but the emit
-  # path also documents its own invariants so a future direct caller
-  # cannot misuse it).
+  # Scope re-check. The caller, .dispatch_backend(), already gates on
+  # <fb_aggregation_plan>$eligible.
   if (!identical(fb$family, "gaussian")) {
     stop(
-      "emit_gaussian_aggregated(): family must be gaussian; got '",
+      "emit_gaussian_aggregated(): family must be gaussian, not '",
       fb$family,
       "'.",
       call. = FALSE
@@ -86,7 +84,7 @@ emit_gaussian_aggregated <- function(
   }
   if (!(is.null(fb$link) || identical(fb$link, "identity"))) {
     stop(
-      "emit_gaussian_aggregated(): link must be identity; got '",
+      "emit_gaussian_aggregated(): link must be identity, not '",
       fb$link,
       "'.",
       call. = FALSE
@@ -121,15 +119,14 @@ emit_gaussian_aggregated <- function(
   # validate that any at_units residual factor lies in the cell key.
   residual_plan <- .agg_emit_residual_plan(fb, fb_aggregated)
 
-  # Build per-RI level indices for the cell key (one per random_cols
-  # entry; foundation already places each RI grouping factor into the
-  # cell key as a column on the sufficient_stats data.table).
+  # Per-RI level indices for the cell key, one per random_cols entry.
+  # Each RI grouping factor is already a column of the sufficient_stats
+  # data.table.
   ri_plan <- .agg_emit_ri_plan(fb, fb_aggregated)
 
   if (return_code) {
-    # The aggregated emit at v0.3.2 does NOT yet expose review_code =
-    # TRUE for the aggregated path; the per-row review path remains the
-    # documented v0.2 surface. Refused by name:
+    # The aggregated path does not expose the generated code. The per-row
+    # path does.
     stop(
       "emit_gaussian_aggregated(): return_code = TRUE is not yet ",
       "supported on the aggregated path (deferred to a follow-on ",
@@ -230,7 +227,7 @@ emit_gaussian_aggregated <- function(
             "emit_gaussian_aggregated(): heterogeneous residual ",
             "at(",
             f,
-            "):units refused -- '",
+            "):units refused: '",
             f,
             "' is not in the ",
             "cell key {",
@@ -332,8 +329,8 @@ emit_gaussian_aggregated <- function(
       "at_units on INLA requires the multi-likelihood INLA stack ",
       "API (deferred), and no other active backend has an aggregated ",
       "heterogeneous-residual path, so pass aggregate = FALSE for the ",
-      "per-row path -- on INLA, or on brms, which represents ",
-      "the sectioned residual as a distributional predictor.",
+      "per-row path, on INLA or on brms (which represents ",
+      "the sectioned residual as a distributional predictor).",
       call. = FALSE
     )
   }
@@ -345,7 +342,7 @@ emit_gaussian_aggregated <- function(
 
   # The aggregated Gaussian fit runs on the standardised response as the
   # per-row one does (R/inla_standardise.R). The centre and scale come from
-  # the cell statistics; a cell mean and the within-cell sum of squares
+  # the cell statistics. A cell mean and the within-cell sum of squares
   # transform with the response.
   standardisation <- .fb_inla_standardisation_from_stats(
     fb,
@@ -359,12 +356,10 @@ emit_gaussian_aggregated <- function(
 
   # Pull per-RI hyperpriors from the same priors_to_inla() translation
   # the per-row emit_inla() uses, so the aggregated + per-row INLA fits
-  # share the random-intercept prior shape. The residual prior is NOT
-  # plumbed through at v0.3.2: the custom-prior expression below
-  # composes Delta with INLA's default loggamma(1, 5e-5) base. A user-
-  # supplied residual prior on `sigma` is therefore ignored on the
-  # aggregated INLA path -- documented limitation; matched-prior
-  # composition is a v0.3.3 follow-on.
+  # share the random-intercept prior shape. The residual prior is not
+  # passed through: the custom-prior expression below composes Delta with
+  # INLA's default loggamma(1, 5e-5) base, so a user-supplied residual
+  # prior on `sigma` is ignored on the aggregated INLA path.
   hyper_ctrl <- if (inherits(fb$priors, "fb_prior")) {
     priors_to_inla(fb$priors)
   } else if (.fb_prior_scalar_supplied(fb, "vc_sd")) {
@@ -439,13 +434,11 @@ emit_gaussian_aggregated <- function(
     )
   )
 
-  # Spliced in only when it carries something, so a call that supplies no
-  # `prior_fixed_sd` reaches INLA exactly as it did before the argument
-  # was wired.
+  # Spliced in only when it carries something.
   # `coef_names` is the aggregated design's own column vocabulary: the
   # aggregated INLA formula names model-matrix columns, so a `b()` prior
-  # row has to be checked against those rather than against the per-row
-  # term labels, or a row naming a factor level would arrive as a
+  # row has to be checked against those, not the per-row term labels.
+  # Otherwise a row naming a factor level would arrive as a
   # `control.fixed` entry INLA silently ignores.
   control_fixed <- .build_inla_control_fixed(
     fb,
@@ -529,12 +522,9 @@ emit_gaussian_aggregated <- function(
   # it into the f(...) call. In the default case the synthesised
   # half-normal prior (.default_half_normal_prior() in flexybayes()) keys
   # every random group, so hyper_ctrl carries the same faithful
-  # expression prior the per-row emit_inla() path uses -- both paths
-  # share one prior (scale fixed once from the per-row data), which is
-  # what makes the per-row and aggregated INLA fits algebraically
-  # equivalent. The former per-row/aggregated divergence under defaults
-  # is resolved by that unification (priors_to_inla() now emits the exact
-  # uniform on both paths instead of a per-row PC approximation).
+  # expression prior the per-row emit_inla() path uses. Both paths share
+  # one prior (scale fixed once from the per-row data), which makes the
+  # per-row and aggregated INLA fits algebraically equivalent.
   #
   # The fallback below fires only when no fb_prior is in play (e.g. the
   # legacy `prior_vc_sd` path) or a user supplies a partial prior that
@@ -656,7 +646,7 @@ emit_gaussian_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
-      # The centre and scale the INLA fit ran on; the draw accessors read it.
+      # The centre and scale the INLA fit ran on. The draw accessors read it.
       response_standardisation = engine_out$response_standardisation,
       # Every bounded prior checked against the fit
       # (R/inla_support_audit.R).
@@ -717,12 +707,9 @@ emit_gaussian_aggregated <- function(
         prior_fixed_sd = prior_fixed_sd,
         prior_vc_sd = prior_vc_sd,
         na_action = na_action,
-        # The engine and the representation the call ASKED for -- the
-        # requested `aggregate` above all, since this route exists only
-        # because the request permitted it. Recording the resolved
-        # engine instead would pin a re-fit of a changed model to a
-        # representation the changed model may no longer be eligible
-        # for.
+        # The engine and the representation the call asked for, so a
+        # re-fit of a changed model is not pinned to a representation it
+        # may no longer be eligible for.
         backend = requested_backend,
         aggregate = requested_aggregate,
         verbose = verbose
@@ -745,13 +732,10 @@ emit_gaussian_aggregated <- function(
         # prior recover the per-row posterior to numerical precision, so
         # that path is tagged "per_row_equivalent". An explicit prior
         # object breaks that matched-prior equivalence against a
-        # default-prior per-row fit (and on the INLA aggregated path the
-        # residual prior is moreover not plumbed through -- see the note
-        # above the hyperprior translation earlier in this file), so it is
-        # tagged "custom". The auto-default is a third case: it is an fb_prior
-        # object, so the class test alone called it "custom" and the
-        # commonest fit in the package announced an explicit prior nobody
-        # supplied. It gets its own tag, which claims neither. Surfaced
+        # default-prior per-row fit (and the INLA aggregated path does not
+        # pass the residual prior through, see the hyperprior translation
+        # above), so it is tagged "custom". The auto-default is an
+        # fb_prior object nobody supplied, and gets its own tag. Surfaced
         # via canonical_names() and the aggregated print / summary.
         prior_parametrization = .agg_prior_parametrization(fb$priors)
       ),
@@ -841,11 +825,10 @@ emit_gaussian_aggregated <- function(
 
 # Reconstruct per-row fitted values from the cell-level posterior +
 # original data. Pure linear-predictor expansion at the fixed-effect
-# level; random-intercept BLUP shrinkage is a follow-on extension
-# (would join `predict.flexybayes_aggregated` if/when added). The
+# level, without random-intercept BLUP shrinkage. The
 # formula uses the ORIGINAL IR variable names (e.g. `f1 + f2`) so the
 # per-row data.frame's factor columns resolve cleanly through
-# `model.matrix()`; the resulting contrast columns must match the
+# `model.matrix()`. The resulting contrast columns must match the
 # cell_design's contrast columns by construction (same R formula
 # semantics applied to the same factors).
 .agg_reconstruct_fitted_row <- function(

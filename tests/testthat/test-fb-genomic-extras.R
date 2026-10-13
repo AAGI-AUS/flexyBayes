@@ -66,7 +66,7 @@ test_that(".fb_genomic_summary() summarises marker effects with retention probab
   )
   expect_equal(s$n_markers, n_markers)
   expect_equal(s$marker_effects$mean, centres, tolerance = 0.1)
-  # The real effects are retained in (almost) every draw; the spike
+  # The real effects are retained in (almost) every draw. The spike
   # markers far less often.
   expect_true(all(s$marker_effects$prob_retained[1:3] > 0.95))
   expect_true(all(s$marker_effects$prob_retained[4:6] < 0.5))
@@ -77,7 +77,7 @@ test_that(".fb_genomic_summary() degenerate draws give NA heritability not NaN",
     var_g_draws = c(0, 1, 2),
     var_e_draws = c(0, 1, 2)
   )
-  # The first draw is 0/0; it must not poison the summary as NaN.
+  # The first draw is 0/0. It must not poison the summary as NaN.
   expect_false(is.nan(s$heritability[["mean"]]))
   expect_true(is.finite(s$heritability[["mean"]]))
 })
@@ -104,7 +104,7 @@ test_that(".fb_genomic_summary() rejects malformed inputs", {
   )
 })
 
-test_that("print.fb_genomic_summary() renders the headline quantities", {
+test_that("print.fb_genomic_summary() renders the main quantities", {
   s <- flexyBayes:::.fb_genomic_summary(
     var_g_draws = stats::rgamma(500L, 100, 50),
     var_e_draws = stats::rgamma(500L, 100, 100),

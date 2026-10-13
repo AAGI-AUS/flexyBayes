@@ -1,4 +1,4 @@
-# Known-variance refusals --- registry population for R/known_variance.R.
+# Known-variance refusals: registry population for R/known_variance.R.
 #
 # Both codes are thrown by R/known_variance.R and triggered in
 # tests/testthat/test-known-covariance-inputs.R.
@@ -19,7 +19,7 @@
       "positive-definite covariance matrix with one row and column for ",
       "each row of `data`, and %s."
     ),
-    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-STAGE2-VAR)",
+    registered_in_adr = "0.14.0 known-variance refusals",
     plan_field = NA_character_,
     since_version = "0.14.0"
   )
@@ -34,7 +34,7 @@
       "out. The message names the route that carries it."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-STAGE2-VAR)",
+    registered_in_adr = "0.14.0 known-variance refusals",
     plan_field = NA_character_,
     since_version = "0.14.0"
   )

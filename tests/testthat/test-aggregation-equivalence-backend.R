@@ -38,8 +38,8 @@
 # INLA's Laplace engine is reproducible only single-threaded: under the
 # default multi-threaded reduction the per-row and streamed fits drift
 # ~0.5-1% run-to-run, intermittently breaching the tight equivalence
-# tolerances below (RB14). Pin to one thread for this whole file so the
-# comparison is deterministic; restored at file teardown.
+# tolerances below. One thread for this whole file keeps the comparison
+# deterministic. The setting is restored at file teardown.
 if (requireNamespace("INLA", quietly = TRUE)) {
   .eq_old_inla_threads <- INLA::inla.getOption("num.threads")
   INLA::inla.setOption(num.threads = "1:1")
@@ -50,8 +50,8 @@ if (requireNamespace("INLA", quietly = TRUE)) {
 }
 
 # The count families only. A streamed Gaussian fit refuses by name, because
-# the aggregated Gaussian route cannot carry the residual prior; see
-# test-aggregation-gaussian-containment.R.
+# the aggregated Gaussian route cannot carry the residual prior (see
+# test-aggregation-gaussian-containment.R).
 for (fam in c("binomial", "poisson")) {
   test_that(paste0("INLA: per-row == streamed-aggregated [", fam, "]"), {
   # Two live INLA fits at a size where both the per-row and the

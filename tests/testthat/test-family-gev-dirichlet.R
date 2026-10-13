@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------- #
-# GEV + Dirichlet families -- the two block-maxima / compositional   #
+# GEV + Dirichlet families: the two block-maxima / compositional     #
 # fitters added in the hub-ergonomics uplift. Each carries a         #
 # parameter-recovery test: simulate from known parameters, fit, and  #
 # confirm the estimates land inside their reported credible /        #
@@ -56,7 +56,7 @@ test_that("fb_gev() recovers the Gumbel limit (shape = 0)", {
   y <- rgev(4000L, location = 5, scale = 1.5, shape = 0)
   fit <- fb_gev(y)
   shape_row <- fit$estimates[fit$estimates$term == "shape", ]
-  # The shape estimate is small in magnitude -- the Gumbel limit recovers a
+  # The shape estimate is small in magnitude, the Gumbel limit recovers a
   # near-zero shape. (Its interval need not bracket zero exactly: at the
   # boundary the maximum-likelihood shape is biased upward by an O(1/n)
   # amount, the well-known small-sample GEV shape bias.)

@@ -1,4 +1,4 @@
-# Approximation registry --- scaffold only at the v0.4.0
+# Approximation registry: scaffold only at the v0.4.0
 # substrate.
 #
 # Container + registration helper + lookup accessor + lock helper for
@@ -10,18 +10,18 @@
 # approximation scheme?", mirroring the v0.3.8 R/refusal_taxonomy.R
 # and the v0.4.0 R/representation_registry.R scaffolds.
 #
-# Empty at this substrate step --- deliberately. The first scheme
+# Empty at this substrate step: deliberately. The first scheme
 # (`low_rank_smooth`) registers together with its emit path
 # (R/emit_smooth_low_rank.R) and the exported validate_approximation()
 # surface, because the scheme's validation_fn reads the truncated and
 # full smooth-basis matrices off the fit object that only the emit
 # path produces. Shipping the scheme's validation procedure before its
 # producer would pin a fit-slot contract with no consumer to verify it
-# against; the registry invariant ("every registered scheme carries a
+# against, the registry invariant ("every registered scheme carries a
 # working validation procedure") is best honoured by landing scheme +
 # validation + producer in one reviewed, end-to-end-verifiable change.
 # This step ships the container so that landing is a population step,
-# not an architecture step --- the same posture the refusal
+# not an architecture step: the same posture the refusal
 # scaffold took at v0.3.8 (container at v0.3.8, first population at
 # v0.3.10).
 #
@@ -31,27 +31,27 @@
 #
 # The registry is an environment (parent = emptyenv()) so symbol
 # lookup cannot fall through to the package namespace and pick up an
-# unrelated binding; populated by .register_approximation() at
-# .onLoad() time (currently zero calls --- the scaffold-only posture)
+# unrelated binding. Populated by .register_approximation() at
+# .onLoad() time (currently zero calls, the scaffold-only posture)
 # and locked immediately after via .lock_approximation_registry().
 
 # --- container ---------------------------------------------------- #
 
 # `.approximation_registry` is allocated at namespace load. Filled by
-# .register_approximation() during .onLoad() (currently zero calls);
-# locked immediately after by .lock_approximation_registry().
+# .register_approximation() during .onLoad() (currently zero calls).
+# Locked immediately after by .lock_approximation_registry().
 .approximation_registry <- new.env(parent = emptyenv())
 
 
 # --- registration helper ------------------------------------------ #
 
-# .register_approximation() --- the one-shot registration call.
-# Idempotent only in the sense that a duplicate `scheme` raises rather
-# than silently overwriting; the vocabulary is append-only at
+# .register_approximation(): the one-shot registration call.
+# Idempotent only in the sense that a duplicate `scheme` raises instead
+# of silently overwriting. The vocabulary is append-only at
 # .onLoad() time and the registry then locks.
 #
 # Arguments (the five-field schema)
-#   scheme             canonical machine-readable identifier; the same
+#   scheme             canonical machine-readable identifier. The same
 #                      string the exactness label "approximate_<scheme>"
 #                      carries and the string validate_approximation()
 #                      dispatches on. Must be a single non-empty string.
@@ -60,13 +60,13 @@
 #                      reference / interpretation). Must be a list.
 #   validation_fn      the per-scheme validation procedure, a function
 #                      of (fit, ...) returning the realised bias
-#                      measure + verdict; validate_approximation()
+#                      measure + verdict, validate_approximation()
 #                      dispatches here. Must be a function.
 #   fallback_hint      one-string guidance on the exact-route fallback
 #                      to offer when validation fails. Must be a single
 #                      string.
 #   registered_in_adr  the ADR number the scheme traces to (e.g.,
-#                      "0027"). Free-form provenance; does not gate
+#                      "0027"). Free-form provenance. Does not gate
 #                      registration. Must be a single string.
 #
 # Returns invisible NULL. Side effect: assign to
@@ -152,9 +152,9 @@
 
 # --- accessor: full entry ----------------------------------------- #
 
-# .lookup_approximation() --- internal accessor returning the full
+# .lookup_approximation(): internal accessor returning the full
 # registered entry list. Refuses with a structured error if `scheme`
-# is not registered; the known-schemes hint names the current
+# is not registered. The known-schemes hint names the current
 # vocabulary (empty at this substrate step). This is the refusal that
 # validate_approximation.default() surfaces as
 # `approximation_scheme_unknown` once the export lands.
@@ -186,7 +186,7 @@
 
 # --- accessor: validated scheme string ---------------------------- #
 
-# .approximation_scheme() --- thin convenience returning the validated
+# .approximation_scheme(): thin convenience returning the validated
 # scheme name back. The edit-light replacement for inline scheme
 # string literals at consumer sites, trading a single character of
 # verbosity for vocabulary-lock enforcement (the same pattern as
@@ -198,13 +198,13 @@
 
 # --- v0.4.0 population -------------------------------------------- #
 
-# .populate_approximation_registry_v0400() --- registers the first
+# .populate_approximation_registry_v0400(): registers the first
 # approximation scheme, `low_rank_smooth`, with the full five-field
 # schema. Called from .onLoad() *before*
 # .lock_approximation_registry() so the scheme is in place when user
 # code (and validate_approximation()) first observes the registry.
 # The validation_fn is .validate_low_rank_smooth() from
-# R/emit_smooth_low_rank.R --- it reads the truncation metadata the
+# R/emit_smooth_low_rank.R, it reads the truncation metadata the
 # emit path records on the fit (fit$extras$parse_info$approx) and
 # reports the realised Frobenius capture against the threshold.
 .populate_approximation_registry_v0400 <- function() {
@@ -240,10 +240,10 @@
 
 # --- lock helper -------------------------------------------------- #
 
-# .lock_approximation_registry() --- locks the environment so no
+# .lock_approximation_registry(): locks the environment so no
 # further .register_approximation() calls or user-side assign()s can
 # mutate it. Called once at the end of .onLoad(). The lock is enforced
-# by R's environmentIsLocked() machinery; schemes registered before
+# by R's environmentIsLocked() machinery. Schemes registered before
 # the lock remain readable indefinitely.
 .lock_approximation_registry <- function() {
   if (!environmentIsLocked(.approximation_registry)) {

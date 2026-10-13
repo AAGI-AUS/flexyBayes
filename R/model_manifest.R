@@ -1,4 +1,4 @@
-# model_manifest.R -- the compiled model manifest.
+# model_manifest.R: the compiled model manifest.
 #
 # Every fit records, at `fit$extras$manifest`, which stated or defaulted prior
 # became which engine slot, the prior the engine reports it received, the
@@ -494,7 +494,7 @@
 #'
 #' @param inla_fit An `inla` object.
 #' @returns A list: `rows`, a data frame of section, tag, theta, prior and
-#'   parameters, with the fixed effects last; and `complete`, whether the
+#'   parameters, with the fixed effects last, and `complete`, whether the
 #'   hyperparameter rows number exactly the hyperparameters in INLA's mode.
 #' @noRd
 #' @keywords internal
@@ -550,8 +550,8 @@
 #' The prior INLA declares for a slot nobody wrote one for
 #'
 #' @param section `"family"`, `"random"`, `"group"` or `"fixed"`.
-#' @param model The likelihood, latent or group model; for `"fixed"`, the
-#'   coefficient label.
+#' @param model The likelihood, latent or group model, or for `"fixed"`
+#'   the coefficient label.
 #' @param theta The hyperparameter's name within its model.
 #' @returns A list with `prior` and `param`, or `NULL` when INLA declares
 #'   nothing for it.

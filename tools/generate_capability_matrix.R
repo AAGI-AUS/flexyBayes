@@ -1,4 +1,4 @@
-# tools/generate_capability_matrix.R -- regenerate the capability block.
+# tools/generate_capability_matrix.R: regenerate the capability block.
 #
 # One R-level table (.fb_capability_matrix(), R/capability_matrix.R) is the
 # source of truth for what each active engine fits, emits, or refuses. This
@@ -7,7 +7,7 @@
 # in every surface that shows the table (README.md with the rows at least one
 # engine fits, inst/KNOWN_ISSUES.md with every row and its note; the layouts
 # come from .fb_capability_targets()), and writes the same table as
-# inst/validation/execution_grid/capability_matrix.csv -- the row builder in
+# inst/validation/execution_grid/capability_matrix.csv, the row builder in
 # tools/capability_grid_matrix.R is shared with tools/execution_grid.R, so
 # this CSV and the grid's own copy cannot drift apart for the same registry.
 #
@@ -29,7 +29,7 @@ if (!file.exists("DESCRIPTION")) {
   stop("Run this script from the package root.", call. = FALSE)
 }
 
-# load_all() rather than library(): the generator reads internal
+# load_all() instead of library(): the generator reads internal
 # functions, and the source tree is the version being documented.
 if (!requireNamespace("pkgload", quietly = TRUE)) {
   stop(
@@ -51,7 +51,7 @@ capability_matrix <- get(
 # file's M section) so the two writers cannot drift apart for the same
 # registry. The drift check fails loudly, before either surface is
 # touched, if a registry row has no M-section call and no recorded
-# elsewhere-execution -- the same guard the grid itself runs before
+# elsewhere-execution, the same guard the grid itself runs before
 # driving a single cell.
 source("tools/capability_grid_matrix.R")
 

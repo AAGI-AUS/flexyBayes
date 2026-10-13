@@ -3,8 +3,8 @@
 # marginaleffects discovers a model through a small set of S3 generics:
 # get_coef(), set_coef(), get_vcov(), get_predict() and get_data().
 # We register all five for both active backends via @exportS3Method
-# (delayed registration -- marginaleffects stays in Suggests). Each
-# generic has an explicit `flexybayes_inla` method; the bare
+# (delayed registration, marginaleffects stays in Suggests). Each
+# generic has an explicit `flexybayes_inla` method. The bare
 # `flexybayes` method is the default, reached by a brms fit via S3
 # inheritance (no `flexybayes_brms`-specific override exists here).
 #
@@ -12,7 +12,7 @@
 # from the SAME design-matrix / coefficient basis that get_coef() and
 # set_coef() expose, so the delta-method standard errors marginaleffects
 # builds (perturb coef via set_coef -> re-predict) are internally
-# consistent. Random effects are held at their population mean; the
+# consistent. Random effects are held at their population mean. The
 # identity link is assumed (the Gaussian fixed-effect surface).
 
 # Coefficient override stash used by set_coef() -> get_predict() so the
@@ -50,7 +50,7 @@
       reason_code = "marginaleffects_link_not_supported",
       message = paste0(
         "marginaleffects support currently covers the identity link ",
-        "only; this fit uses link '",
+        "only, and this fit uses link '",
         fam$link,
         "'. Work with the ",
         "posterior draws via fb_as_draws_simple() instead."
@@ -157,7 +157,7 @@ get_predict.flexybayes_inla <- function(
 }
 
 
-# Called from .onLoad -- marginaleffects >= 0.18 auto-discovers via the
+# Called from .onLoad, marginaleffects >= 0.18 auto-discovers via the
 # registered S3 methods, so no explicit registration is needed.
 .register_marginaleffects <- function() {
   requireNamespace("marginaleffects", quietly = TRUE)

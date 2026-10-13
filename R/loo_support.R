@@ -1,4 +1,4 @@
-# loo_support.R -- approximate leave-one-out cross-validation, where the
+# loo_support.R: approximate leave-one-out cross-validation, where the
 # fit carries what it needs.
 #
 # `loo()` is registered for flexybayes fits on the loo package's own
@@ -7,21 +7,21 @@
 #
 #   * a brms-engine fit carries the sampler's draws and Stan's pointwise
 #     log-likelihood, so the call passes straight through to
-#     brms::loo(), which returns loo's own object;
+#     brms::loo(), which returns loo's own object.
 #   * an INLA fit is a nested Laplace approximation. It carries marginal
 #     densities, not draws of the log-likelihood, so PSIS-LOO has no
 #     quantity to importance-weight. The refusal names the information
 #     criteria the fit did compute instead of returning something that
-#     would read as a leave-one-out estimate;
+#     would read as a leave-one-out estimate.
 #   * a fit carrying no posterior at all reaches the sibling refusal
 #     fit_lacks_posterior_draws, so the two states are distinguishable
-#     by the condition class rather than by reading the message.
+#     by the condition class, not by reading the message.
 
-# .fb_check_brms_delegation() --- the package a passthrough needs.
+# .fb_check_brms_delegation(): the package a passthrough needs.
 #
 # A fit carrying a brmsfit normally travels with the package that built
 # it. A fit saved and read back on a machine without brms does not, and
-# the delegation would fail inside brms's namespace rather than here.
+# the delegation would fail inside brms's namespace, not here.
 #
 # @noRd
 # @keywords internal
@@ -38,9 +38,9 @@
   )
 }
 
-# .fb_information_criteria_line() --- what an INLA fit does carry.
+# .fb_information_criteria_line(): what an INLA fit does carry.
 #
-# Built from the fit rather than recited: the per-row INLA emit asks for
+# Built from the fit, not recited: the per-row INLA emit asks for
 # DIC and WAIC at fit time, but the aggregated emits do not, so a fit
 # from that route carries neither and must not be told it does.
 #
@@ -86,7 +86,7 @@
   )
 }
 
-# .fb_refuse_loo() --- the two refusals, chosen by what the fit holds.
+# .fb_refuse_loo(): the two refusals, chosen by what the fit holds.
 #
 # @noRd
 # @keywords internal
@@ -100,7 +100,7 @@
       reason_code = "fit_lacks_posterior_draws",
       message = paste0(
         "loo() cannot estimate leave-one-out predictive accuracy for this ",
-        "fit: it carries no posterior at all -- no draws slot and no ",
+        "fit: it carries no posterior at all: no draws slot and no ",
         "engine marginals. The fit's class is <",
         paste(class(x), collapse = ", "),
         ">. Check the fit completed (return_code = FALSE). A fit that ",
@@ -113,7 +113,7 @@
   detail <- if (identical(engine, "inla")) {
     paste0(
       "This fit was estimated by INLA's nested Laplace approximation, ",
-      "which returns marginal densities rather than draws of the ",
+      "which returns marginal densities, not draws of the ",
       "log-likelihood. ",
       .fb_information_criteria_line(x)
     )
@@ -134,7 +134,7 @@
       "so there is nothing to leave one observation out of. ",
       detail,
       " For a leave-one-out estimate on this model, re-fit it on the ",
-      "brms engine -- flexybayes(..., backend = \"brms\") -- whose ",
+      "brms engine, flexybayes(..., backend = \"brms\"), whose ",
       "sampler stores the pointwise log-likelihood loo() reads. The ",
       "sibling refusal fit_lacks_posterior_draws is raised when a fit ",
       "carries no posterior at all."
@@ -149,25 +149,25 @@
 #' A method for the \pkg{loo} package's `loo()` generic. On a fit from
 #' the **brms** engine the call passes through to [brms::loo()], which
 #' computes PSIS-LOO from the pointwise log-likelihood Stan stored, and
-#' returns \pkg{loo}'s own object -- `elpd_loo`, `p_loo`, `looic` and the
+#' returns \pkg{loo}'s own object, `elpd_loo`, `p_loo`, `looic` and the
 #' Pareto-k diagnostics, unchanged.
 #'
 #' On a fit from the **INLA** engine the method refuses by name. INLA
 #' returns a nested Laplace approximation to the posterior, not draws of
 #' the log-likelihood, so there is no quantity for importance sampling to
 #' reweight and no leave-one-out estimate to report. The refusal names
-#' the information criteria the fit did compute -- WAIC at
-#' `fit$inla$waic$waic` and DIC at `fit$inla$dic$dic` on a per-row fit --
-#' so the alternative is in the message rather than left to be found.
+#' the information criteria the fit did compute, WAIC at
+#' `fit$inla$waic$waic` and DIC at `fit$inla$dic$dic` on a per-row fit,
+#' so the alternative is in the message, not left to be found.
 #' Neither is a leave-one-out estimate and neither carries Pareto-k
 #' diagnostics.
 #'
 #' A fit that carries no posterior at all is refused as
 #' `fit_lacks_posterior_draws` instead, so the two states are told apart
-#' by the condition class rather than by reading the message.
+#' by the condition class, not by reading the message.
 #'
 #' @param x A fitted `flexybayes` object.
-#' @param ... Passed to [brms::loo()] on the brms path; ignored on the
+#' @param ... Passed to [brms::loo()] on the brms path. Ignored on the
 #'   refusal paths.
 #' @returns On a brms-engine fit, the `loo` object [brms::loo()] returns.
 #'   Otherwise the method does not return: it raises a refusal of class
@@ -176,8 +176,8 @@
 #'   no posterior.
 #'
 #' @seealso [summary.flexybayes()], whose `$converge` slot carries the
-#'   engine's own diagnostics; [as_draws_df.flexybayes()] for the
-#'   posterior itself; [fb_refusals()] for the refusal vocabulary.
+#'   engine's own diagnostics. [as_draws_df.flexybayes()] for the
+#'   posterior itself. [fb_refusals()] for the refusal vocabulary.
 #'
 #' @exportS3Method loo::loo
 loo.flexybayes <- function(x, ...) {

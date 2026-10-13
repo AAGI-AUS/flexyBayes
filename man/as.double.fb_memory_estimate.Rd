@@ -19,7 +19,7 @@ when the carrier holds no total.
 \description{
 Returns \code{x$total} (bytes, after the INLA overhead multiplier).
 Registered against the \code{as.double} S3 generic so that
-\verb{as.numeric(<fb_memory_estimate>)} dispatches correctly --- the
+\verb{as.numeric(<fb_memory_estimate>)} dispatches correctly, the
 base-R \code{as.numeric} is \code{.Primitive("as.double")}, so dispatch
 fires on \code{as.double}, not on \code{as.numeric}.
 }

@@ -1,8 +1,8 @@
-# fb_backend_status() -- user-facing backend-readiness diagnostic.
+# fb_backend_status(): user-facing backend-readiness diagnostic.
 #
 # Reports, for each inference backend flexyBayes can route to, whether the
 # backend's package is installed and whether it is actually usable in this
-# session. The function is read-only -- it probes availability and never
+# session. The function is read-only, it probes availability and never
 # builds a model graph or starts a fit.
 
 # --- exported diagnostic -------------------------------------------- #
@@ -28,7 +28,7 @@
 #' @examples
 #' fb_backend_status()
 #'
-#' @param deep Logical; currently unused (reserved for a future backend whose
+#' @param deep Logical. Currently unused (reserved for a future backend whose
 #'   readiness probe is expensive enough to need an opt-out). Default `TRUE`.
 #' @export
 fb_backend_status <- function(deep = TRUE) {
@@ -77,7 +77,7 @@ print.fb_backend_status <- function(x, ...) {
   }
   if (!any(x$usable)) {
     cat(
-      "\n  No active inference backend is usable -- install at least one ",
+      "\n  No active inference backend is usable, install at least one ",
       "of the above before fitting.\n",
       sep = ""
     )

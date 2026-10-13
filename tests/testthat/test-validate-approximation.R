@@ -1,13 +1,11 @@
-# Tests for validate_approximation() --- ADR 0030 C5 + ADR 0027
-# (v0.4.0 Wave 1 Phase 1B). The sixth exported verb. Dispatch is on
-# the fit's registered approximation scheme via the .approximation_
-# registry dispatch table; an exact fit refuses. The validation-result
-# object is <fb_approximation_validation>. These tests use synthetic
-# fits carrying the emit-time fit$extras$parse_info$approx slot so the
-# verb is exercised without a live MCMC fit (the end-to-end fit is
-# covered, stress-gated, in test-emit-smooth-low-rank.R).
+# validate_approximation() (ADR 0030 C5, ADR 0027). Dispatch is on the
+# fit's registered approximation scheme through the approximation
+# registry, and an exact fit refuses. The result is an
+# <fb_approximation_validation>. Synthetic fits carry the
+# fit$extras$parse_info$approx slot, so no MCMC fit is needed. The
+# end-to-end fit is in test-emit-smooth-low-rank.R.
 
-# .mk_lr_fit() --- a synthetic flexybayes fit carrying one or more
+# .mk_lr_fit(): a synthetic flexybayes fit carrying one or more
 # low_rank_smooth approximations with the given captures.
 .mk_lr_fit <- function(captures = c(x = 0.9891)) {
   approx <- lapply(seq_along(captures), function(i) {

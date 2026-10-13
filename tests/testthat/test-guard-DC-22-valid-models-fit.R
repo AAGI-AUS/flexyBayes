@@ -1,7 +1,7 @@
 # Class guard DC-22: a valid model is refused or stops with an error.
 #
 # Each model below is fitted by lme4 (or glm) on the same data, so it is a
-# model the peers accept; flexybayes() on INLA must fit it too. The cases
+# model the peers accept, and flexybayes() on INLA must fit it too. The cases
 # come from the class's register rows: a stats family object (DEF-059), a
 # transformed response (DEF-103), a stated prior on a three-way random
 # interaction (DEF-136, DEF-198) and a model with no random terms
@@ -9,7 +9,7 @@
 # factor-by-numeric interaction, a nested intercept, weights and the bar
 # grammar.
 #
-# `.g22_open` lists the cases refused today, with their register rows; the
+# `.g22_open` lists the cases refused today, with their register rows. The
 # list must stay exact.
 
 .g22_data <- function() {

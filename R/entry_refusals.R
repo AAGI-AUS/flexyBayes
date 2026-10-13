@@ -1,22 +1,22 @@
-# Entry-argument refusals --- the checks every fitting and planning route
+# Entry-argument refusals: the checks every fitting and planning route
 # runs on its arguments and on the parsed model, and the registry entries
 # for them and for the aggregated routes' refusals (DEF-212 to DEF-218,
 # DEF-221, DEF-223).
 
-# .fb_refuse_aggregate_argument() --- `aggregate` that is not TRUE, FALSE or
+# .fb_refuse_aggregate_argument(): `aggregate` that is not TRUE, FALSE or
 # "auto".
 .fb_refuse_aggregate_argument <- function(x) {
   stop(.fb_refusal_condition(
     reason_code = "aggregate_argument_invalid",
     message = paste0(
-      "`aggregate` must be TRUE, FALSE, or \"auto\"; got: ",
+      "`aggregate` must be TRUE, FALSE, or \"auto\", got: ",
       paste(deparse(x), collapse = " ")
     ),
     supplied = x
   ))
 }
 
-# .fb_check_weights() --- observation weights are one finite number per row.
+# .fb_check_weights(): observation weights are one finite number per row.
 .fb_check_weights <- function(weights, data) {
   n <- nrow(data)
   problem <- if (!is.numeric(weights)) {
@@ -30,13 +30,13 @@
   stop(.fb_refusal_condition(
     reason_code = "weights_invalid",
     message = paste0(
-      "`weights` must be a numeric vector of length nrow(data); it is ",
+      "`weights` must be a numeric vector of length nrow(data). It is ",
       problem, "."
     )
   ))
 }
 
-# .fb_check_prior_argument() --- `prior` is an fb_prior() object or NULL.
+# .fb_check_prior_argument(): `prior` is an fb_prior() object or NULL.
 .fb_check_prior_argument <- function(prior, arg = "prior") {
   if (is.null(prior) || inherits(prior, "fb_prior")) {
     return(invisible(TRUE))
@@ -52,7 +52,7 @@
   ))
 }
 
-# .fb_refuse_absent_model_variables() --- a variable the parsed model reads
+# .fb_refuse_absent_model_variables(): a variable the parsed model reads
 # that is not a column of the data. Without this the engines met it as
 # "object 'x' not found", INLA after running.
 .fb_refuse_absent_model_variables <- function(fb, data) {
@@ -76,8 +76,8 @@
   ))
 }
 
-# .fb_refuse_non_numeric_response() --- a factor or character response.
-# No family flexyBayes fits takes one; on INLA a factor was fitted on its
+# .fb_refuse_non_numeric_response(): a factor or character response.
+# No family flexyBayes fits takes one. On INLA a factor was fitted on its
 # level codes. A binomial response keeps its own refusal.
 .fb_refuse_non_numeric_response <- function(fb, data) {
   yv <- .fb_response_values(fb, data)
@@ -98,7 +98,7 @@
   ))
 }
 
-# .fb_refuse_method_argument() --- an argument a sibling method takes that
+# .fb_refuse_method_argument(): an argument a sibling method takes that
 # this method does not implement.
 .fb_refuse_method_argument <- function(method, argument, why) {
   stop(.fb_refusal_condition(
@@ -116,7 +116,7 @@
       reason_code = code,
       description = description,
       message_template = "%s",
-      registered_in_adr = "PLAN 0.16.0 DEF-212 to DEF-224",
+      registered_in_adr = "0.16.0 entry argument checks",
       plan_field = NA_character_,
       since_version = "0.16.0"
     )
@@ -161,8 +161,8 @@
   reg(
     "aggregation_plan_ineligible",
     paste0(
-      "`aggregate = TRUE` on a model the aggregation plan cannot compress; ",
-      "the plan's reasons are carried in `reason_codes`."
+      "`aggregate = TRUE` on a model the aggregation plan cannot compress. ",
+      "The plan's reasons are carried in `reason_codes`."
     )
   )
   reg(

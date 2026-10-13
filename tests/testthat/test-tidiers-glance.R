@@ -1,16 +1,15 @@
-# Tests for glance() on all three fit shapes (D15 / WP-D, found by
-# WP-G2's stress run; see reports/WP-G2.md Handoffs).
+# Tests for glance() on all three fit shapes (found by a stress run).
 #
 # Before this fix, glance.flexybayes_inla() hard-refused, and the PARENT
 # glance.flexybayes() (reachable by calling it directly, bypassing S3
 # dispatch, as a diagnostic probe would) crashed with "arguments imply
-# differing number of rows: 1, 0" -- INLA's model_info has no n_params
+# differing number of rows: 1, 0". INLA's model_info has no n_params
 # key and call_info's chains/n_samples are NULL, both feeding
 # data.frame() unevenly against the 1-row numeric/character columns.
 # glance() now returns the same 10-column one-row shape on INLA, brms
 # and an aggregated (INLA) fit alike, with sampler-specific columns
 # (chains, samples, max_rhat, min_ess) NA on the two INLA-backed shapes
-# rather than guessed at.
+# instead of guessed at.
 
 .glance_cols <- c(
   "nobs", "npar", "logLik", "family", "link",

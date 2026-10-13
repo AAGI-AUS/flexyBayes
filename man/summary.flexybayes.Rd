@@ -28,24 +28,24 @@ latent field), on the standard-deviation scale, under the
 canonical component name. \code{prior} is a projection of
 \code{\link[=prior_summary]{prior_summary()}}. \code{note} is \code{"collapsed"} when the component's
 97.5\% quantile sits below 1\% of the posterior-median residual
-standard deviation -- a display heuristic for a posterior piled
+standard deviation, a display heuristic for a posterior piled
 against zero, not a test.}
 \item{\code{random}}{Named list, one data frame per grouping factor,
 with the columns \code{group}, \code{level}, \code{estimate}, \code{std.error},
 \code{conf.low}, \code{conf.high}. Empty when the model carries no random
 terms. The same object \code{\link[=ranef]{ranef()}} returns.}
-\item{\code{missing}}{Data frame of the unobserved design cells --
-ASReml's \code{mv} factor -- with the columns \code{row}, \code{estimate},
+\item{\code{missing}}{Data frame of the unobserved design cells,
+ASReml's \code{mv} factor, with the columns \code{row}, \code{estimate},
 \code{std.error}, \code{conf.low}, \code{conf.high}, followed by any design
 index variables the fit recorded. \code{row} indexes the data the
 engine was handed. The posterior is the engine's own: INLA's
 fitted-value marginal at that row, brms's sampled \code{mi()}
-response. Zero rows -- never \code{NULL} -- when every response was
+response. Zero rows (never \code{NULL}) when every response was
 observed. The same table \code{\link[=coef]{coef()}} returns for
 \code{what = "missing"}.}
 \item{\code{converge}}{List, in the engine's own terms: R-hat,
 effective sample sizes and divergent transitions where a sampler
-ran; mode status, marginal likelihood and the largest
+ran. Mode status, marginal likelihood and the largest
 Kullback-Leibler divergence where INLA's Laplace approximation
 did. No R-hat is invented for an approximation that has none.}
 \item{\code{n_design}}{Rows the engine was handed.}
@@ -54,16 +54,16 @@ response.}
 \item{\code{na_action}}{The missing-response record the fit carries, or
 \code{NULL} on a fit assembled without that layer.}
 \item{\code{model}}{One-line description of the random and residual
-structure, derived from the model representation rather than
+structure, derived from the model representation, not
 from any engine's emitted formula.}
 \item{\code{engine}}{\code{"inla"} or \code{"brms"}.}
 \item{\code{call}}{The recorded call.}
 \item{\code{spatial_field}}{\strong{Present only on a fit carrying an
-autoregressive latent field}, and absent -- not \code{NULL}-valued
--- otherwise. A data frame of \code{parameter}, \code{median}, \code{lower},
+autoregressive latent field}, and absent (not \code{NULL}-valued)
+otherwise. A data frame of \code{parameter}, \code{median}, \code{lower},
 \code{upper}: the field's correlation and standard-deviation
 parameters and the nugget standard deviation, on the scale a
-reader thinks in rather than INLA's precision scale. The point
+reader thinks in, not INLA's precision scale. The point
 estimate is the posterior median, because the standard
 deviations are read off precision marginals and only a monotone
 summary survives the reciprocal square root exactly. The same
@@ -79,15 +79,15 @@ with the prior each one carried, the engine's own convergence
 diagnostics, and whatever engine-native panels the fit earns. On a
 brms fit with a sectioned residual it additionally prints the residual
 variance and standard deviation for each level of the sectioning
-factor, computed from the draws rather than by transforming a
+factor, computed from the draws, not by transforming a
 posterior mean.
 }
 \details{
 The returned object is the same eleven-slot
 \code{summary.flexybayes} object on every active engine, so
 \code{summary(fit)$varcomp} answers whichever engine ran the fit. Before
-0.9.1 the two engines returned two incomparable objects -- INLA's
-four-slot list and brms's \code{brmssummary} -- and neither carried a
+0.9.1 the two engines returned two incomparable objects, INLA's
+four-slot list and brms's \code{brmssummary}, and neither carried a
 variance-component table at all.
 
 A fit whose model carries an autoregressive latent field gains one

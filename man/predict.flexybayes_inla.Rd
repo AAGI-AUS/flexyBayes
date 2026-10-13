@@ -25,11 +25,11 @@
 \arguments{
 \item{object}{A \code{flexybayes_inla} fit.}
 
-\item{newdata}{Optional data frame; defaults to the fit data. Ignored,
+\item{newdata}{Optional data frame. Defaults to the fit data. Ignored,
 with a warning, when \code{classify} is supplied. On a model with an
 \code{offset()} the prediction includes the offset evaluated on \code{newdata},
-so \code{newdata} needs every column the offset reads; an absent one
-refuses with \code{newdata_offset_missing} rather than being taken as zero.}
+so \code{newdata} needs every column the offset reads. An absent one
+refuses with \code{newdata_offset_missing} instead of being taken as zero.}
 
 \item{type}{\code{"response"} or \code{"link"}.}
 
@@ -62,11 +62,11 @@ draws. Default \code{1000}.}
 
 \item{re_formula}{\code{NA} (the default): the prediction is population-level,
 the fixed part of the model, as \code{re_formula = NA} gives on a brms fit.
-Any other value refuses with \code{method_argument_not_supported}; \code{\link[=fitted]{fitted()}}
+Any other value refuses with \code{method_argument_not_supported}. \code{\link[=fitted]{fitted()}}
 returns the predictions at the fitted levels of the random effects.}
 
 \item{summary}{\code{TRUE} (the default): the prediction is the posterior
-mean. \code{FALSE} refuses with \code{method_argument_not_supported};
+mean. \code{FALSE} refuses with \code{method_argument_not_supported}.
 \code{\link[=fb_as_draws_simple]{fb_as_draws_simple()}} returns the posterior draws.}
 
 \item{...}{Ignored, except that an argument of ASReml's \code{predict()}

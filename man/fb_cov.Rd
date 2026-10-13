@@ -8,7 +8,7 @@ fb_cov(M, type = "dense", levels = NULL, scheme = NULL, ...)
 }
 \arguments{
 \item{M}{The covariance carrier. For \code{type = "blocks"} a base-R list
-of K square covariance matrices; otherwise a square numeric matrix
+of K square covariance matrices. Otherwise a square numeric matrix
 (base-R or \pkg{Matrix}). Inside a formula this argument names a
 matrix resolved through \code{known_matrices}.}
 
@@ -17,14 +17,14 @@ matrix resolved through \code{known_matrices}.}
 \code{"dense"}.}
 
 \item{levels}{Optional character vector of grouping-factor level
-labels the carrier's rows / columns align to. Carried as metadata;
+labels the carrier's rows / columns align to. Carried as metadata.
 the fit-time validator checks alignment against the fitted factor.}
 
 \item{scheme}{Character(1), required when \code{type = "low_rank"}: the
 name of a registered approximation scheme (see
 \code{\link[=validate_approximation]{validate_approximation()}}). Ignored for the exact types.}
 
-\item{...}{Reserved for forward carrier-type options; currently
+\item{...}{Reserved for forward carrier-type options. Currently
 carried verbatim on the object.}
 }
 \value{
@@ -44,11 +44,11 @@ deprecate at this release and are removed at v0.5.0.
 \details{
 The carrier's \code{type} selects how the downstream emit path derives a
 covariance square root. \code{"dense"} takes the lower Cholesky of the
-supplied covariance; \code{"chol"} uses the supplied factor directly;
-\code{"precision"} inverts via the Cholesky of the precision matrix;
+supplied covariance. \code{"chol"} uses the supplied factor directly.
+\code{"precision"} inverts via the Cholesky of the precision matrix.
 \code{"blocks"} assembles a block-diagonal covariance from a list of
-per-block matrices; \code{"low_rank"} pairs a rank-K factor with a
-registered approximation scheme (reserved at v0.4.0 -- the carrier
+per-block matrices. \code{"low_rank"} pairs a rank-K factor with a
+registered approximation scheme (reserved at v0.4.0, the carrier
 vocabulary is active and validated, while the approximate-covariance
 fit route activates in a subsequent release).
 
@@ -59,11 +59,11 @@ standard deviation. The precision carrier of
 \code{Matrix::bdiag(lapply(blocks, solve))} states the same covariance on INLA,
 and the dense carrier of the block-diagonal matrix states it on brms.
 
-Inside a model formula the carrier is written inline -- the matrix
+Inside a model formula the carrier is written inline, the matrix
 argument names a matrix passed through \code{known_matrices}, exactly as
 the legacy keyword forms did. The construction-time check is a light
 structural probe (shape, lower-triangular pattern, symmetry, block
-count); the full level-aware validation runs at fit time against the
+count). The full level-aware validation runs at fit time against the
 grouping factor.
 }
 \examples{

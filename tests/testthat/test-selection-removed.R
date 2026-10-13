@@ -1,5 +1,5 @@
 # The seven penalised-selection exports stay callable until the removal is
-# announced in a public release; each refuses with selection_removed.
+# announced in a public release. Each refuses with selection_removed.
 
 removed_fns <- c(
   "fb_select", "fb_select_path", "fb_select_refit", "fb_select_fold_data",

@@ -2,7 +2,7 @@
 #
 # Precompile every `flexyBayes-*.Rmd.orig` into its sibling
 # `flexyBayes-*.Rmd` so that `R CMD build` and `R CMD check` render
-# the static (already-evaluated) `.Rmd` in seconds rather than
+# the static (already-evaluated) `.Rmd` in seconds instead of
 # re-running the live MCMC chunks every time.
 #
 # Run interactively whenever a `.Rmd.orig` source is touched:
@@ -13,10 +13,8 @@
 # The `--only` flag accepts a comma-separated list of vignette
 # basenames or basename suffixes. `--only 08` matches
 # `flexyBayes-08-downstream-analysis.Rmd.orig`; `--only 05,08`
-# precompiles both. Added 2026-05-26 (v0.3.8 Phase C) for the
-# selective-refresh workflow ratified by v038-plan-2026-05-25
-# §12.3 -- avoids paying the full 12-vignette MCMC cost when only
-# a subset needs refreshing.
+# precompiles both. A selective refresh avoids paying the full
+# 12-vignette MCMC cost when only a subset needs refreshing.
 #
 # Pre-requisites (the precompile is a one-time payment that must
 # succeed in your interactive session, not in CI):
@@ -27,17 +25,15 @@
 #
 # Outputs:
 #
-# - `vignettes/<name>.Rmd` — static, ships in the package tarball.
-# - `vignettes/<name>-figs/*.png` — figures, ship alongside the
+# - `vignettes/<name>.Rmd`: static, ships in the package tarball.
+# - `vignettes/<name>-figs/*.png`: figures, ship alongside the
 #   static `.Rmd`. Per-vignette directory keeps figure namespaces
 #   separate.
 #
 # `.Rbuildignore` excludes:
 #
-# - `^vignettes/_precompile\.R$` — this driver.
-# - `^vignettes/.*\.Rmd\.orig$` — the live-MCMC sources.
-#
-# Audit recipe 09 (`/rpkg`).
+# - `^vignettes/_precompile\.R$`: this driver.
+# - `^vignettes/.*\.Rmd\.orig$`: the live-MCMC sources.
 
 vignettes_dir <- if (basename(getwd()) == "vignettes") {
   getwd()
@@ -67,7 +63,7 @@ if (length(orig_files) == 0L) {
 
 # Selective filter: --only <comma-list> restricts the precompile
 # set to vignettes whose basename (without .Rmd.orig) contains any
-# of the comma-separated tokens. Substring match -- "08" matches
+# of the comma-separated tokens. Substring match: "08" matches
 # "flexyBayes-08-downstream-analysis"; "downstream" matches the
 # same vignette. Tokens that match no vignette raise; the empty
 # filter (no --only flag) keeps the full set.
@@ -75,7 +71,7 @@ if (length(orig_files) == 0L) {
 
 # The knit runs against the INSTALLED flexyBayes, not this tree. A bake
 # after source edits without a reinstall ships stale output that reads
-# as fresh -- it happened twice in the v0.9.1 documentation pass (the
+# as fresh. It happened twice in the v0.9.1 documentation pass (the
 # tree had moved, the installed build had not, and only a diff caught
 # it). The build stamp of the installed package is printed here so the
 # operator can refuse a stale bake; reinstall from a tarball built OFF
@@ -86,7 +82,7 @@ cat(sprintf(
   paste0(
     "[precompile] knitting against the INSTALLED flexyBayes ",
     "(Packaged: %s).\n[precompile] If R/ has changed since that ",
-    "install, STOP and reinstall first -- the bake would be stale.\n"
+    "install, STOP and reinstall first, or the bake would be stale.\n"
   ),
   if (is.null(.installed_stamp)) "unknown" else .installed_stamp
 ))
@@ -160,7 +156,7 @@ knitr::opts_chunk$set(error = FALSE)
 # chunk that declares `error = TRUE` and errors somewhere its author did
 # not intend. Two things are not errors and are excluded:
 #
-#   * a line that appears verbatim in the .Rmd.orig -- prose passes
+#   * a line that appears verbatim in the .Rmd.orig, prose passes
 #     through the knit unchanged, and two shipped pages write a `#>
 #     Error:` line by hand inside a plain fenced block to show a refusal
 #     without paying for the fit that raises it;

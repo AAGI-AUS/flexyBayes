@@ -1,4 +1,4 @@
-# .fb_preflight() -- design-memory preflight (v0.3.0).
+# .fb_preflight(): design-memory preflight (v0.3.0).
 #
 # Takes a parsed `<fb_terms>` IR + an `<fb_dataset>` wrapper and
 # returns an `<fb_preflight>` S3 list with three slots:
@@ -8,20 +8,20 @@
 #                         aggregated_likelihood_candidate (logical)
 #   $total_estimate_bytes sum across terms plus a fixed bookkeeping
 #                         overhead (page-sized: 4096 bytes)
-#   $refusal              NULL if accepted; otherwise a structured
+#   $refusal              NULL if accepted. Otherwise a structured
 #                         `<fb_preflight_refusal>` object with
 #                         reason_code = "design_memory_exceeds_ceiling",
 #                         the binding term label, its estimate, and
 #                         the active ceiling in bytes.
 #
 # All term estimates are deterministic, computed from IR + dataset
-# metadata only -- never reads the underlying $data row-wise. This
-# keeps preflight O(terms) regardless of n_rows; the 1e8-row
+# metadata only, never reads the underlying $data row-wise. This
+# keeps preflight O(terms) regardless of n_rows. The 1e8-row
 # stress test exercises exactly this property.
 #
 # Internal-only at v0.3.0. No @export tag.
 
-# Per-term overhead constant in bytes; covers list wrappers and the
+# Per-term overhead constant in bytes. Covers list wrappers and the
 # small attributes attached to each design slot. Empirically calibrated
 # against `object.size()` on isolated fb_terms allocations: 256 bytes
 # overshoots a hand-counted ALLOC headers + names + attributes block
@@ -29,18 +29,18 @@
 .FB_PREFLIGHT_TERM_OVERHEAD <- 256
 
 # Fixed bookkeeping overhead for the preflight result itself plus the
-# IR + dataset wrappers. Page-sized for cleanliness; the absolute value
+# IR + dataset wrappers. Page-sized for cleanliness. The absolute value
 # is a small fraction of any single term that would trigger a refusal.
 .FB_PREFLIGHT_BASE_OVERHEAD <- 4096
 
 # Default smooth-basis dimension when an mgcv-style s(x) term carries
 # no explicit k= argument and .enrich() has not yet populated term$k.
 # Matches mgcv's default (10) per ?mgcv::s. The enriched IR carries
-# the resolved k = ncol(sm_obj$X) after absorb.cons; that value is
+# the resolved k = ncol(sm_obj$X) after absorb.cons. That value is
 # preferred when available.
 .FB_PREFLIGHT_SMOOTH_K_DEFAULT <- 10L
 
-# Default spline df for spl(x) -- matches the codegen path's hardcoded
+# Default spline df for spl(x), matches the codegen path's hardcoded
 # splines::bs(..., df = 8, degree = 3, intercept = FALSE) basis. If a
 # future enrich step records term$df we will prefer it.
 .FB_PREFLIGHT_SPLINE_DF_DEFAULT <- 8L
@@ -51,18 +51,18 @@
 # expects the rest of the machine to remain responsive under load.
 # Override per session via `options(flexyBayes.preflight_ram_fraction
 # = <fraction>)`. The previous 80% default was too high for shared
-# hosts; the new default plus the option give users explicit control.
+# hosts. The new default plus the option give users explicit control.
 .FB_PREFLIGHT_DEFAULT_RAM_FRACTION <- 0.6
 
 
 # Top-level constructor. Returns the `<fb_preflight>` object even when
-# the design is feasible (refusal == NULL); the caller pattern-matches
+# the design is feasible (refusal == NULL). The caller pattern-matches
 # on inherits(pf$refusal, "fb_preflight_refusal").
 #
 # The `known_matrices` arg (v0.3.10) threads the user-supplied
 # vm/ped carriers through so the per-term INLA memory estimator can
 # resolve sparse-precision nnz() and block-diagonal sum_k n_k^2
-# accurately. NULL is the v0.3.5 backward-compatible default ---
+# accurately. NULL is the v0.3.5 backward-compatible default,
 # callers that do not have known_matrices in
 # scope (legacy tests, dataset-only preflight) get the conservative
 # upper-bound estimator that assumes worst-case dense/diagonal forms.
@@ -74,12 +74,12 @@
 ) {
   .check_fb_terms(
     fb_ir,
-    ".fb_preflight() requires an `<fb_terms>` IR; got: ",
+    ".fb_preflight() requires an `<fb_terms>` IR, got: ",
     paste(class(fb_ir), collapse = "/")
   )
   .check_fb_dataset(
     fb_dataset,
-    ".fb_preflight() requires an `<fb_dataset>` wrapper; got: ",
+    ".fb_preflight() requires an `<fb_dataset>` wrapper, got: ",
     paste(class(fb_dataset), collapse = "/")
   )
 
@@ -89,8 +89,8 @@
   per_term <- list()
   n_rows <- as.numeric(fb_dataset$n_rows)
 
-  # Fixed-effect terms (intercept is implicit; not estimated separately;
-  # the design block for fixed numerics + factors carries it). Each
+  # Fixed-effect terms (the intercept is implicit and the design block
+  # for fixed numerics + factors carries it). Each
   # term carries enough to dispatch to the right estimator.
   for (i in seq_along(fb_ir$fixed_terms)) {
     entry <- .preflight_fixed_term(
@@ -114,17 +114,17 @@
   }
 
   # Smooth detection on fixed_terms (mgcv-style s() lives there in the
-  # asreml ingest path; the brms walker refuses smooths at ingest time
+  # asreml ingest path. The brms walker refuses smooths at ingest time
   # so they don't reach the IR via fb_from_brms, but the IR may still
   # carry them on the asreml side).
   # The .preflight_fixed_term() dispatcher handles the smooth marker
-  # internally; the if-branch above already covers it.
+  # internally. The if-branch above already covers it.
 
   # Unknown-representation gate. Any per-term entry flagged as
   # unknown_representation = TRUE forces a refusal
   # regardless of byte estimate: a ceiling check cannot be made
   # on a term whose design shape we did not characterise. This refusal
-  # is preferred over the byte-ceiling refusal -- a known-too-large
+  # is preferred over the byte-ceiling refusal, a known-too-large
   # design is informative, but an unknown design is the safety-critical
   # case.
   unknown_terms <- vapply(
@@ -169,7 +169,7 @@
     }
   }
 
-  # Model-level aggregation plan. Informational at v0.3.0.9000 --
+  # Model-level aggregation plan. Informational at v0.3.0.9000,
   # the per-term
   # `aggregated_likelihood_candidate` flag remains the dispatcher
   # contract through v0.3.1. The plan supersedes per-term flags as the
@@ -215,7 +215,7 @@
 
 # The aggregation scope envelope includes "gaussian family +
 # identity link". Preflight evaluates this once and gates every
-# per-term flag through it; non-gaussian / non-identity families
+# per-term flag through it. Non-gaussian / non-identity families
 # cannot carry the aggregation candidacy on any term.
 .fb_preflight_family_in_scope <- function(fb_ir) {
   fam_ok <- identical(fb_ir$family, "gaussian")
@@ -229,20 +229,20 @@
 # ---------------------------------------------------------------- #
 
 # Walk a single fixed_terms[[i]] entry. The IR's fixed_terms list
-# entries carry varying shapes depending on the ingest path; we
+# entries carry varying shapes depending on the ingest path. We
 # pattern-match on $type with one branch per term class the parsers
 # can emit. Anything that does not match a known class falls into
-# the unknown-representation guard at the bottom -- a "conservative
-# lower bound" is not safe for refusal; under-estimating risks
-# letting a model through that the backend then fails to allocate.
+# the unknown-representation guard at the bottom. A "conservative
+# lower bound" is not safe for refusal, because under-estimating lets a
+# model through that the backend then fails to allocate.
 .preflight_fixed_term <- function(term, n_rows, fb_dataset, family_ok) {
   ttype <- if (!is.null(term$type)) term$type else "expression"
   label <- .preflight_term_label(term, ttype, kind = "fixed")
 
-  # Smooth s(x) / t2(x) -- dense basis block. Two forms hit this
+  # Smooth s(x) / t2(x), dense basis block. Two forms hit this
   # branch: the hand-built sentinel "smooth"/"s"/"t2" used by the test
   # IR helpers and the parser-emitted "smooth_mgcv" (the live ingest
-  # path; parse_formula.R:149 emits this type and .enrich() populates
+  # path. parse_formula.R:149 emits this type and .enrich() populates
   # term$k = ncol(sm_obj$X) after mgcv::smoothCon() absorbs the
   # identifiability constraint).
   if (ttype %in% c("smooth", "s", "t2", "smooth_mgcv")) {
@@ -267,10 +267,10 @@
     ))
   }
 
-  # P-spline spl(x) -- splines::bs() basis block. The codegen path
+  # P-spline spl(x), splines::bs() basis block. The codegen path
   # hardcodes df = 8, degree = 3, intercept = FALSE so the dense
   # basis is N x df. We prefer term$df if a future enrich step
-  # records it; otherwise we use the codegen default.
+  # records it. Otherwise we use the codegen default.
   if (identical(ttype, "spline")) {
     df <- if (!is.null(term$df) && is.numeric(term$df)) {
       as.integer(term$df)
@@ -289,7 +289,7 @@
     ))
   }
 
-  # Numeric fixed term -- one double column.
+  # Numeric fixed term, one double column.
   if (ttype %in% c("numeric", "continuous", "I")) {
     bytes <- 8 *
       n_rows + # one double column
@@ -306,9 +306,9 @@
     ))
   }
 
-  # Factor fixed term -- integer index + (k-1) beta dummy contrasts.
-  # NA level count escalates to representation_unknown rather than
-  # silently sizing the dummy block at 0 -- the count is the binding
+  # Factor fixed term, integer index + (k-1) beta dummy contrasts.
+  # NA level count escalates to representation_unknown, not
+  # silently sizing the dummy block at 0, the count is the binding
   # factor for the dummy vector size.
   if (ttype %in% c("factor", "categorical")) {
     k <- .preflight_term_level_count(term, fb_dataset)
@@ -338,21 +338,21 @@
     ))
   }
 
-  # Factor:factor interaction -- treatment-coded reduced-rank
+  # Factor:factor interaction, treatment-coded reduced-rank
   # model.matrix(~ f1*f2, data) returns prod(L_i - 1) columns for the
   # interaction block alone, on the standard convention where main
   # effects and the intercept are also present. The hard case:
   # high-cardinality factor:factor can exceed the ceiling by
   # orders of magnitude vs the v0.3.0 "single dense column"
   # fallthrough estimate. The estimate is exact for the common
-  # additive-with-interaction model; on the rare `y ~ f1:f2 - 1`
-  # form it under-estimates by (L1 + L2 - 1) columns -- in any
+  # additive-with-interaction model. On the rare `y ~ f1:f2 - 1`
+  # form it under-estimates by (L1 + L2 - 1) columns, in any
   # high-cardinality regime that is negligible relative to the
   # prod(L_i - 1) block size.
   if (identical(ttype, "factor_interaction")) {
     n_dummies <- .preflight_factor_interaction_dummies(term$vars, fb_dataset)
     if (is.na(n_dummies)) {
-      # Cardinality unresolvable from the dataset wrapper -- the
+      # Cardinality unresolvable from the dataset wrapper, the
       # interaction memory is unknown. Flag for representation-
       # unknown refusal at the top level.
       return(.preflight_entry(
@@ -380,7 +380,7 @@
     ))
   }
 
-  # Factor:continuous interaction -- treatment-coded indexed slope.
+  # Factor:continuous interaction, treatment-coded indexed slope.
   # Representation: factor index column + continuous column + (L - 1)
   # per-level slope coefficients (reference level's slope fixed to
   # zero so no coefficient slot). NA level count escalates to
@@ -413,8 +413,8 @@
     ))
   }
 
-  # Polynomial pol(x, d) -- degree-d dense basis. The IR carries
-  # term$degree from parse_formula.R; the basis is d columns of N.
+  # Polynomial pol(x, d), degree-d dense basis. The IR carries
+  # term$degree from parse_formula.R. The basis is d columns of N.
   if (identical(ttype, "polynomial")) {
     d <- if (!is.null(term$degree) && is.numeric(term$degree)) {
       as.integer(term$degree)
@@ -433,7 +433,7 @@
     ))
   }
 
-  # Generic numeric:numeric interaction -- a single product column.
+  # Generic numeric:numeric interaction, a single product column.
   if (identical(ttype, "interaction")) {
     bytes <- 8 * n_rows + 8 + .FB_PREFLIGHT_TERM_OVERHEAD
     return(.preflight_entry(
@@ -447,7 +447,7 @@
     ))
   }
 
-  # Expression term -- I() / arithmetic / function calls evaluated
+  # Expression term, I() / arithmetic / function calls evaluated
   # against data (parse_formula.R:89 returns this when the label is
   # not a bare variable in `data`). The standard representation is
   # one double column (the evaluated expression vector) plus one
@@ -466,7 +466,7 @@
   }
 
   # Unknown fallthrough. The contract is
-  # "do not silently under-estimate"; an unrecognised fixed term flags
+  # "do not silently under-estimate". An unrecognised fixed term flags
   # the entry for representation-unknown refusal at the top level.
   # A diagnostic single-column estimate is recorded so the print
   # surface still shows something, but it is NOT consumed by the
@@ -492,9 +492,9 @@
   label <- .preflight_term_label(term, rtype, kind = "random")
   k <- .preflight_term_level_count(term, fb_dataset)
 
-  # (1 | g) -- random intercept. Integer index + k-vector of u's.
-  # NA level count escalates to representation_unknown rather than
-  # silently sizing the latent vector at 0 -- the group cardinality
+  # (1 | g), random intercept. Integer index + k-vector of u's.
+  # NA level count escalates to representation_unknown, not
+  # silently sizing the latent vector at 0, the group cardinality
   # drives the latent block.
   if (identical(rtype, "simple")) {
     if (is.na(k)) {
@@ -522,7 +522,7 @@
     ))
   }
 
-  # (x || g) / (1 + x || g) / (0 + x || g) -- uncorrelated slope.
+  # (x || g) / (1 + x || g) / (0 + x || g), uncorrelated slope.
   # Integer index + slope variable column + k-vector of slope (and,
   # if with_intercept, another k-vector of intercept). NA level
   # count escalates to representation_unknown.
@@ -554,7 +554,7 @@
     ))
   }
 
-  # (x | g) -- correlated slope. Two integer index columns rather than one,
+  # (x | g), correlated slope. Two integer index columns, not one,
   # since INLA blocks the intercepts and the slopes end to end, plus the
   # slope variable column and 2k latent values. The intercept is always
   # present: the correlation is what the model is for.
@@ -584,12 +584,11 @@
     ))
   }
 
-  # Smooth s(x) on the random side -- the asreml ingest path places
+  # Smooth s(x) on the random side, the asreml ingest path places
   # parser-emitted "smooth_mgcv" terms in random_terms (e.g.
   # random = ~ s(x, k = 6)). Same N x k dense basis cost as the
-  # fixed-side branch. This previously fell through to the
-  # structured-cov estimate below, which under-estimated by a factor
-  # of k.
+  # fixed-side branch. The structured-cov estimate below would
+  # under-estimate it by a factor of k.
   if (rtype %in% c("smooth_mgcv", "smooth", "s", "t2")) {
     sm_k <- if (!is.null(term$k) && is.numeric(term$k)) {
       as.integer(term$k)
@@ -634,9 +633,9 @@
   # nested_id) into a k-length latent vector, where k is the number of
   # distinct observed combinations. The memory shape is therefore
   # identical to the "simple" branch (4N index + 8k latent) with no
-  # under-estimation, so they are sized here rather than escalated to
-  # representation_unknown. This lets a brms request preflight-clear;
-  # an inla/auto request is still refused downstream by the LGM gate
+  # under-estimation, so they are sized here, not escalated to
+  # representation_unknown. This lets a brms request preflight-clear.
+  # An inla/auto request is still refused downstream by the LGM gate
   # (random_term_type_inla), so the INLA boundary is intact.
   if (rtype %in% c("nested", "combo")) {
     kk <- if (!is.na(k)) {
@@ -676,7 +675,7 @@
     ))
   }
 
-  # interaction_generic -- the parse_formula classifier's fallback
+  # interaction_generic: the parse_formula classifier's fallback
   # when no structured-interaction pattern matched (parse_formula.R
   # :214). Memory is unknown because the design shape is not
   # characterised by a single template. Flag for representation-
@@ -704,15 +703,15 @@
   #   (b) Known dense / Cholesky / factor-analysis matrix
   #       representations that the indexed heuristic under-estimates
   #       (at, us, fa, at_simple, at_units, us_gxe, fa_gxe, vm_gxe,
-  #       nested, combo) -- routed to unknown_representation = TRUE
-  #       rather than silently under-estimating at large N. A
+  #       nested, combo), routed to unknown_representation = TRUE
+  # and not silently under-estimating at large N. A
   #       term-specific estimator can be added per class without
   #       changing the dispatch shape (extend KNOWN_INDEXED below
   #       once a per-class estimator and its test ship together).
   #
   # Either category escalates to unknown_representation when the
   # level count cannot be resolved from the IR or the dataset
-  # wrapper's dictionaries (k = NA_integer_) -- the level count is
+  # wrapper's dictionaries (k = NA_integer_), the level count is
   # the binding factor for the latent vector size, so refusing
   # cleanly beats guessing.
   KNOWN_INDEXED <- c("vm", "ped", "ar1", "ar1_spatial", "ar1_spatial_at")
@@ -730,9 +729,8 @@
 
   # Blocks-format vm/ped terms (v0.3.10) surface as `block_diagonal`
   # so fb_plan() can render "(K blocks)" annotations on the print
-  # form. The byte estimate tracks the indexed_structured_known
-  # formula at preflight time --- the per-block memory model lands in
-  # the per-term INLA memory estimator.
+  # form. The byte estimate uses the indexed_structured_known formula.
+  # The per-block memory model is in the per-term INLA memory estimator.
   cov <- term$cov_representation
   bytes <- 4 * n_rows + 8 * n_rows + 16 * k + .FB_PREFLIGHT_TERM_OVERHEAD
   if (!is.null(cov) && identical(cov$format, "blocks")) {
@@ -765,7 +763,7 @@
 # Build a single per-term entry. Centralised so adding a new field
 # (e.g. an `effort_estimate`) is a one-line change.
 # `unknown_representation = TRUE` flags terms whose design memory we
-# could not characterise; the top-level `.fb_preflight()` then routes
+# could not characterise. The top-level `.fb_preflight()` then routes
 # such terms to a `representation_unknown_for_preflight` refusal in
 # preference to a (possibly under-estimated) ceiling check.
 .preflight_entry <- function(
@@ -795,13 +793,13 @@
 # cannot be resolved from the dataset wrapper's dictionaries, OR when
 # the product overflows R's integer range (a high-cardinality
 # factor:factor interaction can reach 2^31 - 1 well before any single
-# factor's level count does -- the same class C1 repairs for the
-# aggregation planner's cell count). Either way the caller's
+# factor's level count does, as with the aggregation planner's cell
+# count). Either way the caller's
 # `is.na()` check already routes to `unknown_representation = TRUE`,
-# which forces a refusal (R/fb_preflight.R:124-132) rather than
+# which forces a refusal (R/fb_preflight.R:124-132) instead of
 # letting a wrong byte estimate reach the memory-ceiling comparison,
-# so the overflow case is folded into the existing NA contract rather
-# than adding a second reason code for a value the caller treats
+# so the overflow case is folded into the existing NA contract instead of
+# adding a second reason code for a value the caller treats
 # identically either way.
 .preflight_factor_interaction_dummies <- function(vars, fb_dataset) {
   if (!length(vars)) {
@@ -826,7 +824,7 @@
 }
 
 # Build a display label from an IR term descriptor. Mirrors the
-# canonical-name conventions for diagnostic visibility -- the binding
+# canonical-name conventions for diagnostic visibility, the binding
 # term in a refusal must be human-readable.
 .preflight_term_label <- function(term, ttype, kind) {
   if (!is.null(term$label) && nzchar(term$label)) {
@@ -860,7 +858,7 @@
     return(.ar1_term_spelling(term))
   }
   # A multi-way interaction random term (combo A:B:C) carries its columns in
-  # `vars` and has no `var`; they collapse to a single "A:B:C" string so the
+  # `vars` and has no `var`. They collapse to a single "A:B:C" string so the
   # label stays scalar. A vector label otherwise propagated into
   # `per_term[[entry$label]] <- entry`, raising the base-R "no such index at
   # level 1" error on any interaction term.
@@ -907,32 +905,28 @@
 }
 
 # Level-count lookup. Reads in priority order: (1) the IR's cached
-# $var_n; (2) the dataset's frozen dictionary length; (3) NA_integer_
+# $var_n. (2) the dataset's frozen dictionary length. (3) NA_integer_
 # when neither source can resolve the count.
 #
-# The previous `1L` fallback was removed: it was labelled
-# "conservative" but is actually the smallest latent
-# block, which silently under-estimates the design memory whenever
-# the level count is genuinely unresolvable. The structured-cov
+# There is no `1L` fallback: it is the smallest latent block and would
+# silently under-estimate the design memory whenever the level count is
+# unresolvable. The structured-cov
 # branch in .preflight_random_term() (and any future estimator that
 # depends on `k`) treats NA_integer_ as the signal to escalate to a
 # `representation_unknown_for_preflight` refusal at the top level.
 .preflight_term_level_count <- function(term, fb_dataset) {
-  # ar1_spatial's latent size is the separable field's node count --
+  # ar1_spatial's latent size is the separable field's node count,
   # n_row x n_col for the single-field form, or n_row x n_col x n_at
-  # for the C5/FS-27 per-trial spelling (INLA's replicate = mechanism
+  # for the per-trial spelling (INLA's replicate = mechanism
   # materialises n_at independent copies of the identical n_row x
   # n_col field). Neither dimension lives under $var / $var_n /
   # $n_levels / $K, the fields the generic lookup below checks, so
-  # ar1_spatial always fell through to NA here -- escalating EVERY
-  # ar1_spatial term (not only the new per-trial one) to
-  # representation_unknown_for_preflight the moment a caller bypassed
-  # the 1e5-row dispatcher threshold (fb_plan() always does; a real
-  # fit does once N crosses it). Found while implementing C5, whose
-  # "auto routes this to INLA" acceptance criterion requires this
-  # preflight to clear rather than refuse. .enrich() (R/parse_formula.R)
-  # already populates $n_row / $n_col / $n_at from the real data at
-  # IR-build time; .fb_dataset_levels() is the metadata-only fallback
+  # these terms need their own branch to avoid escalating to
+  # representation_unknown_for_preflight once a caller bypasses the
+  # 1e5-row dispatcher threshold (fb_plan() always does, a real fit does
+  # once N crosses it). .enrich() (R/parse_formula.R) populates $n_row /
+  # $n_col / $n_at from the real data at IR-build time.
+  # .fb_dataset_levels() is the metadata-only fallback
   # (fb_from_brms(data = NULL, carry_n_rows = ...)).
   if (identical(term$type, "ar1_spatial_at")) {
     grids <- term$level_grids
@@ -964,14 +958,14 @@
     }
     return(as.integer(n_row) * as.integer(n_col) * n_at)
   }
-  # Random-term IR carries $var_n; fixed-factor IR carries $n_levels;
-  # the asreml ingest occasionally uses $K. Try each in order.
+  # Random-term IR carries $var_n and fixed-factor IR carries $n_levels.
+  # The asreml ingest occasionally uses $K. Try each in order.
   for (slot in c("var_n", "n_levels", "K")) {
     v <- term[[slot]]
     if (!is.null(v) && !is.na(v)) return(as.integer(v))
   }
   # A multi-way interaction term carries its columns in `vars` and has no
-  # `var`; its level count is the number of observed combinations.
+  # `var`. Its level count is the number of observed combinations.
   cols <- term[["var"]] %||% term[["vars"]]
   if (!is.null(cols)) {
     k <- .fb_dataset_levels(fb_dataset, as.character(cols))
@@ -997,7 +991,7 @@
 #   3. 8 GiB conservative fallback when neither RAM probe is
 #      available (benchmarkme / memuse uninstalled). The fallback
 #      is documented so users in minimal install environments see
-#      a predictable refusal threshold rather than a hard error;
+#      a predictable refusal threshold, not a hard error.
 #      the RAM-fraction option is NOT applied to the fallback (the
 #      8 GiB number is itself already a conservative absolute floor).
 .fb_resolve_ceiling <- function(memory_ceiling_gb) {
@@ -1008,7 +1002,7 @@
         memory_ceiling_gb <= 0
     ) {
       stop(
-        "`memory_ceiling_gb` must be a positive numeric scalar; got: ",
+        "`memory_ceiling_gb` must be a positive numeric scalar, got: ",
         deparse(memory_ceiling_gb),
         call. = FALSE
       )
@@ -1035,7 +1029,7 @@
   ) {
     stop(
       "`flexyBayes.preflight_ram_fraction` must be a numeric scalar ",
-      "in (0, 1]; got: ",
+      "in (0, 1], got: ",
       deparse(fraction),
       call. = FALSE
     )
@@ -1047,9 +1041,9 @@
 # The probe's answer for this session. Total system RAM does not change while
 # an R process runs, so the shell-out is worth exactly one call: `fb_plan()`
 # resolves a ceiling on every invocation and each resolution was a separate
-# ~9 ms child process, measured on this host. `NULL` means "not yet probed";
-# a probed NA is cached like any other answer, so an unavailable probe costs
-# one failed shell-out per session rather than one per plan.
+# ~9 ms child process, measured on this host. `NULL` means "not yet probed".
+# A probed NA is cached like any other answer, so an unavailable probe costs
+# one failed shell-out per session, not one per plan.
 .fb_ram_cache <- new.env(parent = emptyenv())
 
 # @noRd
@@ -1300,14 +1294,14 @@ print.fb_preflight_refusal <- function(x, ...) {
 
 
 # ---------------------------------------------------------------- #
-# v0.3.10 --- Per-term INLA memory estimator                        #
+# v0.3.10: Per-term INLA memory estimator                        #
 # ---------------------------------------------------------------- #
 
 # Sparse-matrix bytes-per-non-zero constant. The Matrix package's
 # dsCMatrix stores a value (8B double) + a row index (4B int) + a
-# per-column pointer (~4B amortised); the practical figure is well-
+# per-column pointer (~4B amortised). The practical figure is well-
 # attested at ~16 bytes per non-zero (Lindgren, Rue, Lindstrom 2011
-# §6.3; matches Matrix::object.size() probes on production-shape
+# §6.3. Matches Matrix::object.size() probes on production-shape
 # precision matrices).
 .FB_INLA_BYTES_PER_NNZ <- 16L
 
@@ -1318,13 +1312,13 @@ print.fb_preflight_refusal <- function(x, ...) {
 .FB_INLA_OVERHEAD_DEFAULT <- 2.0
 
 
-# .estimate_inla_memory_breakdown() --- the per-term INLA memory model.
+# .estimate_inla_memory_breakdown(): the per-term INLA memory model.
 #
 # Walks the preflight per_term_estimate + the IR's fixed/random term
 # slots and applies a representation-specific INLA-memory model to
 # each. Returns an `<fb_memory_estimate>` carrier with two fields:
 #
-#   $total                  numeric(1L), bytes; the overhead-applied
+#   $total                  numeric(1L), bytes. The overhead-applied
 #                           sum of per-term contributions plus a fixed-
 #                           effect model-matrix contribution.
 #   $breakdown              a data.frame with one row per term:
@@ -1350,7 +1344,7 @@ print.fb_preflight_refusal <- function(x, ...) {
 
   # Random-term INLA memory contributions, keyed on representation
   # class. The per_term entries from .preflight_random_term() carry
-  # the design_memory_bytes from the indexed estimator; we re-derive
+  # the design_memory_bytes from the indexed estimator. We re-derive
   # the INLA-specific bytes here per format.
   for (i in seq_along(fb_ir$random_terms)) {
     term <- fb_ir$random_terms[[i]]
@@ -1382,7 +1376,7 @@ print.fb_preflight_refusal <- function(x, ...) {
 
   # Fixed-effect contribution: the design matrix INLA materialises
   # as N x p doubles. We sum across fixed terms' bytes from the
-  # preflight estimator --- those entries already model the per-term
+  # preflight estimator, those entries already model the per-term
   # design block (one column for numeric/expression, k-1 for factor
   # dummies, n_dummies for factor interactions, k for smooths /
   # polynomials).
@@ -1490,9 +1484,9 @@ print.fb_preflight_refusal <- function(x, ...) {
 
   if (identical(repr, .representation_class("indexed_structured_known"))) {
     # Sparse precision: nnz(Q) * c_sparse. Without known_matrices we
-    # use the indexed-fallback K * c_sparse (assumes diagonal Q ---
-    # the smallest sparse footprint; intentional under-estimate
-    # rather than alarmist over-estimate when Q is unavailable).
+    # use the indexed-fallback K * c_sparse (assumes diagonal Q,
+    # the smallest sparse footprint. Intentional under-estimate
+    # and not an alarmist over-estimate when Q is unavailable).
     cov <- term$cov_representation
     nnz <- NA_real_
     if (
@@ -1558,7 +1552,7 @@ print.fb_preflight_refusal <- function(x, ...) {
 #'
 #' Returns `x$total` (bytes, after the INLA overhead multiplier).
 #' Registered against the `as.double` S3 generic so that
-#' `as.numeric(<fb_memory_estimate>)` dispatches correctly --- the
+#' `as.numeric(<fb_memory_estimate>)` dispatches correctly, the
 #' base-R `as.numeric` is `.Primitive("as.double")`, so dispatch
 #' fires on `as.double`, not on `as.numeric`.
 #'

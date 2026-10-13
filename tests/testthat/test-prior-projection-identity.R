@@ -2,20 +2,20 @@
 # The projection identity: one resolved prior, two surfaces.
 #
 # prior_summary() is the prior door and summary(fit)$varcomp$prior is a
-# PROJECTION of it -- not a second prior-string builder that happens to
+# PROJECTION of it, not a second prior-string builder that happens to
 # agree today. This file holds the identity in both directions, on both
 # engines:
 #
 #   * every prior the package resolved appears verbatim in the cell for
-#     its own component;
+#     its own component, and
 #   * every cell that is not the two-word engine-default marker traces
 #     back to a resolved prior with that exact string.
 #
 # The comparison is on the STORED record, which is unrounded. The printed
 # table abbreviates the scale to four significant digits for reading
-# (Phase 2, AF-2); the cell itself keeps the resolved prior's own string,
+# (Phase 2, AF-2). The cell itself keeps the resolved prior's own string,
 # and that is what a caller subsetting $varcomp gets. Both halves are
-# asserted, because a rounding applied to the record rather than to the
+# asserted, because a rounding applied to the record instead of to the
 # render would make this identity quietly false.
 #
 # A component the package left to the engine reads "engine default": the
@@ -175,7 +175,7 @@ test_that("no cell carries a string prior_summary() did not resolve", {
   }
 })
 
-test_that("an engine-default component is skipped rather than invented", {
+test_that("an engine-default component is skipped instead of invented", {
   # Phase 1 H-1: where the package priored nothing, the cell says so in
   # two words and prior_summary() carries the sentence. The cell must
   # never be a string that looks like a resolved prior.
@@ -237,8 +237,8 @@ test_that("the printed cell rounds and the stored cell does not", {
 # 4. The legacy scalar bridge is a prior, and the cell says which   #
 # ---------------------------------------------------------------- #
 
-# Supplying `prior_vc_sd` closes the auto-default's gate -- it fires only
-# on a call that supplies neither a `prior` nor a `prior_vc_sd` -- so this
+# Supplying `prior_vc_sd` closes the auto-default's gate, it fires only
+# on a call that supplies neither a `prior` nor a `prior_vc_sd`, so this
 # is the fit that reaches the engine through the legacy scalar bridge.
 .ppi_legacy_brms_fit <- function() {
   if (is.null(.ppi_cache$legacy_brms)) {
@@ -262,7 +262,7 @@ test_that("a bridged component names the prior the bridge applied", {
   # on Stan it is false: .brms_legacy_specs() writes lognormal(0,
   # prior_vc_sd) onto sigma and onto every named sd group. The cell has to
   # say so, and the string it says is read off brms's own prior table
-  # rather than rebuilt.
+  # instead of rebuilt.
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()

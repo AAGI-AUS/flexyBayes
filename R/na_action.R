@@ -4,7 +4,7 @@
 #
 # A missing response removes an observation, not a design node. The
 # distinction matters whenever the model carries a covariance structure
-# indexed by the design -- a separable AR1(row) x AR1(col) residual over
+# indexed by the design, a separable AR1(row) x AR1(col) residual over
 # a field trial, say. Deleting the row of a lost plot does not merely
 # discard one number: it changes the index set the covariance is built
 # over, so the model that gets fitted is a different model from the one
@@ -19,16 +19,16 @@
 # integrated out. Under ignorability (Rubin 1976), and provided the two
 # representations use the same prior on the same model parameters, the
 # posterior for those parameters is then the same whether the cell is
-# imputed or omitted from the likelihood -- what augmentation preserves is
+# imputed or omitted from the likelihood, what augmentation preserves is
 # the REPRESENTATION, not information. This common-prior condition matters:
 # a backend default prior may depend on the realised design matrix and need
 # not remain the same after rows are omitted.
 #
 # That identity is a statement about the posterior, not a promise about
 # what an optimiser returns. The two settings hand the engine different
-# index sets -- an intact design against a ragged one -- and on a fit
+# index sets (an intact design against a ragged one) and on a fit
 # whose mode is weakly identified they can land in different places.
-# Measured 2026-08-28 on besag.met C1: `augment` and `omit` returned
+# Measured 2026-08-28 on besag.met: `augment` and `omit` returned
 # genotype-variance summaries that differed by orders of magnitude on
 # data whose missingness was ignorable by construction, on a model that
 # also returned different answers across repeated runs of the identical
@@ -39,32 +39,32 @@
 #
 # That is why this layer adds no inference machinery. INLA already
 # treats an NA response as a latent prediction target, and marginalises
-# it; brms reaches the same object through `mi()`. The work here is
+# it. Brms reaches the same object through `mi()`. The work here is
 # keeping the design intact so the engine is handed the right index set:
 #
-#   na_action = "augment" -- retain rows whose response is missing, and
+#   na_action = "augment", retain rows whose response is missing, and
 #     complete the design grid where the absent cells are determinable.
 #     Matches ASReml's na.method(y = "include").
-#   na_action = "omit"    -- drop them (complete-case). A structured
+#   na_action = "omit":   drop them (complete-case). A structured
 #     covariance over a broken grid then refuses downstream.
-#   na_action = "fail"    -- refuse if any response is missing.
+#   na_action = "fail":   refuse if any response is missing.
 #
 # Ignorability is an assumption, not a property of the device. Under
 # missingness that depends on the unobserved response itself, augmenting
-# and deleting are both biased, and equally so; the layer does not
+# and deleting are both biased, and equally so. The layer does not
 # detect this and cannot.
 #
 # Missing COVARIATES have their own policy, written the way ASReml
 # writes it (`na.method(x = )`). The default refuses: ASReml's own
-# default is `x = "fail"`, and its alternative -- zero-filling the
-# missing predictor (Manual section 3.11) -- fabricates an observation,
-# so that setting is refused by name rather than reproduced. `x = "omit"`
+# default is `x = "fail"`, and its alternative, zero-filling the
+# missing predictor (Manual section 3.11), fabricates an observation,
+# so that setting is refused by name, not reproduced. `x = "omit"`
 # drops the affected rows and says how many and which columns.
 
-# .fb_na_action_choices() --- the closed vocabulary.
+# .fb_na_action_choices(): the closed vocabulary.
 .fb_na_action_choices <- function() c("augment", "omit", "fail")
 
-# .fb_na_covariate_choices() --- the closed vocabulary for the covariate
+# .fb_na_covariate_choices(): the closed vocabulary for the covariate
 # half of the policy, in ASReml's spelling (there is no flexyBayes-native
 # spelling: the argument exists to accept the one users already write).
 .fb_na_covariate_choices <- function() c("fail", "omit", "include")
@@ -81,10 +81,10 @@
 # native strings, and reduces all three to one internal policy.
 #
 # Two recorded properties of `asreml::na.method()` drive the reduction
-# (asreml 4.2.0.392, recorded 2026-08-17; fixture in
+# (asreml 4.2.0.392, recorded 2026-08-17, fixture in
 # tests/testthat/helper-asreml-shapes.R):
 #
-#   1. The value is a PLAIN list -- class() is "list", the only attribute
+#   1. The value is a PLAIN list, class() is "list", the only attribute
 #      is `names`. There is no class to dispatch on, so detection is by
 #      shape: a list whose names are drawn from `x` / `y` and nothing
 #      else.
@@ -95,7 +95,7 @@
 #      is the first element, as `match.arg()` would take it. Reading the
 #      slot as a scalar silently mis-reads a partially specified call.
 
-# .fb_na_method_y_vocabulary() --- ASReml's response-side words and the
+# .fb_na_method_y_vocabulary(): ASReml's response-side words and the
 # flexyBayes word each one means. The native spellings map to themselves
 # so a normalised policy can be normalised again without changing.
 .fb_na_method_y_vocabulary <- function() {
@@ -107,13 +107,13 @@
   )
 }
 
-# .fb_match_na_slot() --- reduce one slot of an incoming policy to a
+# .fb_match_na_slot(): reduce one slot of an incoming policy to a
 # single word of a closed vocabulary.
 #
 # `value` is whatever arrived in the slot: a scalar, or the whole default
 # vector of an unsupplied `na.method()` argument (property 2 above). The
 # first element is the effective policy either way. An unrecognised word
-# is named rather than silently defaulted.
+# is named, not silently defaulted.
 .fb_match_na_slot <- function(value, choices, slot) {
   if (is.null(value) || length(value) == 0L) {
     return(choices[[1L]])
@@ -137,7 +137,7 @@
   word
 }
 
-# .fb_is_na_method_shape() --- the shape test, and only the shape test.
+# .fb_is_na_method_shape(): the shape test, and only the shape test.
 #
 # True for `asreml::na.method(...)` output and for the hand-written list
 # that stands in for it. Never `inherits()` and never `class()`: the
@@ -154,7 +154,7 @@
   all(nms %in% c("x", "y")) && any(c("x", "y") %in% nms)
 }
 
-# .fb_normalise_na_action() --- one internal policy from any accepted
+# .fb_normalise_na_action(): one internal policy from any accepted
 # spelling.
 #
 # Returns `list(y = <"augment"|"omit"|"fail">, x = <"fail"|"omit"|
@@ -162,7 +162,7 @@
 # passes through unchanged, which is what lets flexybayes() normalise
 # once for the record and hand the same value on to be applied.
 #
-# A slot the caller left out takes ASReml's own default for it --
+# A slot the caller left out takes ASReml's own default for it,
 # `y = "include"` (so `"augment"`, which is also the flexyBayes default)
 # and `x = "fail"`.
 .fb_normalise_na_action <- function(na_action) {
@@ -204,7 +204,7 @@
 }
 
 
-# .fb_response_missing() --- index of rows whose response is NA.
+# .fb_response_missing(): index of rows whose response is NA.
 .fb_response_missing <- function(fb, data) {
   vals <- .fb_response_values(fb, data)
   if (is.null(vals)) {
@@ -213,7 +213,7 @@
   which(is.na(vals))
 }
 
-# .fb_refuse_nonfinite_response() --- refuse a response that is NaN or
+# .fb_refuse_nonfinite_response(): refuse a response that is NaN or
 # infinite. Neither is a missing observation: they come from arithmetic on
 # the response, log(0) or 0 / 0, or from a data-entry error. Handed one, INLA
 # fitted the model without a word and brms failed with a message that named
@@ -244,10 +244,10 @@
   ))
 }
 
-# .fb_refuse_family_response_domain() --- refuse when the observed
+# .fb_refuse_family_response_domain(): refuse when the observed
 # response falls outside the domain the requested family's likelihood is
 # defined over (gamma / lognormal require a strictly positive response,
-# hurdle_gamma a non-negative one, beta an open unit interval; see
+# hurdle_gamma a non-negative one, beta an open unit interval. See
 # .fb_family_response_domain(), R/family_traits.R). A family absent from
 # that table has no domain check here.
 #
@@ -255,13 +255,10 @@
 # response policy: a missing (NA) response is carried as a latent
 # quantity under na_action, not read as a domain violation, and
 # .fb_response_domain_violation_rows() already passes NA over (a
-# comparison against NA is NA, and which() reads only TRUE). Before this
-# check, admitting a family onto .fb_family_links() was sufficient to
-# reach an engine -- lognormal (b979c5d) reached brms::brm() on a
-# non-positive response and stopped there untyped ("Family 'lognormal'
-# requires response greater than 0."); gamma, hurdle_gamma and beta did
-# the same, on brms and (bar lognormal, brms-only) as an unrelated
-# inla_program_failed diagnosis on INLA (U-FAM-SUPPORT, 2026-09-16).
+# comparison against NA is NA, and which() reads only TRUE). Without this
+# check a violating response reaches the engine: brms stops untyped
+# ("Family 'lognormal' requires response greater than 0.") and INLA
+# reports an unrelated inla_program_failed diagnosis.
 .fb_refuse_family_response_domain <- function(fb, data) {
   fam <- tolower(as.character(fb$family %||% "")[[1L]])
   domain <- .fb_family_response_domain()[[fam]]
@@ -294,7 +291,7 @@
   ))
 }
 
-# .fb_design_index_vars() --- the variables a structured covariance is
+# .fb_design_index_vars(): the variables a structured covariance is
 # indexed by. These are the columns whose completeness the covariance
 # representation depends on: an ar1_spatial term is emitted as a field
 # over the row x col grid, so both must be present for every node.
@@ -315,7 +312,7 @@
   unique(out[!is.na(out) & nzchar(out)])
 }
 
-# .fb_model_vars() --- every column the model refers to, so the grid
+# .fb_model_vars(): every column the model refers to, so the grid
 # completion can tell which values it would have to invent.
 .fb_model_vars <- function(fb) {
   out <- character(0)
@@ -344,14 +341,14 @@
   unique(out[!is.na(out) & nzchar(out)])
 }
 
-# .fb_complete_design_grid() --- reinsert absent design cells.
+# .fb_complete_design_grid(): reinsert absent design cells.
 #
 # Returns the data with one NA-response row added per absent combination
 # of the design index variables, or refuses when a model variable's
 # value at an absent cell cannot be determined. Determinable means: it
 # is one of the index variables, or it takes a single value across the
-# whole dataset. Anything else -- a genotype label, a block, a measured
-# covariate -- is a real quantity that was never observed at that cell,
+# whole dataset. Anything else, a genotype label, a block, a measured
+# covariate: is a real quantity that was never observed at that cell,
 # and inventing one would fabricate an observation.
 #
 # The refusal is not a limitation of the device so much as a reflection
@@ -364,11 +361,11 @@
 # which the exported `fb_complete_grid()` also runs. One implementation,
 # two entry points, so the helper a user calls by hand and the automatic
 # path a default fit takes cannot complete the same trial two different
-# ways. What differs here is the candidate set -- only the columns the
+# ways. What differs here is the candidate set, only the columns the
 # model refers to matter to a fit, where the standalone helper has no IR
-# and considers every column -- and the remedy the refusal names.
+# and considers every column, and the remedy the refusal names.
 #
-# Constant columns keep their single value; everything else the model
+# Constant columns keep their single value. Everything else the model
 # does not refer to is carried from row 1 and never read.
 .fb_complete_design_grid <- function(fb, data, index_vars) {
   out <- .fb_grid_complete(
@@ -378,27 +375,26 @@
     candidate_vars = .fb_model_vars(fb),
     unused_level = NULL,
     remedy = paste0(
-      "Supply the field-book rows instead -- one row per sown plot, with ",
+      "Supply the field-book rows instead (one row per sown plot, with ",
       "the design columns filled in and the response set to NA, which is ",
-      "how a field book already records a lost plot -- or pad the array ",
+      "how a field book already records a lost plot) or pad the array ",
       "yourself with ",
       "fb_complete_grid(data, ~ row * col, response, ",
       "unused_level = \"UNSOWN\"), which names the level the empty cells ",
-      "carry; or use na_action = \"omit\" to analyse the observed cells ",
+      "carry, or use na_action = \"omit\" to analyse the observed cells ",
       "only."
     )
   )
   list(data = out$data, added = out$added)
 }
 
-# .fb_apply_na_action() --- the entry point, called from flexybayes()
+# .fb_apply_na_action(): the entry point, called from flexybayes()
 # once the IR exists and before dispatch.
 #
 # Returns list(data = <possibly modified>, meta = <record of what was
 # done>). The metadata travels into the fit so a reader can see whether
 # a posterior was computed on the design as laid out or on the plots
-# that happened to survive -- a distinction the fit object could not
-# previously express.
+# that happened to survive.
 .fb_apply_na_action <- function(fb, data, na_action) {
   policy <- .fb_normalise_na_action(na_action)
 
@@ -437,7 +433,7 @@
     # completed here: completing it would introduce the missing responses
     # this setting exists to refuse. Before 0.9.1 control fell through
     # into the augment branch, which completed the grid and recorded the
-    # run as `augment` -- so the record did not echo the argument.
+    # run as `augment`, so the record did not echo the argument.
     return(list(
       data = data,
       meta = .fb_na_action_meta(
@@ -490,7 +486,7 @@
   )
 }
 
-# .fb_na_action_meta() --- the record that travels into the fit.
+# .fb_na_action_meta(): the record that travels into the fit.
 #
 # One builder for all three response policies so the fields cannot drift
 # apart between branches, which is how `missing_fraction` came to exist
@@ -500,7 +496,7 @@
 # the number of those rows carrying an observed response, so
 # `missing_fraction` reads the same way on every path: the fraction of
 # the FITTED rows that carry no observed response. On `omit` and `fail`
-# that is zero by construction -- how many rows were dropped or would
+# that is zero by construction, how many rows were dropped or would
 # have been is `n_missing_response`, which is a different number and has
 # its own field.
 .fb_na_action_meta <- function(
@@ -529,7 +525,7 @@
   )
 }
 
-# .fb_apply_covariate_policy() --- the covariate half of na.method().
+# .fb_apply_covariate_policy(): the covariate half of na.method().
 #
 # Returns list(data = <possibly reduced>, n_dropped = <int>). Called
 # before anything looks at the response, because two of the three
@@ -554,7 +550,7 @@
       reason_code = "missing_covariate_not_supported",
       message = paste0(
         "The predictor(s) ", named, " have missing values, and the ",
-        "covariate policy is `fail` -- which is also what ASReml does by ",
+        "covariate policy is `fail`, which is also what ASReml does by ",
         "default (na.method(x = \"fail\")). A missing predictor is not a ",
         "missing observation: the response device carries an unobserved ",
         "yield as a latent quantity the engine integrates out, and there ",
@@ -597,7 +593,7 @@
     "flexyBayes: dropped ", n_dropped, " row(s) of ", nrow(data),
     " whose predictor value was missing in ", named,
     " (na_action covariate policy x = \"omit\"). Deletion is a ",
-    "complete-case analysis of the remaining rows; a covariance indexed ",
+    "complete-case analysis of the remaining rows, and a covariance indexed ",
     "by the design is built over the reduced index set.",
     call. = FALSE
   )
@@ -607,7 +603,7 @@
 }
 
 
-# .fb_warn_high_missingness() --- say what a high missing fraction does to
+# .fb_warn_high_missingness(): say what a high missing fraction does to
 # the estimand, once per session.
 #
 # The augmentation identity is algebraic and does not weaken as the missing
@@ -618,7 +614,7 @@
 # comparing this posterior against ASReml or lme4 to read a disagreement as
 # weak identification.
 #
-# Once per session rather than once per fit, in the manner of the routing
+# Once per session, not once per fit, in the manner of the routing
 # notes: a simulation study fitting the same design a thousand times
 # should say this once.
 .FB_HIGH_MISSING_FRACTION <- 0.30

@@ -1,15 +1,15 @@
-# pooled_prior -- partially pooled per-level standard deviations.
+# pooled_prior: partially pooled per-level standard deviations.
 #
 # `sd(group = "f:g", by = "f") ~ pooled(scale = <prior>)` and
 # `sigma(by = "f") ~ pooled(scale = <prior>)` give the per-level SDs of
 # diag(f):g and of dsum(~ units | f) one log-normal distribution with an
 # estimated location and an estimated scale (the pooling SD). Fitted on brms
-# only; the INLA gate refuses it (pooled_prior_requires_brms).
+# only. The INLA gate refuses it (pooled_prior_requires_brms).
 #
 # The brms lowering is route B1 of the 2026-10-08 model C spike:
 #   residual  `sigma ~ 1 + (1 | f)`, a normal(location, 2) prior on the
-#             log-sigma intercept and the scale prior on its group SD;
-#   diag      a flat prior on the per-level SDs and, through `stanvars`,
+#             log-sigma intercept and the scale prior on its group SD.
+#   Diag      a flat prior on the per-level SDs and, through `stanvars`,
 #             `target += lognormal_lpdf(sd_K | pool_mean_g, pool_sd_g)`.
 
 # Distributions a pooling SD can take: every SD-scale density the brms
@@ -282,7 +282,7 @@
 }
 
 # The brms lowering of the pooled blocks. `specs` are the prior rows already
-# built; the result carries the rows to add, the stanvars, and the Stan
+# built. The result carries the rows to add, the stanvars, and the Stan
 # statements the read-back looks for.
 .fb_brms_pooled_lowering <- function(blocks, specs, fb, formula, data, data2,
                                      family) {
@@ -487,9 +487,7 @@
       "pooled() is fitted on brms only. This model asks for %s. Pass ",
       "backend = \"brms\", or leave backend = \"auto\", which routes there."
     ),
-    registered_in_adr = paste0(
-      "cairn 2026-10-09-model-c-hierarchical-per-trial-priors-join"
-    ),
+    registered_in_adr = "0.17.0 pooled per-trial priors",
     plan_field = "rejected_routes",
     since_version = "0.17.0"
   )

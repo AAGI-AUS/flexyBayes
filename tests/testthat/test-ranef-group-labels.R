@@ -1,10 +1,10 @@
 # ranef() names the group the user wrote, not the index INLA was given.
 #
-# emit_inla() builds an index column per structured random term --
+# emit_inla() builds an index column per structured random term,
 # `rep_block_id` for `rep:block`, `gen_by_env_id` for an unstructured
-# covariance -- and INLA names each summary.random entry after the column it
+# covariance, and INLA names each summary.random entry after the column it
 # was indexed by. The variance components were mapped back to user labels
-# when that machinery was built; the random-effect table was not, so
+# when that machinery was built. The random-effect table was not, so
 # ranef(fit) came back with a grouping factor called `rep_block_id`. Same
 # defect class as the label leak closed for summary()$varcomp, reached
 # through a different accessor.
@@ -67,7 +67,7 @@ test_that("the correlated slope's two index blocks take distinct labels", {
   # They used to share one. The iid2d field is laid out intercepts then
   # slopes, so the two index names address two different blocks of
   # deviations, and mapping both to `x | g` returned a list with two
-  # elements of the same name -- `ranef(fit)[["x | g"]]` reached only the
+  # elements of the same name, `ranef(fit)[["x | g"]]` reached only the
   # first, and no caller could tell which block that was.
   d <- data.frame(y = stats::rnorm(40), x = stats::rnorm(40),
                   g = factor(rep(letters[1:8], each = 5)))
@@ -89,7 +89,7 @@ test_that("the correlated slope's two index blocks take distinct labels", {
 # the subject identifiers sitting unused on the fit. Two of the four BLUP
 # comparisons in the S01 programme could not be made at all, and aligning by
 # row order was refused because `interaction()` orders `rep` fastest while
-# ASReml orders it slowest -- a positional match would have been silently
+# ASReml orders it slowest, a positional match would have been silently
 # wrong on exactly the row where it looked easiest.
 
 test_that("an interaction group reports the interaction's own levels", {
@@ -107,7 +107,7 @@ test_that("an interaction group reports the interaction's own levels", {
   ))
   got <- ranef(fit)[["rep:block"]]$level
 
-  # The expected labels are written out here rather than taken from
+  # The expected labels are written out here instead of taken from
   # `interaction()`, which is the call the emitter itself makes: an oracle
   # that shares the code under test proves self-consistency. The index is
   # lexicographic with the FIRST variable slowest, so the order is
@@ -141,9 +141,9 @@ test_that("an interaction group reports the interaction's own levels", {
 # to the fixed part, has to reproduce it. A level attached to the wrong row of
 # INLA's table breaks that sum by the size of the effects themselves, which
 # is why the fixtures carry strong effects against a small residual. The
-# reproduction is not exact -- INLA's predictor summary is computed on its
-# own, and differed from the sum by about a thousandth when this was measured
-# -- so the gap is read relative to the spread of the effects.
+# reproduction is not exact. INLA's predictor summary is computed on its
+# own, and differed from the sum by about a thousandth when this was measured,
+# so the gap is read relative to the spread of the effects.
 
 .rgl_effect <- function(r, group, level) {
   tab <- r[[group]]
@@ -249,9 +249,9 @@ test_that("fa(f, k):g has no random-effect table to label, because it refuses", 
   # at 0.13.0 (factor_analytic_not_repeatable): repeated identical calls did
   # not agree on the covariance where the genetic signal is weak, so there is
   # no fit to take a random-effect table from. The labelling code is
-  # unchanged and still covered for every structure that does fit; what is
+  # unchanged and still covered for every structure that does fit. What is
   # asserted here is that the refusal arrives instead of a fit, so this file
-  # records the reason its fa() coverage went away rather than losing it
+  # records the reason its fa() coverage went away instead of losing it
   # silently.
   set.seed(303L)
   d <- expand.grid(

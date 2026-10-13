@@ -1,17 +1,8 @@
 # =============================================================================
-# test-backend-conformance-open-oracle.R
-#
-# The re-pointed backend-conformance battery for the two active engines
-# (brms + INLA), the v6-I13 gate that predates the eventual 0.9.3 withdrawal
-# of the other two once-registered engines (see NEWS.md). It differs from
-# the legacy test-backend-conformance.R in the
-# reference tier: each engine is tested as a CANDIDATE against an INDEPENDENT
-# OPEN ORACLE (base `lm` for a Gaussian GLM, `lme4` REML for a Gaussian LMM),
-# not against a peer engine -- so fidelity is proven against something neither
-# engine authored (the fidelity-first / independent-oracle principle). This
-# is the check the peer-referenced legacy battery could not make for the
-# structured cells, and it is why an engine's covariance defect can no longer
-# pass silently.
+# Backend conformance for brms and INLA against independent oracles: base
+# `lm` for a Gaussian GLM, `lme4` REML for a Gaussian LMM and sommer REML
+# for a structured covariance. Neither engine wrote the reference, so a
+# covariance error in one engine cannot pass by agreeing with the other.
 #
 # Candidate parameters are extracted through the canonical accessor
 # `.fb_canonical_draws()`, so INLA's raw `inla.posterior.sample()` names
@@ -21,16 +12,14 @@
 #
 # Heavy: brms compiles + samples a Stan model; INLA fits a Laplace model.
 # Gated `skip_on_cran()` + `skip_on_ci()`, and skipped when an engine (or the
-# lme4 oracle) is unavailable. An engine that IS available and whose fit then
-# errors is a failure, not a skip -- see `.ooc_fit_ok()`. A backend joins by
-# adding one descriptor to `.ooc_backends()`; the open oracles live in the
-# per-cell fixtures.
+# lme4 oracle) is unavailable. An installed engine whose fit errors fails,
+# see `.ooc_fit_ok()`. A backend joins by adding one descriptor to
+# `.ooc_backends()`. The oracles live in the per-cell fixtures.
 # =============================================================================
 
 # ---- tolerances -------------------------------------------------------------
-# Fixed effects + residual SD recover the oracle tightly; a variance-component
-# SD legitimately differs more (REML point vs Bayesian posterior mean under a
-# weakly-informative prior), so its band is wider by design.
+# A variance-component SD gets a wider band: a REML point estimate and a
+# posterior mean under a weakly informative prior differ.
 .ooc_tol <- list(fixed = 0.06, sigma = 0.12, re_sd = 0.25)
 
 # ---- fixtures + their open oracles ------------------------------------------
@@ -121,19 +110,16 @@
 
 # Fail, do not skip, when an installed engine's fit errors.
 #
-# Each battery pass already skips on `desc$skip_reason()`, so by the time
-# a fit is attempted the engine is present. Skipping on the error as well
-# conflated "this engine is not on the host" with "this engine is on the
-# host and the fit broke" -- and the second is the regression the battery
-# exists to catch (2026-08-16 adversarial review, P2-4). Returns TRUE
-# when the caller may proceed.
+# Each pass already skips on `desc$skip_reason()`, so the engine is
+# present when a fit is attempted. Returns TRUE when the caller may
+# proceed.
 .ooc_fit_ok <- function(fit, engine, cell_id) {
   if (!inherits(fit, "error")) {
     return(TRUE)
   }
   testthat::fail(paste0(
     "[", engine, "] ", cell_id, ": the engine is installed and the fit ",
-    "errored, which is a regression rather than an unavailable engine -- ",
+    "errored, which is a regression, not an unavailable engine: ",
     conditionMessage(fit)
   ))
   FALSE
@@ -154,8 +140,8 @@
   suppressMessages(do.call(flexybayes, args))
 }
 
-# vm/GBLUP needs the carrier matched per engine: INLA's generic0 path takes the
-# PRECISION (Q = G^-1); brms takes the dense covariance (its gr(cov = K)).
+# INLA's generic0 path takes the precision (Q = G^-1). brms takes the dense
+# covariance (its gr(cov = K)).
 .ooc_fit_vm <- function(engine, cell) {
   if (engine == "inla") {
     q_prec <- solve(cell$G)
@@ -252,8 +238,7 @@ for (.ooc_key in names(.ooc_backends())) {
       if (!.ooc_fit_ok(fit, desc$name, "OO.5")) return(invisible(NULL))
       d <- flexyBayes:::.fb_mcmc_diagnostics(fit)
       if (!isTRUE(d$applicable)) {
-        # INLA / Laplace is deterministic -- R-hat / bulk-ESS are undefined on
-        # samples that are not Markov chains, so the gate is exempt here.
+        # R-hat and bulk-ESS are undefined for INLA, which has no chains.
         expect_false(isTRUE(d$applicable))
       } else {
         # MCMC candidate: enforce a convergence floor before its posterior
@@ -277,8 +262,7 @@ for (.ooc_key in names(.ooc_backends())) {
       ))
       skip_if(is.null(fb_vm), "structured-cov IR not constructible in this build")
       cap <- desc$capability(fb_vm)
-      # Total decision: either admits (TRUE) or refuses with a structured
-      # reason string -- never NULL / NA / an error.
+      # Either TRUE or a reason string, never NULL, NA or an error.
       expect_true(isTRUE(cap) || (is.character(cap) && nzchar(cap)))
     })
   })

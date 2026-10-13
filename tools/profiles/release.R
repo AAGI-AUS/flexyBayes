@@ -1,11 +1,11 @@
-# release.R -- canonical release-ceremony gate for flexyBayes.
+# release.R: canonical release-ceremony gate for flexyBayes.
 #
 # Three sequential steps:
 #   1. Full tally via tools/tally.R (workspace root).
 #   2. Skip-ledger refresh (inst/skip-ledger.md).
 #   3. R CMD build + R CMD check --as-cran --no-manual on a fresh tarball.
 #
-# Target wall-time: 5 -- 10 minutes on a laptop.  Run from the workspace
+# Target wall-time: 5-10 minutes on a laptop.  Run from the workspace
 # root:
 #   Rscript flexyBayes/tools/profiles/release.R
 

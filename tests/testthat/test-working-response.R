@@ -10,7 +10,7 @@
 #
 # A NaN or infinite response is not a missing observation. INLA fitted such a
 # model without a word, and brms failed with a message that named neither the
-# row nor the value; the fit now refuses by name before any engine is called.
+# row nor the value. The fit refuses by name before any engine is called.
 # =============================================================================
 
 .resp_data <- function(seed = 9L, n = 200L) {
@@ -27,7 +27,7 @@
 }
 
 # One entry per response form: the formula and the quantity the residual is
-# written on, computed here from the data rather than by the package.
+# written on, computed here from the data, not by the package.
 .resp_cases <- function(d) {
   d_na <- d
   d_na$y[c(3L, 50L)] <- NA
@@ -77,7 +77,7 @@ test_that("the default residual scale on brms is five SDs of the modelled respon
 
   for (cs in cases) {
     # The missing response is deliberate. brms reports the expected omission
-    # during both prior reachability and Stan-code construction; muffle only
+    # during both prior reachability and Stan-code construction. Muffle only
     # that exact dependency warning and leave every other warning visible.
     code <- withCallingHandlers(
       suppressMessages(flexybayes(

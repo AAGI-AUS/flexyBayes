@@ -9,7 +9,7 @@
 # The tests hold three things: the number agrees with an oracle this
 # package did not write (lme4's REML fit, through the same plug-in
 # formula); the boundary property holds where the delta method's does not;
-# and a component name the fit does not carry refuses rather than resolving
+# and a component name the fit does not carry refuses instead of resolving
 # against whatever the caller has in their workspace.
 
 .vp_fixture <- function(seed = 11L, n_g = 40L, n_rep = 8L,
@@ -35,7 +35,7 @@ test_that("a heritability agrees with lme4's REML fit of the same model", {
   # The oracle is lme4, not this package: the REML variance components put
   # through the same plug-in ratio. A posterior mean of a ratio is not the
   # ratio of REML point estimates, so the tolerance is the width of that
-  # difference and not machine precision -- but a mistranslated component,
+  # difference and not machine precision, but a mistranslated component,
   # or a functional evaluated on the precision scale, would miss by far
   # more than this.
   skip_if_not_installed("INLA")
@@ -68,7 +68,7 @@ test_that("the interval respects the boundary the delta method does not", {
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
-  # A genotype variance close to zero -- the case that makes a delta-method
+  # A genotype variance close to zero, the case that makes a delta-method
   # heritability interval run below zero.
   tab <- .vp_fixture(seed = 5L, sd_g = 0.05, sd_resid = 1.0)
   fit <- .vp_fit(tab)

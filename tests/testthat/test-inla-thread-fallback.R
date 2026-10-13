@@ -1,7 +1,6 @@
 # A host may report no core count. INLA turns that into `NA:1`, emits a parser
 # failure and silently chooses another plan. The package supplies `1:1` only
-# for that missing-host-information case; valid defaults and explicit caller
-# settings remain outside this fallback.
+# for that case. Valid defaults and explicit caller settings are left alone.
 
 test_that("an unknown host core count has a valid conservative INLA fallback", {
   expect_identical(.fb_inla_threads_if_cores_unknown(NA_integer_), "1:1")
@@ -24,7 +23,7 @@ test_that("this host never hands INLA the malformed NA thread spelling", {
 
 # The thread plan of every INLA fit. At any plan other than "1:1", identical
 # calls on a model with a flat variance direction return different variance
-# components; the package therefore runs INLA at "1:1" unless told otherwise,
+# components. The package therefore runs INLA at "1:1" unless told otherwise,
 # and reads INLA's own global option no more.
 
 test_that("the thread plan is 1:1 by default, set by option, and an explicit value wins", {

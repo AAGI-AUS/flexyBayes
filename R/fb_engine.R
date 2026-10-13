@@ -1,4 +1,4 @@
-# fb_engine() -- constructor noun for inference engines.
+# fb_engine(): constructor noun for inference engines.
 #
 # One of the four flexyBayes constructor nouns. `fb_engine(name, opts)`
 # names a concrete inference engine and carries its tuning options. It
@@ -7,11 +7,8 @@
 # string shorthand (`backend = "brms"`) continues to work and resolves
 # to the default engine via `.resolve_engine_string()` in dispatch.R.
 #
-# `name` and `paradigm` are closed vocabularies at this release: new
-# engines extend them only through the design-record amendment process,
-# the same posture the four registries take. `auto` is a routing
-# directive rather than an engine, so it is not an `fb_engine` name --
-# pass the bare string `backend = "auto"` for automatic routing.
+# `name` and `paradigm` are closed vocabularies. `auto` is a routing
+# directive, not an engine, so it is not an `fb_engine` name.
 
 # Closed engine vocabulary: each engine maps to its inference paradigm,
 # the package that provides it, and (for toolchain status) that
@@ -26,8 +23,7 @@
 )
 
 # Tuning options an engine may carry. Restricted to the Monte-Carlo
-# sampler controls; an unrecognised option is rejected at construction
-# rather than silently dropped.
+# sampler controls. An unrecognised option is an error at construction.
 # `adapt_delta` is read by the routes that emit through Stan and ignored by
 # the rest.
 .fb_engine_opt_names <- c("n_samples", "warmup", "chains", "adapt_delta")
@@ -42,14 +38,14 @@
 #' the default `fb_engine()` for that engine.
 #'
 #' `name` and the derived `paradigm` are closed vocabularies. `"auto"`
-#' is a routing directive, not an engine; pass `backend = "auto"`
+#' is a routing directive, not an engine. Pass `backend = "auto"`
 #' directly for automatic routing.
 #'
 #' @section Recognised options:
 #'
 #' All four are sampler controls, read by the routes that emit through
 #' Stan and ignored by the rest. An unrecognised name is an error at
-#' construction rather than a silently dropped argument.
+#' construction, not a silently dropped argument.
 #'
 #' \describe{
 #'   \item{`n_samples`}{Post-warmup draws to keep, per chain.}
@@ -65,7 +61,7 @@
 #' @param name Character(1): the engine, one of `"inla"`, `"brms"`.
 #' @param opts Named list of tuning options. Recognised names are
 #'   `n_samples`, `warmup`, `chains` and `adapt_delta`, described under
-#'   "Recognised options" below; an unrecognised name is an error.
+#'   "Recognised options" below. An unrecognised name is an error.
 #' @param ... Tuning options given individually, merged into `opts`
 #'   (e.g. `fb_engine("brms", chains = 4L)`).
 #' @return An `fb_engine` object: a classed list with elements `name`,
@@ -99,7 +95,7 @@ fb_engine <- function(name, opts = list(), ...) {
       name,
       "'. Supported engines: ",
       paste(names(.fb_engine_paradigm), collapse = ", "),
-      ". ('auto' is a routing directive -- pass backend = \"auto\" ",
+      ". ('auto' is a routing directive. Pass backend = \"auto\" ",
       "directly.)",
       call. = FALSE
     )

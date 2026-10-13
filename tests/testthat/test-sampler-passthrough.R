@@ -1,4 +1,4 @@
-# test-sampler-passthrough.R -- `seed` and `control` reach Stan.
+# test-sampler-passthrough.R: `seed` and `control` reach Stan.
 #
 # Until 0.9.0 flexybayes() had no `...` and no sampler arguments beyond
 # n_samples / warmup / chains, so `set.seed()` before a call did not pin
@@ -23,7 +23,7 @@ mk_passthrough_data <- function(n_group = 30L, n_rep = 6L) {
 }
 
 # ---------------------------------------------------------------- #
-# Call level -- the arguments arrive at brms::brm()                 #
+# Call level, the arguments arrive at brms::brm()                   #
 # ---------------------------------------------------------------- #
 
 test_that("seed and control reach the brms::brm() call", {
@@ -65,7 +65,7 @@ test_that("seed and control reach the brms::brm() call", {
   expect_identical(captured$control$max_treedepth, 12L)
 })
 
-test_that("an unset seed maps onto brms's own default rather than NULL", {
+test_that("an unset seed maps onto brms's own default instead of NULL", {
   skip_if_not_installed("brms")
   skip_if_not_installed("testthat", "3.2.0")
 
@@ -96,7 +96,7 @@ test_that("an unset seed maps onto brms's own default rather than NULL", {
 
   # brms::brm(seed = NULL) is not the same as omitting the argument;
   # brms's own default is NA. The mapping matters because a NULL would
-  # error inside rstan rather than drawing a seed.
+  # error inside rstan instead of drawing a seed.
   expect_true(is.na(captured$seed))
   expect_null(captured$control)
 })
@@ -149,7 +149,7 @@ test_that("the sampler-argument note names the engine and is silenceable", {
 })
 
 # ---------------------------------------------------------------- #
-# Live -- the same seed returns the same posterior                  #
+# Live, the same seed returns the same posterior                    #
 # ---------------------------------------------------------------- #
 
 test_that("two brms fits under one seed return identical draws", {

@@ -21,17 +21,17 @@ flexybayes_stream(
 }
 \arguments{
 \item{fixed}{A two-sided formula \code{response ~ fixed_terms}. The fixed
-terms must be factors or factor interactions; a continuous term
+terms must be factors or factor interactions. A continuous term
 forces one cell per row and is refused. \code{offset()} terms are allowed
-on the Gaussian and Poisson families; see Details.}
+on the Gaussian and Poisson families (see Details).}
 
 \item{random}{A one-sided formula of random-intercept grouping factors,
 ASReml style (for example \code{~ geno}), or \code{NULL} for no random terms.}
 
 \item{source}{The data source. One of: a length-1 character path to an
-\code{.fst} file; a length-1 character path to a delimited file readable
-by \code{\link[data.table:fread]{data.table::fread()}}; an in-memory \code{data.frame} / \code{data.table}
-(chunked internally, mainly for testing); or a function of one
+\code{.fst} file, a length-1 character path to a delimited file readable
+by \code{\link[data.table:fread]{data.table::fread()}}, an in-memory \code{data.frame} / \code{data.table}
+(chunked internally, mainly for testing), or a function of one
 argument \code{i} returning the \code{i}-th chunk as a \code{data.frame} and \code{NULL}
 once the chunks are exhausted.}
 
@@ -47,11 +47,11 @@ is the same model as \code{exposure = "E"}.}
 
 \item{backend}{The estimation backend. \code{"inla"} is the default and the
 only active choice: INLA is the one engine with an aggregated emit.
-Any other value -- including a formerly-registered engine name this
-package withdrew entirely -- refuses with \code{unknown_backend}.}
+Any other value, including a formerly-registered engine name this
+package withdrew entirely, refuses with \code{unknown_backend}.}
 
 \item{chunk_rows}{The number of rows to read per chunk. Larger chunks
-read faster but use more peak memory; the default 5e6 keeps peak
+read faster but use more peak memory. The default 5e6 keeps peak
 memory modest while amortising read overhead.}
 
 \item{prior}{An optional \code{\link[=fb_prior]{fb_prior()}} object. When \code{NULL}, each
@@ -63,8 +63,8 @@ on every parameter of the fit.}
 
 \item{fit}{When \code{TRUE} (default) the aggregated model is fitted and a
 \verb{<flexybayes>} object is returned. When \code{FALSE} the function returns
-the \verb{<fb_aggregated>} sufficient-statistics object without fitting --
-useful for inspecting the compression a design will achieve.}
+the \verb{<fb_aggregated>} sufficient-statistics object without fitting,
+which shows the compression a design will achieve.}
 
 \item{verbose}{When \code{TRUE}, report streaming progress and the
 compression achieved.}
@@ -88,19 +88,19 @@ approximation.
 \details{
 Fit a cell-aggregatable mixed model to a dataset held on disk, reading
 it in row-range chunks and accumulating exact per-cell sufficient
-statistics rather than materialising the full table in memory.
+statistics instead of materialising the full table in memory.
 
 The method scales by cell count \code{K} (the number of distinct factor
 design combinations), not by row count \code{N}. A replicated factorial
 design collapses billions of rows to a few thousand cells and fits in
-seconds; a design that keys on a continuous covariate does not
+seconds. A design that keys on a continuous covariate does not
 compress and is refused before any chunk is read. Continuous fixed
 effects, random slopes, structured covariance, and smooth terms break
-the cell-constant linear-predictor property and are likewise refused
--- pass the data to \code{\link[=flexybayes]{flexybayes()}} per row for those models. The
-model needs at least one factor cell-key term -- a fixed factor, a
-factor interaction, or a random grouping factor named in \code{random} --
-to aggregate by; an intercept-only model (\code{fixed = y ~ 1}, no
+the cell-constant linear-predictor property and are likewise refused.
+Pass the data to \code{\link[=flexybayes]{flexybayes()}} per row for those models. The
+model needs at least one factor cell-key term (a fixed factor, a
+factor interaction, or a random grouping factor named in \code{random})
+to aggregate by. An intercept-only model (\code{fixed = y ~ 1}, no
 \code{random}) has nothing to compress and is refused by name
 (\code{aggregation_route_unavailable}).
 
@@ -120,15 +120,13 @@ families. On \code{"gaussian"} it is subtracted from the response before the
 cell statistics are taken, which reproduces the per-row likelihood
 however the offset varies inside a cell. On \code{"poisson"}, \code{offset(o)}
 multiplies each row's exposure by \code{exp(o)}, so \code{offset(log(E))} and
-\code{exposure = "E"} fit the same model; given both, they multiply. On
+\code{exposure = "E"} fit the same model. Given both, they multiply. On
 \code{"binomial"} a cell total of rows whose offsets differ is not binomial,
 and the call refuses with \code{fixed_offset_unsupported}.
 }
 \examples{
 \dontshow{if (interactive() && requireNamespace("fst", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-# The fit runs on INLA, which is distributed from its own repository
-# rather than from CRAN, so the guard keeps the example readable on a
-# machine that does not carry it.
+# INLA is distributed from its own repository, not from CRAN.
 if (requireNamespace("INLA", quietly = TRUE)) {
   set.seed(1L)
   n <- 1e6
@@ -146,7 +144,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=flexybayes]{flexybayes()}} for the in-memory entry point;
+\code{\link[=flexybayes]{flexybayes()}} for the in-memory entry point, and
 \code{\link[=fb_prior]{fb_prior()}} for prior specification.
 }
 \author{

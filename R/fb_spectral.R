@@ -1,16 +1,16 @@
-# Spectral primitive --- the shared efficiency machinery (G-I4).
+# Spectral primitive: the shared efficiency machinery (G-I4).
 #
 # `.fb_spectral()` eigendecomposes a relationship / kinship matrix K
 # once (K = U Lambda U', symmetric PSD) and packages the rotation that
 # turns a structured genetic random effect into an independent one. It
 # is the single piece of new numerical machinery the genomics /
-# MET expansion adds; everything downstream composes it:
+# MET expansion adds. Everything downstream composes it:
 #
 #   * GWAS null scan (R/fb_gwas.R): one O(n^3) decomposition, then the
 #     rotated model y* = U'y, X* = U'X has a diagonal residual
 #     covariance D = sigma_g^2 Lambda + sigma_e^2 I, so each marker is
-#     an O(n) generalised-least-squares score test (EMMAX / P3D) rather
-#     than a fresh O(n^3) mixed-model fit.
+#     an O(n) generalised-least-squares score test (EMMAX / P3D) instead
+#     of a fresh O(n^3) mixed-model fit.
 #   * GBLUP scaling: the genetic random effect u ~ N(0, sigma_g^2 K)
 #     rotates to alpha = U'u ~ N(0, sigma_g^2 Lambda), n independent
 #     coordinates a backend fits cheaply.
@@ -21,34 +21,34 @@
 # The object IS the cache: it carries U and Lambda, so a caller
 # computes it once per K and reuses it across every marker, fold, or
 # variance-component evaluation. There is no hidden global state ---
-# correctness over magic; consumers hold the returned object (e.g. on
+# correctness over magic. Consumers hold the returned object (e.g. on
 # `fit$extras$spectral`).
 #
 # This file is engine-agnostic base R + `Matrix`: no INLA / brms
 # dependency, so it is unit-testable to exact numerical tolerance
 # without a backend. The user-facing fit routes that consume it
 # (vm() scaling, fb_gwas()) raise the typed structured-covariance
-# refusals; this internal primitive validates its own arguments with
+# refusals, this internal primitive validates its own arguments with
 # plain base-R stop() (the humane caller-facing form, r_style E9).
 
 # --- constructor -------------------------------------------------- #
 
-# `.fb_spectral()` --- eigendecompose a symmetric PSD matrix.
+# `.fb_spectral()`: eigendecompose a symmetric PSD matrix.
 #
 # Arguments
 #   K      A symmetric positive-semidefinite matrix (base-R matrix or a
 #          `Matrix` object). The genomic relationship matrix G, the
 #          pedigree relationship matrix A, or any kinship matrix. Sparse
 #          `Matrix` inputs are densified for `eigen()` (eigendecom-
-#          position is inherently dense); the O(n^2) materialisation is
-#          accepted deliberately --- relationship matrices are dense.
+#          position is inherently dense). The O(n^2) materialisation is
+#          accepted deliberately: relationship matrices are dense.
 #   rank   Optional integer: keep only the leading `rank` eigenpairs
 #          (the rank-K truncation used for very large n, reusing the
 #          existing approximation vocabulary). NULL (default) keeps the
 #          full decomposition.
 #   tol    Relative tolerance for the PSD contract. Eigenvalues in
 #          [-tol * lambda_max, 0) are numerical noise and are clamped to
-#          0 (and recorded on `negative_clamped`); an eigenvalue
+#          0 (and recorded on `negative_clamped`). An eigenvalue
 #          below -tol * lambda_max is genuine indefiniteness and is
 #          refused (K is not a valid covariance).
 #   name   Symbol name for messages (e.g. the known-matrix label).
@@ -60,15 +60,15 @@
 #   $rank_full      n (the matrix dimension).
 #   $n              n.
 #   $trace          sum of all non-negative eigenvalues (full spectrum).
-#   $capture_trace  sum(kept) / sum(all) --- proportion of genetic
+#   $capture_trace  sum(kept) / sum(all): proportion of genetic
 #                   variance retained (the breeder's "variance captured").
 #   $capture_frobenius
-#                   sum(kept^2) / sum(all^2) --- the Frobenius capture
+#                   sum(kept^2) / sum(all^2): the Frobenius capture
 #                   that matches the package's low_rank_smooth bias
 #                   bound (1 - this is the relative squared truncation
 #                   error).
 #   $negative_clamped
-#                   list(count, min) --- how many eigenvalues were
+#                   list(count, min), how many eigenvalues were
 #                   clamped from small-negative to 0 and the most
 #                   negative value seen (NA min when none). Surfaced so
 #                   PSD repair is never silent.
@@ -172,7 +172,7 @@
   )
 }
 
-# `.fb_spectral_from_markers()` --- build the spectral object directly
+# `.fb_spectral_from_markers()`: build the spectral object directly
 # from a marker matrix via the SVD of the centred genotypes, avoiding
 # the explicit n x n product K = Z Z' / m when that is less stable or
 # unnecessary.
@@ -190,7 +190,7 @@
 #   m       Normalising constant for the relationship scale. Default
 #           ncol(Z); the VanRaden 2 sum p (1 - p) normaliser is the
 #           caller's declared choice (kinship scaling shifts the
-#           heritability posterior by a constant --- see the MET /
+#           heritability posterior by a constant: see the MET /
 #           genomics vignette, "Kinship matrix scaling"). Stated here,
 #           not assumed.
 #   center  Centre each marker column to mean 0 (the additive-relation-
@@ -231,7 +231,7 @@
     )
   }
   Zc <- scale(Z, center = center, scale = scale)
-  # scale() carries centring / scaling attributes; drop them so the
+  # scale() carries centring / scaling attributes. Drop them so the
   # downstream matrix algebra sees a plain numeric matrix.
   attr(Zc, "scaled:center") <- NULL
   attr(Zc, "scaled:scale") <- NULL
@@ -239,7 +239,7 @@
   if (any(bad)) {
     stop(
       "centring / scaling `", name, "` produced non-finite values (",
-      sum(bad), " entries) --- a marker column with zero variance cannot ",
+      sum(bad), " entries), a marker column with zero variance cannot ",
       "be unit-scaled. Drop monomorphic markers before forming the ",
       "relationship matrix.",
       call. = FALSE
@@ -293,7 +293,7 @@
 
 # --- rotation operators ------------------------------------------- #
 
-# `.fb_spectral_rotate()` --- left-multiply by U', mapping data into the
+# `.fb_spectral_rotate()`: left-multiply by U', mapping data into the
 # eigenbasis where the genetic random effect is independent. For a
 # response vector y this returns y* = U'y; for a design matrix X it
 # returns X* = U'X. The result has `rank` rows.
@@ -303,7 +303,7 @@
   crossprod(spec$vectors, M)
 }
 
-# `.fb_spectral_backrotate()` --- left-multiply by U, mapping a quantity
+# `.fb_spectral_backrotate()`: left-multiply by U, mapping a quantity
 # in the eigenbasis back to the original observation basis (U A). The
 # input must have `rank` rows.
 .fb_spectral_backrotate <- function(spec, A) {
@@ -319,7 +319,7 @@
   spec$vectors %*% A
 }
 
-# `.fb_spectral_sqrt()` --- the matrix square root B = U Lambda^{1/2}
+# `.fb_spectral_sqrt()`: the matrix square root B = U Lambda^{1/2}
 # with B B' = K (rank-truncated when rank < n). The decorrelating
 # factor: if alpha ~ N(0, sigma^2 I_rank) then u = B alpha ~
 # N(0, sigma^2 K). Used to simulate genetic effects with known truth
@@ -330,12 +330,12 @@
   sweep(spec$vectors, 2L, sqrt(spec$values), `*`)
 }
 
-# `.fb_spectral_dvar()` --- the diagonal residual variances of the
+# `.fb_spectral_dvar()`: the diagonal residual variances of the
 # rotated mixed model: d_i = sigma_g^2 lambda_i + sigma_e^2, the
 # per-coordinate variances of y* = U'y under
 # Cov(y) = sigma_g^2 K + sigma_e^2 I. Length `rank`. The GLS / EMMAX
 # weights are 1 / d_i. For a truncated spectrum the n - rank directions
-# in the orthogonal complement carry residual variance sigma_e^2 only;
+# in the orthogonal complement carry residual variance sigma_e^2 only.
 # that complement is the consumer's responsibility (documented), this
 # helper returns the captured-subspace variances.
 .fb_spectral_dvar <- function(spec, var_g, var_e) {
@@ -344,11 +344,11 @@
   var_g * spec$values + var_e
 }
 
-# `.fb_spectral_logdet()` --- log|sigma_g^2 K + sigma_e^2 I| via the
+# `.fb_spectral_logdet()`: log|sigma_g^2 K + sigma_e^2 I| via the
 # spectrum: sum_i log(sigma_g^2 lambda_i + sigma_e^2). Requires the
-# full-rank decomposition (rank == n); the truncated determinant would
+# full-rank decomposition (rank == n). The truncated determinant would
 # need the n - rank residual-only directions added back, so it is
-# refused here rather than returned wrong. This is the determinant term
+# refused here instead of returned wrong. This is the determinant term
 # of the mixed-model REML / GLS profile log-likelihood the GWAS null
 # fit and variance-component estimation evaluate.
 .fb_spectral_logdet <- function(spec, var_g, var_e) {
@@ -368,7 +368,7 @@
 
 # --- predicates + display ----------------------------------------- #
 
-# `is_fb_spectral()` --- TRUE for an `.fb_spectral()` object.
+# `is_fb_spectral()`: TRUE for an `.fb_spectral()` object.
 is_fb_spectral <- function(x) inherits(x, "fb_spectral")
 
 #' @exportS3Method print fb_spectral

@@ -1,26 +1,26 @@
-# stream_aggregate.R -- Out-of-core streaming exact aggregation.
+# stream_aggregate.R: out-of-core streaming exact aggregation.
 #
 # Fits a cell-aggregatable mixed model on a dataset that is too large to
 # hold in memory at once. The data is read in row-range chunks from an
 # on-disk source (an `.fst` file, a delimited file, or a user-supplied
-# chunk generator); per design-cell sufficient statistics are
+# chunk generator). Per design-cell sufficient statistics are
 # accumulated additively across chunks and never expanded back to N
 # rows. The aggregated likelihood is algebraically identical to the
-# per-row likelihood (gaussian: sum of squares; binomial: sum of
-# successes / trials; poisson: sum of counts / exposure), so the fitted
-# posterior matches a full-data fit -- this is exact compression, not an
+# per-row likelihood (gaussian: sum of squares, binomial: sum of
+# successes / trials, poisson: sum of counts / exposure), so the fitted
+# posterior matches a full-data fit. This is exact compression, not an
 # approximation.
 #
 # Peak memory is bounded by one chunk plus the K-cell accumulator, not
 # by N. The binding constraint is the cell count K (distinct combinations
 # of the factor design), not the row count: factorial designs with heavy
-# replication compress to a tiny K and fit in seconds regardless of N;
-# designs keyed on a continuous covariate do not compress and are
+# replication compress to a tiny K and fit in seconds regardless of N.
+# Designs keyed on a continuous covariate do not compress and are
 # refused before any data is read.
 #
 # References. The sufficient-statistic aggregation contract is the
 # gaussian aggregation contract extended to the exponential-family
-# count cases; the in-memory counterpart is `.fb_aggregate_gaussian()`.
+# count cases. The in-memory counterpart is `.fb_aggregate_gaussian()`.
 
 # ---------------------------------------------------------------- #
 # User-facing entry                                                 #
@@ -30,7 +30,7 @@
 #'
 #' Fit a cell-aggregatable mixed model to a dataset held on disk, reading
 #' it in row-range chunks and accumulating exact per-cell sufficient
-#' statistics rather than materialising the full table in memory.
+#' statistics instead of materialising the full table in memory.
 #'
 #' @description
 #' `flexybayes_stream()` is the large-data entry point: it reads the data
@@ -45,14 +45,14 @@
 #' The method scales by cell count `K` (the number of distinct factor
 #' design combinations), not by row count `N`. A replicated factorial
 #' design collapses billions of rows to a few thousand cells and fits in
-#' seconds; a design that keys on a continuous covariate does not
+#' seconds. A design that keys on a continuous covariate does not
 #' compress and is refused before any chunk is read. Continuous fixed
 #' effects, random slopes, structured covariance, and smooth terms break
-#' the cell-constant linear-predictor property and are likewise refused
-#' -- pass the data to [flexybayes()] per row for those models. The
-#' model needs at least one factor cell-key term -- a fixed factor, a
-#' factor interaction, or a random grouping factor named in `random` --
-#' to aggregate by; an intercept-only model (`fixed = y ~ 1`, no
+#' the cell-constant linear-predictor property and are likewise refused.
+#' Pass the data to [flexybayes()] per row for those models. The
+#' model needs at least one factor cell-key term (a fixed factor, a
+#' factor interaction, or a random grouping factor named in `random`)
+#' to aggregate by. An intercept-only model (`fixed = y ~ 1`, no
 #' `random`) has nothing to compress and is refused by name
 #' (`aggregation_route_unavailable`).
 #'
@@ -72,20 +72,20 @@
 #' cell statistics are taken, which reproduces the per-row likelihood
 #' however the offset varies inside a cell. On `"poisson"`, `offset(o)`
 #' multiplies each row's exposure by `exp(o)`, so `offset(log(E))` and
-#' `exposure = "E"` fit the same model; given both, they multiply. On
+#' `exposure = "E"` fit the same model. Given both, they multiply. On
 #' `"binomial"` a cell total of rows whose offsets differ is not binomial,
 #' and the call refuses with `fixed_offset_unsupported`.
 #'
 #' @param fixed A two-sided formula `response ~ fixed_terms`. The fixed
-#'   terms must be factors or factor interactions; a continuous term
+#'   terms must be factors or factor interactions. A continuous term
 #'   forces one cell per row and is refused. `offset()` terms are allowed
-#'   on the Gaussian and Poisson families; see Details.
+#'   on the Gaussian and Poisson families (see Details).
 #' @param random A one-sided formula of random-intercept grouping factors,
 #'   ASReml style (for example `~ geno`), or `NULL` for no random terms.
 #' @param source The data source. One of: a length-1 character path to an
-#'   `.fst` file; a length-1 character path to a delimited file readable
-#'   by [data.table::fread()]; an in-memory `data.frame` / `data.table`
-#'   (chunked internally, mainly for testing); or a function of one
+#'   `.fst` file, a length-1 character path to a delimited file readable
+#'   by [data.table::fread()], an in-memory `data.frame` / `data.table`
+#'   (chunked internally, mainly for testing), or a function of one
 #'   argument `i` returning the `i`-th chunk as a `data.frame` and `NULL`
 #'   once the chunks are exhausted.
 #' @param family A length-1 character family: `"gaussian"`, `"binomial"`,
@@ -97,10 +97,10 @@
 #'   is the same model as `exposure = "E"`.
 #' @param backend The estimation backend. `"inla"` is the default and the
 #'   only active choice: INLA is the one engine with an aggregated emit.
-#'   Any other value -- including a formerly-registered engine name this
-#'   package withdrew entirely -- refuses with `unknown_backend`.
+#'   Any other value, including a formerly-registered engine name this
+#'   package withdrew entirely, refuses with `unknown_backend`.
 #' @param chunk_rows The number of rows to read per chunk. Larger chunks
-#'   read faster but use more peak memory; the default 5e6 keeps peak
+#'   read faster but use more peak memory. The default 5e6 keeps peak
 #'   memory modest while amortising read overhead.
 #' @param prior An optional [fb_prior()] object. When `NULL`, each
 #'   random-effect standard deviation takes the default [flexybayes()]
@@ -110,8 +110,8 @@
 #'   on every parameter of the fit.
 #' @param fit When `TRUE` (default) the aggregated model is fitted and a
 #'   `<flexybayes>` object is returned. When `FALSE` the function returns
-#'   the `<fb_aggregated>` sufficient-statistics object without fitting --
-#'   useful for inspecting the compression a design will achieve.
+#'   the `<fb_aggregated>` sufficient-statistics object without fitting,
+#'   which shows the compression a design will achieve.
 #' @param verbose When `TRUE`, report streaming progress and the
 #'   compression achieved.
 #' @param ... Further arguments passed to the aggregated emit.
@@ -120,13 +120,11 @@
 #'   `extras$aggregation_meta$streamed == TRUE`. When `fit = FALSE`, an
 #'   `<fb_aggregated>` object.
 #'
-#' @seealso [flexybayes()] for the in-memory entry point;
+#' @seealso [flexybayes()] for the in-memory entry point, and
 #'   [fb_prior()] for prior specification.
 #'
 #' @examplesIf interactive() && requireNamespace("fst", quietly = TRUE)
-#' # The fit runs on INLA, which is distributed from its own repository
-#' # rather than from CRAN, so the guard keeps the example readable on a
-#' # machine that does not carry it.
+#' # INLA is distributed from its own repository, not from CRAN.
 #' if (requireNamespace("INLA", quietly = TRUE)) {
 #'   set.seed(1L)
 #'   n <- 1e6
@@ -158,10 +156,9 @@ flexybayes_stream <- function(
   verbose = TRUE,
   ...
 ) {
-  # An unrecognised backend name -- including a formerly-registered
-  # engine name this package withdrew entirely -- refuses by name rather
-  # than failing on match.arg's "should be one of". INLA is the only
-  # engine with an aggregated emit.
+  # An unrecognised backend name, including a withdrawn engine name,
+  # refuses by name before match.arg. INLA is the only engine with an
+  # aggregated emit.
   .check_known_backend_name(backend, allowed = "inla")
   backend <- match.arg(backend, "inla")
   the_call <- match.call()
@@ -365,7 +362,7 @@ flexybayes_stream <- function(
   ))
 }
 
-# .fb_refuse_stream_source() --- a `source` the stream cannot read.
+# .fb_refuse_stream_source(): a `source` the stream cannot read.
 .fb_refuse_stream_source <- function(problem) {
   stop(.fb_refusal_condition(
     reason_code = "stream_source_invalid",
@@ -379,17 +376,12 @@ flexybayes_stream <- function(
   ))
 }
 
-# .fb_checked_row_count() --- an integer row count, or a refusal.
+# .fb_checked_row_count(): an integer row count, or a refusal.
 #
-# Four call sites recorded a row count as as.integer(n_rows). Past
-# 2^31 - 1 that returns NA with a coercion warning, and the NA then flows
-# into the aggregation plan's compression ratio and the fitted object's
-# recorded N, so a five-billion-row source would have produced a plan with
-# no row count rather than an error. The multi-file shard path already
-# keeps its total as a double for exactly this reason
-# (.fb_stream_source_fst_dir); these sites refuse instead, because they
-# read one file or one in-memory frame and R cannot index past the
-# integer limit there anyway.
+# Trap: as.integer() past 2^31 - 1 returns NA with a warning. The
+# multi-file shard path keeps its total as a double
+# (.fb_stream_source_fst_dir). A single file or in-memory frame refuses,
+# since R cannot index past the integer limit there.
 .fb_checked_row_count <- function(n_rows, context) {
   if (length(n_rows) != 1L || is.na(n_rows)) {
     return(NA_integer_)
@@ -508,7 +500,7 @@ flexybayes_stream <- function(
 #' @noRd
 #' @keywords internal
 .fb_stream_source_delim <- function(path, chunk_rows) {
-  # Row count via a header-aware line count; data.table::fread reads a
+  # Row count via a header-aware line count. data.table::fread reads a
   # row range with `skip` (data rows) + `nrows`. The header is re-read
   # per chunk via `fread(nrows = 0)` to recover column names.
   header <- names(data.table::fread(path, nrows = 0L))
@@ -608,8 +600,7 @@ flexybayes_stream <- function(
 #' @noRd
 #' @keywords internal
 .fb_stream_count_lines <- function(path) {
-  # Stream the file in binary blocks counting newlines; avoids reading
-  # the whole file into memory just to size it.
+  # Counts newlines in binary blocks, so the file is never held whole.
   con <- file(path, open = "rb")
   on.exit(close(con), add = TRUE)
   block <- 1048576L
@@ -695,7 +686,7 @@ flexybayes_stream <- function(
 # ---------------------------------------------------------------- #
 # Reads every chunk, computes per-cell partial sufficient statistics,
 # and folds them into a running K-row accumulator. The fold is a plain
-# additive sum keyed by the cell columns -- exact and order-independent
+# additive sum keyed by the cell columns, exact and order-independent
 # up to floating-point summation. Counts and sums are carried as doubles
 # so totals stay exact past the 2^31 integer ceiling (doubles are exact
 # integers to 2^53, roughly 9e15).
@@ -711,8 +702,8 @@ flexybayes_stream <- function(
       reason_code = "aggregation_route_unavailable",
       message = paste0(
         "flexybayes_stream() refused: the model has no factor cell-key ",
-        "term -- a fixed factor, a factor interaction, or a random ",
-        "grouping factor -- so it has nothing to aggregate by; an ",
+        "term (a fixed factor, a factor interaction, or a random ",
+        "grouping factor), so it has nothing to aggregate by. An ",
         "intercept-only model does not compress. Fit this model per row ",
         "with flexybayes()."
       ),
@@ -722,8 +713,7 @@ flexybayes_stream <- function(
 
   # The streaming route reads named columns off disk chunk by chunk, so a
   # transformed response has nothing to read. The per-row route evaluates it
-  # (see .fb_response_values()); this one cannot, and says so rather than
-  # asking the reader for a column that does not exist.
+  # (see .fb_response_values()). This one cannot.
   if (isTRUE(fb$response_is_expression)) {
     stop(.fb_refusal_condition(
       reason_code = "stream_response_must_be_a_column",
@@ -796,10 +786,10 @@ flexybayes_stream <- function(
 #'
 #' The streamed route reads its chunks directly, so the missing-response
 #' layer every flexybayes() call passes through never sees them. A missing
-#' count made its cell's sum missing, and the cell dropped out of the fit
-#' without a message; a NaN did the same; an infinite count reached INLA and
-#' ended its process. A missing value refuses as `aggregate = TRUE` refuses
-#' it, and a NaN or infinite one as every flexybayes() route does.
+#' count would make its cell's sum missing and drop the cell from the fit,
+#' as would a NaN, and an infinite count ends the INLA process. A missing
+#' value refuses as `aggregate = TRUE` refuses it, and a NaN or infinite
+#' one as every flexybayes() route does.
 #'
 #' @param y The response values of one chunk.
 #' @param response The response column name.
@@ -877,8 +867,8 @@ flexybayes_stream <- function(
   exposure,
   offsets = character(0)
 ) {
-  # The value columns are named `.y` / `.m` / `.e` -- symbols that are
-  # NOT local variables -- so the substitute() idiom below inlines the
+  # The value columns are named `.y` / `.m` / `.e`, symbols that are
+  # not local variables, so the substitute() idiom below inlines the
   # data.table value (`kdt`) and the `by` columns (`key_cols`) while
   # leaving `.N`, `.y`, `.m`, `.e` symbolic for data.table to resolve as
   # columns. Counts and sums are doubles for overflow safety past 2^31.
@@ -992,8 +982,8 @@ flexybayes_stream <- function(
 # Builds the same object shape the in-memory `.fb_aggregate_gaussian()`
 # returns, so the existing emit consumes a streamed aggregation
 # unchanged. The fixed-effect contrast columns are reconstructed once,
-# on the K unique cells, via model.matrix() -- the only place a design
-# matrix is built, and it is K x p, never N x p.
+# on the K unique cells, via model.matrix(). That design matrix is
+# K x p, never N x p.
 
 #' @noRd
 #' @keywords internal
@@ -1064,7 +1054,7 @@ flexybayes_stream <- function(
 # Scope gate (streaming variant)                                    #
 # ---------------------------------------------------------------- #
 # The streaming path admits the three exponential-family cases gaussian
-# / binomial / poisson; the term-shape refusals (continuous fixed
+# / binomial / poisson. The term-shape refusals (continuous fixed
 # effect, smooth, random slope, structured covariance) match
 # `.assert_aggregate_in_scope()` so a model refused in memory is refused
 # the same way when streamed.
@@ -1202,7 +1192,7 @@ flexybayes_stream <- function(
   # Count families only: flexybayes_stream() refuses a Gaussian fit before
   # any chunk is read.
   # A row's expected count scales with its own trials or exposure, which the
-  # cell totals absorbed; the row-level fitted values multiply it back in.
+  # cell totals absorbed. The row-level fitted values multiply it back in.
   row_scale <- if (!is.null(trials)) {
     as.numeric(head[[trials]])
   } else if (!is.null(exposure)) {
@@ -1229,27 +1219,20 @@ flexybayes_stream <- function(
     fit$extras$aggregation_meta$streamed <- TRUE
   }
   # The IR, and with it the prior the fit ran under, as the in-memory routes
-  # attach it in .dispatch_backend(); prior_summary() reads it from here.
+  # attach it in .dispatch_backend(). prior_summary() reads it from here.
   if (!is.null(fit$extras)) {
     fit$extras$fb_terms <- fb
   }
-  # The manifest names the streamed route; the count emit records the
+  # The manifest names the streamed route. The count emit records the
   # aggregated one.
   if (!is.null(fit[["extras"]][["manifest"]])) {
     fit[["extras"]][["manifest"]][["route"]][["route"]] <- "streamed_count"
   }
 
-  # D10 / WP-D: emit_gaussian_aggregated() / emit_count_aggregated() set
-  # neither $exactness nor $extras$backend_decision -- the ordinary
-  # aggregate = TRUE route through .dispatch_backend() populates both
-  # AFTER calling the same emit functions (see R/dispatch.R, "fit$exactness
-  # <- 'aggregated_exact'" and the .build_routing_decision() call right
-  # after it). flexybayes_stream() calls these emit functions directly,
-  # bypassing that dispatch-side step entirely, so a streamed fit's
-  # print() banner read $exactness's un-set default ("exact (model, not
-  # inference)") and $backend_decision's absence ("(unknown engine)")
-  # instead. Mirror dispatch.R's two lines here so the streamed route
-  # carries the identical trace the in-memory aggregated route does.
+  # The aggregated emits set neither $exactness nor
+  # $extras$backend_decision. .dispatch_backend() sets both after the
+  # emit, and this route bypasses it, so the same two fields are set
+  # here.
   if (!is.null(fit$extras)) {
     fit$exactness <- "aggregated_exact"
     fit$extras$backend_decision <- .build_routing_decision(

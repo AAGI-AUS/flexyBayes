@@ -1,4 +1,4 @@
-# .fb_aggregation_plan() -- model-level aggregation planning.
+# .fb_aggregation_plan(), model-level aggregation planning.
 # Decides whether a model is a candidate for
 # the aggregated-likelihood path WITHOUT materialising any design
 # matrix. Reads only the IR + dataset wrapper metadata.
@@ -11,22 +11,20 @@
 #   $cell_key_terms        list of cell-key contributions. Each entry:
 #                          list(label = <human-readable>, vars =
 #                          <data-column names>, K = <integer level
-#                          count>; K = NA_integer_ when the cell-key
+#                          count>, K = NA_integer_ when the cell-key
 #                          count is data-dependent).
 #   $requires_materialisation logical: TRUE when K cannot be sized from
 #                          metadata alone (a numeric fixed term
 #                          contributes ~N unique values).
 #   $K_est                 integer: estimated cell count from
-#                          metadata; NA_integer_ when
+#                          metadata, NA_integer_ when
 #                          requires_materialisation = TRUE.
 #   $N                     integer: total row count.
-#   $compression_est       numeric: K_est / N; NA_real_ when
+#   $compression_est       numeric: K_est / N, NA_real_ when
 #                          requires_materialisation = TRUE.
 #
-# The plan is informational at v0.3.0.9000: the aggregated emit
-# dispatch (landed in v0.3.2) consumes the plan to
-# decide between the per-row and aggregated paths. `.fb_preflight()`
-# attaches the plan to the result for diagnostic visibility.
+# Dispatch consumes the plan to decide between the per-row and aggregated
+# paths. `.fb_preflight()` attaches the plan to the result for diagnostics.
 #
 # Internal-only.
 
@@ -38,26 +36,24 @@
 # happen via a `flexyBayes.aggregation_compression_threshold` option.
 .FB_AGGREGATION_PRODUCTIVITY_THRESHOLD <- 0.5
 
-# .fb_aggregation_verdict_line() --- one line stating N, K (when known),
+# .fb_aggregation_verdict_line(): one line stating N, K (when known),
 # rows per cell, and a plain verdict on whether aggregation pays, with
-# the threshold stated in the same units the line reports (S6, scale
-# strategy 2026-08-22: "a gen:loc:yearf model ... measured 1.06 rows per
-# cell against the shipped demo's 1,200 cells" -- the printed line is
-# what would have shown a user that contrast directly, on either
-# model, without reading the strategy document).
+# the threshold stated in the same units the line reports. A gen:loc:yearf
+# model measured 1.06 rows per cell against the shipped demo's 1,200 cells,
+# and the printed line shows that contrast directly.
 #
 # Rows per cell (N/K) is the quantity a breeder reads directly off a
-# trial design; the productivity test is expressed internally as
+# trial design. The productivity test is expressed internally as
 # K/N <= .FB_AGGREGATION_PRODUCTIVITY_THRESHOLD (>= 2:1 compression), so
 # the equivalent rows-per-cell threshold is its reciprocal. Shared by
 # print.fb_aggregation_plan() and print.fb_plan()'s Aggregation: line so
-# the two plan surfaces cannot drift on wording -- this is the S6 half
-# of "the plan surface tells the truth" (the FS-22 half is the grammar
-# fix in R/fb_plan.R).
+# the two plan surfaces cannot drift on wording. This is the half
+# of "the plan surface tells the truth" that concerns the printed counts
+# (the other half is the grammar fix in R/fb_plan.R).
 #
 # `rows_per_cell` is generally N/K precomputed by the caller (both
-# callers already carry it under different field names); passing it
-# explicitly rather than recomputing from N and K keeps this a pure
+# callers already carry it under different field names). Passing it
+# explicitly instead of recomputing from N and K keeps this a pure
 # formatting function and avoids a second definition of "rows per
 # cell" that could drift from the one the caller actually used.
 .fb_aggregation_verdict_line <- function(N, K, rows_per_cell) {
@@ -90,17 +86,17 @@
   sprintf("N = %s; K = %s; rows/cell = %s; %s", n_txt, k_txt, rpc_txt, verdict)
 }
 
-# .fb_checked_cell_count() --- a cell-count estimate carried safely
+# .fb_checked_cell_count(): a cell-count estimate carried safely
 # past R's integer limit, or a refusal.
 #
 # K_est = prod(Ks) is the product of the aggregation cell key's level
-# counts. Growing a design by genotype the way a breeding programme
-# does (FS-24) reaches this product well before the row count reaches
+# counts. Growing a design by genotype, as a breeding programme does,
+# reaches this product well before the row count reaches
 # its own limit: at 911,808 rows / 54,208 genotypes the cell-key
 # product is already about 2.4e9. `as.integer(prod(Ks))` past
 # `2^31 - 1` returned `NA` with only a base-R coercion warning, and
-# `compression_est` then divided by that `NA` silently -- the plan
-# lost both its cell count and its compression estimate rather than
+# `compression_est` then divided by that `NA` silently, the plan
+# lost both its cell count and its compression estimate instead of
 # refusing. `Ks` already arrives as a double vector (`vapply(...,
 # numeric(1L))`), so `prod(Ks)` is computed in double space; only the
 # final cast back to `integer` for the common, well within-range case
@@ -155,9 +151,9 @@
 
   # ---- Family / link scope check ---- #
   # Aggregation is exact for gaussian-identity, binomial-logit, and
-  # poisson-log. Other families are refused; a non-canonical link is
+  # poisson-log. Other families are refused. A non-canonical link is
   # refused because the aggregated emit fits the canonical link. Count
-  # families carrying observation weights are refused -- the per-row
+  # families carrying observation weights are refused, the per-row
   # weights are not recoverable from the cell sums.
   canon <- c(gaussian = "identity", binomial = "logit", poisson = "log")
   fam <- fb_ir$family
@@ -199,12 +195,12 @@
   #
   # The cell key is the set of VARIABLES the cell-constant predictors
   # need, not the list of terms that need them. `y ~ a * b` produces
-  # three terms -- `a`, `b` and `a:b` -- over two variables, and the
+  # three terms (`a`, `b` and `a:b`) over two variables, and the
   # runtime aggregator (.fb_stream_key_cols()) has always keyed on the
   # union. The planner multiplied the term-level counts instead, so the
   # same replicated 4-by-4 factorial that compresses 320 rows to 16
   # cells was estimated at 4 * 4 * 16 = 256 and refused as
-  # `compression_unproductive` -- the plan disagreed with the emitter
+  # `compression_unproductive`: the plan disagreed with the emitter
   # about the very quantity the decision turns on.
   #
   # `cell_key_contribs` therefore accumulates one entry per distinct
@@ -216,7 +212,7 @@
     ttype <- if (!is.null(t$type)) t$type else "expression"
 
     if (ttype %in% c("smooth", "s", "t2", "smooth_mgcv", "spline")) {
-      # Smooth basis is observation-row-specific; breaks cell-constant
+      # Smooth basis is observation-row-specific. Breaks cell-constant
       # linear predictor.
       reason_codes <- c(reason_codes, "smooth_term_not_aggregatable")
     } else if (
@@ -232,7 +228,7 @@
     ) {
       # Continuous fixed effect: each row carries an arbitrary value
       # so the cell key would be one cell per unique value
-      # combination -- approximately N cells. Aggregation cannot
+      # combination: approximately N cells. Aggregation cannot
       # compress without binning the continuous variable. Flag the
       # plan as data-dependent.
       any_data_dependent_cell <- TRUE
@@ -251,7 +247,7 @@
         )
       }
     } else if (identical(ttype, "factor_numeric_interaction")) {
-      # Mixed factor:numeric -- the numeric component breaks the
+      # Mixed factor:numeric: the numeric component breaks the
       # cell-constant linear predictor (the indexed slope still
       # carries one slope per factor level applied to the per-row
       # numeric value).
@@ -265,7 +261,7 @@
   # ---- Random-effect term scope ---- #
   # The previous catch-all
   # `random_slope_in_scope` conflated random-slope and structured-
-  # covariance shapes; split into a taxonomy that names what
+  # covariance shapes. Split into a taxonomy that names what
   # actually breaks aggregation. Aligned with
   # .assert_aggregate_in_scope() so the same model produces the
   # same reason_code across both eligibility paths.
@@ -290,7 +286,7 @@
       reason_codes <- c(reason_codes, "random_slope_not_aggregatable")
     } else {
       # Structured-covariance terms (vm, ped, at, us, fa, ar1, ...):
-      # the latent block is non-cell-constant; aggregation closure
+      # the latent block is non-cell-constant. Aggregation closure
       # does not hold.
       reason_codes <- c(reason_codes, "structured_random_not_aggregatable")
     }
@@ -300,11 +296,11 @@
   # Only the plain `units` residual is cell-constant, so only `units` is
   # aggregatable. An AR1 / separable AR1xAR1 residual is reinterpreted on
   # INLA as a per-observation latent field, and a sectioned
-  # `dsum(~ units | f)` residual carries one variance per level of `f`;
-  # neither is constant within a predictor cell, and no aggregated emitter
-  # represents either. The check names what IS representable rather than
+  # `dsum(~ units | f)` residual carries one variance per level of `f`.
+  # Neither is constant within a predictor cell, and no aggregated emitter
+  # represents either. The check names what IS representable instead of
   # enumerating what is not, so a residual class added later is refused
-  # here until an aggregated emitter for it exists -- the earlier
+  # here until an aggregated emitter for it exists, the earlier
   # enumeration silently let `at_units` through, and the plan surface then
   # advertised an aggregated INLA route for a model the INLA gate refuses.
   for (t in fb_ir$residual_terms) {
@@ -394,13 +390,13 @@
   # model matrix and then name its columns in the INLA formula. An
   # interaction column is named `a2:b2`, and INLA does not resolve a
   # column whose name contains a colon even when the formula backticks
-  # it -- a live probe on a replicated 4-by-4 binomial factorial fails
+  # it: a live probe on a replicated 4-by-4 binomial factorial fails
   # inside INLA with `object 'aa2:bb2' not found` on both the binomial
   # and the Poisson emit. Renaming the columns would put a synthesised
   # token into `summary.fixed`, `marginals.fixed` and the latent field
   # that `.inla_fixef_draws()` matches on, so the aggregated route
-  # refuses and the per-row route -- which uses INLA's native `a:b`
-  # notation on the raw columns and fits -- takes the model.
+  # refuses and the per-row route (which uses INLA's native `a:b`
+  # notation on the raw columns and fits) takes the model.
   #
   # K_est is reported anyway: it is the compression the model would
   # have had, and it is what makes the refusal legible.
@@ -481,8 +477,8 @@
 #
 # A variable named by more than one term (`a` as a main effect and again
 # inside `a:b`, or a group factor that is also a fixed effect) enters the
-# key once. Where the two sightings disagree on the level count -- a
-# term slot carrying `var_n` against a dataset dictionary, say -- the
+# key once. Where the two sightings disagree on the level count (a
+# term slot carrying `var_n` against a dataset dictionary, say) the
 # first is kept and the second is a no-op, except that a resolvable count
 # replaces an unresolvable one so an NA from a partial dictionary does
 # not poison a count another term already knew.
@@ -542,7 +538,7 @@
   NA_integer_
 }
 
-# Constructor -- centralises the slot list shape + class attachment.
+# Constructor: centralises the slot list shape + class attachment.
 .new_fb_aggregation_plan <- function(
   eligible,
   reason_codes,

@@ -1,10 +1,10 @@
-# .fb_dataset() -- internal dataset wrapper (v0.3.0).
+# .fb_dataset(), internal dataset wrapper (v0.3.0).
 #
 # Wraps a data.frame / data.table in a list-shaped S3 object
 # `<fb_dataset>` carrying:
-#   $data         the underlying data.table -- always a copy of user
+#   $data         the underlying data.table, always a copy of user
 #                 input (`data.table::copy()` when the input is already
-#                 a data.table; `data.table::as.data.table()` when the
+#                 a data.table, `data.table::as.data.table()` when the
 #                 input is a data.frame). NULL for the metadata-only
 #                 path. The copy is intentional: the wrapper guarantees
 #                 that downstream emit / aggregation paths cannot
@@ -13,7 +13,7 @@
 #                 (data = NULL with n_rows / col_types / dictionaries).
 #   $dictionaries named list of stable factor-level dictionaries (per
 #                 factor / character column, ordered character vector
-#                 of levels frozen at wrap time; chunked-prediction
+#                 of levels frozen at wrap time. Chunked-prediction
 #                 and aggregation paths read this slot to guarantee
 #                 levels do not drift on row-wise recoding)
 #   $n_rows       cached integer row count
@@ -25,7 +25,7 @@
 # Internal-only at v0.3.0: no `@export` tag on the constructor itself.
 # The S3 `print` / `format` methods (registered for diagnostic dispatch
 # from refusal messages and `review_code` summaries) carry generated
-# `.Rd` entries -- their output format is internal-grade and may change
+# `.Rd` entries, their output format is internal-grade and may change
 # without a deprecation cycle (see API_STABILITY.md, "Internal-but-S3-
 # visible diagnostics"). Constructor export is gated on at least two
 # downstream workflows (aggregation + chunked predict)
@@ -236,7 +236,7 @@ print.fb_dataset <- function(x, ...) {
 # ---------------------------------------------------------------- #
 
 # Lookup the level-count of a column. Reads `<fb_dataset>$dictionaries`
-# first (the source of truth for the frozen-level contract); falls
+# first (the source of truth for the frozen-level contract). Falls
 # back to NA_integer_ if no dictionary is present. Used by the
 # preflight per-term estimators to size random-intercept / random-
 # slope blocks without re-scanning the underlying data.table.
@@ -262,7 +262,7 @@ print.fb_dataset <- function(x, ...) {
   NA_integer_
 }
 
-# Column-type lookup -- returns NA_character_ if the column is not
+# Column-type lookup: returns NA_character_ if the column is not
 # tracked. Internal helper used by preflight to gate factor-vs-numeric
 # emit paths without re-reading $data.
 .fb_dataset_type <- function(ds, col) {
@@ -274,7 +274,7 @@ print.fb_dataset <- function(x, ...) {
 
 # Strip the `$data` slot off a data-backed <fb_dataset>, returning a
 # metadata-only descriptor (dictionaries + col_types + n_rows
-# preserved; origin tagged metadata-only). Used by .dispatch_backend()
+# preserved, origin tagged metadata-only). Used by .dispatch_backend()
 # to persist the dataset descriptor on the fit object's extras slot
 # without retaining the full training data.frame. Chunked-predict
 # consumer: predict.flexybayes(newdata, ...) reads the persisted
@@ -299,7 +299,7 @@ print.fb_dataset <- function(x, ...) {
   )
 }
 
-# Predicate -- is the dataset wrapper a metadata-only descriptor?
+# Predicate: is the dataset wrapper a metadata-only descriptor?
 # Used by the preflight stress test to assert no row-wise read
 # happens on the 1e8-row descriptor path.
 .fb_dataset_is_metadata <- function(ds) {

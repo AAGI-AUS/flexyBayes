@@ -1,4 +1,4 @@
-# Tests for fb_brms() -- ADR 0014.
+# Tests for fb_brms().
 #
 # Contract:
 #   - Accepts the five-shape brms corpus: fixed-only Gaussian;
@@ -7,12 +7,12 @@
 #   - Refuses everything outside the corpus at ingest with a
 #     structured message (random slopes, smoothers, GP, autocor,
 #     LHS-pipe addition forms).
-#   - Inherits ADR 0006 (backend = c("inla", "brms", "auto") +
-#     decision trace), ADR 0011 (review_code), ADR 0005 (canonical-
-#     name auto-resolution via the existing brms + INLA mappers).
+#   - Takes the `backend` choice (c("inla", "brms", "auto")) with its
+#     decision trace, `review_code`, and canonical-name auto-resolution
+#     via the existing brms + INLA mappers.
 #   - Returns class "flexybayes_brms" (brms accepted) or
-#     "flexybayes_inla" (INLA accepted); per ADR 0014 sec.7 no
-#     subclass distinguishes brms-entry from asreml-entry fits.
+#     "flexybayes_inla" (INLA accepted); no subclass
+#     distinguishes brms-entry from asreml-entry fits.
 #
 # brms is required for the brms-path fits; INLA for the auto-
 # accept + cross-engine subtests (skip_if_not_installed guards).
@@ -96,7 +96,9 @@ test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
   testthat::skip_on_ci()
   skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
-  fit <- suppressMessages(flexybayes(
+  # The assertions are structural, so the low-ESS warning of the one-chain
+  # 500-draw budget is muffled (see helper-ess-warnings.R).
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "brms",
@@ -107,7 +109,7 @@ test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
     control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   expect_s3_class(fit, "flexybayes")
   expect_identical(fit$extras$fb_terms$source, "brms")
   expect_length(fit$extras$fb_terms$random_terms, 1L)
@@ -187,7 +189,9 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
   testthat::skip_on_ci()
   skip_if_not_long_tier()
   d <- mk_brms_poisson_data()
-  fit <- suppressMessages(flexybayes(
+  # The assertions are structural, so the low-ESS warning of the one-chain
+  # 500-draw budget is muffled (see helper-ess-warnings.R).
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     family = "poisson",
@@ -199,7 +203,7 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
     control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   expect_s3_class(fit, "flexybayes")
   expect_identical(fit$extras$fb_terms$family, "poisson")
   expect_identical(fit$extras$fb_terms$link, "log")
@@ -232,7 +236,7 @@ test_that("fb() carries correlated random slopes (x | g) to the brms formula", {
 
 test_that("fb_brms() refuses brms smoothers with structured message", {
   d <- mk_brms_gaussian_data()
-  # Typed since 0.9.2 (field-sweep FS-18): the smoother used to reach the
+  # Typed since 0.9.2: the smoother used to reach the
   # engine and surface as `could not find function "s"`, on brms only
   # after a completed sampling run.
   err <- expect_error(
@@ -308,17 +312,17 @@ test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fi
   expect_true(is.character(rev$code) && nchar(rev$code) > 0L)
   expect_identical(rev$backend, "stan_via_brms")
   expect_identical(rev$ir$source, "brms")
-  # Structural test (does proceed() fit and cache?) -- the 500-draw
+  # Structural test (does proceed() fit and cache?), the 500-draw
   # budget above still leaves residual ESS-only warnings (no R-hat /
   # divergence) on this particular model, so muffle those specifically
-  # rather than push the budget even higher for a shape assertion.
+  # instead of push the budget even higher for a shape assertion.
   fit <- .muffle_ess_warnings(suppressMessages(
     suppressWarnings(proceed(rev), classes = "flexybayes_deprecated")
   ))
   expect_s3_class(fit, "flexybayes")
   expect_true("(Intercept)" %in% names(coef(fit)))
   # Second proceed() returns the cached fit (and prints a note to that
-  # effect -- suppress it, same as the first proceed() call above).
+  # effect, suppress it, same as the first proceed() call above).
   fit2 <- suppressMessages(
     suppressWarnings(proceed(rev), classes = "flexybayes_deprecated")
   )
@@ -335,7 +339,9 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit <- suppressMessages(flexybayes(
+  # The assertions are structural, so the low-ESS warning of the one-chain
+  # 500-draw budget is muffled (see helper-ess-warnings.R).
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "brms",
@@ -346,7 +352,7 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
     control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   bd <- backend_decision(fit)
   expect_setequal(
     names(bd),
@@ -364,7 +370,7 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
   expect_identical(bd$backend, "brms")
   expect_identical(bd$path, "explicit_brms")
   expect_null(bd$gate_checks)
-  # ADR 0024 v0.3.6+ four new fields: NULL on the small-data fast
+  # Four fields added in v0.3.6: NULL on the small-data fast
   # path (no preflight, no representation plan); empty list of
   # rejected routes on an explicit user request (policy-bypass
   # semantics); routing_policy_version is the live constant.

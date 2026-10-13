@@ -95,7 +95,7 @@ test_that("DEF-007: draws agree with inla.posterior.sample() and INLA's summary"
 
   sd_ref <- sqrt(diag(stats::cov(theirs)))
   # Over 10 seed pairs: mean gap up to 0.022 SD, SD ratio within 0.027 of 1,
-  # correlation gap up to 0.028; two INLA runs: 0.029, 0.027, 0.026.
+  # correlation gap up to 0.028. Two INLA runs: 0.029, 0.027, 0.026.
   expect_lt(max(abs(colMeans(ours) - colMeans(theirs)) / sd_ref), 0.04)
   expect_lt(max(abs(sqrt(diag(stats::cov(ours))) / sd_ref - 1)), 0.04)
   expect_lt(max(abs(stats::cor(ours) - stats::cor(theirs))), 0.04)

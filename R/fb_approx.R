@@ -1,4 +1,4 @@
-# fb_approx() -- constructor noun for approximation schemes.
+# fb_approx(), constructor noun for approximation schemes.
 #
 # One of the four flexyBayes constructor nouns. `fb_approx(scheme, ...)`
 # names an approximation scheme from the locked approximation registry
@@ -9,26 +9,26 @@
 #
 # The returned object is a classed list whose `scheme` and tuning
 # kwargs are plain list elements, so the consuming parse path reads
-# `spec$scheme` / `spec$rank` directly; the bias-bound description is an
+# `spec$scheme` / `spec$rank` directly. The bias-bound description is an
 # attribute surfaced by the print method.
 
 #' Construct an approximation-scheme specification
 #'
 #' Names an approximation scheme and its tuning, validated against the
 #' package's locked approximation registry. The result is consumed where
-#' an approximate representation is accepted -- most directly in a
+#' an approximate representation is accepted, most directly in a
 #' smooth term, `s(x, representation = fb_approx("low_rank_smooth",
 #' rank = 5L))`.
 #'
 #' The only scheme with a smooth-basis fitting path in this release is
 #' `"low_rank_smooth"`, a rank-`K` principal-component truncation of the
 #' smooth basis. Its bias is the relative squared Frobenius error of the
-#' truncation (Wood, 2017, chapter 5); [validate_approximation()]
+#' truncation (Wood, 2017, chapter 5). [validate_approximation()]
 #' reports the realised capture against the threshold for a fitted
 #' model.
 #'
 #' @param scheme Character(1): the approximation-scheme name. Must be a
-#'   scheme registered in the approximation registry; an unregistered
+#'   scheme registered in the approximation registry. An unregistered
 #'   name is refused with the supported vocabulary.
 #' @param ... Scheme-specific tuning carried on the object, for example
 #'   `rank` for `"low_rank_smooth"`.
@@ -47,7 +47,7 @@ fb_approx <- function(scheme, ...) {
     "fb_approx(): `scheme` must be a non-empty single string."
   )
 
-  # Validate against the locked registry; an unknown scheme is a
+  # Validate against the locked registry. An unknown scheme is a
   # catchable structured refusal naming the supported vocabulary.
   entry <- tryCatch(.lookup_approximation(scheme), error = function(e) NULL)
   if (is.null(entry)) {

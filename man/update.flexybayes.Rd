@@ -27,7 +27,7 @@ did not record would be re-supplied as its default, so a re-fit could
 quietly drop a relationship matrix, a prior scale, or a missing-response
 policy, and return a different model under the same name. When any
 recorded argument is absent, the method refuses and names what is
-missing rather than re-fitting a model the user did not ask for. A fit
+missing instead of re-fitting a model the user did not ask for. A fit
 produced before its engine recorded the full set therefore refuses,
 which is the intended behaviour: there is no pre-0.9.1 object to
 special-case into a silent default.
@@ -36,7 +36,7 @@ special-case into a silent default.
 
 
 A re-fit uses the prior the original fit resolved to, taken from the
-record on the fit itself rather than re-derived from the arguments.
+record on the fit itself, not re-derived from the arguments.
 This matters because the auto-default half-normal on the
 standard-deviation scale fires only when the call supplies neither a
 \code{prior} nor a \code{prior_vc_sd}, and a re-fit that re-issues the recorded
@@ -52,16 +52,16 @@ Precedence, in order:
 \item A \code{prior} in \code{...} is used as given. The recorded prior is not
 re-issued alongside it.
 \item A \code{prior_vc_sd} in \code{...} is used as given, and the recorded
-prior is \emph{not} re-issued -- the two forms describe the same
+prior is \emph{not} re-issued, the two forms describe the same
 variance-component scale, and passing both would let the recorded
 prior silently override the scalar the caller just wrote.
 \item Otherwise the fit's own resolved prior decides, and \emph{how} it
-decides depends on where that prior came from -- see below.
+decides depends on where that prior came from, see below.
 \item A fit carrying the legacy scalar bridge, or no prior record at
 all, re-fits on the recorded scalars exactly as it did before.
 }
 
-\strong{A policy re-fires; a bespoke prior carries.} The two things
+\strong{A policy re-fires. A bespoke prior carries.} The two things
 \verb{$extras$fb_terms$priors} can hold are not the same kind of thing, and
 a re-fit treats them differently.
 
@@ -75,7 +75,7 @@ policy runs again over the \emph{updated} model and data. On an identity
 as its siblings.
 \item \strong{A user-supplied \code{fb_prior()}} is a statement about the
 terms it names, and is carried verbatim. A term the user did not
-name -- including one an override has just added -- keeps
+name (including one an override has just added) keeps
 following the engine's own hyperprior, exactly as it did on the
 first fit. \code{prior_fixed_sd} and \code{prior_vc_sd} are re-issued
 alongside it, so a route that reads them for the terms the prior
@@ -83,8 +83,8 @@ object does not name keeps the values the original ran under.
 }
 
 The asymmetry is deliberate. Re-applying a policy's old output to a new
-model leaves a mixed state -- the original terms priored, the added one
-falling to the engine while its siblings keep the default -- which is
+model leaves a mixed state, the original terms priored, the added one
+falling to the engine while its siblings keep the default, which is
 not what either the policy or the user asked for. Re-deciding a
 \emph{user's} explicit prior, on the other hand, would put words in their
 mouth. Read \code{\link[=prior_summary]{prior_summary()}} on the re-fit to see what it ran under,
@@ -97,7 +97,7 @@ and \code{\link[=summary.flexybayes]{summary.flexybayes()}}'s \code{varcomp} tab
 \code{backend} and \code{aggregate} are re-issued from the record alongside
 everything else. Before 0.9.1 neither was recorded, so a re-fit took
 the formal defaults: an identity \code{update()} of a Stan fit came back as
-an aggregated INLA fit -- a different inference engine and a different
+an aggregated INLA fit, a different inference engine and a different
 representation, under the same name and with nothing said.
 
 What is recorded is the value the \emph{call} asked for, not the engine the
@@ -105,8 +105,8 @@ call resolved to. A fit made under \code{backend = "auto"} records \code{"auto"}
 and a re-fit routes again from there. A fit that named \code{"brms"} records
 \code{"brms"} and comes back on Stan. The distinction is deliberate: the
 recorded value is the user's policy, and a re-fit whose model has
-changed -- \code{update(fit, random = ~ g + h)} -- has to be free to route
-the changed model rather than be pinned to the engine that suited the
+changed (\code{update(fit, random = ~ g + h)}) has to be free to route
+the changed model, not be pinned to the engine that suited the
 old one. \code{aggregate} behaves the same way. A recorded \code{"auto"} lets the
 aggregation gate re-decide, a recorded \code{FALSE} keeps the re-fit
 per-row.

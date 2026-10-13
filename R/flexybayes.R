@@ -12,7 +12,7 @@
 #'   (paired with `random` / `residual`) **or** a brms / lme4-style
 #'   bar-grouped formula such as `response ~ x + (1 | g)` (in which case
 #'   the grouping lives in the formula and `random` / `residual` must be
-#'   left `NULL`). The grammar is detected from the call shape; use
+#'   left `NULL`). The grammar is detected from the call shape. Use
 #'   `syntax` to force it.
 #'
 #'   **Offsets.** `offset()` terms in the fixed formula enter the linear
@@ -50,17 +50,17 @@
 #'   The bare spelling `fa(v, k)`, with no grouping factor for the covariance
 #'   to apply to, keeps its own refusal (`fa_not_representable`).
 #'   `corh(f):g` is likewise ASReml syntax that flexyBayes parses and
-#'   refuses by name; it is described just below.
+#'   refuses by name. It is described just below.
 #'
 #'   **Heterogeneous variances.** `diag(f):g`, `idh(f):g` and `at(f):g` all fit
-#'   one variance per level of `f` with no covariance between levels -- the
+#'   one variance per level of `f` with no covariance between levels: the
 #'   usual multi-environment structure, where the genotype variance differs by
-#'   site. ASReml treats `diag()` and `idh()` as the same structure and so does
-#'   flexyBayes; the three spellings emit identical code. `us(f):g` estimates
-#'   every pairwise correlation instead, at `k(k+1)/2` parameters against
-#'   `diag()`'s `k`.
+#'   site. ASReml treats `diag()` and `idh()` as the same structure, and so
+#'   does flexyBayes. The three spellings emit identical code. `us(f):g`
+#'   estimates every pairwise correlation instead, at `k(k+1)/2` parameters
+#'   against `diag()`'s `k`.
 #'
-#'   `corh(f):g` -- heterogeneous variances with a single shared correlation --
+#'   `corh(f):g`, heterogeneous variances with a single shared correlation,
 #'   is refused on both engines: flexyBayes has no lowering for it, and
 #'   approximating it with either neighbour would change the parameter count.
 #'   With one variance for every level and a correlation of zero or more,
@@ -71,7 +71,7 @@
 #'   per named level, as in ASReml. `at(design, "split"):mainplot` is a
 #'   main-plot effect in the split-plot trials alone. Levels are written as
 #'   values, `at(f, c("a", "b"))`, or as positions in `levels(f)`,
-#'   `at(f, 2)`; a level the data do not have is refused
+#'   `at(f, 2)`. A level the data do not have is refused
 #'   (`at_level_not_in_data`). It fits on both engines and reports
 #'   `sd_<g>__<f><level>`, the name `at(f):g` gives the same level.
 #'
@@ -93,7 +93,7 @@
 #'   field, so brms refuses.
 #'
 #'   That four-parameter model is **not** ASReml's separable residual, which
-#'   is one correlated residual with no independent plot error -- three
+#'   is one correlated residual with no independent plot error: three
 #'   parameters, nested inside this one as the nugget goes to zero. On data
 #'   with real plot-to-plot noise the two return different correlations,
 #'   because a nugget-free model must absorb independent noise into the
@@ -105,8 +105,8 @@
 #'
 #'   **Per-trial nested field.** `id(trial):ar1(row):ar1(col)` fits one
 #'   separable AR1 field per level of `trial` on INLA, via the `replicate =`
-#'   mechanism -- one complete grid per trial, each with its own realised
-#'   field, but the row correlation, column correlation and field SD are
+#'   mechanism: one complete grid per trial, each with its own realised
+#'   field. The row correlation, column correlation and field SD are
 #'   **shared across every level of `trial`**, not estimated per trial. This
 #'   is the model ASReml fits under the same spelling.
 #'
@@ -122,8 +122,8 @@
 #'   **Units followed through time.** `ar1(t):g`, or the same term written
 #'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,
 #'   independent across levels, with one correlation and one field SD
-#'   shared by every level and the Gaussian nugget on top -- three
-#'   hyperparameters. This is the units-by-occasions repeated-measures
+#'   shared by every level and the Gaussian nugget on top, three
+#'   hyperparameters in all. This is the units-by-occasions repeated-measures
 #'   covariance of Verbyla and Cullis (1992) written on the random side:
 #'   `g` indexes the plots, animals or series and `t` the occasions, whose
 #'   levels must be in time order. An occasion a unit missed stays as a
@@ -134,7 +134,7 @@
 #'   (iid residuals). `~ dsum(~ units | env)`, and the equivalent
 #'   `~ at(env):units`, give a separate residual variance per level of `env`.
 #'   Only families that carry a residual scale parameter can have one made
-#'   heterogeneous -- a Poisson's dispersion is a function of its mean, so
+#'   heterogeneous. A Poisson's dispersion is a function of its mean, so
 #'   there is nothing there to vary, and the request is refused.
 #'
 #'   `~ ar1(row):ar1(col)` is ASReml's separable residual: one correlated
@@ -148,9 +148,9 @@
 #'   `~ ar1(t)` and `~ ar1(row):col` are refused on both engines, with a
 #'   pointer to the random-side field described under `random` above.
 #' @param rcov Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
-#'   the residual-structure argument; ASReml 4 renamed it to `residual` and
+#'   the residual-structure argument. ASReml 4 renamed it to `residual`, and
 #'   flexyBayes follows the ASReml 4 name. Supplying `rcov` now raises an
-#'   error -- use `residual` instead.
+#'   error. Use `residual` instead.
 #' @param data A data.frame containing all variables referenced in the formulas.
 #' @param family Character: `"gaussian"`, `"binomial"`, `"poisson"`,
 #'   `"negative_binomial"`, `"gamma"`, `"beta"`, `"hurdle_gamma"` or
@@ -161,15 +161,15 @@
 #'   A family object (`binomial()`, `gaussian()`, `brms::lognormal()`) is
 #'   also accepted, goes through the same gate as
 #'   its name, and supplies its own link, so `Gamma()` means the inverse
-#'   link it names rather than the log link `family = "gamma"` defaults
-#'   to. Passing a family object together with a contradicting `link` is
-#'   refused rather than resolved. A family outside this set is refused
-#'   at the door; where the boundary is flexyBayes's own rather than the
-#'   engines', the refusal says so and `inst/KNOWN_ISSUES.md` records it.
+#'   link it names, not the log link `family = "gamma"` defaults to.
+#'   Passing a family object together with a contradicting `link` is
+#'   refused, not resolved. A family outside this set is refused at the
+#'   door. Where the boundary is flexyBayes's own and not the engines',
+#'   the refusal says so and `inst/KNOWN_ISSUES.md` records it.
 #'   A response outside the family's domain (0 or negative for `"gamma"`
 #'   or `"lognormal"`, negative for `"hurdle_gamma"`, at or outside \[0, 1\]
 #'   for `"beta"`) is refused by name (`family_response_domain_violation`)
-#'   before any engine runs; a missing (`NA`) response is `na_action`'s
+#'   before any engine runs. A missing (`NA`) response is `na_action`'s
 #'   concern, not a domain violation.
 #' @param link Character or NULL: override the default link function
 #'   (e.g., `"probit"` for binomial). Leave it unset when `family` is a
@@ -198,7 +198,7 @@
 #'   deviation per block, pointing at the precision carrier of the
 #'   block-diagonal inverse.
 #'   The bare dense forms `vm(group, V = ...)` /
-#'   `ped(group, A = ...)` remain the default; the legacy v0.3.7
+#'   `ped(group, A = ...)` remain the default. The legacy v0.3.7
 #'   keyword carriers (`chol = `, `precision = `, `blocks = `,
 #'   `low_rank_factor = `) are deprecated and emit a migration warning.
 #'   See the formula-surface vignette for per-type worked examples.
@@ -212,15 +212,15 @@
 #'   `rep(1, N)`) is the unweighted model under a different spelling and
 #'   passes through unchanged. A non-constant vector on any other family,
 #'   or a non-identity link on Gaussian, is refused by name
-#'   (`weights_requires_gaussian`) rather than silently producing the
-#'   unweighted posterior -- likelihood-power, frequency, trials, and
+#'   (`weights_requires_gaussian`) instead of silently producing the
+#'   unweighted posterior. Likelihood-power, frequency, trials and
 #'   exposure are different models and cannot share this argument
 #'   silently. `aggregate = TRUE` together with weights is also refused
 #'   by name (`weights_not_aggregatable`): the aggregated route's
 #'   closed-form sufficient statistics do not carry a per-observation
 #'   weight through the compression.
 #' @param na_action How to treat observations whose response is missing,
-#'   and -- through the list form below -- observations whose predictors
+#'   and, through the list form below, observations whose predictors
 #'   are missing.
 #'
 #'   `"augment"` (default) retains missing-response rows, carrying the
@@ -231,13 +231,13 @@
 #'   design: deleting the row of a lost plot changes the index set a
 #'   separable AR1 field is built over, so the fitted model is no longer
 #'   the model that was written down. `"omit"` drops the rows
-#'   (complete-case); a structured covariance over the resulting broken
-#'   grid then refuses downstream. `"fail"` refuses if any response is
+#'   (complete-case), and a structured covariance over the resulting
+#'   broken grid then refuses downstream. `"fail"` refuses if any response is
 #'   missing, and leaves the design grid alone.
 #'
 #'   A response value that is `NaN` or infinite, as `log(0)` gives, is not a
 #'   missing observation. It refuses by name under every setting
-#'   (`response_not_finite`); set it to `NA` to treat it as missing.
+#'   (`response_not_finite`). Set it to `NA` to treat it as missing.
 #'
 #'   The argument also accepts the object an ASReml user already writes,
 #'   `asreml::na.method(y = , x = )`, and the bare list of the same shape
@@ -248,11 +248,11 @@
 #'   ```
 #'
 #'   The response words map `include` to `"augment"`, `omit` to
-#'   `"omit"`, `fail` to `"fail"`. The covariate words are ASReml's own:
+#'   `"omit"`, `fail` to `"fail"`. The covariate words are ASReml's own.
 #'   `x = "fail"` (the default, and ASReml's) refuses a missing
-#'   predictor; `x = "omit"` drops the affected rows with a warning
-#'   naming the count and the columns; `x = "include"` -- ASReml's
-#'   zero-fill (Reference Manual 4.2, section 3.11) -- is refused by
+#'   predictor. `x = "omit"` drops the affected rows with a warning
+#'   naming the count and the columns. `x = "include"`, ASReml's
+#'   zero-fill (Reference Manual 4.2, section 3.11), is refused by
 #'   name, because a zero is a value the plot did not have. A value
 #'   arriving as an unreduced `na.method()` default vector is read as
 #'   its first element, which is the policy ASReml itself would use.
@@ -310,7 +310,7 @@
 #' @param prior_fixed_sd Numeric: SD for fixed-effect normal priors,
 #'   applied uniformly to the intercept, factor contrasts, continuous
 #'   slopes, factor x continuous interactions, and `I()`-expression
-#'   terms. Default `100` -- weakly informative on the natural response
+#'   terms. Default `100`: weakly informative on the natural response
 #'   scale for the vast majority of agricultural / clinical responses
 #'   (covers responses with central tendency up to several hundred
 #'   without crushing the posterior toward zero), while still
@@ -323,8 +323,8 @@
 #'   supply it**, on every backend: brms receives one `normal(0, sd)`
 #'   row per fixed-effect class, and INLA receives `control.fixed` with
 #'   `prec = 1 / sd^2` on the slopes and the intercept alike. Left
-#'   unsupplied, brms keeps its own fixed-effect default -- flat
-#'   coefficients and a response-centred `student_t` intercept -- because
+#'   unsupplied, brms keeps its own fixed-effect default (flat
+#'   coefficients and a response-centred `student_t` intercept), because
 #'   replacing a response-centred intercept prior with `normal(0, 100)` is
 #'   a different model for any response far from zero. INLA gives each
 #'   column built from a numeric variable the covariate-scaled default
@@ -336,19 +336,19 @@
 #'   [prior_summary()] names what a fit ran under. A supplied value is
 #'   never rescaled by a covariate: it is a standard deviation in response
 #'   units per covariate unit, so on a covariate recorded in small units
-#'   (a large coefficient) it can bind -- measure the covariate in natural
+#'   (a large coefficient) it can bind. Measure the covariate in natural
 #'   units, or leave the argument unsupplied on INLA.
 #' @param prior_vc_sd Numeric: hyperparameter for the legacy
 #'   `lognormal(0, prior_vc_sd)` variance-component prior. **Note:**
 #'   when both `prior` and `prior_vc_sd` are left at their defaults, the
 #'   package applies a half-normal default on the SD scale
 #'   (`half_normal(scale = s)` with family-aware `s`: `5 * sd(y)` for
-#'   Gaussian; `5` on the logit scale for binomial / beta; `3` on the log
+#'   Gaussian, `5` on the logit scale for binomial / beta, `3` on the log
 #'   scale for Poisson / negative-binomial / gamma) to `sigma` and every
 #'   named random-effect group, on both engines, with the scale on the
 #'   standard deviation of an uncorrelated random slope divided by the
 #'   standard deviation of its numeric covariate. It is weakly informative
-#'   and has no upper bound; a half-t or half-Cauchy (Gelman 2006,
+#'   and has no upper bound. A half-t or half-Cauchy (Gelman 2006,
 #'   *Bayesian Analysis* 1(3):515-534) is stated through [fb_prior()].
 #'   Before 0.13.0 the default was `uniform(0, U)` with `U` equal to the
 #'   scale above. The legacy `lognormal(0, 1)` default
@@ -364,19 +364,19 @@
 #' @param mcmc_verbose Logical: show the sampler's progress bar. Has no
 #'   effect on INLA, which does not sample.
 #' @param return_code Logical: if TRUE, return the generated backend code
-#'   without fitting the model -- the Stan program on `backend = "brms"`,
+#'   without fitting the model: the Stan program on `backend = "brms"`,
 #'   the INLA formula, family and hyperparameter list on
 #'   `backend = "inla"`.
 #' @param review_code Logical: if TRUE, do not fit the model immediately;
 #'   instead return a `<flexybayes_review>` deferred-execution object
 #'   carrying the generated Stan code, the resolved prior, the
 #'   parsed intermediate representation (IR), the captured call, and
-#'   a snapshot of `.Random.seed`. Inspect the code with [cat_code()];
-#'   run the deferred fit with [proceed()]; a second [proceed()] call
+#'   a snapshot of `.Random.seed`. Inspect the code with [cat_code()] and
+#'   run the deferred fit with [proceed()]. A second [proceed()] call
 #'   returns the cached fit. Useful as a teaching / auditing surface
 #'   before a long MCMC run. Default `FALSE` preserves the existing
 #'   run-immediately semantics. A session-level override is available
-#'   via `options(flexyBayes.review_code_default = TRUE)`; the
+#'   via `options(flexyBayes.review_code_default = TRUE)`. The
 #'   argument value at call time always wins. Closest published
 #'   precedent: [brms::stancode()] plus the `chains = 0` idiom
 #'   for "do everything except sampling". `review_code = TRUE` and
@@ -391,28 +391,27 @@
 #'   carrying the IR, the routing decision, the representation plan,
 #'   the aggregation plan, and the prediction plan, *without* emitting
 #'   backend code or fitting.  Equivalent to calling [fb_plan()] with
-#'   the same formula triple --- exposed inline as `flexybayes(plan =
+#'   the same formula triple, exposed inline as `flexybayes(plan =
 #'   TRUE)` so users can reach the planning object without re-typing
 #'   the call.  Default `FALSE` preserves the run-
 #'   immediately semantics.  Mutually exclusive with `return_code` and
 #'   `review_code`.
 #' @param backend Character: one of `"auto"` (**default**), `"inla"`, or
 #'   `"brms"`. INLA fits the latent-Gaussian model class by nested Laplace
-#'   approximation, without sampling; brms is the Stan passthrough. Any other
-#'   value -- including a formerly-registered engine name this package
-#'   withdrew entirely (see `NEWS.md`) -- refuses with `unknown_backend`
+#'   approximation, without sampling. brms is the Stan passthrough. Any
+#'   other value, including a formerly-registered engine name this package
+#'   withdrew entirely (see `NEWS.md`), refuses with `unknown_backend`
 #'   naming the two active engines.
 #'
 #'   **What `"auto"` does.** The call runs `lgm_gate()` and routes to INLA
 #'   when the model is latent-Gaussian feasible and INLA is installed.
 #'   Otherwise it routes to brms when brms is installed *and* its
 #'   capability predicate accepts the model. When neither can represent
-#'   the model, the call refuses with `auto_no_active_route` rather than
+#'   the model, the call refuses with `auto_no_active_route` instead of
 #'   fitting something else. Nothing is translated silently. `auto` does
-#'   change engine in one case after starting -- an INLA program failure
-#'   is caught and re-routed to brms -- and that is reported by a message,
-#'   never silently; the fit's class and `backend` field always record
-#'   which engine produced it.
+#'   change engine in one case after starting: an INLA program failure
+#'   is caught and re-routed to brms, and a message reports it. The fit's
+#'   class and `backend` field always record which engine produced it.
 #'   [backend_decision()] surfaces the full dispatch trace (including
 #'   `rejected_routes`) post-fit, and [fb_backend_status()] reports which
 #'   engines are usable. The one-time notes on the auto path are
@@ -436,25 +435,25 @@
 #'   INLA's Laplace approximation is less accurate there than full MCMC.
 #'   For a flagship random-intercept model with few groups, pin
 #'   `backend = "brms"` or supply an explicit informative prior (a
-#'   half-Cauchy, per Gelman 2006; see the *priors and regularisation*
+#'   half-Cauchy, per Gelman 2006, as in the *priors and regularisation*
 #'   vignette).
 #'
 #'   **Convergence.** The brms fit emits a warning when the sampler may
 #'   not have converged (a parameter with Rhat at or above 1.1, or a low
-#'   effective sample size). Treat such a posterior with caution ---
+#'   effective sample size). Treat such a posterior with caution:
 #'   increase `warmup` / `n_samples`, simplify the model, or supply a more
-#'   informative prior --- and inspect the full diagnostics with
+#'   informative prior, and inspect the full diagnostics with
 #'   [summary()]. Silence the warning (for intentionally short fits) via
 #'   `options(flexyBayes.silence_convergence_warning = TRUE)`. An INLA fit
 #'   does not sample and carries no such warning.
 #'
 #'   **Code inspection.** brms is the only engine with a code slot, so
 #'   `return_code = TRUE` / `review_code = TRUE` under `"auto"` resolve to
-#'   brms --- but only when brms can represent the model. Where it cannot,
-#'   the call refuses with `auto_no_active_route` rather than returning
+#'   brms, but only when brms can represent the model. Where it cannot,
+#'   the call refuses with `auto_no_active_route` instead of returning
 #'   the code for a different model. `backend = "inla"` with
 #'   `return_code = TRUE` returns the INLA formula, family and
-#'   hyperparameter list; with `review_code = TRUE` it refuses until the
+#'   hyperparameter list. With `review_code = TRUE` it refuses until the
 #'   INLA-side code slot lands.
 #'
 #' @param aggregate One of `"auto"` (default), `TRUE`, or `FALSE`.
@@ -476,14 +475,14 @@
 #' @param syntax One of `"auto"` (default), `"asreml"`, or `"brms"`.
 #'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
 #'   from the call shape (a bar-grouped formula is read as brms,
-#'   otherwise ASReml); the other values force a grammar.
+#'   otherwise ASReml). The other values force a grammar.
 #' @param known_variance Optional numeric vector of length N, or an N x N
 #'   covariance matrix (below). A vector is a known
 #'   variance for each response, added to the estimated residual variance,
 #'   `Var(y_i) = sigma^2 + v_i`. This is the second stage of a two-stage
 #'   analysis, where each response is a first-stage estimate (a variety
 #'   mean in one trial, say) and `v_i` is the variance of that estimate.
-#'   `weights` is a different model, `Var(y_i) = sigma^2 / w_i`; given
+#'   `weights` is a different model, `Var(y_i) = sigma^2 / w_i`. Given
 #'   both, the residual variance is `sigma^2 / w_i + v_i`. Lowered for
 #'   `family = "gaussian"` with the identity link: brms fits
 #'   `y | se(sqrt(v), sigma = TRUE)`, and INLA a row effect with known
@@ -495,7 +494,7 @@
 #'   A symmetric positive-definite N x N matrix `K` is a known covariance,
 #'   `Var(y) = sigma^2 I + K`, as when the first stage returns the full
 #'   covariance of its estimates. It is fitted on INLA as a latent effect
-#'   with precision `K^-1`; brms has no term for it and refuses with
+#'   with precision `K^-1`. brms has no term for it and refuses with
 #'   `known_variance_not_supported`. A row and column of zeros marks a row
 #'   without a known part. A matrix that is not square, symmetric and
 #'   positive definite over the rows of `data` refuses with
@@ -507,7 +506,7 @@
 #'   default the fit refuses with `fixed_effects_aliased` and names the
 #'   columns. `"drop"` drops them as asreml 4.2 does, on INLA: terms are
 #'   taken in model order, and within a term by descending factor levels,
-#'   the term's first factor varying slowest; a column that is a linear
+#'   the term's first factor varying slowest. A column that is a linear
 #'   combination of the columns before it is fixed at zero. `summary()`
 #'   reports it with estimate 0 and no standard error, the columns are
 #'   listed in `fit$extras$fixed_alias$dropped`, and a prediction whose row
@@ -522,7 +521,7 @@
 #'     "lm")`) with posterior mean coefficients, vcov, residuals, fitted values,
 #'     etc. Works with `summary()`, `emmeans()` and
 #'     `marginaleffects()`.}
-#'   \item{`$brms` or `$inla`}{The native backend object --- a live `brmsfit`
+#'   \item{`$brms` or `$inla`}{The native backend object: a live `brmsfit`
 #'     on the brms path, or INLA's own fitted object on the INLA path. Use
 #'     with `bayesplot`, `posterior::as_draws()`, and each engine's own
 #'     accessors.}
@@ -545,7 +544,7 @@
 #' at `"4:1"` gave the locality variance from 0.58 to 42.3, and at `"1:1"`
 #' from 0.75 to 0.79, with the fixed effects unchanged. Set
 #' `options(flexyBayes.inla_threads = "4:1")` for another plan, or `"inla"`
-#' for INLA's own default; the plan a fit ran with is in
+#' for INLA's own default. The plan a fit ran with is in
 #' `$extras$reproducibility`.
 #'
 #' One thread does not guarantee the same result in a new R session.
@@ -571,13 +570,13 @@
 #' The restart probe of the numerical-confirm gate examines the fit kept.
 #' The fresh-process fits run beside the session fit, at most
 #' `options(flexyBayes.inla_best_of_workers)` fits at once (default: all of
-#' them) and fewer, with a message, when the free memory holds fewer; the
+#' them) and fewer, with a message, when the free memory holds fewer. The
 #' record gives each fit's time in seconds (`wall_s`) and whether they ran at
 #' once (`parallel`).
 #'
 #' @section Fitting in a separate process:
 #' `options(flexyBayes.isolation = "process")` runs the engine fit in a
-#' separate R process started through callr, which is in Suggests; without
+#' separate R process started through callr, which is in Suggests. Without
 #' callr the request refuses with
 #' `isolation_requires_callr` before anything is fitted. The option applies
 #' to `flexybayes()`, `fb_brms()`, `fb_inla()` and `proceed()`, and
@@ -605,7 +604,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' # live fit -- needs an active backend (INLA or brms/Stan)
+#' # live fit, needs an active backend (INLA or brms/Stan)
 #' data(met_example, package = "flexyBayes")
 #' # Simple random intercept model (small budget for example purposes)
 #' fit <- flexybayes(
@@ -658,11 +657,8 @@ flexybayes <- function(
   fixed_alias = c("refuse", "drop"),
   rcov
 ) {
-  # `rcov` was the ASReml 3 name for the residual-structure argument;
-  # ASReml 4 renamed it to `residual`, and flexyBayes followed suit in
-  # 0.9.0. The formal is kept only as a tripwire so a stray `rcov =` --
-  # including one forwarded through an engine pin -- raises a guiding
-  # error instead of an opaque "unused argument".
+  # A stray `rcov =`, including one forwarded through an engine pin,
+  # gets a guiding error instead of an opaque "unused argument".
   if (!missing(rcov)) {
     .fb_stop_defunct(c(
       paste0(
@@ -677,15 +673,9 @@ flexybayes <- function(
     ))
   }
 
-  # Refuse approximate-scheme requests
-  # before match.arg fires its generic "should be one of" error.
-  # The structured refusal points to the future
-  # approximation registry and the available exact-route
-  # alternatives. Runs first so the user sees the architectural
-  # rationale rather than match.arg's surface message.
-  # Accept backend = fb_engine(...) directly.
-  # Resolve to the engine-name string before the approximate-scheme
-  # check + match.arg, then apply the engine's sampler-control opts.
+  # Approximate-scheme requests refuse before match.arg, which would
+  # give only its generic "should be one of" error.
+  # `backend` may be an fb_engine() object, whose sampler controls apply.
   engine_in <- backend
   backend <- .resolve_engine_string(engine_in)
   .check_approximate_scheme(backend)
@@ -713,27 +703,14 @@ flexybayes <- function(
     review_code <- isTRUE(getOption("flexyBayes.review_code_default", FALSE))
   }
 
-  # The code-inspection modes return generated backend code. brms is the
-  # only active code-producing engine, so when backend resolves to
-  # "auto" the code modes pick brms rather than a non-code INLA object.
-  # The pick is CONDITIONAL on brms being able to represent the model --
-  # see the capability gate below, which runs once the IR exists.
-  # Rewriting unconditionally here would hand back code for a model the
-  # engine cannot express (an AR1xAR1 residual lowered to an
-  # intercept-only iid Gaussian, say), which is the silent-substitution
-  # failure this guards against.
+  # brms is the only code-producing engine, so the code modes on "auto"
+  # pick brms, but only if brms can represent the model. That check is
+  # the capability gate below, which needs the IR.
   code_mode_auto <- identical(backend, "auto") &&
     (isTRUE(return_code) || isTRUE(review_code))
 
-  # review_code = TRUE is scoped to the code-emitting engine: brms
-  # (Stan source via brms::make_stancode()). Under backend = "inla"
-  # review_code is deferred to a future release -- the deferred-execution
-  # token would need
-  # an INLA-side `code` slot (the inla() formula + family + hyper list)
-  # and a different proceed() target. Refuse cleanly rather than
-  # silently emitting code for an engine that did not author it.
-  # (brms support folded in here from the recast
-  # fb_brms() pin, which now routes through this shared review branch.)
+  # review_code needs a code slot, which only brms has (Stan source via
+  # brms::make_stancode()).
   if (
     isTRUE(review_code) &&
       !identical(backend, "brms") &&
@@ -768,26 +745,15 @@ flexybayes <- function(
   the_call <- match.call()
   data_name <- deparse(substitute(data))
 
-  # Detect "all defaults" -- user supplied neither an fb_prior() nor
-  # an explicit prior_vc_sd. In that case the default fires: build a
-  # half-normal default keyed to the response scale (per family / link)
-  # for sigma + every random group surfaced by the IR, and emit the
-  # one-time announcement message. The half-normal default (0.13.0)
-  # supersedes the uniform default, which superseded the PC default.
+  # Neither fb_prior() nor prior_vc_sd supplied: the half-normal default,
+  # keyed to the response scale per family and link, applies to sigma and
+  # every random group in the IR, with a one-time message.
   default_prior_active <- is.null(prior) && missing(prior_vc_sd)
 
-  # Which of the two scalar prior arguments the caller actually wrote.
-  # Both are documented as applied and neither was: `prior_fixed_sd` was
-  # absent from the condition above, so passing it alone left the
-  # auto-default in charge and the only consumer of the scalar was never
-  # reached, and the INLA route never consumed `prior_vc_sd` at all.
-  # Supplied-ness rather than value is what the emits need, because
-  # applying the documented default unconditionally is not the fix:
-  # brms centres its own intercept prior on the response, and replacing
-  # that with `normal(0, 100)` would be informative in the wrong
-  # direction for any response far from zero. Supplied means honoured;
-  # not supplied means the engine's own default, which prior_summary()
-  # now says out loud.
+  # The emits need whether each scalar prior was supplied, not its value.
+  # An unsupplied one leaves the engine's own default in place, because
+  # brms centres its intercept prior on the response and `normal(0, 100)`
+  # would be informative for any response far from zero.
   prior_scalars <- list(
     fixed_sd = prior_fixed_sd,
     vc_sd = prior_vc_sd,
@@ -797,13 +763,9 @@ flexybayes <- function(
     )
   )
 
-  # Build the flexyBayes intermediate representation (IR). The universal
-  # entry detects the grammar from the call shape -- ASReml
-  # fixed/random/residual, or a brms-style bar-grouped formula -- and
-  # routes to the matching ingest adapter. ASReml
-  # ingest is byte-identical to the historical direct fb_from_asreml()
-  # call; `syntax = ` forces a grammar. See .build_ir_polymorphic() in
-  # R/fb.R.
+  # The grammar (ASReml fixed/random/residual, or a brms-style
+  # bar-grouped formula) is detected from the call shape unless `syntax`
+  # forces it. See .build_ir_polymorphic() in R/fb.R.
   fb <- .build_ir_polymorphic(
     fixed = fixed,
     random = random,
@@ -830,14 +792,10 @@ flexybayes <- function(
     data <- attached$data
   }
 
-  # Missing responses, resolved once the IR exists so the layer can see
-  # which variables index a structured covariance. Under the default,
-  # a row whose response is missing is retained and carried as a latent
-  # quantity, keeping the design index set intact; see R/na_action.R.
-  #
-  # The policy is normalised here rather than inside the layer so the
-  # recorded call carries the native word for whatever spelling the user
-  # wrote -- an asreml na.method() value, a bare list, or a string.
+  # Missing responses need the IR, to see which variables index a
+  # structured covariance (R/na_action.R). The policy is normalised here
+  # so the recorded call carries the native word for any spelling: an
+  # asreml na.method() value, a bare list, or a string.
   na_policy <- .fb_normalise_na_action(na_action)
   na_meta <- .fb_apply_na_action(fb, data, na_policy)
   data <- .fb_known_variance_fill(
@@ -845,26 +803,19 @@ flexybayes <- function(
     na_meta$data,
     na_meta$meta$n_cells_completed
   )
-  # The IR caches the row count for the preflight size estimates, so it
-  # has to follow the augmented data rather than the data as supplied.
+  # The preflight size estimates read this row count, which must be that
+  # of the augmented data.
   if (!is.null(fb$data_summary)) {
     fb$data_summary$n <- nrow(data)
   }
 
-  # Capability gate for the code-inspection modes on backend = "auto"
-  # (flagged above, resolved here now that the IR exists). brms is the
-  # only active code-producing engine, so auto picks it -- but only for a
-  # model brms can actually represent. Where it cannot, returning its
-  # code would present a DIFFERENT model as the answer to the user's
-  # request; a structured residual, for instance, has no brms lowering
-  # and would come back as an intercept-only iid Gaussian program. Refuse
-  # with the capability predicate's own reason code instead.
+  # Capability gate for the code modes on "auto". Without it, a model
+  # brms cannot represent (a structured residual, say) would come back
+  # as the code of a different model, an intercept-only iid Gaussian.
   if (code_mode_auto) {
-    # Named structures first. The generic capability message below says only
-    # that brms cannot represent the model, which is true and unhelpful when
-    # the reason is that the structure has a name and an alternative -- a
-    # residual-side AR1 spelling above all. The guard is the same one the
-    # dispatch choke point runs, so the two routes give the same answer.
+    # Named structures first, so the refusal names the structure and its
+    # alternative (a residual-side AR1 spelling, say). The dispatch runs
+    # the same guard.
     .refuse_unrepresentable_structures(fb)
     cap <- .backend_can_fit("brms", fb)
     if (!isTRUE(cap$ok)) {
@@ -888,11 +839,9 @@ flexybayes <- function(
   }
 
   if (default_prior_active) {
-    # Which terms the default reaches is decided in one place,
-    # .fb_default_prior_targets(), because the model fingerprint has to
-    # record the same split: a variance component the walker skipped
-    # carries whatever the engine chose, and prior_summary() must list it
-    # as an engine default rather than as the shared prior.
+    # .fb_default_prior_targets() also feeds the model fingerprint. A
+    # variance component it skips carries the engine's default, and
+    # prior_summary() lists it as such.
     prior_targets <- .fb_default_prior_targets(fb)
     hn_default <- .default_half_normal_prior(
       data = data,
@@ -916,11 +865,7 @@ flexybayes <- function(
     )
   }
 
-  # plan = TRUE: short-circuit after IR build. The plan
-  # surface lives in fb_plan(); flexybayes(plan = TRUE) is the
-  # courtesy alternative invocation that lets asreml-style callers
-  # reach the same planning object without re-typing the formula in
-  # brms shape.
+  # plan = TRUE: the fb_plan() object, from the IR built above.
   if (isTRUE(plan)) {
     return(.fb_plan_from_ir(
       fb = fb,
@@ -942,17 +887,10 @@ flexybayes <- function(
     aggregate <- FALSE
   }
 
-  # Review-mode branch. Build the deferred-execution token instead
-  # of firing the backend. Code generation does not consume RNG; the
-  # .Random.seed snapshot is captured before any RNG-touching step so
-  # that proceed(rev) reproduces the chain a direct call would have
-  # produced at the same outer seed. verbose printing is suppressed
-  # because the review object owns the code surface (cat_code(rev)).
+  # The .Random.seed snapshot is taken before any RNG-touching step, so
+  # proceed(rev) reproduces the chain of a direct call at the same seed.
+  # Code generation does not consume RNG.
   if (isTRUE(review_code)) {
-    # The emit engine for the review code is always brms (Stan source via
-    # brms::make_stancode()): the guard above (review_code_backend_unsupported)
-    # ensures `backend` is already "brms" by the time this branch runs,
-    # whether explicitly requested or resolved here via code_mode_auto.
     if (!requireNamespace("brms", quietly = TRUE)) {
       stop(
         "Package 'brms' is required to generate Stan review code. ",
@@ -967,17 +905,10 @@ flexybayes <- function(
     }
     seed_snapshot <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
 
-    # Build a `the_call` for the deferred fit that does not reach
-    # back into the caller's frame for symbol resolution. `match.call()`
-    # captured `data = <symbol>` (and similarly for any other
-    # non-literal argument such as `weights`, `known_matrices`,
-    # `prior`); when proceed(rev) fires later, those caller-frame
-    # bindings may have gone out of scope. R's standard fit-object
-    # pipeline (model.frame / terms / class dispatch on the glm
-    # surface inside .build_glm) lazily evaluates the stored call in
-    # certain paths, which raises "object '<symbol>' not found" if
-    # the binding is gone. Replace the symbol slots with their
-    # current values so the proceed-side call is self-contained.
+    # Trap: match.call() holds symbols such as `data = d`, which may be
+    # gone from the caller's frame when proceed() runs, and the glm
+    # surface evaluates the stored call lazily ("object 'd' not found").
+    # The symbols are replaced with their current values.
     # The user-side captured call (stored on the review object as
     # `$call`) keeps the original symbol form for diagnostic clarity.
     the_call_proceed <- the_call
@@ -1089,10 +1020,8 @@ flexybayes <- function(
   # fall-back notes.
   #
   # Under options(flexyBayes.isolation = "process") the same call runs in a
-  # separate R process (R/process_isolation.R): a process that dies there is
-  # a typed refusal here rather than the end of this session. The direct
-  # call below is left as it was, so a fit that does not ask for isolation
-  # runs exactly the code it ran before.
+  # separate R process (R/process_isolation.R). A process that dies there
+  # is a typed refusal here, and this session carries on.
   isolated <- !isTRUE(return_code) && .fb_isolation_active("flexybayes()")
   if (isolated) {
     run <- .fb_isolated_call(
@@ -1128,8 +1057,6 @@ flexybayes <- function(
       with_pid = TRUE
     )
     fit <- run$value
-    # Where the fit ran is recorded beside it, as a record of the machine
-    # rather than of the model.
     if (is.list(fit) && !is.null(fit$extras)) {
       fit$extras$isolation <- list(mode = "process", pid = run$pid)
     }
@@ -1169,7 +1096,7 @@ flexybayes <- function(
 }
 
 
-# .fb_finish_fit() --- the records flexybayes() adds to a fit after its
+# .fb_finish_fit(): the records flexybayes() adds to a fit after its
 # engine returns. proceed() calls it too, so a reviewed fit carries the
 # same record as the direct call.
 #
@@ -1181,10 +1108,8 @@ flexybayes <- function(
   # models whenever a covariance is indexed by the design.
   if (is.list(fit) && !is.null(fit$extras)) {
     fit$extras$na_action <- na_meta
-    # The active emits record the policy in the call record themselves.
-    # The aggregated and worker-hosted routes reach their emit by another
-    # path, so the record is completed here rather than left absent on
-    # one route out of several.
+    # The aggregated and worker-hosted routes do not record the policy
+    # in their emit.
     if (
       !is.null(fit$extras$call_info) &&
         is.null(fit$extras$call_info$na_action)
@@ -1202,7 +1127,7 @@ flexybayes <- function(
 
 
 # ----------------------------------------------------------------- #
-# fb -- deprecated alias for flexybayes()                           #
+# fb: deprecated alias for flexybayes()                            #
 # ----------------------------------------------------------------- #
 #
 # `fb` was a literal alias for `flexybayes()`. It is deprecated in

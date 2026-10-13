@@ -2,51 +2,47 @@
 
 ## Supported versions
 
-Security fixes are issued against the development release in progress
-(`0.18.0`, on the 0.18.x line) and the latest CRAN release (when present).
-Older released versions are not back-patched.
+Security fixes are made on the 0.18.x line (0.18.0 and later 0.18.x
+releases) and on the latest CRAN release once there is one. Older versions
+are not patched.
 
 | Version | Supported |
 |---------|-----------|
-| 0.15.x  | yes (the line in development) |
-| 0.10.x – 0.14.x | best-effort |
-| 0.3.x – 0.9.x | best-effort (local release tarballs only; no public release) |
-| < 0.3   | no        |
+| 0.18.x  | yes |
+| 0.10.x to 0.17.x | best effort |
+| 0.3.x to 0.9.x | best effort (never released publicly) |
+| < 0.3   | no |
 
 ## Reporting a vulnerability
 
-Please **do not file a public GitHub issue** for security problems.
-Instead, email the maintainer privately:
+Please **do not open a public GitHub issue** for a security problem.
+Email the maintainer privately instead:
 
 > **max.moldovan@adelaide.edu.au**
 
-Use a clear subject line such as `[flexyBayes SECURITY] <one-line
-description>`.
+Use a subject line such as `[flexyBayes SECURITY] <one-line description>`.
 
-We commit to:
+The maintainer will:
 
-1. Acknowledge receipt within 7 days.
-2. Provide a substantive reply within 30 days, including either a
-   patch / fix plan or an explanation of why the issue is not
-   actionable.
-3. Coordinate a fix and (where appropriate) public disclosure on a
-   timeline that protects users -- typically a 90-day embargo from
-   first acknowledgement.
+1. Acknowledge the report within 7 days.
+2. Reply in substance within 30 days, with a fix plan or an explanation of
+   why the issue will not be fixed.
+3. Coordinate the fix and any public disclosure, normally with a 90-day
+   embargo from the first acknowledgement.
 
-If you do not receive a response within the windows above, please
-follow up with a public GitHub issue (without sensitive details) so
-we can confirm the report was received.
+If you have had no response within these times, open a public GitHub issue
+at <https://github.com/AAGI-AUS/flexyBayes/issues>, without sensitive
+details, asking whether the report arrived.
 
 ## Scope
 
-The package is pure R glue plus generated INLA and brms / Stan code.
-Likely areas of security interest:
+flexyBayes is written in R and generates INLA and Stan model code. Areas of
+likely security interest are:
 
-- inputs that can reach `eval()` / `parse()` paths during formula
-  parsing or code generation;
-- file paths supplied to `R CMD INSTALL` or to vignette compilation
-  scripts;
-- handling of user-supplied numeric data in code-generation paths.
+- input that can reach `eval()` or `parse()` during formula parsing or code
+  generation
+- file paths passed to `R CMD INSTALL` or to vignette build scripts
+- user-supplied numeric data in code generation.
 
-Reports outside the package -- e.g. issues in upstream `INLA` or
-`brms` -- should be directed to those projects' security channels.
+Problems in INLA, brms or Stan themselves should be reported to those
+projects.

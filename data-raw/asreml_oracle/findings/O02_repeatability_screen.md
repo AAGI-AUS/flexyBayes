@@ -1,4 +1,4 @@
-# O02 -- which structures return the same answer twice
+# O02: which structures return the same answer twice
 
 **Run** 2026-09-11, `data-raw/asreml_oracle/screen_repeatability.R`, three
 identical fits per structure, `agridat::besag.met` for the multi-environment
@@ -11,15 +11,15 @@ oracle scenario, and it decides which rows can be compared at all.
 
 ## Criterion, fixed before the screen ran
 
-- **collapsed** -- a component's SD below 1% of the residual SD, the
+- **collapsed**: a component's SD below 1% of the residual SD, the
   package's own `.FB_COLLAPSE_FRACTION`.
-- **UNSTABLE** -- any component collapsed in one run and not another, or any
+- **UNSTABLE**: any component collapsed in one run and not another, or any
   non-collapsed component whose maximum across runs exceeds twice its
   minimum. A factor of two is generous on purpose: INLA's integration is not
   deterministic and small movement is expected, but a component that doubles
   between identical calls is not small movement.
-- **ALL_COLLAPSED** -- every run pinned the same component at zero.
-- **STABLE** -- none of the above.
+- **ALL_COLLAPSED**: every run pinned the same component at zero.
+- **STABLE**: none of the above.
 
 ## Amendment, made during the run
 
@@ -53,11 +53,11 @@ suite on to compare it against ASReml as though the number meant something.
 | `nested` | ALL_COLLAPSED | restart probe flagged, delta **+132.1** |
 
 `iid_intercept` is the simplest random effect the package fits, and it flips
-on this dataset. That places the cause in the data rather than in exotic
+on this dataset. That places the cause in the data and not in exotic
 structures: `besag.met` is low-signal, with a residual SD near 19.7 against
 genotype SDs near 5. Weak identification is what makes a second mode
 reachable, and the more hyperparameters a structure carries, the more often
-the optimiser finds it -- which is why the factor-analytic row swings by
+the optimiser finds it, which is why the factor-analytic row swings by
 fifteen.
 
 ## Result, after mode adoption
@@ -82,14 +82,14 @@ Seven of ten stable, against five before.
 
 **What the fix does and does not do.** It closes the collapse class: a
 component pinned at zero by mode selection is now found and replaced, and the
-two structures whose instability was entirely collapse -- `iid_intercept` and
-`nested` -- are stable. `diag_gxe` no longer flips between zero and real, and
+two structures whose instability was entirely collapse (`iid_intercept` and
+`nested`) are stable. `diag_gxe` no longer flips between zero and real, and
 its remaining spread of 2.29 sits just above a threshold set at 2.
 
 It does not close instability in the high-dimensional structures.
 `combined_met` carries twelve components and `fa1` thirteen, and both remain
 badly unstable; `fa1` is unchanged at a factor of fifteen. Their ratios are
-now computed between real values rather than between zero and a real value,
+now computed between real values and not between zero and a real value,
 which is a different and more ordinary kind of disagreement, but three
 identical calls still return answers that differ by more than an order of
 magnitude.

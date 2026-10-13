@@ -29,7 +29,7 @@
   fb_variance_draws = list(200L)
 )
 
-# Routes known to draw; the guard fails if any of them did not run.
+# Routes known to draw. The guard fails if any of them did not run.
 .g05_must_run <- c("vcov", "predict", "vpredict", "fb_variance_draws")
 
 test_that("DC-05 guard: every accessor of an INLA fit repeats under one seed", {

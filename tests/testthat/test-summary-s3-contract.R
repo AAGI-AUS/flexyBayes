@@ -2,24 +2,13 @@
 # summary() obeys the S3 contract: compute and return, do not print.
 #
 # summary.flexybayes(), summary.flexybayes_aggregated() and
-# summary.flexybayes_inla() used to call print() unconditionally and return
-# invisibly. Three consequences, all of them wrong and none of them visible
-# to a test that only checked the returned value:
+# summary.flexybayes_inla() return visibly and print nothing.
+# print.summary.flexybayes() does the printing, so `s <- summary(fit)` is
+# silent and `print(summary(fit))` prints once.
 #
-#   * `s <- summary(fit)` emitted 67 lines of model summary;
-#   * `print(summary(fit))` emitted 134, printing the whole thing twice;
-#   * a programmatic consumer had no way to read the object quietly. The
-#     selection substrate reads it once per fold, so a ten-fold run would
-#     have written several hundred lines of summary into the console.
-#
-# print.summary.flexybayes() already existed. The printing was simply on the
-# wrong side of the contract.
-#
-# The fix is behaviour-preserving where it matters, which is why the blast
-# radius was two lines rather than the fifteen a grep suggests:
-# capture.output() auto-prints a visible value, so every
-# `capture.output(summary(fit))` site still captures. testthat's
-# expect_output() does not, so those two sites now print explicitly.
+# capture.output() auto-prints a visible value, so
+# `capture.output(summary(fit))` still captures. expect_output() does not,
+# so those sites print explicitly.
 # =============================================================================
 
 fb_s3_fixture <- function() {
@@ -30,6 +19,8 @@ fb_s3_fixture <- function() {
   d$gen <- factor(d$gen)
   d$rep <- factor(d$rep)
   d$block <- factor(d$block)
+  # `rep` has three levels, so sd_rep is weakly identified.
+  withr::local_options(flexyBayes.silence_weak_identification_warning = TRUE)
   flexybayes(
     fixed = yield ~ gen, random = ~ rep + rep:block,
     data = d, backend = "inla", verbose = FALSE,

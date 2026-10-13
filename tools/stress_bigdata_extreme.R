@@ -1,15 +1,15 @@
 #!/usr/bin/env Rscript
 
-# stress_bigdata_extreme.R -- Push the streaming exact-aggregation path
+# stress_bigdata_extreme.R: Push the streaming exact-aggregation path
 # to extreme row counts under the realistic scenario where a collaborator
 # shares a large dataset already partitioned into `.fst` shards on disk.
 #
 # For each target N the script (1) writes the shards one at a time so
 # generation memory stays bounded, then (2) in a fresh subprocess under
 # `/usr/bin/time -l`, streams every shard, accumulates per-cell
-# sufficient statistics, and fits the K-cell model with INLA -- measuring
+# sufficient statistics, and fits the K-cell model with INLA, measuring
 # the wall-clock and the OS peak resident memory of the whole fit. The
-# headline evidence is that peak memory stays flat as N grows from tens
+# main evidence is that peak memory stays flat as N grows from tens
 # of millions to a billion rows, because only one chunk plus the K-cell
 # accumulator is ever resident.
 #

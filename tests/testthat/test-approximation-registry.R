@@ -192,7 +192,7 @@ test_that(".lookup_approximation() refuses non-string input", {
 # ---------------------------------------------------------------- #
 #
 # The round-trip success path is exercised once low_rank_smooth
-# registers (with its emit path); at the scaffold step only the
+# registers (with its emit path). At the scaffold step only the
 # refusal delegation is reachable.
 
 test_that(".approximation_scheme() refuses an unknown scheme", {
@@ -218,7 +218,7 @@ test_that("user-side assign() into the registry raises", {
 # (i) snapshot test on the (empty) registered vocabulary            #
 # ---------------------------------------------------------------- #
 #
-# The vocabulary is empty at the scaffold step; the snapshot pins that
+# The vocabulary is empty at the scaffold step. The snapshot pins that
 # emptiness so the first population (low_rank_smooth) surfaces as a
 # conscious snapshot diff the maintainer must accept.
 

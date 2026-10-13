@@ -1,10 +1,7 @@
-# validators.R -- Shared input checks used across the flexyBayes surface.
+# validators.R: shared input checks used across the flexyBayes surface.
 #
-# Each helper carries one guard that the entry points had repeated inline,
-# extracted verbatim. The caller supplies the message, so a refusal reads
-# exactly as it read before the extraction: these helpers move the test,
-# never the wording. Structured refusals stay where they are raised --
-# only the plain-guard duplication lives here.
+# Each helper carries one guard used by several entry points. The caller
+# supplies the message. Structured refusals stay where they are raised.
 
 #' Require an optional package before using it
 #'
@@ -31,10 +28,9 @@
 
 #' Require an `fb_terms` intermediate representation
 #'
-#' The type guard every gate and every emit repeated on its first
+#' The type guard every gate and every emit applies to its first
 #' argument. Each caller names itself and its own re-route in the
-#' message, so the wording travels with the call rather than with the
-#' test.
+#' message.
 #'
 #' @param fb The object that should be the parsed IR.
 #' @param ... The message pieces handed to [stop()] when it is not,
@@ -155,10 +151,8 @@
 
 #' Is the posterior package available?
 #'
-#' A named predicate rather than an inline [requireNamespace()] call, so
-#' the guard that consults it can be reached from a test without
-#' uninstalling the package. Same shape as `.fb_emmeans_available()` on
-#' the classify path.
+#' A named predicate, so a test can reach the guard that consults it
+#' without uninstalling the package.
 #'
 #' @returns `TRUE` when \pkg{posterior} can be loaded, `FALSE` otherwise.
 #'

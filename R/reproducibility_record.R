@@ -1,4 +1,4 @@
-# reproducibility_record.R -- the versions, thread settings and seed a fit ran
+# reproducibility_record.R, the versions, thread settings and seed a fit ran
 # with.
 #
 # Every fit records, at `fit$extras$reproducibility`, what a second run has to
@@ -11,14 +11,14 @@
 #   engine               "inla" or "brms"
 #   backend              brms only: the Stan interface that ran, "cmdstanr" or
 #                        "rstan"
-#   engine_versions      INLA; or brms with cmdstanr and CmdStan, or with rstan
+#   engine_versions      INLA, or brms with cmdstanr and CmdStan, or with rstan
 #   threads              INLA: num_threads. brms: the chains run, the cores
 #                        given to brms::brm(), the threads per chain. Both:
 #                        OMP_NUM_THREADS as read when the fit was built, NA
 #                        when unset.
 #   seed                 supplied: the seed the emitter received, NA for none.
 #                        as_run: the seed Stan ran with, which the backend
-#                        drew when none was supplied; NA on INLA, which takes
+#                        drew when none was supplied, NA on INLA, which takes
 #                        no seed.
 #   best_of              INLA, when the fit was run more than once
 #                        (option flexyBayes.inla_best_of): each fit's log
@@ -232,7 +232,7 @@
   lacking
 }
 
-# .fb_repro_lines() --- the record as the lines print() and summary() show,
+# .fb_repro_lines(): the record as the lines print() and summary() show,
 # named by their label. A fit without a record says so in one line.
 #
 # @noRd

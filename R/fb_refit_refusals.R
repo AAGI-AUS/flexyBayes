@@ -1,4 +1,4 @@
-# fb_refit() refusals --- registry population for R/fb_refit.R.
+# fb_refit() refusals: registry population for R/fb_refit.R.
 #
 # Thrown by fb_refit() and triggered in tests/testthat/test-fb-refit.R.
 
@@ -12,7 +12,7 @@
       "the recorded weights cannot be matched to the new rows."
     ),
     message_template = "%s",
-    registered_in_adr = "PARTB_coupling_table_06Oct2026 (D3)",
+    registered_in_adr = "0.18.0 refit",
     plan_field = NA_character_,
     since_version = "0.15.0.9000"
   )
@@ -24,7 +24,7 @@
       "brms and no `backend = \"brms\"` was given."
     ),
     message_template = "%s",
-    registered_in_adr = "PARTB_coupling_table_06Oct2026 (D3)",
+    registered_in_adr = "0.18.0 refit",
     plan_field = NA_character_,
     since_version = "0.15.0.9000"
   )

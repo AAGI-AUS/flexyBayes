@@ -17,11 +17,11 @@ test_that("a three-way interaction random term preflights without crashing", {
 
   expect_s3_class(p, "fb_plan")
   # This test was written when a crossed interaction random effect refused
-  # on INLA, and it asserted the refusal. The claim behind that refusal --
-  # that INLA cannot represent the term class -- was false, so from
+  # on INLA, and it asserted the refusal. The claim behind that refusal,
+  # that INLA cannot represent the term class, was false, so from
   # 0.10.0.9000 the gate accepts it and `auto` resolves to INLA. What the
   # test exists for is unchanged: a three-way interaction must preflight to
-  # a typed plan rather than a base-R crash.
+  # a typed plan instead of a base-R crash.
   expect_identical(p$gate_outcome, "accept")
   # `auto` resolves to INLA only where INLA is installed.
   skip_if_not_installed("INLA")

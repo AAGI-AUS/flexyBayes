@@ -3,15 +3,15 @@
 #
 # `yield ~ Variety` with `random = ~ Block + Variety` writes Variety twice.
 # The fixed part already estimates one mean per level, so the random copy's
-# deviations are identified by their prior alone -- the variance component
+# deviations are identified by their prior alone, the variance component
 # reported for them reads the prior, not the data.
 #
-# It is refused rather than warned about because every engine answers it
+# It is refused instead of warned about because every engine answers it
 # badly and each does so differently. On INLA the marginal solve goes
 # intermittently singular: an empty variance-component table on 4 of 8
 # small-n runs, and at benchmark scale two `Segmentation fault: 11` lines
 # from the inla.run child followed by an untyped error carrying no reason
-# code -- the only untyped structural failure the ASReml head-to-head found.
+# code, the only untyped structural failure the ASReml head-to-head found.
 # brms completes and returns a posterior in which the two term sets are
 # estimating one quantity between them. ASReml accepts the spelling and
 # fits it, so a script translated from ASReml arrives here unchanged.
@@ -20,7 +20,7 @@
 # fixed side against an intercept-only random main effect on the same
 # variable. A random slope over a fixed grouping factor and a random
 # interaction involving a fixed main effect are both models a user means,
-# and neither fires -- pinned below.
+# and neither fires, pinned below.
 # =============================================================================
 
 .aliased_trial <- function(n_var = 6L, n_blk = 4L, seed = 20260817L) {
@@ -46,7 +46,7 @@ test_that("the aliased model is refused on every backend, before any fit", {
   d <- .aliased_trial()
 
   # return_code = TRUE never reaches a sampler, so a refusal on that route
-  # proves the gate sits ahead of emission rather than reading a fit.
+  # proves the gate sits ahead of emission instead of reading a fit.
   for (be in c("auto", "inla", "brms")) {
     expect_error(
       suppressMessages(flexybayes(
@@ -111,7 +111,7 @@ test_that("id() and ide() spell the same aliased model and are refused", {
 test_that("update() into the aliased model refuses instead of segfaulting", {
   # The v0.9.1 execution spec's own exit-gate line. `yield ~ Variety` is
   # already fixed, so `update(fit, random = ~ Block + Variety)` asks for the
-  # aliased model -- and used to reach INLA, which failed untyped.
+  # aliased model, and used to reach INLA, which failed untyped.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .aliased_trial()
@@ -171,8 +171,8 @@ test_that("a well-posed randomised block model is untouched", {
 
 test_that("a random interaction involving a fixed main effect is untouched", {
   skip_if_not_installed("brms")
-  # `random = ~ Variety:Block` is not aliased with the Variety main effect
-  # -- it is the interaction stratum, and refusing it would be wrong.
+  # `random = ~ Variety:Block` is not aliased with the Variety main effect.
+  # It is the interaction stratum, and refusing it would be wrong.
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .aliased_trial()
 

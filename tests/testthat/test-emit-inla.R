@@ -1,4 +1,4 @@
-# Tests for emit_inla() -- the INLA backend (deliverable 5 partial).
+# Tests for emit_inla(): the INLA backend (deliverable 5 partial).
 #
 # All tests skip when INLA is not installed; INLA is in
 # DESCRIPTION:Suggests with Additional_repositories pointing at
@@ -50,13 +50,13 @@ test_that(".build_inla_formula() builds intercept + fixed + simple RE", {
   expect_match(fstr, 'f\\(g, model = "iid"\\)')
 })
 
-# ADR 0017: .build_inla_formula()'s switch() defaults are now
+# .build_inla_formula()'s switch() defaults are now
 # internal contract-violation assertions, not user-facing
 # refusals. The gate (.lgm_check_random_term_inla_support()) owns
 # the user-facing refusal. The assertion fires only when the gate
 # is bypassed via the two-key override (force = "inla" +
 # acknowledge_silent_bias_risk = TRUE) on a structurally-
-# incompatible IR -- i.e., the path that a forced-INLA fit on a
+# incompatible IR, i.e., the path that a forced-INLA fit on a
 # truly incompatible model takes. The assertion message names
 # the gate / emit drift explicitly so a triggered assertion is
 # immediately recognisable as a flexyBayes-side bug.
@@ -69,7 +69,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     fixed_terms = list(list(type = "continuous", var = "x")),
     # corh(): heterogeneous variances with one shared correlation. No
     # active engine represents the equicorrelation constraint, so it is a
-    # term type the gate must keep refusing -- which is what makes it a
+    # term type the gate must keep refusing, which is what makes it a
     # valid probe for the emit's broken-contract assertion. fa_gxe was the
     # original probe and now has an emit.
     random_terms = list(list(type = "corh", var = "env")),
@@ -80,7 +80,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     fb_raw,
     force = "inla",
     acknowledge_silent_bias_risk = TRUE,
-    reason = "ADR 0017 internal-assertion test"
+    reason = "internal-assertion test"
   )
   expect_s3_class(forced, "fb_terms")
   expect_true("lgm_force_overridden" %in% forced$capabilities)
@@ -104,7 +104,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     fb_raw,
     force = "inla",
     acknowledge_silent_bias_risk = TRUE,
-    reason = "ADR 0017 internal-assertion test"
+    reason = "internal-assertion test"
   )
   expect_s3_class(forced, "fb_terms")
   expect_error(
@@ -129,7 +129,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     fb_raw,
     force = "inla",
     acknowledge_silent_bias_risk = TRUE,
-    reason = "ADR 0017 internal-assertion test"
+    reason = "internal-assertion test"
   )
   expect_s3_class(forced, "fb_terms")
   expect_error(
@@ -191,7 +191,7 @@ test_that("emit_inla() rejects non-fb_terms input", {
 })
 
 # ---------------------------------------------------------------- #
-# Live fits -- skip when INLA is not installed                     #
+# Live fits, skip when INLA is not installed                       #
 # ---------------------------------------------------------------- #
 
 test_that("emit_inla() fits a simple gaussian + RE model", {
@@ -199,7 +199,12 @@ test_that("emit_inla() fits a simple gaussian + RE model", {
   d <- mk_inla_data()
   fb <- mk_fb_for_inla(d)
 
-  fit <- flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  # y carries no g effect and emit_inla() sets no prior, so sd_g is weakly
+  # identified.
+  fit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  )
 
   expect_s3_class(fit, "flexybayes_inla")
   expect_true(!is.null(fit$inla))
@@ -237,13 +242,13 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
 })
 
 test_that("fb(... backend = 'inla') dispatches to emit_inla", {
-  # ADR 0004 D1: v0.1's flexybayes() (and fb alias) fit only through the
+  # v0.1's flexybayes() (and fb alias) fit only through the
   # engine withdrawn entirely in 0.9.3 (see NEWS.md).
   # User-facing INLA dispatch is deferred to v0.2 with the brms-
   # format ingest path (fb_brms()). The internal emit_inla() pathway
   # is exercised by the test above ("emit_inla() returns formula +
   # family + hyper + control_family lists").
-  skip("INLA dispatch from user API deferred to v0.2 (ADR 0004 D1).")
+  skip("INLA dispatch from user API deferred to v0.2.")
   skip_if_no_inla()
   d <- mk_inla_data()
   fit <- flexybayes(fixed = y ~ x, random = ~g, data = d, verbose = FALSE)
@@ -254,7 +259,12 @@ test_that("print.flexybayes_inla emits a brief summary", {
   skip_if_no_inla()
   d <- mk_inla_data()
   fb <- mk_fb_for_inla(d)
-  fit <- flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  # y carries no g effect and emit_inla() sets no prior, so sd_g is weakly
+  # identified.
+  fit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  )
   out <- capture.output(print(fit))
   expect_true(any(grepl("flexybayes_inla", out)))
   expect_true(any(grepl("formula", out)))
@@ -265,7 +275,12 @@ test_that("summary.flexybayes_inla prints fixed effects and hyperparameters", {
   skip_if_no_inla()
   d <- mk_inla_data()
   fb <- mk_fb_for_inla(d)
-  fit <- flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  # y carries no g effect and emit_inla() sets no prior, so sd_g is weakly
+  # identified.
+  fit <- withr::with_options(
+    list(flexyBayes.silence_weak_identification_warning = TRUE),
+    flexyBayes:::emit_inla(fb = fb, data = d, verbose = FALSE)
+  )
   out <- capture.output(summary(fit))
   expect_true(any(grepl("Fixed effects", out)))
   expect_true(any(grepl("Hyperparameters", out)))

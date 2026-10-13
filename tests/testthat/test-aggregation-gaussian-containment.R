@@ -132,7 +132,7 @@ test_that("flexybayes_stream(fit = FALSE) still returns Gaussian sufficient stat
 # The aggregated Gaussian emitter is kept for an exact composition of the
 # residual prior, and nothing calls it. A caller would fit a Gaussian model on
 # the aggregated representation without that prior, so the call sites are
-# counted rather than assumed.
+# counted.
 test_that("no code path calls the aggregated Gaussian emitter", {
   dir_r <- testthat::test_path("..", "..", "R")
   skip_if_not(dir.exists(dir_r), "package sources not present")

@@ -1,15 +1,15 @@
 # =============================================================================
-# fb_complete_grid() -- padding a field book by hand.
+# fb_complete_grid(): padding a field book by hand.
 #
 # The helper and `na_action = "augment"` run one implementation
 # (.fb_grid_complete()), which is the property that keeps them from
 # completing the same trial two different ways. Three things are asserted:
 #
-#   * the arithmetic -- a 4 x 3 array with two rows removed comes back with
+#   * the arithmetic, a 4 x 3 array with two rows removed comes back with
 #     twelve rows and two missing responses;
-#   * the refusal -- a varying design factor is not invented, because a cell
+#   * the refusal, a varying design factor is not invented, because a cell
 #     absent from the file is a cell whose assignment nobody recorded;
-#   * the hatch -- `unused_level` opens that door, warns with the name of
+#   * the hatch, `unused_level` opens that door, warns with the name of
 #     every column it wrote to, and still refuses a varying numeric column,
 #     which has no level to name.
 # =============================================================================
@@ -79,7 +79,7 @@ test_that("the index formula is read as a variable set", {
 # 2. The refusal                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("a varying design factor refuses rather than being invented", {
+test_that("a varying design factor refuses instead of being invented", {
   g <- .fcg_grid()
   g$geno <- factor(rep(c("A", "B", "C"), length.out = nrow(g)))
   holed <- g[-c(2L, 7L), , drop = FALSE]
@@ -136,7 +136,7 @@ test_that("unused_level fills the varying factor and names the column", {
 
 test_that("a varying numeric column refuses whatever unused_level says", {
   # The hatch is for design factors. A measured covariate has no level to
-  # name, so filling one would be a fabricated measurement rather than a
+  # name, so filling one would be a fabricated measurement instead of a
   # named gap in the design.
   g <- .fcg_grid()
   g$moisture <- stats::runif(nrow(g))

@@ -1,4 +1,4 @@
-# fb_cov() -- constructor noun for structured-covariance carriers.
+# fb_cov(): constructor noun for structured-covariance carriers.
 #
 # One of the four flexyBayes constructor nouns.
 # `fb_cov(M, type, ...)` wraps a known covariance / precision / Cholesky
@@ -36,9 +36,9 @@
 #   "blocks"    -> block_diagonal      list of per-block V_k.
 #   "low_rank"  -> low_rank            rank-K factor U + a registered
 #                                      approximation scheme. Reserved
-#                                      at v0.4.0 -- the fit path lands
+#                                      at v0.4.0, the fit path lands
 #                                      with the approximate-covariance
-#                                      route; the carrier vocabulary is
+#                                      route. The carrier vocabulary is
 #                                      active so the surface is stable.
 
 # Carrier type -> locked representation-registry class.
@@ -51,7 +51,7 @@
 )
 
 # Carrier type -> the cov_representation$format token the IR / emit
-# path reads. The format vocabulary predates fb_cov(); the
+# path reads. The format vocabulary predates fb_cov(). The
 # constructor is a typed front door onto the same tokens.
 .FB_COV_TYPE_TO_FORMAT <- c(
   dense = "dense",
@@ -73,11 +73,11 @@
 #'
 #' The carrier's `type` selects how the downstream emit path derives a
 #' covariance square root. `"dense"` takes the lower Cholesky of the
-#' supplied covariance; `"chol"` uses the supplied factor directly;
-#' `"precision"` inverts via the Cholesky of the precision matrix;
+#' supplied covariance. `"chol"` uses the supplied factor directly.
+#' `"precision"` inverts via the Cholesky of the precision matrix.
 #' `"blocks"` assembles a block-diagonal covariance from a list of
-#' per-block matrices; `"low_rank"` pairs a rank-K factor with a
-#' registered approximation scheme (reserved at v0.4.0 -- the carrier
+#' per-block matrices. `"low_rank"` pairs a rank-K factor with a
+#' registered approximation scheme (reserved at v0.4.0, the carrier
 #' vocabulary is active and validated, while the approximate-covariance
 #' fit route activates in a subsequent release).
 #'
@@ -88,27 +88,27 @@
 #' `Matrix::bdiag(lapply(blocks, solve))` states the same covariance on INLA,
 #' and the dense carrier of the block-diagonal matrix states it on brms.
 #'
-#' Inside a model formula the carrier is written inline -- the matrix
+#' Inside a model formula the carrier is written inline, the matrix
 #' argument names a matrix passed through `known_matrices`, exactly as
 #' the legacy keyword forms did. The construction-time check is a light
 #' structural probe (shape, lower-triangular pattern, symmetry, block
-#' count); the full level-aware validation runs at fit time against the
+#' count). The full level-aware validation runs at fit time against the
 #' grouping factor.
 #'
 #' @param M The covariance carrier. For `type = "blocks"` a base-R list
-#'   of K square covariance matrices; otherwise a square numeric matrix
+#'   of K square covariance matrices. Otherwise a square numeric matrix
 #'   (base-R or \pkg{Matrix}). Inside a formula this argument names a
 #'   matrix resolved through `known_matrices`.
 #' @param type Character(1): the carrier type, one of `"dense"`,
 #'   `"chol"`, `"precision"`, `"blocks"`, `"low_rank"`. Defaults to
 #'   `"dense"`.
 #' @param levels Optional character vector of grouping-factor level
-#'   labels the carrier's rows / columns align to. Carried as metadata;
+#'   labels the carrier's rows / columns align to. Carried as metadata.
 #'   the fit-time validator checks alignment against the fitted factor.
 #' @param scheme Character(1), required when `type = "low_rank"`: the
 #'   name of a registered approximation scheme (see
 #'   [validate_approximation()]). Ignored for the exact types.
-#' @param ... Reserved for forward carrier-type options; currently
+#' @param ... Reserved for forward carrier-type options. Currently
 #'   carried verbatim on the object.
 #' @return An `fb_cov` object: a classed list with the matrix `M`, the
 #'   `type`, optional `levels`, and (for low-rank) `scheme` as elements,
@@ -161,7 +161,7 @@ fb_cov <- function(M, type = "dense", levels = NULL, scheme = NULL, ...) {
       reason_code = "blocks_not_a_list",
       message = paste0(
         "fb_cov(type = \"blocks\"): `M` must be a base-R list of K ",
-        "covariance matrices; got class '",
+        "covariance matrices, got class '",
         paste(class(M), collapse = "/"),
         "'."
       ),
@@ -251,7 +251,7 @@ is_fb_cov <- function(x) {
 # Light, level-agnostic structural probe run at construction time. The
 # fit-time validators (.validate_chol_input, .validate_precision_input,
 # .validate_blocks_input) carry the authoritative, group-level-aware
-# checks; this summary is the introspection-surface companion. Returns
+# checks. This summary is the introspection-surface companion. Returns
 # a single human-readable string.
 .fb_cov_validation_summary <- function(M, type) {
   if (type == "blocks") {
@@ -282,7 +282,7 @@ is_fb_cov <- function(x) {
   }
   shape <- paste0(d[[1L]], "x", d[[2L]])
   if (d[[1L]] != d[[2L]]) {
-    return(paste0(type, ": ", shape, " (non-square -- refused at fit time)"))
+    return(paste0(type, ": ", shape, " (non-square, refused at fit time)"))
   }
 
   detail <- switch(

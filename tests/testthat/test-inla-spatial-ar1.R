@@ -1,8 +1,8 @@
 # =============================================================================
 # Separable AR1(row) x AR1(col) spatial latent field on INLA.
 #
-# A designed field trial's spatial structure is written on the RANDOM side --
-# random = ~ ar1(row):ar1(col) -- and emitted on INLA as the grouped-AR1
+# A designed field trial's spatial structure is written on the RANDOM side:
+# random = ~ ar1(row):ar1(col), and emitted on INLA as the grouped-AR1
 # latent field
 #   f(<row>_id, model = "ar1", group = <col>_id,
 #     control.group = list(model = "ar1"))
@@ -10,16 +10,16 @@
 # grid node; an incomplete or replicated grid refuses.
 #
 # 0.9.0 respelling. The same field used to be reachable through the RESIDUAL
-# spelling, which is ASReml's name for a three-parameter nugget-free process
-# -- a different model from the four-parameter field-plus-nugget the emit
+# spelling, which is ASReml's name for a three-parameter nugget-free process.
+# That is a different model from the four-parameter field-plus-nugget the emit
 # builds. The residual spelling is now refused by name and the refusal points
 # at the random-side spelling; the pinning test is at the foot of this file.
 #
 # The FAITHFULNESS clause (OO-spatial) is an OPEN oracle in the I4 sense: INLA
 # is validated against an INDEPENDENT hand-built GLS/REML implementation of the
 # SAME AR1(row)xAR1(col) model (Kronecker-eigenbasis profile likelihood) that
-# does NOT call INLA -- so agreement means the emit is a faithful
-# implementation, not self-consistency. Mirrors rebuild/wp16_inla_spatial_oracle.R.
+# does NOT call INLA, so agreement means the emit is a faithful
+# implementation, not self-consistency.
 # =============================================================================
 
 .ar1_mat <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
@@ -276,7 +276,7 @@ test_that("auto routes a designed spatial trial to INLA", {
   skip_on_ci()
   skip_if_not_installed("INLA")
   # The subject is where the model is routed, not whether the field
-  # identifies -- and on this 6 x 5 grid it does not, which the fit now
+  # identifies, and on this 6 x 5 grid it does not, which the fit now
   # says out loud. Silenced so the routing assertion is the only signal.
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
@@ -338,7 +338,7 @@ test_that("auto refuses (never silently drops the residual) on an incomplete gri
   # This test previously asserted that the fallback to brms SUCCEEDED, and
   # checked only the returned backend. That certified a model-fidelity bug:
   # brms has no residual-structure lowering, so the emitted Stan program was
-  # an intercept-only iid Gaussian -- the requested AR1xAR1 residual vanished
+  # an intercept-only iid Gaussian, the requested AR1xAR1 residual vanished
   # with no error. Checking the wrapper class could never have caught it.
   #
   # The correct outcome is a refusal: INLA will not fit an incomplete grid

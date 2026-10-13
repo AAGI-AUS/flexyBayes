@@ -26,7 +26,7 @@ are good, and how sure are we?</dd>
 <dt>In flexyBayes</dt>
 <dd><code>flexybayes(yield ~ env, random = ~ gen, data = dat)</code></dd>
 <dt>What the posterior adds</dt>
-<dd>Every quantity arrives as a distribution rather than an estimate and
+<dd>Every quantity arrives as a distribution, not an estimate and
 a standard error, so an interval for a variance component needs no
 appeal to large-sample theory, and "how sure are we" is answered by
 counting draws.</dd>
@@ -49,7 +49,7 @@ That difference matters in three practical places.
 boundary and the standard error becomes hard to interpret, because the
 sampling theory behind it assumes the estimate is not sitting on the
 edge of the parameter space. A posterior has no boundary problem: it is
-simply concentrated near zero, and its upper credible bound is a real
+concentrated near zero, and its upper credible bound is a real
 statement about how large the component could plausibly be.
 
 **Small numbers of levels.** With nine environments, asymptotic
@@ -62,7 +62,7 @@ components, needs the delta method under REML. Under a posterior it is
 one line: compute the ratio on every draw and summarise.
 
 Against that, three things are genuinely harder. Fitting takes seconds
-to minutes rather than milliseconds. A prior exists whether or not you
+to minutes, not milliseconds. A prior exists whether or not you
 choose it, so it has to be reported. And the structures on offer are
 narrower than ASReml's, which is the subject of Section 2 and of the
 *formula surface* vignette.
@@ -75,7 +75,7 @@ established engines.
 
 **INLA** approximates the posterior deterministically, by nested Laplace
 approximation. It is fast, it has no chains to converge, and it is built
-around latent Gaussian models -- which is why the structured terms
+around latent Gaussian models, which is why the structured terms
 (autoregressive fields, splines, known covariance matrices) live here.
 
 **brms** writes a Stan program and samples it with Hamiltonian Monte
@@ -83,7 +83,7 @@ Carlo. It is slower and its answer carries Monte Carlo error, but it is
 not restricted to the latent Gaussian class, which is why the flexible
 likelihoods and the interaction structures live there.
 
-They are complementary rather than interchangeable. The table below is
+They are complementary, not interchangeable. The table below is
 generated from the package's own capability record, so it cannot drift
 from what the code does.
 
@@ -232,7 +232,7 @@ Three readings of that table are worth having before you fit anything.
 
 *`fits`* means an active engine emits the structure and a test exercises
 it. *`refuses`* means the request raises an error naming the structure
-and pointing at the nearest thing that does work -- it does not mean the
+and pointing at the nearest thing that does work. It does not mean the
 model is quietly approximated by something else. Four classes are
 refused by both engines: correlated random slopes, `corh()`,
 factor-analytic covariance, and multi-trait covariance. Those are
@@ -256,7 +256,7 @@ install.packages(
 ```
 
 Neither is required to load flexyBayes. A model that needs an absent
-engine refuses with an installation message rather than an error from
+engine refuses with an installation message instead of an error from
 somewhere inside the call stack.
 
 # 4. Your first model
@@ -323,7 +323,7 @@ tidy(fit, effects = "random")
 
 `estimate` is the posterior median on the standard-deviation scale.
 `conf.low` and `conf.high` are the 2.5% and 97.5% quantiles of the
-posterior -- not a normal approximation around the estimate, so they
+posterior, not a normal approximation around the estimate, so they
 need not be symmetric, and for a component near zero they will not be.
 
 
@@ -349,7 +349,7 @@ head(ranef(fit)$gen, 4)
 #> 4   gen   Cas  0.3189416 0.1513547  0.02374853 0.6190192
 ```
 
-Because the fit carries draws rather than point estimates, a function of
+Because the fit carries draws instead of point estimates, a function of
 the parameters is computed directly. Heritability on an entry-mean basis
 is a ratio of variance components, and under a posterior it is a ratio
 taken draw by draw:

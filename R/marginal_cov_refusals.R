@@ -1,4 +1,4 @@
-# Marginal-covariance refusal --- registry population for R/marginal_cov.R.
+# Marginal-covariance refusal: registry population for R/marginal_cov.R.
 #
 # Thrown by fb_marginal_cov() and its as.matrix() method, and triggered in
 # tests/testthat/test-marginal-cov.R.
@@ -15,7 +15,7 @@
     message_template = paste0(
       "fb_marginal_cov(): the marginal covariance cannot be built for %s."
     ),
-    registered_in_adr = "PARTB_coupling_table_06Oct2026 (D2)",
+    registered_in_adr = "0.18.0 marginal covariance",
     plan_field = NA_character_,
     since_version = "0.16.0"
   )

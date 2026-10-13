@@ -44,7 +44,7 @@ it on the fit.
 
 The default is a bounded uniform on each standard deviation, with the
 upper bound scaled to the response. Working on the standard-deviation
-scale rather than the variance or precision scale is deliberate: it is
+scale instead of the variance or precision scale is deliberate: it is
 the scale the quantity is reported on, so a bound is a statement you can
 reason about.
 
@@ -116,7 +116,7 @@ rbind(
 ```
 
 The point estimate moves a little. The interval widens a great deal.
-That width is the honest report: four levels carry little information
+That width is the correct report: four levels carry little information
 about the spread of a population, and nothing in the arithmetic can
 manufacture more.
 
@@ -174,7 +174,7 @@ tidy(fit_p, effects = "random")
 Two rules make a Bayesian analysis reproducible by someone else.
 
 State the prior. `prior_summary()` produces it in a form that can be
-pasted into a methods section, and it reports what ran rather than what
+pasted into a methods section, and it reports what ran, not what
 was asked for.
 
 Say whether it mattered. Refitting under a different reasonable prior

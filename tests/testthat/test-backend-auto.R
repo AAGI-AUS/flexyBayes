@@ -1,13 +1,13 @@
-# Tests for the backend argument on flexybayes() -- ADR 0006.
+# Tests for the backend argument on flexybayes(). ADR 0006.
 #
 # Contract (0.9.3: the third native engine ADR 0006 named was withdrawn
-# entirely -- see NEWS.md -- and its exports, code paths, and fallback
-# role were removed rather than repointed):
-#   - backend = "inla" calls lgm_gate(); on accept dispatches
-#     emit_inla() and returns a flexybayes_inla; on refuse raises a
+# entirely, see NEWS.md, and its exports, code paths, and fallback
+# role were removed instead of repointed):
+#   - backend = "inla" calls lgm_gate(). On accept dispatches
+#     emit_inla() and returns a flexybayes_inla. On refuse raises a
 #     formatted refusal.
-#   - backend = "auto" calls lgm_gate(); on accept dispatches INLA
-#     (when installed) and records path "auto_accept"; on refuse
+#   - backend = "auto" calls lgm_gate(). On accept dispatches INLA
+#     (when installed) and records path "auto_accept". On refuse
 #     falls back to brms, with the specific fallback path recorded
 #     (e.g. "auto_multistratum_to_brms" for a multi-stratum residual
 #     structure lgm_gate() cannot represent).
@@ -16,8 +16,8 @@
 #   - review_code = TRUE under backend = "inla" raises a clean refusal
 #     naming brms as the only code-producing engine.
 #
-# brms is required for the auto-fallback and explicit-brms subtests;
-# INLA is required for the INLA-accept subtests (skip_if_not_installed
+# brms is required for the auto-fallback and explicit-brms subtests,
+# and INLA is required for the INLA-accept subtests (skip_if_not_installed
 # guards in place).
 
 mk_lgm_data <- function() {
@@ -109,7 +109,7 @@ test_that("backend = 'auto' routes a Gaussian random-intercept model to INLA", {
   # aggregate = FALSE: scope the test to the per-row INLA dispatch
   # path. A Gaussian model is no longer aggregated under "auto" (its
   # aggregated route cannot carry the residual prior), so the setting
-  # pins the route this test asserts rather than changing it.
+  # pins the route this test asserts instead of changing it.
   # Aggregated-path coverage lives in test-emit-gaussian-aggregated.R.
   fit <- suppressMessages(flexybayes(
     yield ~ env,
@@ -133,7 +133,7 @@ test_that("backend = 'auto' routes a Gaussian random-intercept model to INLA", {
 # fits on INLA from 0.10.0.9000, through the multiple-likelihood
 # interface, so the probe moves to a family INLA's likelihood roster has
 # no counterpart for. Under backend = "inla" the refusal surfaces as a
-# clean error; under backend = "auto" the same refusal routes to brms
+# clean error. Under backend = "auto" the same refusal routes to brms
 # (subtest f).
 
 test_that("backend = 'inla' surfaces the INLA-side refusal cleanly", {
@@ -157,7 +157,7 @@ test_that("backend = 'inla' surfaces the INLA-side refusal cleanly", {
 })
 
 test_that("the heterogeneous residual that used to drive this now fits", {
-  # The counterpart of the change above, asserted rather than assumed:
+  # The counterpart of the change above, asserted instead of assumed:
   # the structure this file used as its canonical INLA refusal is a
   # capability now, so a reader of subtest (e) can see why it moved.
   d <- mk_lgm_data()
@@ -172,7 +172,7 @@ test_that("the heterogeneous residual that used to drive this now fits", {
 # (f) backend = "auto" routes to brms when INLA refuses, with a trace #
 # ---------------------------------------------------------------- #
 # This used to be driven by the multi-stratum residual at(env):units,
-# which INLA now fits -- so `auto` keeps that model on INLA, which was
+# which INLA now fits, so `auto` keeps that model on INLA, which was
 # the whole point of the 0.10.0.9000 emit work. Both halves are asserted
 # here: the model that used to fall back no longer does, and a model
 # INLA genuinely cannot take still falls back by the documented path.
@@ -196,9 +196,9 @@ test_that("backend = 'auto' falls back to brms when INLA refuses, with trace", {
   testthat::skip_on_cran()
   skip_if_not_long_tier()
   d <- mk_lgm_data()
-  # corh(env):geno -- heterogeneous variances with one shared
+  # corh(env):geno, heterogeneous variances with one shared
   # correlation. No engine has an equicorrelation group structure, and
-  # INLA refuses it at the gate, so `auto` must route rather than fit.
+  # INLA refuses it at the gate, so `auto` must route, not fit.
   msgs <- character()
   fit <- withCallingHandlers(
     suppressWarnings(suppressMessages(flexybayes(
@@ -236,10 +236,10 @@ test_that("ADR 0006 verification: explicit-brms + auto-accept + non-LGM refusal"
   skip_if_not_long_tier()
   d <- mk_lgm_data()
 
-  # Explicit brms -- the withdrawn engine's role in this verification
+  # Explicit brms, the withdrawn engine's role in this verification
   # (existing behaviour preserved under an explicit engine request)
   # moves to brms, the remaining full-HMC engine. (ADR 0031: the
-  # default is "auto", so an explicit engine request must be named; an
+  # default is "auto", so an explicit engine request must be named. An
   # unpinned call here would take the aggregated-INLA path.)
   fit_b <- suppressMessages(flexybayes(
     yield ~ env,

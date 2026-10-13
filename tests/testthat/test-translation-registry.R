@@ -1,21 +1,14 @@
 # =============================================================================
-# The translation registry and its generated surfaces (audit 2026-09-11,
-# F02 / F05 / F06 / F07, work package 0).
+# The translation registry and its generated surfaces.
 #
-# The audit's central finding was not a bug but a category error: "ASReml
-# syntax" was used as a blanket claim over lowerings of three different kinds
-# -- exact structural translations, covariance-family equivalents with
-# different identification and priors, and analogues built from a different
-# basis. A user choosing between this package and ASReml cannot act on a claim
-# that does not say which they are getting.
-#
-# .fb_translation_registry() is where that is now written down once.
-# inst/TRANSLATION.md and inst/translation/translation_registry.csv are
-# generated from it by tools/generate_translation_registry.R. These tests pin
-# the vocabulary closed, pin the generated surfaces to the table, and pin the
-# `anchor` column to test files that exist -- seven anchors in the first draft
-# of this table named test files that did not, which is the same defect class
-# the registry exists to close.
+# Each ASReml spelling lowers in one of three ways: an exact structural
+# translation, a covariance-family equivalent with different identification
+# and priors, or an analogue built from a different basis. The registry,
+# .fb_translation_registry(), says which. inst/TRANSLATION.md and
+# inst/translation/translation_registry.csv are generated from it by
+# tools/generate_translation_registry.R. These tests pin the vocabulary, pin
+# the generated files to the table, and check that every `anchor` names a
+# test file that exists.
 # =============================================================================
 
 .tr_root <- function() {
@@ -53,10 +46,7 @@ test_that("a qualified row states its precondition", {
   # has to say on what grounds. Both are promises carrying a qualification,
   # and a blank condition is that qualification removed.
   #
-  # Asserted over both classes rather than over `conditional` alone: the
-  # factor-analytic row was the last `conditional` one and became `refused`
-  # at 0.13.0, which would have left the old check passing over an empty set
-  # -- a guard that cannot fail is not a guard.
+  # Asserted over both classes, since `conditional` alone may be empty.
   reg <- .fb_translation_registry()
   qualified <- reg[reg$class %in% c("conditional", "refused"), , drop = FALSE]
   expect_gt(nrow(qualified), 0L)
@@ -65,7 +55,7 @@ test_that("a qualified row states its precondition", {
 
 test_that("the ASReml 3 aliases are labelled as aliases, not as current syntax", {
   # ASReml 4 removed residual-side at() in favour of dsum(), and ped() in
-  # favour of vm(). Both still work here; neither may be presented as
+  # favour of vm(). Both still work here, but neither may be presented as
   # current ASReml 4 syntax.
   reg <- .fb_translation_registry()
   aliases <- reg[reg$vintage == "ASReml 3 alias", , drop = FALSE]

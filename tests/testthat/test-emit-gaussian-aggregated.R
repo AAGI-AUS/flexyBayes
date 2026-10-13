@@ -1,7 +1,7 @@
-# test-emit-gaussian-aggregated.R -- Stage 3A backend wiring tests.
+# test-emit-gaussian-aggregated.R: aggregated-Gaussian backend wiring tests.
 # Covers the ten ADR 0022 §Consequences gates (a) through (j) for the
-# aggregated-gaussian emit path. (a)/(b)/(c) -- bit-exact log-likelihood
-# equivalence -- live in test-aggregate-gaussian.R (foundation). The
+# aggregated-gaussian emit path. (a)/(b)/(c), bit-exact log-likelihood
+# equivalence, live in test-aggregate-gaussian.R (foundation). The
 # gates exercised here:
 #   (e) plan eligibility gates dispatch
 #   (f) out-of-scope IRs fall through to per-row under aggregate = "auto"
@@ -21,14 +21,14 @@
 #
 # 0.9.3: the aggregated Gaussian path's second engine (see NEWS.md,
 # withdrawn entirely) had its own aggregated-fidelity test suite here
-# (subtests naming it directly, plus a dedicated section below); INLA
+# (subtests naming it directly, plus a dedicated section below). INLA
 # is now the sole aggregated-emit engine (`backend` is a single-choice
 # formal on emit_gaussian_aggregated.R), so those subtests are removed
-# rather than ported -- there is no second aggregation-capable engine
+# instead of ported, there is no second aggregation-capable engine
 # to compare against or exercise.
 #
-# Reference for the algebraic identity gate: day-1 spikes at
-# `spikes_stage3a/spike_inla.R` (matched-prior bit-exact agreement).
+# Reference for the algebraic identity gate: day-1 spikes
+# (matched-prior bit-exact agreement).
 
 suppressPackageStartupMessages({
   library(testthat)
@@ -45,7 +45,7 @@ on.exit(options(old_opts), add = TRUE)
 
 
 # ---------------------------------------------------------------- #
-# Test fixture -- in-scope Stage 3A IR with productive compression  #
+# Test fixture, in-scope IR with productive compression  #
 # ---------------------------------------------------------------- #
 mk_agg_data <- function(seed = 1L, N = 500L, J = 15L) {
   set.seed(seed)
@@ -150,7 +150,7 @@ test_that("(e) backend_decision reason carries N, K, ratio", {
   # planner's product of declared factor levels (the complete grid) here,
   # and the realised count of cell-key combinations the data contains in
   # the print and summary compression lines. On an incomplete grid they
-  # differ -- 135 against 133 on the case that surfaced this -- and both
+  # differ, 135 against 133 on the case that surfaced this, and both
   # printed as a bare `K`. The estimate now says that it is one.
   expect_true(grepl("K = \\d+ \\(estimated\\)", reason))
   # The realised count carries no such qualifier, and is what the
@@ -239,7 +239,7 @@ test_that("(j) aggregate = TRUE on out-of-scope IR raises refusal", {
 
 test_that("(j) aggregate = TRUE on an unrecognised backend name raises unknown_backend", {
   # 0.9.3: the engine this subtest originally exercised was withdrawn
-  # entirely (see NEWS.md) -- an explicit request naming it, or any
+  # entirely (see NEWS.md), an explicit request naming it, or any
   # other unrecognised backend, now refuses before dispatch reaches the
   # aggregation-eligibility logic at all.
   dat <- mk_agg_data()
@@ -302,7 +302,8 @@ test_that("(j) aggregate = 'foo' (invalid) raises clear validation error", {
 # ---------------------------------------------------------------- #
 # Gate (g): heterogeneous residual at_units cell-key validity       #
 # ---------------------------------------------------------------- #
-# Stage 3A allows at(f):units when f is in the cell key (so each cell
+# The aggregated route allows at(f):units when f is in the cell key (so
+# each cell
 # has a single residual sigma). When f is NOT a cell key, the per-row
 # / per-cell algebraic identity breaks and the emit refuses.
 
@@ -313,8 +314,8 @@ test_that("(g) at(f):units refuses when f is not a cell key", {
   dat$f3 <- factor(sample(letters[1:2], nrow(dat), replace = TRUE))
   # NOTE: this exercises the dispatch.R refusal for unsupported INLA
   # residual shapes at v0.3.2 (heterogeneous at_units on INLA is
-  # deferred); the at-not-in-cell-key refusal was specific to the
-  # withdrawn native engine's own aggregated path (also deferred; see
+  # deferred). The at-not-in-cell-key refusal was specific to the
+  # withdrawn native engine's own aggregated path (also deferred. See
   # NEWS.md, 0.9.3). The test confirms the IR doesn't silently produce
   # an invalid aggregated fit.
   err <- tryCatch(
@@ -397,7 +398,7 @@ test_that("(i) print() shows Exact. line on per-row and aggregated", {
     mcmc_verbose = FALSE
   ))
   # Per-row INLA goes through print.flexybayes_inla which does NOT
-  # currently surface exactness; aggregated goes through
+  # currently surface exactness. Aggregated goes through
   # print.flexybayes_aggregated which does.
   agg_out <- capture.output(print(fit_agg))
   expect_true(any(grepl("aggregated_exact", agg_out)))
@@ -406,14 +407,14 @@ test_that("(i) print() shows Exact. line on per-row and aggregated", {
 
 
 # ---------------------------------------------------------------- #
-# Posterior-equivalence smoke (INLA path; matched explicit priors)  #
+# Posterior-equivalence smoke (INLA path. Matched explicit priors)  #
 # ---------------------------------------------------------------- #
 # Algebraic identity verified by the day-1 spike on the matched-prior
 # reference. Here we confirm the per-row vs aggregated INLA fits agree
 # on the fixed-effect posterior under the same effective prior path.
 
 # [removed] "INLA per-row + aggregated agree on beta within 5e-3 under
-# matched defaults" -- a Gaussian model is no longer fitted on the
+# matched defaults", a Gaussian model is no longer fitted on the
 # aggregated representation (aggregation_residual_prior_not_composed), so
 # no public call produces the aggregated Gaussian fit this compared. The
 # per-row versus aggregated agreement returns with the exact composition of
@@ -442,7 +443,7 @@ test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard
 })
 
 # [removed] "INLA per-row + aggregated agree on beta within 1e-3 (stress,
-# strict)" -- removed with the 5e-3 check above, for the same reason.
+# strict)", removed with the 5e-3 check above, for the same reason.
 
 
 # ---------------------------------------------------------------- #
@@ -506,11 +507,11 @@ test_that("flexybayes_aggregated inherits from flexybayes", {
 })
 
 # [removed] "flexybayes_aggregated class shape on the withdrawn
-# native engine" -- deleted (not rewritten): this pinned the aggregated
+# native engine", deleted (not rewritten): this pinned the aggregated
 # class shape produced by that engine's own aggregated path
 # (see NEWS.md, 0.9.3). INLA is now the sole aggregated-emit engine,
 # so every aggregated fit carries the "flexybayes_inla" label the
-# previous test above already asserts -- there is no second
+# previous test above already asserts, there is no second
 # aggregation-capable engine left to produce the differently-shaped
 # class vector this test pinned.
 
@@ -519,7 +520,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   dat <- mk_agg_data()
   # The legacy scalar bridge -> per-row-equivalent (the matched-prior
   # guarantee). `prior_vc_sd = 1` is what selects that route, and it is
-  # the only route this test used to exercise -- which is how the
+  # the only route this test used to exercise, which is how the
   # auto-default's mislabel went unseen.
   fit_def <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
@@ -541,7 +542,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   )
   # No prior argument at all -> the package's own default. Since the
   # auto-default became an fb_prior object, a class test alone called
-  # this "custom (explicit prior supplied)" -- on the commonest fit the
+  # this "custom (explicit prior supplied)", on the commonest fit the
   # package produces, with no prior supplied by anyone. The label is
   # routed off the default-basis attribute prior_summary() reads.
   fit_auto <- suppressMessages(flexybayes(
@@ -566,7 +567,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   expect_true(any(grepl("package default", auto_out, fixed = TRUE)))
   expect_false(any(grepl("explicit prior supplied", auto_out, fixed = TRUE)))
   # Explicit prior -> custom (equivalence against a default-prior per-row
-  # fit no longer holds; flagged so the user does not misread agreement).
+  # fit no longer holds. Flagged so the user does not misread agreement).
   fit_cus <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
@@ -594,7 +595,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
 })
 
 # [removed] "aggregated fit exposes its draws slot for the draws
-# extractors" -- deleted (not rewritten): this was a regression guard
+# extractors", deleted (not rewritten): this was a regression guard
 # for a v0.4.0 fix specific to the withdrawn native engine's
 # aggregated-path draws slot shape (see NEWS.md, 0.9.3). No successor:
 # that slot never exists on any fit any active engine produces, so
@@ -622,7 +623,7 @@ test_that("$glm shim carries per-row reconstructed fitted values", {
 })
 
 # [removed] "posterior-equivalence (v0.3.3 activation)" section for
-# the withdrawn native engine -- deleted (not rewritten): this was a
+# the withdrawn native engine, deleted (not rewritten): this was a
 # stress-gated MC-tolerance
 # backend-fidelity check specific to the withdrawn native engine's
 # aggregated-path MCMC translation (see NEWS.md, 0.9.3). No successor:

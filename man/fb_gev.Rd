@@ -38,7 +38,7 @@ computed from the fitted parameters and reported on \code{fit$return_levels}
 for the requested return periods.
 
 flexyBayes has no GEV route on either engine yet. INLA has \code{gev} and
-\code{bgev} likelihoods and brms a \code{gen_extreme_value()} family; a route
+\code{bgev} likelihoods and brms a \code{gen_extreme_value()} family. A route
 through one of them is planned for a future release.
 }
 \examples{

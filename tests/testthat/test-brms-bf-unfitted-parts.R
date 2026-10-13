@@ -4,7 +4,7 @@
 # The ingest reads the formula inside bf() and nothing else. Before 0.14.0 a
 # formula for a distributional parameter (`sigma ~ x`), a fixed value for one
 # (`sigma = 2`) and a family named inside bf() were dropped, and both engines
-# fitted a different model with no message; a non-linear formula
+# fitted a different model with no message. A non-linear formula
 # (`nl = TRUE`) stopped with the untyped "object 'a' not found". Each now
 # refuses by name, on every public route into a fit: fb() and flexybayes()
 # on each backend, fb_plan(), update(), the deprecated wrappers, and

@@ -1,4 +1,4 @@
-# helper-emit-state.R -- Per-test isolation of the flexyBayes
+# helper-emit-state.R: Per-test isolation of the flexyBayes
 # emit-once message latches.
 #
 # The package keeps "emit-once" announcements (default-prior note,
@@ -11,7 +11,7 @@
 # isolation does not leak into sibling tests in the same file.
 #
 # Discipline rule for new tests:
-#   Never call bare `options(flexyBayes.* = ...)` -- always wrap in
+#   Never call bare `options(flexyBayes.* = ...)`, always wrap in
 #   withr::local_options(...) so the option is restored on scope
 #   exit. The tally.R full-suite runner sources tests in a single
 #   R process, so an un-restored options() in one file leaks into
@@ -19,9 +19,7 @@
 #   upstream cause of the v0.3.8 suite-order flake at
 #   test-smooth.R:88 (six leak sites repaired during v0.3.9).
 #
-# See R/emit_state.R for the live store and
-# ledger/r-package/2026-05-27-emit-state-latch-env-migration.cairn.md
-# for the rationale behind the v0.3.9 migration out of options().
+# See R/emit_state.R for the live store (moved out of options() in v0.3.9).
 
 reset_emit_state <- function() {
   flexyBayes:::.reset_emit_state_for_test()

@@ -2,14 +2,13 @@
 #
 # Provides recover_data() and emm_basis() methods so that
 # emmeans::emmeans(fit, ~ factor) works on brms- and INLA-backed fits
-# (the bare `flexybayes` method is reached by a brms fit via S3
-# inheritance -- no `flexybayes_brms`-specific override exists here).
+# (a brms fit reaches the bare `flexybayes` method by S3 inheritance).
 # Both methods are registered for the foreign emmeans generics via
 # @exportS3Method (delayed S3 registration), so emmeans stays in
 # Suggests.
 #
 # The fixed-effect coefficients and covariance come from the fit's own
-# coef() / vcov() methods; the design matrix is reconciled to the
+# coef() / vcov() methods. The design matrix is reconciled to the
 # coefficient basis by .fb_fixef_model_matrix() (see ecosystem_support.R).
 # Posterior summaries are reported on z-intervals (df = Inf), the
 # Bayesian convention emmeans uses for sampled posteriors.
@@ -42,11 +41,8 @@
 # Shared emm_basis core. Builds X to match the fitted coefficient names,
 # carries the posterior covariance as V, and supplies a non-estimability
 # basis so emmeans rejects non-estimable combinations should the fit's
-# coef() carry an over-parameterised (all-levels) basis for any factor
-# -- the case a since-withdrawn native engine produced (see NEWS.md,
-# 0.9.3). The active engines are treatment-coded (full rank), so the
-# check is defensive rather than load-bearing today. df = Inf ->
-# z-based intervals.
+# coef() carry an over-parameterised (all-levels) basis for any factor.
+# df = Inf gives z-based intervals.
 .fb_emm_basis <- function(object, trms, xlev, grid, ...) {
   .check_installed(
     "emmeans",

@@ -7,7 +7,7 @@
 # Fixture: the unbalanced multi-trial design of helper-alias-design.R,
 # VARIETY x NAPPLIED x SEEDRATE with empty and lost cells, random TRIAL and
 # TRIAL:REP. Oracle: asreml 4.2 on the same design, recorded in
-# fixtures/asreml_alias_<shape>.rds (review/units/U-ALIAS_2026-09-24).
+# fixtures/asreml_alias_<shape>.rds.
 # =============================================================================
 
 fa_fixed <- YIELD ~ VARIETY * NAPPLIED * SEEDRATE
@@ -62,6 +62,7 @@ test_that("flexybayes() refuses an aliased fixed part by default and names asrem
 
 test_that("a fixed part the rows estimate fits as before, with no alias record", {
   skip_if_not_installed("INLA")
+  skip_if_not_installed("emmeans")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- alias_design("small")
   fit <- flexybayes(

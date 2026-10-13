@@ -1,13 +1,12 @@
 # ---------------------------------------------------------------- #
-# Family support -- .resolve_family() is the single authoritative   #
+# Family support: .resolve_family() is the single authoritative     #
 # family gate every user entry passes through (asreml via fb.R,     #
 # brms via fb_from_brms.R). It admits only the families flexyBayes   #
-# can emit; any other family -- including those INLA's roster        #
+# can emit; any other family, including those INLA's roster          #
 # recognises but flexyBayes cannot emit (survival / time-to-event)   #
-# -- is refused up front with a structured, registry-backed refusal, #
-# never silently fitted. (Audit 2026-05-30, finding                  #
-# D-gap-survival-silent: corrected -- the refusal is clear and       #
-# up-front, not a silent malformed model.)                           #
+# is refused up front with a structured, registry-backed refusal,    #
+# never silently fitted: the refusal is clear and up-front, not a    #
+# silent malformed model.                                            #
 # ---------------------------------------------------------------- #
 
 test_that(".resolve_family() accepts the eight supported families", {
@@ -54,7 +53,7 @@ test_that("all five survival families are refused at the family gate", {
   }
 })
 
-# Integration -- the refusal fires through the real flexybayes()
+# Integration, the refusal fires through the real flexybayes()
 # dispatch path, before any backend code runs (so neither brms nor
 # INLA need be installed): .resolve_family() is reached inside
 # fb_from_asreml() at the top of flexybayes().
@@ -89,17 +88,16 @@ test_that("fb_refusals() lists the unsupported-family refusal cleanly", {
 
 # ---------------------------------------------------------------- #
 # The allowlist against the engines' live rosters                   #
-# (field-sweep FS-4 / field finding C2)                             #
 # ---------------------------------------------------------------- #
 #
 # The entry allowlist is narrower than either engine's family roster,
-# deliberately -- a family is admitted when this package has an emit for
+# deliberately, a family is admitted when this package has an emit for
 # it and a test exercises it. What it must not do is refuse a family the
 # engine behind it carries with no documented boundary and no named
 # alternative. `hurdle_gamma` was that case: brms-native, refused at the
 # door, absent from every documented boundary in the tree.
 #
-# The rosters are read from the installed engines rather than recalled.
+# The rosters are read from the installed engines instead of recalled.
 # The first draft of this work asserted that brms carries Tweedie
 # natively; a live `brms::brmsfamily()` call said otherwise, and getting
 # it backwards would have changed what the fix is.
@@ -207,7 +205,7 @@ test_that("the three remaining C2 families are documented boundaries", {
 test_that("the tweedie boundary is attributed to flexyBayes, not to INLA", {
   skip_if_not_installed("INLA")
   # INLA does carry the likelihood, so the message must not imply the
-  # engine lacks it -- that is the error the boundary note exists to stop.
+  # engine lacks it, that is the error the boundary note exists to stop.
   expect_true("tweedie" %in% names(INLA::inla.models()$likelihood))
   err <- expect_error(
     flexyBayes:::.resolve_family("tweedie", NULL),
@@ -215,7 +213,7 @@ test_that("the tweedie boundary is attributed to flexyBayes, not to INLA", {
   )
   expect_match(
     conditionMessage(err),
-    "flexyBayes boundary rather than an engine one"
+    "flexyBayes boundary.{1,16}an engine one"
   )
 })
 

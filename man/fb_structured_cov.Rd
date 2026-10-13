@@ -11,21 +11,21 @@ fb_structured_cov(fit)
 }
 \value{
 An empty list (with a message): no active backend fits an
-\code{fa()} term -- both refuse it with \code{factor_analytic_not_repeatable} --
-so no fit carries one to reconstruct. Non-factor-analytic structured
+\code{fa()} term (both refuse it with \code{factor_analytic_not_repeatable}), so
+no fit carries one to reconstruct. Non-factor-analytic structured
 terms (\code{us}, \code{ar1}) are reported as not-yet-reconstructed.
 }
 \description{
 For each \code{fa(outer, k)} term in a fit, reconstruct the implied
 outer-factor covariance \eqn{G = \Lambda\Lambda^\top + \mathrm{diag}(\psi)}
 from the posterior draws and summarise it. Unlike the raw loadings
-\eqn{\Lambda} -- which are identified only up to rotation and sign, so
-their per-entry Rhat is meaningless -- the covariance \eqn{G} and the
+\eqn{\Lambda}, which are identified only up to rotation and sign, so
+their per-entry Rhat is meaningless, the covariance \eqn{G} and the
 correlation derived from it are rotation- and sign-invariant.
 }
 \examples{
 # Reports on factor-analytic structured covariance. A fit carrying no
-# such term is told so rather than returned an empty object.
+# such term is told so, not returned an empty object.
 \donttest{
 if (requireNamespace("INLA", quietly = TRUE)) {
   set.seed(1)

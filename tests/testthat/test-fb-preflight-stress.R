@@ -1,7 +1,7 @@
 # Tier-3 stress test for the Stage 2 MVP preflight layer
-# (ADR 0021 / v0.3.0). Asserts the lazy-O(terms) property: a 1e8-row
+# (v0.3.0). Asserts the lazy-O(terms) property: a 1e8-row
 # metadata-only descriptor can be preflighted in <= 60 s wall time
-# with < 200 MB RSS delta -- because preflight reads only
+# with < 200 MB RSS delta, because preflight reads only
 # fb_dataset metadata (n_rows, dictionaries, col_types) and never
 # materialises a 1e8-row data.table.
 #
@@ -40,7 +40,7 @@ test_that("1e8-row metadata-only preflight: lazy O(terms) wall time + RSS", {
   skip_if_not_stress()
 
   # Constructable: the dictionary is 1e5 group levels (1.6 MB-ish);
-  # the n_rows = 1e8 is just an integer scalar -- no row-wise allocation.
+  # the n_rows = 1e8 is just an integer scalar, no row-wise allocation.
   t0_dict <- Sys.time()
   ds <- .fb_dataset(
     data = NULL,
@@ -84,8 +84,8 @@ test_that("1e8-row metadata-only preflight: lazy O(terms) wall time + RSS", {
   rss_after <- .process_rss_mb()
 
   # Wall time gate: the lazy estimator runs in O(terms) so the 1e8
-  # n_rows does not enter the time complexity -- only the per-term
-  # arithmetic does. ADR target: <= 60 s.
+  # n_rows does not enter the time complexity, only the per-term
+  # arithmetic does. Target: <= 60 s.
   pf_wall_s <- as.numeric(difftime(t1_pf, t0_pf, units = "secs"))
   message(sprintf("preflight wall time at n_rows = 1e8: %.3f s", pf_wall_s))
   expect_lte(pf_wall_s, 60)

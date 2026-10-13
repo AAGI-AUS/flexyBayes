@@ -1,4 +1,4 @@
-# predict_new_levels.R -- the posterior predictive at levels a fit did not
+# predict_new_levels.R: the posterior predictive at levels a fit did not
 # see: a new trial, a new locality.
 #
 # For a set P of rows of `newdata` (a trial, a cell), the mean response over
@@ -26,7 +26,7 @@
 # Arguments                                                         #
 # ---------------------------------------------------------------- #
 
-# .fb_predict_new_args() --- the arguments the new-level path takes.
+# .fb_predict_new_args(): the arguments the new-level path takes.
 #
 # @noRd
 # @keywords internal
@@ -54,7 +54,7 @@
   invisible(TRUE)
 }
 
-# .fb_predict_new_sets() --- the sets of rows whose means are predicted: one
+# .fb_predict_new_sets(): the sets of rows whose means are predicted: one
 # set per distinct combination of the `mean_by` columns, in order of first
 # appearance, or one set per row when `mean_by` is NULL.
 #
@@ -113,7 +113,7 @@
 # The plan: which effects a row draws, and from which variance      #
 # ---------------------------------------------------------------- #
 
-# .fb_predict_new_refuse() --- a refusal of the new-level path.
+# .fb_predict_new_refuse(): a refusal of the new-level path.
 #
 # @noRd
 # @keywords internal
@@ -125,7 +125,7 @@
   ))
 }
 
-# .fb_predict_new_key() --- one key per row from the named columns.
+# .fb_predict_new_key(): one key per row from the named columns.
 #
 # @noRd
 # @keywords internal
@@ -136,7 +136,7 @@
   )
 }
 
-# .fb_predict_new_position() --- for each newdata key, the latent position a
+# .fb_predict_new_position(): for each newdata key, the latent position a
 # training row with the same key loads, or NA for a key the fit did not see.
 #
 # @noRd
@@ -146,7 +146,7 @@
   train_position[first][match(new_key, train_key[first])]
 }
 
-# .fb_predict_new_plan() --- the random and residual structure of a fit read
+# .fb_predict_new_plan(): the random and residual structure of a fit read
 # for the rows of `newdata`. Refuses a structure whose new-level draw is not
 # built, and a new level with no fitted variance to draw it from. With
 # `positions`, also the INLA latent position of every seen level.
@@ -394,7 +394,7 @@
   plan
 }
 
-# .fb_predict_new_term_vars() --- the data columns a random term reads.
+# .fb_predict_new_term_vars(): the data columns a random term reads.
 #
 # @noRd
 # @keywords internal
@@ -412,7 +412,7 @@
   t$var
 }
 
-# .fb_predict_new_field_plan() --- the AR1 x AR1 field read for the rows of
+# .fb_predict_new_field_plan(): the AR1 x AR1 field read for the rows of
 # `newdata`: each row's lattice row and column on the fitted lattice, the
 # new trial it falls in (NA at a trial the fit saw), and, with `positions`,
 # the latent node of a row at a seen trial.
@@ -509,7 +509,7 @@
   )
 }
 
-# .fb_predict_new_residual_plan() --- each row's residual-variance component.
+# .fb_predict_new_residual_plan(): each row's residual-variance component.
 #
 # @noRd
 # @keywords internal
@@ -543,7 +543,7 @@
   list(component = paste0("sigma_", lev))
 }
 
-# .fb_predict_new_family() --- the new-level path is Gaussian on the
+# .fb_predict_new_family(): the new-level path is Gaussian on the
 # identity link.
 #
 # @noRd
@@ -576,8 +576,8 @@
 # Moments of each set mean, draw by draw                            #
 # ---------------------------------------------------------------- #
 
-# .fb_predict_new_share2() --- for each set, the sum over groups of
-# (rows of the set in the group / rows in the set)^2; rows with an NA group
+# .fb_predict_new_share2(): for each set, the sum over groups of
+# (rows of the set in the group / rows in the set)^2. Rows with an NA group
 # load no group.
 #
 # @noRd
@@ -597,7 +597,7 @@
   out
 }
 
-# .fb_predict_new_field_counts() --- for each set, the pairs of its rows in
+# .fb_predict_new_field_counts(): for each set, the pairs of its rows in
 # one new trial binned by lattice distance, weighted 1 / |P|^2. Bin
 # dr + 1 + n_row * dc, for row distance dr and column distance dc.
 #
@@ -621,7 +621,7 @@
   out
 }
 
-# .fb_predict_new_draw_column() --- one column of the variance draws, by
+# .fb_predict_new_draw_column(): one column of the variance draws, by
 # component name.
 #
 # @noRd
@@ -631,7 +631,7 @@
     stop(
       "flexyBayes internal error: the variance draws carry no `",
       name,
-      "`; they carry ",
+      "`, they carry ",
       paste(names(vdraws), collapse = ", "),
       ".",
       call. = FALSE
@@ -640,9 +640,9 @@
   as.numeric(vdraws[[name]])
 }
 
-# .fb_predict_new_moments() --- the mean and variance of every set mean,
+# .fb_predict_new_moments(): the mean and variance of every set mean,
 # conditional on each draw. `eta` holds the rows' draws of the fixed part plus
-# the effects at seen levels (rows x draws); `vdraws` the variance draws on
+# the effects at seen levels (rows x draws). `vdraws` the variance draws on
 # the scale of fb_variance_draws() (standard deviations and correlations),
 # one row per draw. Returns two sets x draws matrices.
 #
@@ -697,7 +697,7 @@
   list(mean = mean, variance = variance)
 }
 
-# .fb_predict_new_mixture_quantile() --- quantile p of each row's equal-weight
+# .fb_predict_new_mixture_quantile(): quantile p of each row's equal-weight
 # mixture of normals, by bisection on the mixture CDF.
 #
 # @noRd
@@ -714,7 +714,7 @@
   (lo + hi) / 2
 }
 
-# .fb_predict_new_summary() --- the predictive mean, SD and central interval
+# .fb_predict_new_summary(): the predictive mean, SD and central interval
 # of each set mean from the conditional moments.
 #
 # @noRd
@@ -735,7 +735,7 @@
   )
 }
 
-# .fb_predict_new_simulate() --- joint draws of every set mean: the
+# .fb_predict_new_simulate(): joint draws of every set mean: the
 # conditional mean of each draw plus effects simulated at the new levels, the
 # field of each new trial, and a residual per row, averaged over each set.
 #
@@ -786,7 +786,7 @@
 # The two engines                                                   #
 # ---------------------------------------------------------------- #
 
-# .fb_predict_new_fixed() --- the fixed-effect design of the rows, their
+# .fb_predict_new_fixed(): the fixed-effect design of the rows, their
 # offset and their estimability.
 #
 # @noRd
@@ -803,7 +803,7 @@
   )
 }
 
-# .fb_predict_new_result() --- the returned table.
+# .fb_predict_new_result(): the returned table.
 #
 # @noRd
 # @keywords internal
@@ -833,7 +833,7 @@
   )
 }
 
-# .fb_predict_new_inla() --- the INLA route.
+# .fb_predict_new_inla(): the INLA route.
 #
 # @noRd
 # @keywords internal
@@ -868,7 +868,7 @@
   .fb_predict_new_result(tab, sim, sets, fixed$status, level, "inla")
 }
 
-# .fb_predict_new_brms() --- the brms route: brms's own posterior predictive
+# .fb_predict_new_brms(): the brms route: brms's own posterior predictive
 # at new levels, each drawn from the group-level SDs, averaged over each set.
 #
 # @noRd
@@ -926,8 +926,8 @@ print.fb_predict_new <- function(x, digits = 4L, ...) {
     100 * (attr(x, "level") %||% 0.95)
   ))
   cat(
-    "Levels the fit did not see are drawn from their fitted variances; ",
-    "the residual is included.\n",
+    "Levels the fit did not see are drawn from their fitted variances, ",
+    "and the residual is included.\n",
     sep = ""
   )
   body <- as.data.frame(x)
@@ -937,7 +937,7 @@ print.fb_predict_new <- function(x, digits = 4L, ...) {
   invisible(x)
 }
 
-# .fb_predict_new_route() --- the arguments that do not combine with the
+# .fb_predict_new_route(): the arguments that do not combine with the
 # new-level path.
 #
 # @noRd

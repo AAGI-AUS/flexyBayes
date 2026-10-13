@@ -1,18 +1,18 @@
-# fb_from_brms -- flexyBayes brms-format ingest path.
+# fb_from_brms: flexyBayes brms-format ingest path.
 #
-# v0.1 MINIMUM SUBSET -- parses a brms-style formula
+# Parses a brms-style formula
 #   `response ~ fixed_effects + (1 | g1) + (1 | g2) + ...`
-# via R's formula abstract syntax tree (AST). No runtime brms
-# dependency for this minimum subset; brmsformula objects (built via
-# brms::bf()) are accepted by unwrapping `formula$formula` when brms
-# is loaded.
+# via R's formula abstract syntax tree (AST), with no runtime brms
+# dependency. brmsformula objects (built via brms::bf()) are accepted
+# by unwrapping `formula$formula` when brms is loaded.
 #
-# Supported (v0.1):
+# Supported:
 # - The families .resolve_family() admits, as a name or a family
-#   object; default link, the object's own link, or explicit override.
+#   object, with the default link, the object's own link, or an
+#   explicit override.
 # - Linear fixed effects (factor / continuous / interaction /
-#   I() expressions) -- re-parsed via the existing .parse_fixed
-#   helper for byte-identity with the asreml ingest path.
+#   I() expressions), parsed by .parse_fixed as on the asreml
+#   ingest path.
 # - Random intercepts via `(1 | g)` and `(1 || g)`.
 # - Uncorrelated random intercept + slope via `(x || g)` and the
 #   equivalent `(1 + x || g)`. Each level of g carries an
@@ -21,25 +21,20 @@
 #   (no correlation parameter). The explicit `(0 + x || g)` shape
 #   suppresses the intercept block (slope-only). Semantics match
 #   lme4 / brms exactly: `(x || g)` expands to
-#   `(1 | g) + (0 + x | g)`. Lifts the v0.2 refusal.
+#   `(1 | g) + (0 + x | g)`.
 # - Optional `weights` argument mapped to addition_terms with
 #   type = "weights" (mirrors fb_from_asreml).
 #
-# Refused -- fail-fast at ingest with a clear message:
+# Refused at ingest, with a message naming the term:
 # - Smoothers `s()`, `t2()`.
 # - Gaussian processes `gp()`.
 # - Autocorrelation `ar()`, `ma()`, `arma()`, `cosy()`, `car()`.
 # - Distributional regression and addition terms (`cens`, `trunc`,
-#   `trials`, `se`, `mi`, `weights()` inside formula; the
-#   `weights` argument is supported instead).
+#   `trials`, `se`, `mi`, `weights()` inside the formula). The
+#   `weights` argument is supported instead.
 # - Multivariate / mixture / categorical families, and every other
 #   family .resolve_family() does not admit (refused by that gate
 #   here, for a family name and a family object alike).
-#
-# Future iterations will use brms::brmsterms() for the full
-# v0.1 ingest set and add full random-slope translation,
-# smoothers via INLA's rw1/rw2, GP via SPDE, distributional
-# regression refusal hooks, and the addition-form family.
 
 #' Ingest a brms-format formula into the flexyBayes IR
 #'
@@ -157,8 +152,8 @@ fb_from_brms <- function(
   # Metadata-only path: data = NULL + carry_n_rows lets
   # the caller build an IR for stress-testing the preflight layer
   # without materialising N rows of data. The formula's free variables
-  # are realised as a one-row placeholder data.frame (all numeric);
-  # random-term level counts are stripped from the IR so .fb_preflight()
+  # are realised as a one-row placeholder data.frame (all numeric).
+  # Random-term level counts are stripped from the IR so .fb_preflight()
   # reads them from the <fb_dataset>'s dictionaries instead.
   if (is.null(data)) {
     if (is.null(carry_n_rows)) {
@@ -194,9 +189,8 @@ fb_from_brms <- function(
       ...
     )
     fb$data_summary$n <- as.integer(carry_n_rows)
-    # Strip per-term cached level counts -- preflight reads from
-    # <fb_dataset>$dictionaries when var_n is NA. This keeps the
-    # IR explicit about not knowing the true group sizes.
+    # Preflight reads level counts from <fb_dataset>$dictionaries when
+    # var_n is NA.
     for (i in seq_along(fb$random_terms)) {
       fb$random_terms[[i]]$var_n <- NA_integer_
       fb$random_terms[[i]]$var_levels <- NULL
@@ -219,10 +213,9 @@ fb_from_brms <- function(
 
   # LHS-pipe brms addition forms (`y | trials(n) ~ ...`,
   # `y | cens(c) ~ ...`, `y | weights(w) ~ ...`, `y | se(s) ~ ...`).
-  # The hand-rolled v0.1 walker does not parse the addition-form
-  # surface; refuse at ingest with a corpus-naming message rather
-  # than fall through to the cryptic "Response variable not found
-  # in data" error from the later names(data) lookup.
+  # The walker does not parse addition forms. Without this refusal the
+  # later names(data) lookup fails with "Response variable not found
+  # in data".
   if (
     is.call(formula[[2L]]) &&
       identical(formula[[2L]][[1L]], as.name("|"))
@@ -258,15 +251,12 @@ fb_from_brms <- function(
   # ------------------------- Walk RHS --------------------------- #
   walked <- .brms_walk_rhs(formula[[3]])
 
-  # Reject unsupported features fail-fast (per v0.1 minimum scope)
+  # Refuse unsupported features at ingest.
   if (length(walked$ext_terms) > 0L) {
-    # A univariate smoother gets the smoother refusal, whichever grammar
-    # it was written in: `y ~ s(x)` means the same thing on both
-    # surfaces, and the useful sentence is the one naming
-    # `random = ~ spl(x)` on the INLA backend rather than "queued for a
-    # later expansion" (field-sweep FS-18). The multivariate forms
-    # (`te`, `ti`, `t2`, `gp`, `sos`) have no `spl()` counterpart, so
-    # they keep the ingest-feature refusal below, which claims nothing.
+    # A univariate smoother gets the smoother refusal, which names
+    # `random = ~ spl(x)` on INLA. The multivariate forms (`te`, `ti`,
+    # `t2`, `gp`, `sos`) have no `spl()` counterpart and get the
+    # ingest-feature refusal below.
     for (t in walked$ext_terms) {
       lbl <- paste(t$deparse, collapse = " ")
       head <- sub("\\(.*$", "", lbl)
@@ -396,15 +386,14 @@ fb_from_brms <- function(
 }
 
 
-# .fb_brms_refuse_unfitted_parts() --- refuse the parts of a brms::bf()
+# .fb_brms_refuse_unfitted_parts(): refuse the parts of a brms::bf()
 # object that the ingest does not carry to an engine.
 #
-# The ingest reads `$formula` alone. Before 0.14.0 a non-linear declaration,
-# a formula or a fixed value for a distributional parameter, and a family
-# named inside bf() were dropped there, and both engines fitted a different
-# model with no message. Each now refuses by name. `family` and `link` are
-# the fit's own: a family inside bf() that agrees with them describes the
-# model that is fitted, and passes. `caller` prefixes the message.
+# The ingest reads `$formula` alone, so a non-linear declaration, a
+# formula or a fixed value for a distributional parameter, and a family
+# named inside bf() each refuse by name. `family` and `link` are the
+# fit's own, and a family inside bf() that agrees with them passes.
+# `caller` prefixes the message.
 #
 # @noRd
 # @keywords internal
@@ -465,9 +454,9 @@ fb_from_brms <- function(
 
 # Synthesise a one-row, all-numeric placeholder
 # data.frame from a brms-style formula. Used by the data = NULL +
-# carry_n_rows ingest path so the existing brms walker can produce
-# the IR shape; the realised level counts are stripped after the
-# walk so the preflight layer reads them from <fb_dataset> instead.
+# carry_n_rows ingest path so the brms walker can produce the IR
+# shape. The realised level counts are stripped after the walk, and
+# the preflight layer reads them from <fb_dataset>.
 .fb_from_brms_placeholder_data <- function(formula) {
   all_vars <- all.vars(formula)
   if (!length(all_vars)) {
@@ -523,7 +512,7 @@ fb_from_brms <- function(
           return(invisible())
         }
       }
-      # Bare parentheses around a non-RE expression -- descend
+      # Bare parentheses around a non-RE expression: descend
       visit(e[[2]])
       return(invisible())
     }
@@ -539,7 +528,7 @@ fb_from_brms <- function(
         return(invisible())
       }
 
-      # Unsupported brms specials -- bucket into ext_terms
+      # Unsupported brms specials go into ext_terms
       if (op %in% c("s", "t2")) {
         ext_terms[[length(ext_terms) + 1L]] <<- list(
           type = "smoother",
@@ -576,8 +565,7 @@ fb_from_brms <- function(
       }
     }
 
-    # Default: a fixed-effect term -- record its deparse for later
-    # re-parsing through .parse_fixed
+    # Default: a fixed-effect term, re-parsed later by .parse_fixed
     fixed_labels <<- c(fixed_labels, deparse(e))
     invisible()
   }
@@ -594,13 +582,13 @@ fb_from_brms <- function(
 # Translate a single brms RE pair (lhs | rhs) to a parse_formula.R
 # term descriptor.
 #
-# v0.2.6 supported:
+# Supported:
 #   (1 | g)        -> type = "simple"             (random intercept)
 #   (1 || g)       -> type = "simple"             (random intercept)
 #   (x || g)       -> type = "simple_slope_uncor" (intercept + slope,
-#                                                  uncorrelated; the
-#                                                  intercept is implicit
-#                                                  per lme4 / brms semantics)
+#                                                  uncorrelated, with the
+#                                                  intercept implicit as
+#                                                  in lme4 / brms)
 #   (1 + x || g)   -> type = "simple_slope_uncor" (with_intercept = TRUE;
 #                                                  same model as above)
 #   (0 + x || g)   -> type = "simple_slope_uncor" (with_intercept = FALSE;
@@ -645,17 +633,9 @@ fb_from_brms <- function(
 
   # Random intercept: (1 | g) or (1 || g).
   if (is_one(lhs)) {
-    # A grouping *expression* rather than a column. `(1 | g:h)` is the
-    # bar spelling of the ASReml `random = ~ g:h`, and the two surfaces
-    # have to produce the same term descriptor or the structural gates
-    # see two different models: the ASReml spelling was refused by
-    # lgm_gate() with a typed, remedy-naming refusal while the bar
-    # spelling was typed as a simple intercept on a group called "g:h",
-    # passed the gate, and reached the INLA binary, which failed with a
-    # message about the emitted formula rather than the user's model.
-    # The interaction is classified by the same walker the ASReml side
-    # uses, so the descriptors are identical -- including the
-    # numeric-in-a-random-interaction guard `.enrich()` fires.
+    # A grouping expression, not a column. `(1 | g:h)` is the bar
+    # spelling of the ASReml `random = ~ g:h`, so it goes through the
+    # same walker and gets the same descriptor, and the same gates.
     if (is.call(rhs) && identical(rhs[[1L]], as.name(":"))) {
       walked_group <- .walk(rhs)
       if (length(walked_group) == 1L) {
@@ -671,11 +651,9 @@ fb_from_brms <- function(
     return(out)
   }
 
-  # Intercept + slope uncorrelated: (x || g) (bare slope -- the
-  # implicit "+ 1" matches lme4 / brms semantics: see
-  # ?lme4::lFormula -- the bare-slope form is sugar for
-  # (1 | g) + (0 + x | g)). The intercept block is included by
-  # default; explicit 0 + suppresses it (handled below).
+  # Intercept + slope uncorrelated: (x || g). The bare-slope form is
+  # sugar for (1 | g) + (0 + x | g), as in ?lme4::lFormula. An
+  # explicit `0 +` suppresses the intercept (handled below).
   if (isFALSE(cor) && is_simple_var(lhs)) {
     return(.brms_re_to_fb_slope_uncor(
       slope_var = as.character(lhs),
@@ -686,11 +664,10 @@ fb_from_brms <- function(
   }
 
   # `lhs ± slope` forms: (1 + x || g), (0 + x || g), (x + 1 || g).
-  # The `1` token signals the intercept block; the `0` token
-  # suppresses it. Anything else with the same shape (e.g.
-  # (x + z || g) for two slopes) falls through to the generic
-  # "brms_re_unsupported" refusal -- multi-slope (x + z || g) is
-  # queued for a later expansion of the brms ingest layer.
+  # The `1` token signals the intercept block, and the `0` token
+  # suppresses it. Anything else with the same shape, such as
+  # (x + z || g) for two slopes, falls through to the generic
+  # "brms_re_unsupported" refusal.
   is_zero <- function(e) {
     if (
       is.numeric(e) && length(e) == 1L && isTRUE(all.equal(as.numeric(e), 0))
@@ -738,12 +715,10 @@ fb_from_brms <- function(
     }
   }
 
-  # Random slope on a FACTOR: (f | g), (0 + f | g), (f || g). The bar
-  # grammar has no lowering for it, but the ASReml surface of the same
-  # model fits -- `random = ~ us(f):g` for the correlated form and
-  # `random = ~ diag(f):g` for the uncorrelated one -- so the refusal
-  # names that surface verbatim rather than listing bar spellings none of
-  # which expresses the model (field-sweep FS-6 / field finding U1).
+  # Random slope on a factor: (f | g), (0 + f | g), (f || g). The bar
+  # grammar has no lowering for it, so the refusal names the ASReml
+  # spelling that fits: `random = ~ us(f):g` for the correlated form and
+  # `random = ~ diag(f):g` for the uncorrelated one.
   factor_slope <- .brms_factor_slope_var(lhs, data)
   if (!is.na(factor_slope)) {
     return(list(
@@ -763,8 +738,7 @@ fb_from_brms <- function(
   }
 
   # Slope correlated: (x | g) or (1 + x | g). The intercept and the slope
-  # share one 2-by-2 unstructured covariance -- the uncorrelated model with
-  # the correlation freed rather than a different class of model.
+  # share one 2-by-2 unstructured covariance.
   if (isTRUE(cor)) {
     slope_var <- NA_character_
     if (is_simple_var(lhs)) {
@@ -829,12 +803,11 @@ fb_from_brms <- function(
   out
 }
 
-# The correlated random slope `(x | g)`, carried as one term rather than
-# two. The intercept and the slope deviations of a group share a 2-by-2
+# The correlated random slope `(x | g)`, carried as one term. The
+# intercept and the slope deviations of a group share a 2-by-2
 # unstructured covariance: two standard deviations and one correlation.
-# Both engines fit it -- brms as `(x | g)` verbatim, INLA as an iid2d field
-# over a two-block index -- so the IR keeps the fields the uncorrelated
-# sibling uses and adds nothing else.
+# brms fits it as `(x | g)` verbatim, INLA as an iid2d field over a
+# two-block index.
 .brms_re_to_fb_slope_cor <- function(slope_var, group_name, data) {
   out <- list(
     type = "simple_slope_cor",
@@ -856,9 +829,8 @@ fb_from_brms <- function(
 # The factor a bar-grammar random slope is written on, or NA when the
 # left-hand side is not a factor slope. Recognises the bare form (`f`),
 # the intercept-suppressed form (`0 + f`) and the intercept-carrying form
-# (`1 + f`) in either operand order -- all three are unstructured or
-# diagonal per-level effects of the same factor within the grouping
-# factor, and all three have the same ASReml surface.
+# (`1 + f`) in either operand order. All three have the same ASReml
+# spelling.
 .brms_factor_slope_var <- function(lhs, data) {
   is_factor_var <- function(e) {
     if (!is.name(e)) {
@@ -890,11 +862,10 @@ fb_from_brms <- function(
 # the ASReml surface that fits.
 #
 # The correlated form `(f | g)` is one free variance per level of `f`
-# plus the full correlation block between levels -- `us(f):g`. The
+# plus the full correlation block between levels: `us(f):g`. The
 # uncorrelated form `(f || g)` drops the correlations and keeps the
-# per-level variances -- `diag(f):g`. Both fit on brms; both refuse on
-# INLA with the gate's own structured-covariance message, so the refusal
-# says which backend carries them.
+# per-level variances: `diag(f):g`. Both fit on brms. On INLA `diag`
+# fits and `us` refuses, and the message says so.
 .stop_factor_slope_unsupported <- function(
   grouping_factor,
   slope_variable,
@@ -939,7 +910,7 @@ fb_from_brms <- function(
         slope_variable,
         "` within each\n  `",
         grouping_factor,
-        "`, plus the correlations between those levels -- which is what ",
+        "`, plus the correlations between those levels, which is what ",
         "the\n  correlated bar form asks for. Drop the correlations with ",
         "`",
         other,
@@ -955,7 +926,7 @@ fb_from_brms <- function(
         slope_variable,
         "` within each\n  `",
         grouping_factor,
-        "`, with no correlation between levels -- which is what the ",
+        "`, with no correlation between levels, which is what the ",
         "uncorrelated\n  bar form asks for. Add the correlations with `",
         other,
         "`.\n"

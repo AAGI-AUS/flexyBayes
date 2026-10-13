@@ -1,12 +1,8 @@
-# ADR 0025 Stage 5A known-covariance input formats --- Phase A
-# (parser + IR slot + validators + route guard; emit deferred to
-# Phase B). The byte-identical-posterior commitment of ADR 0025
-# §iii is enforced at Phase B against the v0.2 fixture corpus;
-# Phase A holds at IR level (snapshot of .parse_formula output for
-# the dense path) plus structural / shape validator coverage.
+# Known-covariance input formats (ADR 0025): parser, IR slot, validators,
+# route guard and the INLA emit.
 
 # ---------------------------------------------------------------- #
-# (a) Dense V path --- regression guard at IR level.                #
+# (a) Dense V path, at IR level.                                    #
 # ---------------------------------------------------------------- #
 
 test_that("dense vm(geno, V = K) parses to an unchanged IR shape with cov_representation slot", {
@@ -86,13 +82,12 @@ test_that("ped(animal, A_obj, use_sparse_precision = FALSE) stays on dense forma
 })
 
 # ---------------------------------------------------------------- #
-# (k) Mutual-exclusion refusal --- ADR 0025 §8 subtest (k).        #
+# (k) Mutual-exclusion refusal: ADR 0025 §8 subtest (k).          #
 # ---------------------------------------------------------------- #
 
 test_that("vm(geno, V = K, chol = L) refuses with vm_redundant_specification", {
-  # Legacy keyword carriers (deprecated v0.4.0). Quiet the deprecation
-  # warning here; the deprecation itself is asserted in
-  # test-fb-cov-constructor.R.
+  # Legacy keyword carriers, deprecated in v0.4.0. The deprecation is
+  # tested in test-fb-cov-constructor.R.
   dat <- data.frame(geno = factor(1:5))
   err <- tryCatch(
     suppressWarnings(
@@ -137,19 +132,11 @@ test_that("vm(geno, low_rank_factor = F) without low_rank_scheme refuses at pars
 })
 
 test_that("vm(geno, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses with approximate_route_not_yet_registered", {
-  # The low-rank covariance carrier's vocabulary is registered but no
-  # engine has an approximate-covariance fit route wired to it -- see
-  # .check_low_rank_cov_reserved() (R/structured_cov.R). It fires from
-  # new_fb_terms() (R/fb_terms.R), once the full random_terms list is
-  # assembled -- not from bare .parse_formula(), which several other
-  # tests in this file call directly to check parsing/deprecation
-  # behaviour in isolation and which must stay refusal-free. Going
-  # through fb_from_asreml() (the shared ingest entry point both
-  # grammars converge on) means the message is the same regardless of
-  # `backend` (confirmed live for both inla and brms during the 0.9.3
-  # withdrawal -- without this check each engine's own capability gate
-  # refuses the term too, but points at the *other* engine as the
-  # alternative, which is circular here: neither can fit it).
+  # The low-rank carrier is registered, but no engine fits it. The
+  # refusal (.check_low_rank_cov_reserved()) fires from new_fb_terms(),
+  # not from bare .parse_formula(), which other tests here call
+  # directly. Through fb_from_asreml() the message is the same for
+  # every backend.
   dat <- data.frame(y = rnorm(5), geno = factor(1:5))
   err <- tryCatch(
     fb_from_asreml(
@@ -171,8 +158,8 @@ test_that("vm(geno, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses with 
 })
 
 test_that("ped(animal, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses identically", {
-  # Same check, ped() call site -- new_fb_terms() runs
-  # .check_low_rank_cov_reserved() over every vm()/ped() term.
+  # new_fb_terms() runs .check_low_rank_cov_reserved() over every
+  # vm() and ped() term.
   dat <- data.frame(y = rnorm(5), animal = factor(1:5))
   err <- tryCatch(
     fb_from_asreml(
@@ -187,25 +174,10 @@ test_that("ped(animal, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses id
 })
 
 # ---------------------------------------------------------------- #
-# Structural validators, called directly (v0.9.3).                  #
+# Structural validators, called directly.                           #
 # ---------------------------------------------------------------- #
 #
-# Through v0.9.2 these fixtures were run via .setup_env() (the shared
-# environment-builder the withdrawn native engine's emit path used to
-# bind known matrices and derived grouping vectors into a symbolic-
-# graph environment before codegen). setup_env.R was withdrawn
-# entirely at 0.9.3 alongside that emit path (see NEWS.md) -- it had
-# zero callers left in R/ once that engine's codegen was removed. The validators it called
-# (.validate_chol_input(), .validate_precision_input(),
-# .validate_blocks_input(), .check_known_matrix_dim(),
-# .check_known_matrix_dimnames(), .is_lower_triangular()) are NOT
-# orphaned: they are still called directly from R/emit_inla.R and
-# R/fb_cov.R on the active engines' own validation paths. These tests
-# are rewritten to call the validators directly rather than through
-# the deleted wrapper -- same refusal contracts, same reason codes,
-# no more `ev`-binding assertions (there is no successor to "binds the
-# matrix into a shared execution environment"; each active engine
-# reads the raw matrix from `known_matrices` on its own emit path).
+# The validators are called from R/emit_inla.R and R/fb_cov.R.
 
 test_that("chol path: lower-triangular L passes the validator cleanly", {
   L <- diag(5)
@@ -382,18 +354,12 @@ test_that("emit_inla refuses when known_matrices entry shadows a data column", {
 
 # ---------------------------------------------------------------- #
 # ADR 0025 §8 subtest (d): sparse-precision INLA round-trip.        #
-# Verifies the flexyBayes INLA emit path produces a fit that        #
-# matches a direct INLA::inla() reference in structure (random-     #
-# effect count, summary shape, intercept location). flexyBayes      #
-# defaults to the uniform-on-SD prior on the precision             #
-# hyperparameter (represented exactly for INLA via an expression-  #
-# prior); the reference uses INLA's loggamma default. The two      #
-# priors agree on the location-mean for the random effects but      #
-# shrink to slightly different amounts, so the RE-mean tolerance    #
-# is loosened to a sensible band rather than bit-exact. Tightening  #
-# to bit-exact equivalence would require passing matched explicit   #
-# precision priors to both fits, which is a Phase C documentation   #
-# exercise, not a Phase B-inla emit verification.                   #
+# The fit matches a direct INLA::inla() reference in structure:     #
+# random-effect count, summary shape and intercept location.        #
+# flexyBayes puts a uniform-on-SD prior on the precision (an        #
+# expression prior). The reference uses INLA's loggamma default.    #
+# The two shrink the random effects by slightly different amounts,  #
+# so the random-effect mean tolerance is a band, not bit-exact.     #
 # ---------------------------------------------------------------- #
 
 test_that("(d) precision-on-INLA: flexybayes matches direct INLA::inla() reference shape", {
@@ -426,9 +392,8 @@ test_that("(d) precision-on-INLA: flexybayes matches direct INLA::inla() referen
   expect_s3_class(fb_fit, "flexybayes_inla")
   expect_identical(fb_fit$exactness, "exact")
   expect_equal(length(fb_re_means), length(ref_re_means))
-  # Intercept matches at the data-scale precision (both fits see the
-  # same likelihood; the prior difference enters only on the RE
-  # precision hyperparameter, not the fixed-effect mean).
+  # The priors differ only on the random-effect precision, so the
+  # intercept matches at data-scale precision.
   expect_lt(
     abs(
       fb_fit$inla$summary.fixed[1L, "mean"] -
@@ -451,11 +416,8 @@ test_that("(e) BYM2-shape lattice: sparse-precision fit succeeds on INLA", {
   skip_if_not_installed("Matrix")
   set.seed(20260525L)
 
-  # 4x4 rook adjacency -> ICAR precision Q = D - W, perturbed by a
-  # small ridge so Q is positive-definite (proper CAR; the BYM2
-  # use case wraps this with the scaling-precision parameter, but
-  # for the subtest the proper-CAR shape is sufficient to exercise
-  # the generic0 emit + show convergence).
+  # 4x4 rook adjacency gives the ICAR precision Q = D - W. A small
+  # ridge makes Q positive-definite (a proper CAR).
   grid_dim <- 4L
   n_cell <- grid_dim * grid_dim
   coords <- expand.grid(r = seq_len(grid_dim), c = seq_len(grid_dim))
@@ -500,9 +462,8 @@ test_that("(e) BYM2-shape lattice: sparse-precision fit succeeds on INLA", {
 })
 
 # ---------------------------------------------------------------- #
-# v0.3.8 audit Critical Fix #2: known-matrix dim/level alignment,   #
-# called directly against the validators (see the header note      #
-# above -- the wrapper these ran through at v0.3.8 is withdrawn).  #
+# Known-matrix dimension and level alignment, called directly      #
+# against the validators.                                          #
 # ---------------------------------------------------------------- #
 
 test_that("precision validator refuses with known_matrix_dim_mismatch when Q dim != nlevels(geno)", {
@@ -525,7 +486,7 @@ test_that("precision validator refuses with known_matrix_dim_mismatch when Q dim
 
 test_that("precision validator refuses with known_matrix_level_mismatch when Q dimnames are permuted", {
   skip_if_not_installed("Matrix")
-  # geno's levels (1, 2, 3, 4, 5) -- factor default ordering.
+  # geno's levels (1, 2, 3, 4, 5), in factor default order.
   fit_levels <- levels(factor(c("1", "2", "3", "4", "5")))
   Q <- diag(5) + 0.01 * matrix(1, 5, 5)
   # Dimnames are the correct level set, but in reverse order.

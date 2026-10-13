@@ -105,7 +105,9 @@ the models neither engine fits, are in
 
 ## Documentation
 
-The manual is in the package vignettes listed below, and the website at <https://aagi-aus.github.io/flexyBayes/> will not load until GitHub Pages is turned on for the repository.
+The manual is in the package vignettes listed below. The website at
+<https://aagi-aus.github.io/flexyBayes/> will not load until GitHub Pages is
+turned on for the repository.
 
 | Vignette | Content |
 |---|---|

@@ -1,13 +1,13 @@
 # Correlated random slope: (x | g).
 #
-# The model is the uncorrelated slope with the correlation freed -- one
+# The model is the uncorrelated slope with the correlation freed, one
 # intercept SD, one slope SD, and the correlation between them. It is fitted
 # on brms, which writes `(x | g)` verbatim.
 #
-# INLA refuses it by name. The INLA lowering is still in the emitter -- the
+# INLA refuses it by name. The INLA lowering is still in the emitter, the
 # two blocks of deviations as ONE iid2d field over an index laid out
-# intercepts-then-slopes, the slope block a fixed-scaling copy weighted by x
-# -- and its structural tests stay below, but the gate refuses the structure
+# intercepts-then-slopes, the slope block a fixed-scaling copy weighted by x,
+# and its structural tests stay below, but the gate refuses the structure
 # (correlated_covariance_requires_brms): under the joint Wishart prior that
 # field carries, the slope variance on lme4::sleepstudy came back a third
 # above REML's and the correlation moved when the response was rescaled.
@@ -15,7 +15,7 @@
 # The correlation is the whole point of the class, so the recovery test does
 # not stop at "a correlation came back". It checks that a NEGATIVE
 # correlation comes back negative, and it checks the whole triple against
-# lme4's REML fit of the same model -- an oracle this package did not write.
+# lme4's REML fit of the same model, an oracle this package did not write.
 
 .cs_fixture <- function(seed = 2026L, n_g = 60L, n_i = 12L,
                         sd_int = 1.2, sd_slope = 0.6, rho = 0.6,
@@ -52,7 +52,7 @@ test_that("the retained INLA emit is one iid2d field plus a copy", {
                                 collapse = " "))
   # One field of length 2 * n_g: intercepts then slopes.
   expect_match(txt, "f(g_cor_x_id, model = \"iid2d\", n = 24", fixed = TRUE)
-  # The slope block is the SAME field, weighted by x -- a copy, not a
+  # The slope block is the SAME field, weighted by x, a copy, not a
   # second set of deviations.
   expect_match(txt, "f(g_cor_x_slope_id, x, copy = \"g_cor_x_id\")",
                fixed = TRUE)
@@ -104,11 +104,11 @@ test_that("brms recovers a negative correlation and agrees with lme4's REML fit"
     verbose = FALSE,
     mcmc_verbose = FALSE
   )))
-  # `auto` routes the structure to brms rather than refusing it.
+  # `auto` routes the structure to brms instead of refusing it.
   expect_s3_class(fit, "flexybayes_brms")
 
   # brms's own labels: sd_<g>, sd_<g>__<x> and cor_<g>__Intercept__<x>. The
-  # correlation row is the point of the structure; it used to be missing.
+  # correlation row is the point of the structure. It used to be missing.
   v <- summary(fit)$varcomp
   expect_true(all(c("sd_g", "sd_g__x", "cor_g__Intercept__x") %in% v$component))
 

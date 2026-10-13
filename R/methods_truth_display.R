@@ -1,18 +1,17 @@
-# Truth-display helpers --- v0.3.8
+# Truth-display helpers: v0.3.8
 #
 # Shared helpers for print.flexybayes() / summary.flexybayes() /
 # print.flexybayes_aggregated() / summary.flexybayes_aggregated() that
 # render the two adjacent "Representation:" and "Engine:" lines. The
 # split disambiguates representation regime (exact vs aggregated_exact)
-# from inference engine (INLA Laplace vs brms / Stan
-# HMC) --- closes the 2026-05-25 audit Critical Fix #4.
+# from inference engine (INLA Laplace vs brms / Stan HMC).
 #
 # These helpers also back fb_plan()'s engine_label / representation_label
 # slots (see R/fb_plan.R for the plan-side equivalents .engine_label_for()
-# and .representation_label_for() --- the fit-side helpers below take a
+# and .representation_label_for(), the fit-side helpers below take a
 # materialised fit object plus its $extras$backend_decision trace).
 
-# .repr_label_for_fit() --- the Representation: line content.
+# .repr_label_for_fit(): the Representation: line content.
 # Reads $exactness directly (the canonical slot) and
 # attaches the compression ratio for aggregated_exact when N/K >= 2.
 # v0.3.10: blocks-format vm/ped fits surface
@@ -21,7 +20,7 @@
 .repr_label_for_fit <- function(fit, bd) {
   exact <- fit$exactness %||% "exact"
   # Approximate fits
-  # carry a bracketed [APPROX: <scheme>] badge --- the load-bearing,
+  # carry a bracketed [APPROX: <scheme>] badge, the load-bearing,
   # monochrome-friendly visual distinction marking that the fit is not
   # exact. validate_approximation(fit) reports the realised bias bound.
   if (startsWith(exact, "approximate_")) {
@@ -68,9 +67,9 @@
     return("exact (block-diagonal)")
   }
   # The bare label is easy to over-read as "the posterior is exact".
-  # It means the EMIT carries no structural approximation; the
+  # It means the EMIT carries no structural approximation. The
   # inference regime is the Engine: line printed beside it. Say so on
-  # the label itself rather than relying on the one vignette that
+  # the label itself instead of relying on the one vignette that
   # defines the split.
   if (identical(exact, "exact")) {
     cond <- .fb_conditional_translation_note(fit)
@@ -82,17 +81,18 @@
   exact
 }
 
-# .fb_conditional_translation_note() --- the translation caveat for a fit.
+# .fb_conditional_translation_note(): the translation caveat for a fit.
 #
 # The Representation: line reports whether the EMIT carries a structural
 # approximation. A reader takes it for more than that: "exact" reads as "this
 # is the model ASReml would fit". For most terms the two coincide. For a
-# factor-analytic term they do not -- the loadings are anchored to one for
+# factor-analytic term they do not: the loadings are anchored to one for
 # factor j at an anchor level, and that spans the factor-analytic family only
-# where the leading loading block supports the anchoring. The 2026-09-11 audit found FA(1) and FA(2) summaries printing
+# where the leading loading block supports the anchoring. The 2026-09-11
+# audit found FA(1) and FA(2) summaries printing
 # `Representation: exact (model, not inference)` on exactly that lowering.
 #
-# The note is driven by the translation registry rather than written here, so
+# The note is driven by the translation registry instead of written here, so
 # a term whose class changes carries the change onto this line.
 #
 # @noRd
@@ -104,7 +104,7 @@
   }
   # Matched over both qualified classes. The row was `conditional` until
   # 0.13.0 and is `refused` from it, and a lookup pinned to `conditional`
-  # alone went quiet at exactly the moment the qualification got stronger --
+  # alone went quiet at exactly the moment the qualification got stronger,
   # which would have restored the bare `exact` label this note exists to
   # prevent. A fit carrying the term is still reachable through a direct
   # emit_inla() call, as the us() branch is, so the line still has a reader.
@@ -117,7 +117,7 @@
   "anchored fa(); see TRANSLATION.md"
 }
 
-# .engine_label_for_fit() --- the Engine: line content. Maps the
+# .engine_label_for_fit(): the Engine: line content. Maps the
 # backend_decision trace's $backend + $path tuple to a human-readable
 # inference-engine + approximation-regime phrase.
 .engine_label_for_fit <- function(fit, bd) {

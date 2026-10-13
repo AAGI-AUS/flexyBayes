@@ -1,4 +1,4 @@
-# inla_support_audit.R -- Post-fit check that an INLA fit respects the
+# inla_support_audit.R, Post-fit check that an INLA fit respects the
 # bounds of its stated priors.
 #
 # A uniform prior on a standard deviation reaches INLA as an expression prior
@@ -71,7 +71,7 @@
 #' @param rows The non-fixed rows of the prior read-back.
 #' @param theta_names Row names of `internal.summary.hyperpar`.
 #' @param bounded Positions of the rows under a uniform expression prior.
-#' @returns `TRUE`, invisibly; otherwise an internal error.
+#' @returns `TRUE`, invisibly. Otherwise an internal error.
 #' @noRd
 #' @keywords internal
 .fb_inla_support_pairing <- function(rows, theta_names, bounded) {
@@ -112,7 +112,7 @@
 #'   uncorrelated slope's standard deviation is stated in response units per
 #'   covariate unit, so it is reported in those units whatever the engine
 #'   received.
-#' @returns A positive number; 1 when the fit was not standardised.
+#' @returns A positive number. 1 when the fit was not standardised.
 #' @noRd
 #' @keywords internal
 .fb_support_sd_factor <- function(
@@ -141,7 +141,7 @@
 #' @param inla_fit The object `INLA::inla()` returned, before any
 #'   back-transformation from a standardised response.
 #' @param standardisation The response standardisation the fit ran on, or
-#'   `NULL`. It maps only the reported standard deviations; the comparison
+#'   `NULL`. It maps only the reported standard deviations. The comparison
 #'   stays on the scale INLA fitted.
 #' @param covariate The covariate standardisation the fit ran on, or `NULL`.
 #'   It maps the reported standard deviations of the uncorrelated slope
@@ -149,7 +149,7 @@
 #' @returns A data frame with one row per hyperparameter under a bounded
 #'   prior: `parameter`, `lower_sd`, `upper_sd`, `mode_sd`,
 #'   `interval_lower_sd`, `interval_upper_sd` and `inside`. Standard
-#'   deviations are on the scale of the response; the interval is the one
+#'   deviations are on the scale of the response. The interval is the one
 #'   implied by the 2.5 and 97.5 per cent quantiles of the log precision.
 #'   The frame has zero rows when no prior is bounded.
 #' @noRd
@@ -219,8 +219,8 @@
 #' @param audit The data frame `.fb_inla_support_audit()` returned.
 #' @param route The emit route: `"per_row"`, `"aggregated_count"` or
 #'   `"aggregated_gaussian"`.
-#' @returns `audit`, invisibly, when every value lies inside its bound;
-#'   otherwise a `prior_support_violated` refusal.
+#' @returns `audit`, invisibly, when every value lies inside its bound.
+#'   Otherwise a `prior_support_violated` refusal.
 #' @noRd
 #' @keywords internal
 .fb_inla_enforce_support <- function(audit, route) {

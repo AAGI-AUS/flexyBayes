@@ -17,7 +17,7 @@ shape of each.}
 }
 \value{
 For the default \code{what = "fixed"}, a named numeric vector of
-fixed-effect posterior means; otherwise as documented for
+fixed-effect posterior means. Otherwise as documented for
 \code{\link[=coef.flexybayes]{coef.flexybayes()}}.
 }
 \description{
@@ -28,13 +28,13 @@ coefficients consumed by \code{\link[emmeans:emmeans]{emmeans::emmeans()}} and
 }
 \details{
 An INLA fit carries no \verb{$glm} slot, so the fixed vector is read here
-rather than inherited; every other value of \code{what} is resolved by the
+and not inherited. Every other value of \code{what} is resolved by the
 shared body \code{\link[=coef.flexybayes]{coef.flexybayes()}} uses, so the two engines answer the
 same question the same way.
 
 A factor with a non-syntactic level (for example a level containing a
 space, \code{"low N"}) is legalised internally (\code{make.names()}) before the
-INLA emit, so the fit itself never dies on it; this method restores
+INLA emit, so the fit itself never dies on it. This method restores
 the user's own, unlegalised label in the names it returns, as do
 \code{\link[=ranef]{ranef()}}, \code{summary()} and \code{predict(classify = )} on the same fit.
 }

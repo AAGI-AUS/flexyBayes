@@ -1,5 +1,4 @@
-# Tests for fb_engine() -- the inference-engine constructor noun
-# (v0.4.0 Wave 1 Phase 1D).
+# Tests for fb_engine(), the inference-engine constructor noun (v0.4.0).
 
 suppressPackageStartupMessages(library(testthat))
 
@@ -30,7 +29,7 @@ test_that("fb_engine() reports toolchain status from package availability", {
     e$toolchain_status %in%
       c("ready", "requires_install", "unavailable")
   )
-  # brms is a real dependency; status reflects whether it is installed here.
+  # brms is a real dependency. Status reflects whether it is installed here.
   expected <- if (requireNamespace("brms", quietly = TRUE)) {
     "ready"
   } else {
@@ -145,10 +144,10 @@ test_that("fb_engine() opts override the sampler controls on brms", {
   # Structural test (does the draw count match the overridden sampler
   # controls?), not a numeric-agreement one. A 60-draw / chains=1L /
   # unset-seed budget produced a genuine R-hat warning (not just ESS,
-  # which .muffle_ess_warnings() deliberately leaves unmuffled) --
+  # which .muffle_ess_warnings() deliberately leaves unmuffled),
   # chains must stay at 1L for the exact draw-count assertion below,
   # so the fix is a larger, seeded budget that actually converges
-  # rather than widening the muffle pattern.
+  # instead of widening the muffle pattern.
   fit <- suppressMessages(flexybayes(
     fixed = y ~ x,
     data = d,

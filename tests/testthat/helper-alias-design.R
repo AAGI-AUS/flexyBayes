@@ -1,4 +1,4 @@
-# helper-alias-design.R -- a synthetic multi-trial barley design with empty
+# helper-alias-design.R: a synthetic multi-trial barley design with empty
 # cells of VARIETY x NAPPLIED x SEEDRATE, for the aliased-protected-column
 # tests. Every value is simulated.
 #
@@ -11,8 +11,7 @@
 # Varieties and N rates never sown together leave most empty cells. Three
 # cells are lost at every trial that sowed them, so some columns are aliased
 # without being zero. The recorded asreml 4.2 fits of both shapes are in
-# fixtures/asreml_alias_<shape>.rds, written by the evidence script
-# review/units/U-ALIAS_2026-09-24/asreml_alias_oracle.R.
+# fixtures/asreml_alias_<shape>.rds.
 alias_design <- function(shape = c("study", "small"), seed = 20260924L) {
   shape <- match.arg(shape)
   set.seed(seed)

@@ -10,7 +10,7 @@ fb_met_summary(fit, genotype_levels = NULL, environment_levels = NULL)
 \item{fit}{A flexybayes fit.}
 
 \item{genotype_levels, environment_levels}{Optional character labels for
-the inner (genotype) and outer (environment) factors; unused (see
+the inner (genotype) and outer (environment) factors. Unused (see
 Lifecycle).}
 }
 \value{
@@ -23,8 +23,8 @@ quantities a plant breeder acts on: each genotype's overall performance
 (the across-environment mean of its realised effects) and stability (the
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
-realised effects are identified -- invariant to the rotation and sign
-ambiguity of the raw loadings -- so their posterior summaries would be
+realised effects are identified, invariant to the rotation and sign
+ambiguity of the raw loadings, so their posterior summaries would be
 interpretable.
 }
 \section{Lifecycle}{

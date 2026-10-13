@@ -1,10 +1,10 @@
-# Tests for the low_rank_smooth approximation path --- ADR 0030 C5 +
-# ADR 0027 (v0.4.0 Wave 1 Phase 1B). Covers the rank-K PCA truncation
-# engine and the s(x, representation = ...) parse-time interception.
+# Tests for the low_rank_smooth approximation path (v0.4.0).
+# Covers the rank-K PCA truncation engine and the
+# s(x, representation = ...) parse-time interception.
 # The scheme was built for a native engine withdrawn entirely in 0.9.3
 # (see NEWS.md); neither active engine consumes the truncated basis, so
 # the scheme now refuses unconditionally at dispatch
-# (low_rank_smooth_unsupported) rather than routing anywhere -- the
+# (low_rank_smooth_unsupported) instead of routing anywhere, the
 # former codegen-substitution and end-to-end fit + predict sections are
 # removed, since there is no active engine left to emit or fit them.
 # The exact dense smooth path is unchanged --- regression checks
@@ -164,7 +164,7 @@ test_that("parse-time refuses bad rank / unknown scheme / bad spec", {
 # 0.9.3: the scheme was built for a native engine withdrawn entirely
 # (see NEWS.md). Sections (e) "codegen substitutes the truncated
 # basis" and (g) "end-to-end fit + predict projection" from the
-# pre-0.9.3 file are removed here -- both asserted on that engine's own
+# pre-0.9.3 file are removed here, both asserted on that engine's own
 # generated-code text or fit shape, and neither active engine has an
 # emit path for the truncated basis at all (dispatch refuses before
 # either would run). The truncation itself still runs during formula
@@ -172,7 +172,7 @@ test_that("parse-time refuses bad rank / unknown scheme / bad spec", {
 # covers that it is intercepted at parse time, and (a)/(b) cover the
 # truncation engine's own numerics directly.
 
-test_that("low_rank smooth refuses on every backend -- no active engine consumes it", {
+test_that("low_rank smooth refuses on every backend, no active engine consumes it", {
   skip_if_no_mgcv()
   d <- mk_lr_data()
   for (be in c("inla", "brms", "auto")) {

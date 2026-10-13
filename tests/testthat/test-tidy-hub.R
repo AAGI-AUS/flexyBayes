@@ -1,11 +1,11 @@
 # ---------------------------------------------------------------- #
-# Hub tidy() coverage -- the broom-style tidy generic must return    #
+# Hub tidy() coverage: the broom-style tidy generic must return      #
 # the same canonical columns across the backend fit classes the hub  #
 # returns (the bare `flexybayes` method, reached via inheritance by  #
-# any engine with no more specific override -- currently brms; and   #
+# any engine with no more specific override, currently brms, and     #
 # INLA's own `flexybayes_inla`), so a cross-engine table can be       #
-# assembled by rbind() rather than hand-built. The bare-method       #
-# coverage is exercised in test-methods via the mock fit; this file  #
+# assembled by rbind() instead of hand-built. The bare-method        #
+# coverage is exercised in test-methods via the mock fit. This file  #
 # adds the generics-dispatch check and the INLA-class coverage on a  #
 # real (skip-guarded) INLA fit.                                      #
 # ---------------------------------------------------------------- #
@@ -22,7 +22,7 @@
 # so the test does not depend on the make_mock_flexybayes() helper defined
 # inside test-methods.R. It carries just enough of the contract for
 # coef() / vcov() / confint() / variance_comps to drive
-# tidy.flexybayes() -- the bare method, reached via inheritance by any
+# tidy.flexybayes(), the bare method, reached via inheritance by any
 # engine with no more specific override.
 .tidy_hub_mock_bare <- function() {
   glm_obj <- list(coefficients = c("(Intercept)" = 50.1))
@@ -66,7 +66,7 @@ test_that("the tidy generic is re-exported and dispatches by class", {
 test_that("tidy() on a bare-flexybayes fit dispatches via the generic", {
   # conf.int = FALSE: confint.flexybayes() (the bare parent method, which
   # a mock of this class dispatches to) refuses unconditionally with
-  # fit_lacks_posterior_draws -- it no longer reads a draws slot off any
+  # fit_lacks_posterior_draws: it no longer reads a draws slot off any
   # engine, so no hand-built mock can satisfy it. The conf.int = TRUE
   # default path (which a real brms fit reaches via its own
   # confint.flexybayes_brms() override, not this one) is covered on a
@@ -83,7 +83,10 @@ test_that("tidy() on a live brms fit returns the full canonical column set", {
 
   set.seed(12L)
   dat <- data.frame(y = rnorm(30L, 2 + 0.5 * (1:30), 1), x = 1:30)
-  fit <- flexybayes(
+  # The assertions read column names and finite bounds, so the
+  # low-ESS warning of the one-chain 200-draw budget is muffled (see
+  # helper-ess-warnings.R).
+  fit <- .muffle_ess_warnings(flexybayes(
     y ~ x,
     data = dat,
     backend = "brms",
@@ -93,10 +96,10 @@ test_that("tidy() on a live brms fit returns the full canonical column set", {
     seed = 20260427L,
     verbose = FALSE,
     mcmc_verbose = FALSE
-  )
+  ))
 
   # Default conf.int = TRUE dispatches through confint.flexybayes_brms(),
-  # the live override reading actual posterior draws -- the case the
+  # the live override reading actual posterior draws, the case the
   # bare-mock test above cannot exercise.
   td <- tidy(fit)
   expect_true(is.data.frame(td))
@@ -146,7 +149,7 @@ test_that("tidy.flexybayes_inla returns the canonical columns", {
 
 test_that("tidy.flexybayes_inla on an empty fixed-summary returns 0 rows", {
   # A degenerate INLA fit shell with no fixed effects tidies to an empty
-  # but well-typed frame rather than erroring.
+  # but well-typed frame instead of erroring.
   shell <- structure(
     list(inla = list(summary.fixed = NULL)),
     class = c("flexybayes_inla", "list")
@@ -161,9 +164,9 @@ test_that("augment() on an INLA fit refuses with an informative error", {
   # INLA fits (`flexybayes_inla`) support tidy() but not augment(): there
   # is no per-row model frame retained the way a data.frame-shaped
   # .fitted/.resid table needs. The method raises an actionable error
-  # (pointing to tidy() / predict()) rather than dispatching to the bare
+  # (pointing to tidy() / predict()) instead of dispatching to the bare
   # method's implementation, and appears in methods() so dispatch is
-  # explicit rather than a bare "no applicable method".
+  # explicit instead of a bare "no applicable method".
   expect_true(
     "augment.flexybayes_inla" %in% as.character(utils::methods("augment"))
   )
@@ -172,12 +175,12 @@ test_that("augment() on an INLA fit refuses with an informative error", {
   expect_error(generics::augment(shell), "not available for INLA")
 })
 
-test_that("glance() on an INLA fit returns the one-row shape, not a refusal (D15)", {
-  # D15 / WP-D: glance.flexybayes_inla() used to hard-refuse, which
+test_that("glance() on an INLA fit returns the one-row shape, not a refusal", {
+  # glance.flexybayes_inla() used to hard-refuse, which
   # contradicted logLik.flexybayes_inla()'s own stated purpose ("lets
   # downstream summaries (for example glance()) degrade gracefully").
   # It now returns the same 10-column shape glance.flexybayes() does,
-  # with sampler-specific columns NA rather than guessed at -- even on
+  # with sampler-specific columns NA instead of guessed at, even on
   # a bare shell with none of the usual slots populated.
   expect_true(
     "glance.flexybayes_inla" %in% as.character(utils::methods("glance"))
@@ -202,7 +205,7 @@ test_that("glance() on an INLA fit returns the one-row shape, not a refusal (D15
 #
 # `tidy.flexybayes_inla()` had no `effects` argument, so the request was
 # absorbed by `...` and the FIXED-effect table came back under a call that
-# asked for variance components. Not an error -- a wrong answer, on the
+# asked for variance components. Not an error, a wrong answer, on the
 # engine that is the package's default route.
 
 test_that("tidy(effects = 'random') returns variance components on INLA", {
@@ -233,7 +236,7 @@ test_that("tidy(effects = 'random') returns variance components on INLA", {
 
   # Same columns on both requests, per the broom contract.
   expect_true(all(.canonical_tidy_cols %in% names(random)))
-  # And genuinely different rows -- the defect was that they were equal.
+  # And genuinely different rows, the defect was that they were equal.
   expect_false(identical(fixed$term, random$term))
   expect_true("sigma" %in% random$term)
   expect_true("sd_g" %in% random$term)
@@ -244,7 +247,7 @@ test_that("tidy(effects = 'random') returns variance components on INLA", {
   expect_identical(names(tidy(fit, effects = "fixed")), names(fixed))
 })
 
-test_that("an unrecognised effects value stops rather than falling through", {
+test_that("an unrecognised effects value stops instead of falling through", {
   shell <- structure(
     list(inla = list(summary.fixed = NULL)),
     class = c("flexybayes_inla", "flexybayes", "list")
@@ -273,7 +276,7 @@ test_that("tidy(effects = 'random') returns the random-effect rows of an aggrega
     f1 = factor(rep(c("a", "b"), length.out = 500L))
   )
   # A Gaussian model is fitted per row, so the aggregated fit is a Poisson
-  # one, and the premise is asserted rather than skipped on.
+  # one, and the premise is asserted instead of skipped on.
   dat$y <- stats::rpois(500L, 3)
   fit <- suppressMessages(flexybayes(
     y ~ f1 + (1 | g),

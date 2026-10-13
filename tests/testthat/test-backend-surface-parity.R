@@ -1,11 +1,11 @@
-# Regression guards for the 2026-05-31 audit fixes. Each test pins a
-# bug that the audit found and fixed, so a future change that
-# re-introduces it fails here rather than shipping silently.
+# Regression guards for the 2026-05-31 fixes. Each test pins a
+# bug that was found and fixed, so a future change that
+# re-introduces it fails here instead of shipping silently.
 #
 #   1. The canonical draws must put variance components on a common (SD)
-#      scale across brms and INLA -- the INLA precision -> SD transform
+#      scale across brms and INLA, the INLA precision -> SD transform
 #      must fire (was silently no-op: precision compared against SD).
-#   2. plot() must dispatch on every backend fit class -- "effects"
+#   2. plot() must dispatch on every backend fit class, "effects"
 #      works everywhere; MCMC-only types degrade to a message on a
 #      backend that has no draws (was: plot.default crash on INLA).
 #   3. Positional and named prior arguments must parse identically (was:
@@ -15,13 +15,13 @@
 # fitted as Bernoulli) is removed at 0.9.3, not ported: it
 # guarded a data-validation check inside the withdrawn native engine's
 # own emit path (see NEWS.md). Neither active engine has an equivalent
-# pre-flight check today -- a non-binary response with
+# pre-flight check today, a non-binary response with
 # family = "binomial" reaches the engine itself and fails there
 # (brms: an untyped Stan sampling error; INLA: an inla_program_failed
 # engine-death classification, with noisy console output from the INLA
-# binary) rather than being refused cleanly before any backend code
+# binary) instead of being refused cleanly before any backend code
 # runs. This is a pre-existing gap the 0.9.3 withdrawal surfaces
-# rather than causes; adding a pre-flight check for it is a separate
+# instead of causes. Adding a pre-flight check for it is a separate
 # piece of work, out of scope here.
 
 silence_notes <- function() {
@@ -61,10 +61,10 @@ test_that("as_draws_df() puts INLA variance components on the SD scale, not prec
   d <- data.frame(y, x, g)
 
   # Quantitative test (checks the transformed posterior mean's scale
-  # against a numeric threshold, not just structure) -- the original
-  # 400-draw budget left a residual low-ESS warning; raised (with a
+  # against a numeric threshold, not just structure), the original
+  # 400-draw budget left a residual low-ESS warning. Raised (with a
   # pinned seed + higher adapt_delta) until the fit converges cleanly,
-  # per policy, rather than muffled.
+  # per policy, instead of muffled.
   fb_fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
@@ -97,7 +97,7 @@ test_that("as_draws_df() puts INLA variance components on the SD scale, not prec
   sdg_b <- mean(as.numeric(draws_b[["sd_g"]]))
 
   # INLA side (b) must be on the SD scale: residual SD near 2,
-  # group SD near 1.5 -- well above the precision-scale values they
+  # group SD near 1.5, well above the precision-scale values they
   # would collapse to if the transform failed.
   expect_gt(sig_b, 1.0)
   expect_gt(sdg_b, 0.8)
@@ -134,7 +134,7 @@ test_that("plot() dispatches on an INLA fit: effects + residuals render, MCMC-on
   # Until 0.9.0 this assertion read expect_false(inherits(fi, "flexybayes")):
   # the INLA fit deliberately stood outside the parent class, which forced a
   # parallel S3 method for every generic and sent the five generics with no
-  # INLA sibling to stats::*.default. The parent is now shared -- see
+  # INLA sibling to stats::*.default. The parent is now shared, see
   # test-class-graph.R for what each of those five does on an INLA fit.
   expect_s3_class(fi, "flexybayes_inla")
   expect_true(inherits(fi, "flexybayes"))
@@ -144,18 +144,18 @@ test_that("plot() dispatches on an INLA fit: effects + residuals render, MCMC-on
 
   # The forest plot reads coef() / confint(). Before the parent was shared,
   # confint() on an INLA fit fell through to stats::confint.default, which
-  # built a normal approximation from vcov(); it now reads INLA's own
+  # built a normal approximation from vcov(). It now reads INLA's own
   # marginal quantiles via confint.flexybayes_inla().
   expect_no_error(plot(fi, type = "effects"))
 
   # The residual plot reads fitted() / residuals(), which the INLA fit now
   # exposes (fitted.flexybayes_inla / residuals.flexybayes_inla, added
   # 2026-06-02 after the corner-to-corner stress run found they silently
-  # returned NULL) -- so it renders rather than degrading.
+  # returned NULL), so it renders instead of degrading.
   expect_no_error(plot(fi, type = "residuals"))
 
   # Trace / diagnostics plots genuinely need MCMC draws the INLA (Laplace)
-  # fit does not have -- they must message, never crash to plot.default.
+  # fit does not have, they must message, never crash to plot.default.
   expect_message(plot(fi, type = "diagnostics"), "not available")
 })
 

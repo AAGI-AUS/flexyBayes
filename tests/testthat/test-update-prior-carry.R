@@ -5,8 +5,8 @@
 # supplies neither a `prior` nor a `prior_vc_sd`. update() re-issues the
 # recorded `prior_vc_sd`, so the gate saw an argument that was present and
 # the default never fired on a re-fit: the model fell through to the legacy
-# scalar bridge and the engine's own hyperprior. An identity update() --
-# nothing changed -- therefore returned a different model, and said so
+# scalar bridge and the engine's own hyperprior. An identity update(),
+# with nothing changed, therefore returned a different model, and said so
 # nowhere. Measured before the repair, on the fixture below:
 #
 #   route                 sd component   original   identity update()
@@ -18,7 +18,7 @@
 # before and `engine default` after.
 #
 # The repair re-issues the resolved prior the fit carries
-# (`fit$extras$fb_terms$priors`) rather than inferring the default's
+# (`fit$extras$fb_terms$priors`) instead of inferring the default's
 # applicability from argument missingness. These tests hold the three
 # active routes to the invariant, and hold the two override spellings to
 # outranking the record.
@@ -50,6 +50,8 @@ suppressPackageStartupMessages(library(testthat))
     flexyBayes.silence_uniform_inla_approx = TRUE,
     flexyBayes.silence_auto_fallback_note = TRUE,
     flexyBayes.silence_auto_inla_missing_note = TRUE,
+    # Six blocks and four sites leave sd_Block and sd_Site weakly identified.
+    flexyBayes.silence_weak_identification_warning = TRUE,
     .local_envir = parent.frame()
   )
 }
@@ -63,7 +65,7 @@ suppressPackageStartupMessages(library(testthat))
 }
 
 # The variance components as a named vector, so the two fits are compared
-# component by name rather than by row position.
+# component by name instead of by row position.
 .upc_varcomp <- function(sm) {
   stats::setNames(sm$varcomp$estimate, sm$varcomp$component)
 }
@@ -109,7 +111,7 @@ test_that("an identity update() on a per-row INLA fit keeps its prior", {
   # The band is set well inside the defect it guards and outside the
   # engine's own reproducibility. Two runs of the same INLA model on this
   # machine have differed in the third decimal of sd_Block (2.2779 against
-  # 2.2837, a quarter of a per cent), while the defect halved it -- 2.2785
+  # 2.2837, a quarter of a per cent), while the defect halved it, 2.2785
   # to 1.1443.
   v0 <- .upc_varcomp(sm0)
   v1 <- .upc_varcomp(sm1)
@@ -133,7 +135,7 @@ test_that("an identity update() on an aggregated fit keeps its prior", {
     y ~ Trt, random = ~Block, data = d, family = "poisson",
     verbose = FALSE, mcmc_verbose = FALSE
   ))
-  # The premise, asserted rather than assumed: this is the aggregated
+  # The premise, asserted instead of assumed: this is the aggregated
   # representation, which returns the same unified summary object as
   # every other route.
   expect_s3_class(fit, "flexybayes_aggregated")
@@ -221,7 +223,7 @@ test_that("a user fb_prior() is the prior the re-fit runs under", {
   # The bound sits clear of the posterior mass, reported interval included.
   # A uniform whose upper bound cuts into it (upper = 3 against an sd_Block
   # near 2.27) makes the inla binary abort, and at upper = 6 INLA's interval
-  # for Block reaches 6.05, which the support audit refuses (8 of 8
+  # for Block reaches 6.05, which the support check refuses (8 of 8
   # repeats). Neither is what this file is measuring.
   priors <- fb_prior(
     sigma ~ uniform(lower = 0, upper = 20),
@@ -326,8 +328,8 @@ test_that("a fit carrying no prior record re-fits as it did before", {
     y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
     verbose = FALSE, mcmc_verbose = FALSE
   ))
-  # A pre-IR object: the record the repair reads is simply absent, and
-  # the re-fit falls back to the recorded scalars rather than refusing.
+  # A pre-IR object: the record the repair reads is absent, and
+  # the re-fit falls back to the recorded scalars instead of refusing.
   fit$extras$fb_terms$priors <- NULL
   # Which prior scalars the call wrote is recorded later still.
   fit$extras$fb_terms$prior_scalars <- NULL
@@ -348,8 +350,8 @@ test_that("a fit carrying no prior record re-fits as it did before", {
 # An update() that ADDS a random term exposes the difference between the
 # two things the prior record can hold. Carrying the auto-default's
 # object re-applies yesterday's output to today's model, and the added
-# term falls to the engine while its siblings keep the default --
-# a mixed state in one table, visible on the vignette's own first page.
+# term falls to the engine while its siblings keep the default.
+# That is a mixed state in one table, visible on the vignette's own first page.
 # The auto-default is a policy, so it is re-fired over the updated model
 # instead. A user's fb_prior() names its terms and is carried verbatim,
 # and a term it never named keeps following the engine, which is what it

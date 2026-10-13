@@ -19,7 +19,7 @@
 #                          G = R_row(rho_row) (x) R_col(rho_col)
 #   at(t):ar1(r):ar1(c)    Z the indicator of the trial's lattice node,
 #                          G = I_trial (x) R_row(rho_row) (x) R_col(rho_col)
-#   vm(g, K), ped(g, A)    Z the indicator of g, G the known covariance; a
+#   vm(g, K), ped(g, A)    Z the indicator of g, G the known covariance. A
 #                          precision carrier is inverted
 #
 # The residual is independent units, or dsum(~ units | f) with one variance
@@ -66,7 +66,7 @@
 #'   data, or of `fit` when it is an `fb_marginal_cov` object. `NULL` (the
 #'   default) covers every row.
 #' @param variances `TRUE` (the default) to use the fit's own variance
-#'   components; `FALSE` for the structure alone, with every variance `NA`;
+#'   components, `FALSE` for the structure alone, with every variance `NA`.
 #'   or a list with `residual` (the residual variance, or one per section
 #'   named by level), `terms` (a variance per block, named by block) and,
 #'   for an AR1 x AR1 field, `rho` (a list of `c(row = , col = )` named by
@@ -148,7 +148,7 @@ fb_marginal_cov <- function(fit, rows = NULL, variances = TRUE) {
 #' @rdname fb_marginal_cov
 #' @param x An `fb_marginal_cov` object.
 #' @param cols Integer positions of the columns, for a cross-covariance
-#'   between two sets of rows; defaults to `rows`.
+#'   between two sets of rows. Defaults to `rows`.
 #' @param ... Unused.
 #' @export
 as.matrix.fb_marginal_cov <- function(x, rows = NULL, cols = rows, ...) {
@@ -223,7 +223,7 @@ print.fb_marginal_cov <- function(x, ...) {
 
 # --- the structure ------------------------------------------------------- #
 
-# .fb_marginal_cov_structure() --- the blocks, residual and grouping of a
+# .fb_marginal_cov_structure(): the blocks, residual and grouping of a
 # fit, every variance NA.
 .fb_marginal_cov_structure <- function(fit) {
   fb <- fit$fb %||% fit$extras$fb_terms
@@ -298,7 +298,7 @@ print.fb_marginal_cov <- function(x, ...) {
   )
 }
 
-# .fb_marginal_cov_groups() --- the grouping V is block-diagonal over.
+# .fb_marginal_cov_groups(): the grouping V is block-diagonal over.
 .fb_marginal_cov_groups <- function(blocks, frame, known_covariance) {
   if (!is.null(known_covariance) &&
         any(known_covariance[upper.tri(known_covariance)] != 0)) {
@@ -318,7 +318,7 @@ print.fb_marginal_cov <- function(x, ...) {
   )
 }
 
-# .fb_marginal_cov_subset() --- the object over some of its rows.
+# .fb_marginal_cov_subset(): the object over some of its rows.
 .fb_marginal_cov_subset <- function(x, rows) {
   rows <- .fb_marginal_cov_positions(x, rows, "rows")
   pick <- function(v) if (is.null(v)) NULL else v[rows]
@@ -341,7 +341,7 @@ print.fb_marginal_cov <- function(x, ...) {
   x
 }
 
-# .fb_marginal_cov_positions() --- `rows` checked against the object.
+# .fb_marginal_cov_positions(): `rows` checked against the object.
 .fb_marginal_cov_positions <- function(x, rows, what) {
   if (is.null(rows)) {
     return(seq_len(x$n))
@@ -359,7 +359,7 @@ print.fb_marginal_cov <- function(x, ...) {
 
 # --- the variances ------------------------------------------------------- #
 
-# .fb_marginal_cov_read() --- the residual and every block's variance at its
+# .fb_marginal_cov_read(): the residual and every block's variance at its
 # posterior mean, and an AR1 x AR1 field's correlations at theirs.
 .fb_marginal_cov_read <- function(fit, x) {
   vc <- summary(fit)$varcomp
@@ -419,7 +419,7 @@ print.fb_marginal_cov <- function(x, ...) {
   list(residual = residual, terms = terms, rho = rho, varcomp = vc)
 }
 
-# .fb_marginal_cov_at() --- the object at the given variances, or with every
+# .fb_marginal_cov_at(): the object at the given variances, or with every
 # variance NA when `v` is NULL.
 .fb_marginal_cov_at <- function(x, v) {
   if (is.null(v)) {
@@ -484,7 +484,7 @@ print.fb_marginal_cov <- function(x, ...) {
 
 # --- assembly ------------------------------------------------------------ #
 
-# .fb_marginal_cov_residual() --- the residual's diagonal over some rows.
+# .fb_marginal_cov_residual(): the residual's diagonal over some rows.
 .fb_marginal_cov_residual <- function(x, rows) {
   r <- x$residual
   out <- if (is.null(r$by)) {
@@ -501,7 +501,7 @@ print.fb_marginal_cov <- function(x, ...) {
   out
 }
 
-# .fb_marginal_cov_loading() --- Z G Z' of one block between two row sets.
+# .fb_marginal_cov_loading(). Z G Z' of one block between two row sets.
 .fb_marginal_cov_loading <- function(b, rows, cols) {
   type <- b$structure$type %||% "identity"
   if (identical(type, "ar1xar1")) {
@@ -519,12 +519,12 @@ print.fb_marginal_cov <- function(x, ...) {
   }
 }
 
-# .fb_ar1_correlation() --- the AR1 correlation matrix over n ordered levels.
+# .fb_ar1_correlation(): the AR1 correlation matrix over n ordered levels.
 .fb_ar1_correlation <- function(n, rho) {
   rho^abs(outer(seq_len(n), seq_len(n), "-"))
 }
 
-# .fb_sel_ar1_field_correlation() --- the correlation of a per-trial
+# .fb_sel_ar1_field_correlation(): the correlation of a per-trial
 # AR1 x AR1 field between two sets of rows: zero across trials.
 .fb_sel_ar1_field_correlation <- function(slot, rho, rows_a, rows_b) {
   n_row <- slot$structure$n_row
@@ -547,14 +547,14 @@ print.fb_marginal_cov <- function(x, ...) {
 
 # --- the blocks, slot by slot -------------------------------------------- #
 
-# .fb_sel_level_index() --- a grouping column as integer levels, built as the
+# .fb_sel_level_index(): a grouping column as integer levels, built as the
 # emitters build their indices: `factor()` of the column.
 .fb_sel_level_index <- function(x) {
   f <- factor(x)
   list(index = as.integer(f), levels = levels(f))
 }
 
-# .fb_sel_cov_slot() --- one variance's structure. `components` are the names
+# .fb_sel_cov_slot(): one variance's structure. `components` are the names
 # the variance may carry in a fit's variance-component table: the INLA and
 # brms spellings differ for a slope and for a known-covariance term.
 .fb_sel_cov_slot <- function(name,
@@ -579,7 +579,7 @@ print.fb_marginal_cov <- function(x, ...) {
   )
 }
 
-# .fb_sel_cov_slots() --- the model's random structure as slots, or a refusal
+# .fb_sel_cov_slots(): the model's random structure as slots, or a refusal
 # naming every term, random or residual, that is not built.
 .fb_sel_cov_slots <- function(fb, data, known_matrices = list()) {
   residual <- fb$residual_terms %||% list()
@@ -800,7 +800,7 @@ print.fb_marginal_cov <- function(x, ...) {
 
 # --- the blocks V is diagonal over ----------------------------------------- #
 
-# .fb_sel_cov_block_structure() --- the grouping column every slot nests
+# .fb_sel_cov_block_structure(): the grouping column every slot nests
 # within, with the most blocks among those that qualify, or the reason there
 # is none. A slot with a structure matrix and no key links rows across every
 # level of its index, so it admits no grouping.

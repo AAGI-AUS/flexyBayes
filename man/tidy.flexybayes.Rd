@@ -26,7 +26,7 @@ intervals. Defaults to \code{0.95}.}
 population-level (fixed) coefficients or \code{"random"} for the
 variance-component summary. Defaults to \code{"fixed"}.}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 A \code{data.frame} with one row per term and columns:
@@ -50,14 +50,14 @@ against the \code{tidy()} generic (re-exported by \code{broom}), so
 }
 \details{
 This is the supported accessor for cross-engine summaries. The hub returns
-backend-specific objects -- \code{flexybayes_brms} (brms) and
-\code{flexybayes_inla} (INLA) -- whose internal layouts differ. Tidying
+backend-specific objects, \code{flexybayes_brms} (brms) and
+\code{flexybayes_inla} (INLA), whose internal layouts differ. Tidying
 through this generic yields the same columns across both, so a
 brms-versus-INLA comparison table can be assembled by \code{rbind}-ing two
-\code{tidy()} outputs rather than reaching into each backend's slots by hand.
+\code{tidy()} outputs instead of reaching into each backend's slots by hand.
 
 The credible intervals are posterior quantile-based intervals, not
-frequentist confidence intervals; they are reported in the
+frequentist confidence intervals. They are reported in the
 \code{broom}-canonical \code{conf.low} / \code{conf.high} columns. The \code{std.error} column
 carries the posterior standard deviation of each term, again under the
 \code{broom}-canonical (dotless to the user, dotted in the column name) label.

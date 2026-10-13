@@ -20,7 +20,7 @@ vignette: >
 <dl>
 <dt>The problem</dt>
 <dd>The fit is done. Getting the numbers out, comparing two models, and
-checking that the answer is a property of the data rather than of the
+checking that the answer is a property of the data and not of the
 engine.</dd>
 <dt>In ASReml</dt>
 <dd><code>summary()</code>, <code>predict()</code>, <code>wald()</code>,
@@ -32,7 +32,7 @@ and a change in REML log-likelihood.</dd>
 <dd>Any function of the parameters is computed on the draws. And with
 two engines, a check no single fit can perform on itself.</dd>
 <dt>What it costs</dt>
-<dd>Model comparison is predictive rather than a test, and it needs a
+<dd>Model comparison is predictive, not a test, and it needs a
 sampled fit.</dd>
 </dl>
 </div>
@@ -63,7 +63,7 @@ tidy(fit, effects = "random")
 #> 2 sd_gen 0.3910171 0.07876814 0.2625308 0.5705438
 ```
 
-`ranef()` gives the random-effect predictions -- REML's BLUPs, with
+`ranef()` gives the random-effect predictions (REML's BLUPs) with
 intervals.
 
 
@@ -88,7 +88,7 @@ glance(fit)
 
 # 2. Anything that is a function of the parameters
 
-This is where a posterior is simply more convenient than a point
+This is where a posterior is more convenient than a point
 estimate. `fb_as_draws_simple()` returns the draws as a named list, and
 any derived quantity is computed on them directly.
 
@@ -99,8 +99,8 @@ names(d)[1:4]
 #> [1] "Predictor:1" "Predictor:2" "Predictor:3" "Predictor:4"
 ```
 
-A ratio, a difference, a probability -- each is one line, and each
-arrives with its own uncertainty rather than needing a delta-method
+A ratio, a difference, a probability: each is one line, and each
+arrives with its own uncertainty and needs no delta-method
 approximation.
 
 # 3. Comparing two models
@@ -109,7 +109,7 @@ Model comparison under a posterior is predictive: which model would
 better predict a new observation. `loo::loo()` estimates that by
 approximate leave-one-out cross-validation. It needs pointwise
 likelihoods, so it needs a sampled fit. flexyBayes registers a method on
-`loo`'s generic rather than exporting one of its own, so the call is
+`loo`'s generic and exports none of its own, so the call is
 qualified or `library(loo)` is attached first.
 
 
@@ -187,7 +187,7 @@ table(tri$metrics$verdict)
 
 Three gates run before any comparison. A **fingerprint** gate refuses to
 compare fits of different models, data or priors. A **diagnostics** gate
-returns `inconclusive` rather than a verdict when either fit has not
+returns `inconclusive` instead of a verdict when either fit has not
 converged. A **matched-prior** gate marks a parameter `not_compared`
 when the two fits did not use the same prior for it.
 
@@ -200,8 +200,8 @@ tri$metrics[tri$metrics$verdict != "concordant",
 #> 11 sd_gen 0.3880369 0.3953745 0.9158931 discordant
 ```
 
-Where the two disagree here it is on `sd_ratio` -- the ratio of posterior
-widths -- not on location. INLA's approximation reports a narrower
+Where the two disagree here it is on `sd_ratio`, the ratio of posterior
+widths, not on location. INLA's approximation reports a narrower
 posterior for the variance components than the sampler does. Both fits
 report clean convergence on their own; only the comparison shows it.
 
@@ -214,8 +214,8 @@ and that is worth knowing before the number goes into a paper.
 A fit works with the standard ecosystem: `emmeans` for estimated
 marginal means, `marginaleffects` for contrasts and predictions,
 `bayesplot` and `posterior` for draws, `loo` for comparison. Where a
-method has no meaning on an engine it says so rather than returning
-something misleading -- `augment()` on an INLA fit refuses by name,
+method has no meaning on an engine it says so instead of returning
+something misleading: `augment()` on an INLA fit refuses by name,
 because there is no retained per-row model frame to append fitted values
 to.
 

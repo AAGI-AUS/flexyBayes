@@ -1,17 +1,17 @@
 # =============================================================================
 # stress_corner_to_corner.R
 #
-# EXTRA PROBE -- NOT RELEASE EVIDENCE. `tools/execution_grid.R` is the F28
-# instrument (recipe 62); this script is not, and must never be offered in
+# EXTRA PROBE: NOT RELEASE EVIDENCE. `tools/execution_grid.R` is the release-evidence
+# instrument; this script is not, and must never be offered in
 # its place. Five differences decide that, and all five matter: this
-# harness runs under `pkgload::load_all()` rather than against an
+# harness runs under `pkgload::load_all()` instead of against an
 # installed build, it probes inputs chosen BECAUSE they were known to
 # refuse, its cases are not derived from the claim surface, it banks no
 # per-cell ledger, and it is wired to no gate. Seventeen live misses
 # survived it in the 0.9.1 field engagement while it reported clean.
 #
-# It is kept because it carries cases the grid does not -- the
-# post-fit / ecosystem surface, streaming, and predict variants -- and
+# It is kept because it carries cases the grid does not (the
+# post-fit / ecosystem surface, streaming, and predict variants) and
 # those cases should migrate into the grid over time. Run it as an extra
 # probe when that surface is touched; read its output as a hint, never as
 # a claim.
@@ -108,13 +108,13 @@ probe_ok <- function(id, area, expr, check = NULL) {
 }
 
 # =============================================================================
-# AREA 1 -- REFUSAL CONTRACT (adversarial: must refuse loudly)
+# AREA 1: REFUSAL CONTRACT (adversarial: must refuse loudly)
 # =============================================================================
 message("\n==== AREA 1: refusal contract (adversarial) ====")
 d_g <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
 d_bin <- data.frame(y = rbinom(60, 1, .5), x = rnorm(60), g = factor(rep(1:6, 10)))
 
-# -- family gate
+# Family gate
 probe_refuse("refuse.family.survival", "family",
   flexybayes(y ~ x, data = d_g, family = "coxph", backend = "inla"),
   class = "flexybayes_refusal_unsupported_family")
@@ -122,7 +122,7 @@ probe_refuse("refuse.family.weibull", "family",
   flexybayes(y ~ x, data = d_g, family = "weibull", backend = "inla"),
   class = "flexybayes_refusal_unsupported_family")
 
-# -- formula / parse
+# Formula and parse
 probe_refuse("refuse.formula.onesided", "parse",
   flexybayes(~ x, data = d_g, backend = "inla"),
   class = "flexybayes_refusal_formula_not_two_sided")
@@ -139,12 +139,12 @@ probe_refuse("refuse.smooth.var_missing", "parse",
   flexybayes(y ~ s(nope), data = d_g, backend = "inla"),
   class = "flexybayes_refusal_smooth_variable_not_in_data")
 
-# -- entry-point flag guards
+# Entry-point flag guards
 probe_refuse("refuse.flags.mutually_exclusive", "entry",
   flexybayes(y ~ x, data = d_g, return_code = TRUE, review_code = TRUE),
   class = "flexybayes_refusal_code_flags_mutually_exclusive")
 
-# -- structured covariance carriers
+# Structured covariance carriers
 A_bad <- matrix(c(1, 0.9, 0.2, 0.9), 2, 2)   # non-symmetric
 probe_refuse("refuse.cov.type_unknown", "structured_cov",
   fb_cov(diag(3), type = "wishart"))
@@ -161,7 +161,7 @@ if (HAS_INLA)
               known_matrices = list(Q = A_bad), data = dpc) },
     class = "flexybayes_refusal_precision_not_symmetric")
 
-# -- spec helpers
+# Spec helpers
 probe_refuse("refuse.prior.onesided", "spec",
   fb_prior(~ normal(0, 1)))
 # NB: a bare symbol LHS (e.g. `b ~ ...`) is a documented coefficient-name
@@ -175,7 +175,7 @@ probe_refuse("refuse.engine.unknown", "spec",
 probe_refuse("refuse.approx.unknown_scheme", "spec",
   fb_approx("magic_basis"))
 
-# -- backend-capability conflicts
+# Backend-capability conflicts
 probe_refuse("refuse.brms.structured_cov", "dispatch",
   fb_brms(y ~ vm(g), data = d_g))
 probe_refuse("refuse.inla.us_random", "dispatch",
@@ -184,7 +184,7 @@ probe_refuse("refuse.inla.at_units_residual", "dispatch",
   fb_inla(y ~ x, random = ~ g, residual = ~ at(g):units, data = d_g))
 
 # =============================================================================
-# AREA 2 -- SUSPECTED SILENT-FAILURE PROBES (verify empirically)
+# AREA 2: SUSPECTED SILENT-FAILURE PROBES (verify empirically)
 # =============================================================================
 message("\n==== AREA 2: suspected silent-failure paths ====")
 
@@ -237,9 +237,9 @@ if (HAS_INLA) {
 } else .rec("probe.negbinom.family_label", "silent_failure", "probe", "SKIP", "INLA absent")
 
 # (2c) unknown function in formula. A real FIT errors loudly (the unknown
-#      function is passed through and the backend cannot find it) -- so it is
+#      function is passed through and the backend cannot find it), so it is
 #      NON-silent, which is the contract. NOTE (documented in the report): the
-#      error is a leaked backend message rather than a clean parse-time refusal,
+#      error is a leaked backend message instead of a clean parse-time refusal,
 #      and `plan = TRUE` does not catch it (it does not evaluate the term). A
 #      parse-time guard is deferred because it cannot be added without risking
 #      legitimate transforms (log(), I(), poly(), factor()).
@@ -248,14 +248,13 @@ if (HAS_INLA)
     fb_inla(y ~ mysmooth(x), data = d_g))
 
 # (2d) non-binary "binomial": the withdrawn engine used to preflight-
-# refuse this rather than silently fit Bernoulli (see NEWS.md). Neither
-# active engine has a successor preflight check -- both fail inside the
+# refuse this instead of silently fit Bernoulli (see NEWS.md). Neither
+# active engine has a successor preflight check, both fail inside the
 # engine with an untyped error instead of a clean refusal (a genuine
-# capability gap, not a residue item; noted in the WP-G2 report rather
-# than probed here as if a check existed).
+# capability gap, not probed here as if a check existed).
 
 # =============================================================================
-# AREA 3 -- CROSS-BACKEND FITS
+# AREA 3: CROSS-BACKEND FITS
 # =============================================================================
 message("\n==== AREA 3: cross-backend fits ====")
 set.seed(101L)
@@ -286,10 +285,10 @@ if (HAS_INLA) probe_ok("fit.inla.mixed", "fit",
   fb_inla(y ~ x + (1 | g), data = d_mix))
 
 # =============================================================================
-# AREA 4 -- POST-FIT + ECOSYSTEM SURFACE (on a real fit)
+# AREA 4: POST-FIT + ECOSYSTEM SURFACE (on a real fit)
 # =============================================================================
 message("\n==== AREA 4: post-fit + ecosystem surface ====")
-# Standard S3 surface -- exercise on the INLA fit (fast, and the surface that
+# Standard S3 surface: exercise on the INLA fit (fast, and the surface that
 # carried the fitted()/residuals() silent-NULL bug now fixed).
 pf <- if (!is.null(fit_i)) fit_i else if (!is.null(fit_b)) fit_b else NULL
 pf_n <- if (!is.null(fit_i)) 80L else 80L  # both fit on d_lin (n = 80)
@@ -318,7 +317,7 @@ if (!is.null(pf)) {
 
 # Broom tidiers + emmeans/marginaleffects need a fit that carries full
 # posterior draws; brms is the draws-carrying backend post-0.9.3 (see
-# NEWS.md). Exercise them there rather than on the INLA fit's Laplace
+# NEWS.md). Exercise them there instead of on the INLA fit's Laplace
 # summary.
 gf <- fit_b
 if (!is.null(gf)) {
@@ -330,10 +329,10 @@ if (!is.null(gf)) {
     probe_ok("eco.marginaleffects", "ecosystem",
              marginaleffects::avg_slopes(gf))
 } else .rec("eco.surface", "ecosystem", "success", "SKIP",
-            "brms off -- tidiers/ecosystem need a draws-carrying fit")
+            "brms off: tidiers/ecosystem need a draws-carrying fit")
 
 # =============================================================================
-# AREA 5 -- STREAMING + AGGREGATION
+# AREA 5: STREAMING + AGGREGATION
 # =============================================================================
 message("\n==== AREA 5: streaming + aggregation ====")
 if (HAS_INLA) {
@@ -380,7 +379,7 @@ if (HAS_INLA) {
 } else .rec("stream.area", "streaming", "success", "SKIP", "INLA absent")
 
 # =============================================================================
-# AREA 6 -- PREDICT VARIANTS (brms-backed; needs draws)
+# AREA 6: PREDICT VARIANTS (brms-backed; needs draws)
 # =============================================================================
 # (0.9.3: the file-output, chunked-read, and allow_new_levels = "refuse" /
 # "population" predict variants exercised here before the withdrawal were
@@ -388,10 +387,10 @@ if (HAS_INLA) {
 # alongside it (see NEWS.md). Confirmed dead on both surviving engines via
 # formals(predict.flexybayes_brms) / formals(predict.flexybayes_inla):
 # neither names output_file, chunk_size, or allow_new_levels, so passing
-# them is silently swallowed into ... rather than acted on or refused --
+# them is silently swallowed into ... instead of acted on or refused,
 # re-probing them here would report PASS without exercising anything.
-# Only the three variants both methods genuinely implement -- newdata,
-# se.fit, type -- remain.)
+# Only the three variants both methods genuinely implement (newdata,
+# se.fit, type) remain.)
 message("\n==== AREA 6: predict variants ====")
 if (RUN_BRMS && !is.null(fit_b)) {
   nd <- data.frame(x = rnorm(20))
@@ -422,7 +421,7 @@ n_skip <- sum(df$status == "SKIP")
 # markdown report
 con <- file("tools/stress_results/stress_corner_to_corner_report.md", "w")
 writeLines(c(
-  "# flexyBayes -- corner-to-corner stress run",
+  "# flexyBayes: corner-to-corner stress run",
   "",
   sprintf("Probes: **%d** | PASS **%d** | ANOMALY **%d** | SKIP **%d**",
           nrow(df), n_pass, n_anom, n_skip),

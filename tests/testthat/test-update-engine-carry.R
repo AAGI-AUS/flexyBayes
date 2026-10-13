@@ -1,31 +1,16 @@
 # =============================================================================
 # The engine and the representation a re-fit comes back on.
 #
-# update() re-issues the recorded call, and until 0.9.1 the record held
-# neither the engine the call asked for nor the representation it ran
-# under. Both therefore came back as the formal defaults -- backend =
-# "auto", aggregate = "auto" -- so an identity update() of a Stan fit
-# returned an aggregated INLA fit: a different inference engine and a
-# different representation, under the same name and with nothing said.
+# update() re-issues the recorded call, which carries the requested engine
+# (`backend`) and representation (`aggregate`). Without them an identity
+# update() of a Stan fit would come back as an aggregated INLA fit.
 #
-# Five identity re-fits are held here, one per route, plus the override.
-# What is recorded is the REQUEST ("auto"), not the engine the request
-# resolved to: the recorded value is a policy, and a re-fit whose model
-# has changed has to be free to route the changed model.
+# Five identity re-fits, one per route, plus the override. The record holds
+# the request ("auto"), not the engine it resolved to, so a changed model
+# is routed afresh. `verbose` is recorded but not carried.
 #
-# `verbose` is recorded beside those two and deliberately not carried.
-# The cut is what the argument can get wrong: a silently switched engine
-# is a different answer under the same name, while a banner printed where
-# the first fit printed none is a banner. update() reproduces the model
-# and the policy behind it, not the display settings of the session that
-# first ran it.
-#
-# The last section is the fallback these NULL-carrying INLA records used
-# to break. An INLA fit records no sampler settings -- the nested Laplace
-# approximation runs none -- so an auto re-fit whose INLA attempt fails
-# reached the brms emit with all three NULL, and brms refused the `iter`
-# it built from them. The user saw a brms argument error where an INLA
-# failure had happened.
+# An INLA fit records no sampler settings. The last section checks that an
+# auto re-fit whose INLA attempt fails still reaches brms with valid ones.
 # =============================================================================
 
 suppressPackageStartupMessages(library(testthat))
@@ -78,8 +63,7 @@ suppressPackageStartupMessages(library(testthat))
   .uec_cache$brms
 }
 
-# The continuous covariate keeps this one per-row rather than letting the
-# aggregation gate compress it.
+# The continuous covariate keeps this fit per row.
 .uec_inla_fit <- function() {
   if (is.null(.uec_cache$inla)) {
     .uec_cache$inla <- suppressMessages(flexybayes(
@@ -214,11 +198,8 @@ test_that("an identity update() of a per-row INLA fit stays per-row INLA", {
 
 test_that("a per-row fit held there by aggregate = FALSE is not compressed", {
   # The same route as above, on a model the aggregation gate would
-  # otherwise compress. This is where the missing `aggregate` bit: the
-  # re-fit came back <flexybayes_aggregated>, a different representation
-  # from the one the user pinned. (An aggregated fit now returns the same
-  # unified summary object, so the class assertions below are what
-  # catches the drift; before that they were the only thing that could.)
+  # otherwise compress. Aggregated and per-row fits return the same
+  # summary object, so only the class shows the difference.
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
@@ -244,8 +225,7 @@ test_that("a backend override in ... still wins over the record", {
   fit <- .uec_inla_fit()
 
   # The sampler settings travel with the override because the INLA record
-  # carries none -- this is the caller doing deliberately what the
-  # fallback below has to do on its own.
+  # carries none.
   refit <- suppressMessages(suppressWarnings(stats::update(
     fit,
     backend = "brms",
@@ -262,11 +242,8 @@ test_that("a backend override in ... still wins over the record", {
 # ---------------------------------------------------------------- #
 
 test_that("verbose is recorded but does not travel with the re-fit", {
-  # The cut this file is drawn along. update() reproduces the model and
-  # the policy behind it -- engine, representation, missingness, prior --
-  # and not the display settings of the session that first ran the fit. A
-  # silently switched engine is a different answer under the same name. A
-  # banner printed where the first fit printed none is a banner.
+  # update() reproduces the model and its engine, representation,
+  # missingness and prior, not the display settings of the first fit.
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
@@ -314,10 +291,9 @@ test_that("an auto fallback to brms omits absent sampler settings", {
   skip_on_ci()
   .uec_silence()
 
-  # The INLA failure is forced rather than provoked. The failure that
-  # found this -- a bounded uniform whose upper bound cuts into the
-  # posterior -- segfaults the inla binary, which is recorded in
-  # inst/KNOWN_ISSUES.md and has no business in a test suite.
+  # The INLA failure is mocked. The real trigger, a bounded uniform whose
+  # upper bound cuts into the posterior, crashes the inla binary
+  # (inst/KNOWN_ISSUES.md).
   testthat::local_mocked_bindings(
     inla = function(...) stop("forced INLA failure"),
     .package = "INLA"
@@ -362,18 +338,13 @@ test_that("an auto fallback to brms omits absent sampler settings", {
 })
 
 test_that("an auto fallback hands the emit its arguments unevaluated", {
-  # The fall-through emit is now reached through do.call(), which
-  # re-evaluates everything it is handed unless told not to. Four of the
-  # arguments are language objects: `the_call` is a call, so evaluating
-  # it would re-run flexybayes() from inside its own dispatch, and
-  # `fixed` / `random` / `residual` are formulas, which would come back
-  # re-created against the dispatch frame rather than the caller's.
+  # The fall-through emit is reached through do.call(), which evaluates
+  # its arguments. `the_call` would re-run flexybayes() from inside its
+  # own dispatch, and the formulas would take the dispatch frame as
+  # their environment.
   #
-  # This fit takes the gate-refusal fallback and completes, which is what
-  # forces the arguments the mocked test above never reaches. The
-  # multi-stratum interaction random term used to be the vehicle; INLA
-  # fits that now, so the vehicle is a family INLA's likelihood roster
-  # has no counterpart for.
+  # The family here has no INLA likelihood, so the gate refuses and the
+  # fit completes on the brms fallback.
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()

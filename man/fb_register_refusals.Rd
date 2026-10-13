@@ -28,7 +28,7 @@ reports the refusal before a fit, if any.
 
 \item{package}{The package that owns the reasons. \code{NULL} (default)
 takes the package whose code makes the call, which is the right value
-inside \code{.onLoad()}; outside a package it must be given.}
+inside \code{.onLoad()}. Outside a package it must be given.}
 }
 \value{
 The registered reasons as an \code{fb_refusals_table}, invisibly.
@@ -46,7 +46,7 @@ A reason code is unique across all partitions: a code that flexyBayes or
 another package already registered is refused, and so is any attempt to
 register under the name \code{"flexyBayes"}. Registering the same code again
 from the same package with identical fields does nothing, so a package
-can be loaded twice in one session; registering it with different fields
+can be loaded twice in one session. Registering it with different fields
 is refused. A table that fails any check registers none of its rows.
 }
 \examples{
@@ -65,6 +65,6 @@ is refused. A table that fails any check registers none of its rows.
 
 }
 \seealso{
-\code{\link[=fb_refuse]{fb_refuse()}} to raise a registered reason; \code{\link[=fb_refusals]{fb_refusals()}} to
+\code{\link[=fb_refuse]{fb_refuse()}} to raise a registered reason, \code{\link[=fb_refusals]{fb_refusals()}} to
 list them.
 }

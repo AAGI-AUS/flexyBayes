@@ -1,7 +1,7 @@
 # fb_refit.R: the model of a fit, refitted on new data with what a package
 # built on flexyBayes adds to it.
 
-# Arguments of flexybayes() that state the model; fb_refit() takes them from
+# Arguments of flexybayes() that state the model, fb_refit() takes them from
 # the fit.
 .FB_REFIT_MODEL_ARGS <- c(
   "random", "residual", "family", "link", "known_matrices", "prior",
@@ -31,7 +31,7 @@
 #' * Weights and a known variance belong to rows. A refit on the fit's own
 #'   data keeps them. A known variance is read from the column of that name
 #'   in the fit's data, so rows of `fit$data` carry it. For any other `data`,
-#'   pass `weights = ` or `known_variance = ` with one value per row;
+#'   pass `weights = ` or `known_variance = ` with one value per row.
 #'   without them a weighted fit is refused, as is a fit with a known
 #'   variance whose `data` lacks the column.
 #'
@@ -81,7 +81,7 @@
 #'   On the brms route of "Extending the brms model", arguments that
 #'   [flexybayes()] does not have go to [brms::brm()]. Arguments that state
 #'   the model (`random`, `residual`, `family`, `link`, `known_matrices`,
-#'   `prior`, `prior_fixed_sd`, `prior_vc_sd`) are refused; [update()]
+#'   `prior`, `prior_fixed_sd`, `prior_vc_sd`) are refused, [update()]
 #'   refits a changed model.
 #' @returns A fitted flexyBayes object of the engine the refit ran on, or,
 #'   with `return_code = TRUE`, the code that engine would run.
@@ -228,7 +228,7 @@ fb_refit <- function(
 }
 
 
-# `fixed` with `add` appended to its right-hand side; a brmsformula keeps its
+# `fixed` with `add` appended to its right-hand side. A brmsformula keeps its
 # other parts.
 .fb_refit_fixed <- function(fixed, add) {
   if (is.null(fixed)) {
@@ -320,7 +320,7 @@ fb_refit <- function(
 
 # The refit on brms with extra prior rows, Stan code or a formula hook. The
 # model is built as flexybayes() builds it and handed to emit_brms(), which
-# takes these three; flexybayes() takes none of them.
+# takes these three, flexybayes() takes none of them.
 .fb_refit_brms <- function(fit, info, ir, fixed, rows, extra_prior, stanvars,
                            formula_hook, dots) {
   engine <- if ("backend" %in% names(dots)) {

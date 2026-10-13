@@ -29,11 +29,9 @@ summary.flexybayes_glm <- function(object, ...) {
   # Probability of direction: the posterior mass on the side of zero the
   # bulk of the distribution falls on, so it ranges over [0.5, 1].
   #
-  # This column previously reported 2 * (1 - pd) under the heading
-  # `Pr(>|z|)`, described in the footnote as the probability of
-  # direction. It is neither: it is a doubled posterior sign-tail area,
-  # formatted to look like a frequentist p-value. The heading is gone,
-  # and the quantity is now computed from the draws where they exist.
+  # Not 2 * (1 - pd): that is a doubled posterior sign-tail area, which
+  # reads like a frequentist p-value. The quantity is computed from the
+  # draws where they exist.
   if (exact) {
     dm <- as.matrix(unname(draws))
     pd <- pmax(colMeans(dm > 0), colMeans(dm < 0))
@@ -82,8 +80,8 @@ summary.flexybayes_glm <- function(object, ...) {
 #' normal-approximation interval \eqn{\hat\beta \pm z_{\alpha/2}
 #' \mathrm{sd}}, and marks the returned matrix with
 #' `attr(, "interval_basis") == "normal_approximation"`. The two agree
-#' only for a symmetric posterior; on a skewed one they can differ
-#' materially, which is why the basis is reported rather than assumed.
+#' only for a symmetric posterior. On a skewed one they can differ
+#' materially, which is why the basis is reported instead of assumed.
 #' Earlier versions documented this method as quantile-based while
 #' always returning the approximation.
 #'

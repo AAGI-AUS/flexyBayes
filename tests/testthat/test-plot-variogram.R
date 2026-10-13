@@ -4,7 +4,7 @@
 # Two things land here. The first is the display an ASReml user expects
 # after fitting a spatial model: the empirical semivariance of the
 # residuals against separation along the design index. The second is a live
-# 0.9.0 defect the display sits next to -- plot() decided whether a fit had
+# 0.9.0 defect the display sits next to, plot() decided whether a fit had
 # sampler draws by testing the since-withdrawn native engine's draws slot
 # alone (see NEWS.md, 0.9.3), which is NULL on a brms fit, so
 # plot(brms_fit) declined to draw its diagnostics while naming brms as a
@@ -12,7 +12,7 @@
 #
 # The variogram uses OBSERVED ROWS ONLY. A row carried as a latent design
 # cell has no observed response and therefore no residual; pairing an NA
-# into a squared difference would drop whole lags rather than one pair, and
+# into a squared difference would drop whole lags instead of one pair, and
 # the picture would quietly rest on less of the array than it appeared to.
 # The subtitle prints both counts for the same reason.
 # =============================================================================
@@ -163,7 +163,7 @@ test_that("the variogram uses observed rows only (F-p2)", {
 
   tab <- plot(fit, type = "variogram")
   expect_false(anyNA(tab$semivariance))
-  # 46 observed rows, so 46 * 45 / 2 pairs -- not 48 * 47 / 2.
+  # 46 observed rows, so 46 * 45 / 2 pairs, not 48 * 47 / 2.
   expect_identical(sum(tab$n_pairs), as.integer(46L * 45L / 2L))
   expect_identical(attr(tab, "n_observed"), 46L)
   expect_identical(attr(tab, "n_design"), 48L)
@@ -228,7 +228,7 @@ test_that("the refusal code is registered in the taxonomy", {
 test_that("the sampler-draws predicate reads the engine, not one slot", {
   # The 0.9.0 predicate tested a since-withdrawn native engine's draws
   # slot alone (see NEWS.md, 0.9.3). A brms fit carries its draws inside
-  # the brmsfit, and an INLA fit carries none -- with that engine gone,
+  # the brmsfit, and an INLA fit carries none, with that engine gone,
   # the predicate is now unconditionally `inherits(x$brms, "brmsfit")`.
   brms_like <- structure(
     list(brms = structure(list(), class = "brmsfit")),
@@ -247,7 +247,7 @@ test_that("the sampler-draws predicate reads the engine, not one slot", {
   expect_identical(flexyBayes:::.fb_default_plot_type(inla_like), "residuals")
 })
 
-test_that("plot(inla_fit) draws residuals rather than declining traces", {
+test_that("plot(inla_fit) draws residuals instead of declining traces", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()

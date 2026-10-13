@@ -1,8 +1,8 @@
-# tools/check_build_parity.R -- the tarball must be reproducible from
+# tools/check_build_parity.R: the tarball must be reproducible from
 # tracked source.
 #
-# Builds two source tarballs of the same commit -- one from the working
-# tree, one from a clean `git archive` of HEAD -- and compares their file
+# Builds two source tarballs of the same commit (one from the working
+# tree, one from a clean `git archive` of HEAD) and compares their file
 # lists. Any difference fails.
 #
 # The 2026-08-16 adversarial review found the failure this gate exists to
@@ -65,7 +65,7 @@ dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
 # `.Rbuildignore` has no comment syntax: `R CMD build` reads every
 # non-empty line as a PCRE pattern. A line beginning with `#` is
 # therefore a pattern too, and one containing an unbalanced parenthesis
-# aborts the build with `invalid regular expression` rather than being
+# aborts the build with `invalid regular expression` instead of being
 # skipped. Check the file before building, so the failure names the
 # offending line instead of arriving as a PCRE compilation error.
 
@@ -93,7 +93,7 @@ dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
     cat("[build-parity] .Rbuildignore lines that are not valid regexes:\n")
     cat(paste(bad, collapse = "\n"), "\n", sep = "")
     .fail(
-      ".Rbuildignore has no comment syntax -- every line is a PCRE ",
+      ".Rbuildignore has no comment syntax, so every line is a PCRE ",
       "pattern, and the lines above do not compile."
     )
   }

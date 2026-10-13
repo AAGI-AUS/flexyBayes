@@ -9,7 +9,7 @@
 #     prompt, and a forced-tight ceiling raises the typed condition
 #     before any backend code runs.
 
-test_that("review small-n: preflight slot is NULL; print unchanged", {
+test_that("review small-n: preflight slot is NULL, print unchanged", {
   skip_if_not_installed("brms")
   df <- data.frame(
     y = rnorm(50),
@@ -26,7 +26,7 @@ test_that("review small-n: preflight slot is NULL; print unchanged", {
   expect_true(any(grepl("<flexybayes_review>", out, fixed = TRUE)))
 })
 
-test_that("review large-n: preflight attaches; print shows the summary", {
+test_that("review large-n: preflight attaches, print shows the summary", {
   skip_if_not_installed("brms")
   N <- 2e5L
   df <- data.frame(

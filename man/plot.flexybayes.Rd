@@ -25,18 +25,18 @@ through their own registrations.}
 
 \item{type}{A single string naming the display to draw. One of:
 \code{"diagnostics"}, trace plots and marginal densities per parameter
-(needs a sampled posterior); \code{"residuals"}, residuals against
-fitted values beside a normal quantile-quantile plot; \code{"effects"}, a
+(needs a sampled posterior), \code{"residuals"}, residuals against
+fitted values beside a normal quantile-quantile plot, \code{"effects"}, a
 forest plot of the fixed effects with their credible intervals,
-available on every backend that supplies \code{\link[=coef]{coef()}} and \code{\link[=confint]{confint()}};
+available on every backend that supplies \code{\link[=coef]{coef()}} and \code{\link[=confint]{confint()}}.
 \code{"variance"}, a bar chart of the variance components with credible
-intervals; \code{"blups"}, a caterpillar plot of the random-effect
-predictions ordered by magnitude; \code{"pp_check"}, a posterior
+intervals, \code{"blups"}, a caterpillar plot of the random-effect
+predictions ordered by magnitude, \code{"pp_check"}, a posterior
 predictive check overlaying replicated datasets on the observed
 response, which needs predictive draws and so refuses by name on a
-fit that carries none (see \code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}}); and
+fit that carries none (see \code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}}), and
 \code{"variogram"}, the empirical semivariance of the residuals over the
-design index; and \code{"spatial_field"}, the posterior mean of a separable
+design index, and \code{"spatial_field"}, the posterior mean of a separable
 autoregressive field, \code{random = ~ ar1(row):ar1(col)}, drawn on the
 row-by-column array of the trial on the response scale. \code{NULL} (the
 default) resolves to \code{"diagnostics"} on a sampled fit and
@@ -46,12 +46,12 @@ default) resolves to \code{"diagnostics"} on a sampled fit and
 for example \code{variable} to restrict which parameters a diagnostic
 display covers, or \code{type} and \code{ndraws} for \code{"pp_check"}. The spatial
 field takes \code{trial}, the identifier printed in its title and the only
-label it adds to the array's own row and column labels; on a fit with
+label it adds to the array's own row and column labels. On a fit with
 one field per trial, \code{random = ~ id(trial):ar1(row):ar1(col)}, it names
 the level whose field is drawn.}
 }
 \value{
-Invisibly, the object the underlying plotting call returns --
+Invisibly, the object the underlying plotting call returns:
 a \pkg{ggplot2} object for the displays built with it, the
 semivariance table for \code{"variogram"}, for \code{"spatial_field"} a list
 holding \code{values} (the field, one row per row level and one column per
@@ -64,9 +64,9 @@ field refuses \code{"spatial_field"} with
 \description{
 Draws one of eight standard displays for a fitted model, chosen by
 \code{type}. Every backend reaches the same method, and a display that needs
-a slot a given engine does not populate -- posterior draws on an INLA
-fit, for instance -- prints a message naming what
-is missing and returns invisibly rather than erroring or drawing an
+a slot a given engine does not populate (posterior draws on an INLA
+fit, for instance) prints a message naming what
+is missing and returns invisibly instead of erroring or drawing an
 empty panel. The one exception is \code{"pp_check"}, which raises the
 refusal \code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}} raises, so a caller can catch it by
 class.

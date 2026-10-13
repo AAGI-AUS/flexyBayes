@@ -8,7 +8,7 @@ fb_approx(scheme, ...)
 }
 \arguments{
 \item{scheme}{Character(1): the approximation-scheme name. Must be a
-scheme registered in the approximation registry; an unregistered
+scheme registered in the approximation registry. An unregistered
 name is refused with the supported vocabulary.}
 
 \item{...}{Scheme-specific tuning carried on the object, for example
@@ -22,14 +22,14 @@ describing the scheme's bias bound.
 \description{
 Names an approximation scheme and its tuning, validated against the
 package's locked approximation registry. The result is consumed where
-an approximate representation is accepted -- most directly in a
+an approximate representation is accepted, most directly in a
 smooth term, \code{s(x, representation = fb_approx("low_rank_smooth", rank = 5L))}.
 }
 \details{
 The only scheme with a smooth-basis fitting path in this release is
 \code{"low_rank_smooth"}, a rank-\code{K} principal-component truncation of the
 smooth basis. Its bias is the relative squared Frobenius error of the
-truncation (Wood, 2017, chapter 5); \code{\link[=validate_approximation]{validate_approximation()}}
+truncation (Wood, 2017, chapter 5). \code{\link[=validate_approximation]{validate_approximation()}}
 reports the realised capture against the threshold for a fitted
 model.
 }

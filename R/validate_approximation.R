@@ -1,25 +1,25 @@
-# validate_approximation() --- v0.4.0 exported verb.
+# validate_approximation(): v0.4.0 exported verb.
 #
 # The sixth and architecturally-final exported verb. Every approximate
 # fit carries, on the registry side, a validation procedure that
-# surfaces the realised approximation error against a pass threshold;
-# validate_approximation() is the user-facing entry to that procedure.
+# surfaces the realised approximation error against a pass threshold.
+# Validate_approximation() is the user-facing entry to that procedure.
 # Dispatch is on the fit's registered approximation scheme: the fit is
 # transiently tagged with its scheme class so a standard S3 UseMethod()
 # routes to validate_approximation.<scheme> (e.g. .low_rank_smooth),
 # whose body is the per-scheme validation_fn held in
 # .approximation_registry. A fit with no recognised approximation falls
-# to validate_approximation.default(), which refuses rather than
+# to validate_approximation.default(), which refuses instead of
 # returning a vacuous pass.
 
 # --- scheme resolution -------------------------------------------- #
 
-# .fit_approximation_scheme() --- the registered approximation
+# .fit_approximation_scheme(): the registered approximation
 # scheme(s) carried by `fit`, read from the emit-time slot
 # fit$extras$parse_info$approx (a named list keyed by smooth variable,
 # each entry tagged with $scheme). Returns the single scheme string
 # when the fit carries one scheme, NULL when it carries none, and ---
-# defensively, since only one scheme ships at v0.4.0 --- the first
+# defensively, since only one scheme ships at v0.4.0, the first
 # scheme when a fit somehow mixes schemes.
 .fit_approximation_scheme <- function(fit) {
   approx <- fit$extras$parse_info$approx
@@ -41,7 +41,7 @@
 
 # --- validation-result object ------------------------------------- #
 
-# .new_approximation_validation() --- constructor for the
+# .new_approximation_validation(): constructor for the
 # <fb_approximation_validation> result object returned by
 # validate_approximation(). Carries the scheme, the per-smooth result
 # rows (each with realised Frobenius capture, bias bound, threshold,
@@ -107,7 +107,7 @@ print.fb_approximation_validation <- function(x, ...) {
 #' structure was lost to its approximation scheme, measured against the
 #' scheme's declared pass threshold. It is the user-facing entry to the
 #' per-scheme validation procedure registered for every approximate
-#' route; the contract surfaces the realised error number while the
+#' route, the contract surfaces the realised error number while the
 #' user keeps the accept / re-fit judgement.
 #'
 #' Dispatch is on the fit's registered approximation scheme. At present
@@ -119,7 +119,7 @@ print.fb_approximation_validation <- function(x, ...) {
 #' the singular values of the full smooth basis.
 #'
 #' A fit carrying no recognised approximation (an exact fit) is
-#' refused rather than returned as a vacuous pass.
+#' refused instead of returned as a vacuous pass.
 #'
 #' @param fit A fitted `flexybayes` object.
 #' @param ... Passed to the per-scheme validation procedure (e.g.
@@ -130,10 +130,10 @@ print.fb_approximation_validation <- function(x, ...) {
 #'   per approximated smooth (realised capture, bias bound, per-smooth
 #'   pass flag), and the registry's fallback hint.
 #'
-#' @seealso [flexybayes()] for fitting; the approximation registry
+#' @seealso [flexybayes()] for fitting. The approximation registry
 #'   records each scheme's bias bound and fallback.
 #' @examples
-#' # An exact fit (no registered approximation) refuses rather than
+#' # An exact fit (no registered approximation) refuses instead of
 #' # returning a vacuous pass. \donttest{} + an INLA guard: this needs
 #' # a live fit and does not fire on a machine without INLA installed.
 #' \donttest{
@@ -150,7 +150,7 @@ print.fb_approximation_validation <- function(x, ...) {
 #'
 #' # The low_rank_smooth verdict shape, on a plan-only object carrying
 #' # the scheme (no active engine reaches low_rank_smooth on the
-#' # current backends -- it was built for a since-withdrawn engine and
+#' # current backends: it was built for a since-withdrawn engine and
 #' # now refuses at dispatch; see R/emit_smooth_low_rank.R). This part
 #' # needs no engine and always runs.
 #' demo_fit <- structure(

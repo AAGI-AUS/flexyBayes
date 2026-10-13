@@ -57,7 +57,7 @@ follows brms (\code{(Intercept)}, \verb{<term>}, \verb{sd_<group>}, \code{sigma}
 \details{
 On \code{flexybayes_inla} and \code{flexybayes_brms} fits, the per-backend
 mapper registered at package load (\code{inla} or \code{brms}) drives the
-resolution; the returned map is cached on
+resolution, the returned map is cached on
 \code{fit$extras$canonical_map} for fast repeated access.
 }
 \examples{

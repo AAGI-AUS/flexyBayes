@@ -1,9 +1,9 @@
-# Backend registry (ADR 0031; v0.5.0 backend-axis recovery, Phase 1).
+# Backend registry (v0.5.0).
 #
-# The registry is additive and behaviour-neutral in Phase 1. These tests
+# The registry is additive and behaviour-neutral. These tests
 # pin two things: (a) the registry's own shape + lock invariants, mirrored
 # from the other four registries' test posture; and (b) the CONSISTENCY
-# guard that makes the registry the single source of truth -- every
+# guard that makes the registry the single source of truth, every
 # backend name the current hard-coded dispatch references (the match.arg
 # vocabularies + .routing_policy_table()) must be a registered name, and
 # auto's default candidate set must match the registry's default_in_auto
@@ -66,7 +66,7 @@ test_that("every backend entry carries the full field schema", {
 test_that("the 0.9.3 population registers the expected backends", {
   # A third native engine, present through v0.9.2, was withdrawn entirely
   # in 0.9.3 (see NEWS.md): no registry row, export, code path, or
-  # `Suggests` entry remains -- re-entry, if ever proposed, is a fresh
+  # `Suggests` entry remains, re-entry, if ever proposed, is a fresh
   # implementation, not a repair of a retained descriptor.
   expect_setequal(
     flexyBayes:::.registered_backend_names(),
@@ -95,7 +95,7 @@ test_that("CONSISTENCY: routing-policy-table engines are all registered", {
   )
   # chosen_backend values (drop the NA explicit-inla-refusal row and the
   # "pending_fallback" sentinel, which the dispatch.R comment documents as
-  # "never a real backend name" -- it means resolution is deferred to
+  # "never a real backend name", it means resolution is deferred to
   # .resolve_auto_fallback(), not that dispatch chose a backend by that
   # name).
   chosen <- stats::na.omit(unique(tbl$chosen_backend))
@@ -128,13 +128,13 @@ test_that("CONSISTENCY: auto candidate set matches default_in_auto flags", {
   # registry's default_in_auto-TRUE AND active names must equal it. Only
   # inla is an auto default (brms is opt-in; the withdrawn third engine,
   # see NEWS.md 0.9.3, is not registered at all any more, so it is not a
-  # candidate by construction rather than by a quarantine flag).
+  # candidate by construction instead of by a quarantine flag).
   expect_setequal(
     flexyBayes:::.auto_default_backend_names(),
     "inla"
   )
   # brms is deliberately NOT auto-default (opt-in only; Stan compile
-  # latency would break the auto fast-path promise -- ADR 0024).
+  # latency would break the auto fast-path promise).
   expect_false(flexyBayes:::.lookup_backend("brms")$default_in_auto)
 })
 
@@ -152,7 +152,7 @@ test_that(".available_backend_names() are active and installed", {
   # Only the engines whose packages are installed are available, so the
   # expectation follows the machine (the INLA-absent check has no INLA).
   # as.character() so that a machine with neither engine installed gives
-  # character(0) rather than NULL, which expect_setequal() rejects.
+  # character(0) instead of NULL, which expect_setequal() rejects.
   expected <- as.character(c(
     if (requireNamespace("INLA", quietly = TRUE)) "inla",
     if (requireNamespace("brms", quietly = TRUE)) "brms"
@@ -213,10 +213,10 @@ test_that("flexybayes(backend='brms') allows dense vm/ped but refuses non-dense-
   skip_if_not_installed("brms")
   # Genomics expansion (G1): vm() / ped() with an exact dense-able
   # carrier now reach brms via its native known-covariance group term
-  # (1 | gr(var, cov = K)) -- brms Cholesky-factors K internally. The
+  # (1 | gr(var, cov = K)), brms Cholesky-factors K internally. The
   # remaining structured-covariance carriers (block-diagonal, low-rank,
   # and the fa / us / ar1 terms) still have no lossless Stan translation
-  # and are refused structurally rather than failing mid-emit.
+  # and are refused structurally instead of failing mid-emit.
   d <- data.frame(
     y = rnorm(40),
     env = factor(rep(letters[1:4], each = 10L)),

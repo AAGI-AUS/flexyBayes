@@ -1,11 +1,5 @@
-# test-family-argument.R -- the `family` argument accepts what an R user
-# reaches for.
-#
-# `flexybayes()` documents `family` as a string, but `stats::binomial()`
-# is the first thing an R user tries, and until 0.9.0 it produced the raw
-# base-R error "the condition has length > 1" from `.resolve_family()`'s
-# scalar `if`. A family object now resolves; anything that is neither a
-# name nor a usable family object refuses typed.
+# The `family` argument accepts a name or a family object such as
+# `stats::binomial()`. Anything else refuses with a typed condition.
 
 test_that("a stats family object resolves to its family and link", {
   expect_identical(
@@ -81,7 +75,7 @@ test_that("a non-family, non-string family argument refuses typed", {
   }
 })
 
-test_that("a family object contradicting `link` refuses rather than picking", {
+test_that("a family object contradicting `link` refuses instead of picking", {
   err <- tryCatch(
     flexyBayes:::.resolve_family(stats::binomial(), "probit"),
     error = function(e) e

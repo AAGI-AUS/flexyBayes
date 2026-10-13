@@ -1,4 +1,4 @@
-# Tests for ADR 0020 -- uncorrelated random slopes (x || g) and
+# Tests for ADR 0020, uncorrelated random slopes (x || g) and
 # (1 + x || g).
 #
 # Contract (per design-notes-priors-brms-lgm.md ADR 0020 + the design spec
@@ -8,11 +8,11 @@
 #       with slope_var = "x", with_intercept = FALSE, and does NOT
 #       raise stop() on the brms path.
 #   (b) fb(y ~ x + (1 + x || g)) parses to type =
-#       "simple_slope_uncor" with with_intercept = TRUE; fits both
+#       "simple_slope_uncor" with with_intercept = TRUE. It fits both
 #       intercept- and slope-variance components.
-#   (c) fb(y ~ x + (x | g)) parses to type = "simple_slope_cor" --
+#   (c) fb(y ~ x + (x | g)) parses to type = "simple_slope_cor",
 #       the same model with the correlation freed. It used to raise a
-#       structured deferral; both engines now carry it.
+#       structured deferral. Both engines now carry it.
 #   (d-e) The two spellings agree, and emit_brms writes the single
 #       pipe back out.
 #   (f) Posterior matches lme4::lmer(REML = FALSE) on sleepstudy
@@ -23,7 +23,7 @@
 #       directly (the regex split (g) exercises end to end).
 #   (i) [removed at 0.9.3, see NEWS.md] a cross-engine comparison of
 #       fb(backend = "brms") against the since-withdrawn native
-#       engine on the slope-variance posterior; that engine is
+#       engine on the slope-variance posterior. That engine is
 #       withdrawn entirely, so no 2-engine pairing through it remains
 #       for this structure.
 #   (j) Minimum-group guard: the slope fixtures use J >= 10 by
@@ -60,7 +60,7 @@ mk_slope_data <- function(
 
 
 # ---------------------------------------------------------------- #
-# (a) Parse (x || g) -- intercept + slope, lme4 / brms semantics    #
+# (a) Parse (x || g), intercept + slope, lme4 / brms semantics    #
 # ---------------------------------------------------------------- #
 
 test_that("(x || g) parses to simple_slope_uncor with with_intercept = TRUE (lme4 semantics)", {
@@ -72,7 +72,7 @@ test_that("(x || g) parses to simple_slope_uncor with with_intercept = TRUE (lme
   expect_identical(rt$var, "Subject")
   expect_identical(rt$slope_var, "Days")
   # Per ?lme4::lFormula: (x || g) is sugar for
-  # (1 | g) + (0 + x | g) -- the intercept is included by default.
+  # (1 | g) + (0 + x | g), the intercept is included by default.
   # The (0 + x || g) form below suppresses it.
   expect_true(isTRUE(rt$with_intercept))
 })
@@ -82,13 +82,13 @@ test_that("(x || g) parses to simple_slope_uncor with with_intercept = TRUE (lme
 # (b) (1 + x || g) and (0 + x || g) parameterisations                #
 # ---------------------------------------------------------------- #
 
-test_that("(1 + x || g) keeps the intercept; (0 + x || g) suppresses it", {
+test_that("(1 + x || g) keeps the intercept and (0 + x || g) suppresses it", {
   d <- mk_slope_data()
   fb_plus1 <- fb_from_brms(Reaction ~ Days + (1 + Days || Subject), data = d)
   expect_true(isTRUE(fb_plus1$random_terms[[1]]$with_intercept))
   fb_plus_sym <- fb_from_brms(Reaction ~ Days + (Days + 1 || Subject), data = d)
   expect_true(isTRUE(fb_plus_sym$random_terms[[1]]$with_intercept))
-  # (0 + x || g) suppresses the intercept -- slope-only form.
+  # (0 + x || g) suppresses the intercept, slope-only form.
   fb_zero <- fb_from_brms(Reaction ~ Days + (0 + Days || Subject), data = d)
   expect_false(isTRUE(fb_zero$random_terms[[1]]$with_intercept))
   fb_zero_sym <- fb_from_brms(Reaction ~ Days + (Days + 0 || Subject), data = d)
@@ -103,8 +103,8 @@ test_that("(1 + x || g) keeps the intercept; (0 + x || g) suppresses it", {
 test_that("(x | g) parses to simple_slope_cor with the intercept in", {
   # The single pipe used to refuse with a structured deferral. It is the
   # uncorrelated model with the correlation freed, and both engines now
-  # carry it -- INLA as one iid2d field over a two-block index, brms as
-  # `(x | g)` verbatim -- so the deferral is gone and the term is ordinary.
+  # carry it. INLA as one iid2d field over a two-block index, brms as
+  # `(x | g)` verbatim, so the deferral is gone and the term is ordinary.
   d <- mk_slope_data()
   fb <- fb_from_brms(Reaction ~ Days + (Days | Subject), data = d)
   expect_length(fb$random_terms, 1L)
@@ -162,9 +162,9 @@ test_that("brms posterior matches lme4 on slope + intercept SD within loosened t
   # tau_true tolerance even on the J = 18 sleepstudy-style fixture.
   # Slope-variance posteriors are intrinsically less identified (see
   # the comment above), so even this generous 2000+2000 budget can
-  # still trip Stan's low-ESS sampler warning; the test's own 0.20 *
+  # still trip Stan's low-ESS sampler warning. The test's own 0.20 *
   # tau_true tolerance already absorbs the same MC noise the warning
-  # is about, so muffle rather than raise the budget further.
+  # is about, so muffle, not raise the budget further.
   fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (1 + Days || Subject),
     data = d,
@@ -198,13 +198,13 @@ test_that("brms posterior matches lme4 on slope + intercept SD within loosened t
   # subjects) to lme4's ML point estimate within a 20% relative band.
   # That is intrinsically flaky: the posterior of an RE-SD is right-
   # skewed and the Bayesian mean is a different estimator from the
-  # frequentist ML point -- the gap exceeds 20% on ~1/3 of runs from MC
+  # frequentist ML point, the gap exceeds 20% on ~1/3 of runs from MC
   # + skew + prior influence, not from under-sampling (this is already
   # 2000 x 2 chains). The statistically-principled, non-flaky check is
   # that lme4's estimate falls within the brms posterior's central
-  # credible interval -- the correct notion of Bayesian/frequentist
-  # agreement, robust to MC error and skew by construction. A 99%
-  # interval is used for a comfortable robustness margin on the
+  # credible interval, the correct notion of Bayesian/frequentist
+  # agreement, which allows for MC error and skew by construction. A 99%
+  # interval is used for a comfortable margin on the
   # poorly-identified slope SD.
   ci_Days <- stats::quantile(
     draws[, "sd_Subject__Days"],
@@ -251,7 +251,7 @@ test_that("canonical_names() on a brms (x || g) fit resolves sd_<x>_<g> AND sd_<
   # full-pipeline counterpart to the isolated regex-split unit test in
   # subtest (h) below.
   # Structural test (does canonical_names() surface both hyperparameter
-  # names?), not numeric agreement -- muffle at this tiny budget.
+  # names?), not numeric agreement, muffle at this tiny budget.
   fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
     data = d,
@@ -296,7 +296,7 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
   # Unit-test the brms mapper rule directly via the same regex split
   # that .mapper_brms_via_stan uses. This keeps the test fast and
   # independent of the (slow + heavy-toolchain) brms install: the
-  # mapping logic itself is what ADR 0020 §Decision 3 names; the
+  # mapping logic itself is what ADR 0020 §Decision 3 names. The
   # full brms-backend integration is covered by subtest (g) above,
   # on a live fit.
   split_brms <- function(brms_name) {
@@ -319,7 +319,7 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
 
 
 # ---------------------------------------------------------------- #
-# (i) [removed] Cross-engine comparison on slope variance -- 0.9.3  #
+# (i) [removed] Cross-engine comparison on slope variance, 0.9.3  #
 # ---------------------------------------------------------------- #
 #
 # This cell compared a since-withdrawn native engine against brms
@@ -331,7 +331,7 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
 # ---------------------------------------------------------------- #
 
 test_that("slope fixtures honour the J >= 10 minimum-group guard", {
-  # The minimum-group guard is a property of the slope fixtures; the
+  # The minimum-group guard is a property of the slope fixtures. The
   # standard sleepstudy / mk_slope_data fixtures use J = 18 by default
   # which satisfies J >= 10. Verify the property holds on both fixtures
   # so future fixture edits cannot silently regress below the guard.
@@ -358,7 +358,7 @@ test_that("prior_summary() lists the slope-variance prior row for (x || g)", {
     flexyBayes.silence_convergence_warning = TRUE
   )
   # Structural test (does the printed prior_summary() mention the
-  # slope-variance parameter?), not numeric agreement -- muffle at
+  # slope-variance parameter?), not numeric agreement, muffle at
   # this tiny budget.
   fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
@@ -374,9 +374,9 @@ test_that("prior_summary() lists the slope-variance prior row for (x || g)", {
   )))
   ps <- prior_summary(fit)
   # The slope-variance row carries the canonical sd_<x>_<g> name in
-  # the parameter column; printed shape may be either a data.frame
+  # the parameter column. Printed shape may be either a data.frame
   # or an fb_prior_summary object depending on the backend, so the
-  # robust check is via capture.output() text search.
+  # check is via capture.output() text search.
   txt <- paste(utils::capture.output(print(ps)), collapse = "\n")
   expect_true(
     grepl("sd_Days_Subject|Days_Subject", txt) ||
@@ -398,7 +398,7 @@ test_that("fit object exposes the slope-variance hyperparameter via draws + vari
     flexyBayes.silence_convergence_warning = TRUE
   )
   # Structural test (does the parameter name appear in the draws
-  # matrix?), not numeric agreement -- muffle at this tiny budget.
+  # matrix?), not numeric agreement, muffle at this tiny budget.
   fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
     data = d,
@@ -412,8 +412,8 @@ test_that("fit object exposes the slope-variance hyperparameter via draws + vari
     mcmc_verbose = FALSE
   )))
   # The slope-variance hyperparameter must appear in the brms draws
-  # matrix (brms-native name) so downstream tooling -- coef(),
-  # canonical_names(), prior_summary() -- can resolve
+  # matrix (brms-native name) so downstream tooling, coef(),
+  # canonical_names(), prior_summary(), can resolve
   # it. print() output is brief by design and lists term-level
   # summaries only.
   draws <- as.matrix(posterior::as_draws_matrix(fit$brms))
@@ -450,12 +450,12 @@ test_that("emit_brms() reconstructs (x || g) and (0 + x || g) round-trip", {
 
 
 # ---------------------------------------------------------------- #
-# (n) 10-row priors-to-brms table -- slope-variance row             #
+# (n) 10-row priors-to-brms table, slope-variance row             #
 # ---------------------------------------------------------------- #
 
 test_that("priors_to_brms legacy specs add the slope-variance row(s) per ADR 0020 semantics", {
   d <- mk_slope_data()
-  # (x || g) -- lme4 / brms semantics: intercept + slope, both
+  # (x || g), lme4 / brms semantics: intercept + slope, both
   # uncorrelated. Two sd rows: the intercept-variance row
   # (coef = NA, group = Subject) and the slope-variance row
   # (coef = Days, group = Subject).
@@ -478,7 +478,7 @@ test_that("priors_to_brms legacy specs add the slope-variance row(s) per ADR 002
   expect_setequal(coefs[sd_rows], c(NA_character_, "Days"))
   expect_true(all(groups[sd_rows] == "Subject"))
 
-  # (0 + x || g) suppresses the intercept -- slope-only form. Just
+  # (0 + x || g) suppresses the intercept, slope-only form. Just
   # one sd row keyed by (group = "Subject", coef = "Days").
   fb_b <- fb_from_brms(Reaction ~ Days + (0 + Days || Subject), data = d)
   specs_b <- flexyBayes:::.priors_to_brms_specs(
@@ -506,16 +506,16 @@ test_that("priors_to_brms legacy specs add the slope-variance row(s) per ADR 002
 
 
 # ---------------------------------------------------------------- #
-# (o) INLA path FITS (x || g) -- the deferral was retired at         #
+# (o) INLA path FITS (x || g), the deferral was retired at         #
 #     0.10.0.9000                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("INLA path fits (x || g) rather than deferring", {
+test_that("INLA path fits (x || g) instead of deferring", {
   # This asserted the runtime deferral: (x || g) refused on INLA unless an
   # on-disk artefact recorded that a three-arbitrator comparison had passed,
   # and one of those arbitrators was withdrawn at 0.9.3, so it refused
   # everywhere. Retiring that gate exposed a real defect the refusal had
-  # been hiding -- the emit wrote an index column it never created -- which
+  # been hiding, the emit wrote an index column it never created, which
   # is now fixed. Agreement with lme4 REML is checked in
   # test-inla-slope-and-interaction-verified.R.
   testthat::skip_if_not_installed("INLA")

@@ -1,26 +1,15 @@
 # =============================================================================
 # The convergence contract: one tri-state verdict, and it can say "unknown".
 #
-# Closes audit A25. The defect was not a weak check, it was an absent field
-# read by two consumers that made OPPOSITE errors on it:
+# The verdict is TRUE, FALSE or NA, and NA means no evidence. Read as a
+# logical, NA is easy to turn into a constant: `isTRUE(x %||% TRUE)` is
+# always TRUE for a missing field, and isTRUE(NA) reports absent evidence as
+# a failed fit. The tests show each state can be produced and reached from
+# the others.
 #
-#   run_one.R      isTRUE(s$converge$ok %||% TRUE)   -- a constant TRUE
-#   the tripwire   expect_false(isTRUE(...$ok))      -- a constant pass
-#
-# and a third inside the package that nobody had named:
-#
-#   .fb_inla_diagnostics()  ok = isTRUE(nc$pass), where nc$pass is
-#                           deliberately NA when no confirm ran. isTRUE(NA)
-#                           is FALSE, so ABSENT evidence was reported as a
-#                           FAILED fit.
-#
-# Three states, and the tests below exist to prove the function can produce
-# each one and can be pushed from any of them to any other. A verdict that
-# cannot return NA is the bug wearing a different mask.
-#
-# Mocks rather than fits: the point is to exercise combinations a real fit
-# will not produce on demand, such as a finite mode status with a
-# non-finite marginal likelihood.
+# Mocks, not fits: they give combinations a real fit will not produce on
+# demand, such as a finite mode status with a non-finite marginal
+# likelihood.
 # =============================================================================
 
 
@@ -112,10 +101,8 @@ test_that("a missing mode status is NA even when everything present passes", {
 
 
 test_that("an uncached confirm is recomputed, not called absent", {
-  # This is the .fb_inla_diagnostics() defect. The aggregated route caches no
-  # post-fit confirm, and such a fit is not thereby broken. Where the raw
-  # INLA object still carries the diagnostics, the verdict recomputes them
-  # rather than reporting evidence it could have had.
+  # The aggregated route caches no post-fit confirm. Where the raw INLA
+  # object still carries the diagnostics, the verdict recomputes them.
   v <- .fb_convergence_verdict(mock_inla_fit(confirm = NULL))
   expect_true(isTRUE(v$ok))
   expect_true(isTRUE(v$evidence$numerical_confirm))
@@ -123,9 +110,8 @@ test_that("an uncached confirm is recomputed, not called absent", {
 
 
 test_that("a confirm that cannot be recomputed is absent, and absent is not TRUE", {
-  # Nothing to recompute from: no mode status, no likelihood, no cache. The
-  # hardened .lgm_check_numerical() must return NA here rather than the
-  # vacuous TRUE it used to return from having checked nothing at all.
+  # Nothing to recompute from: no mode status, no likelihood, no cache, so
+  # .lgm_check_numerical() returns NA, not TRUE.
   bare <- .lgm_check_numerical(list())
   expect_true(is.na(bare$pass))
   expect_match(paste(bare$reasons, collapse = " "), "no numerical diagnostic")
@@ -149,9 +135,8 @@ test_that("the verdict carries the evidence it was formed from", {
   v <- .fb_convergence_verdict(mock_inla_fit(mode_status = 0, mlik = -12.5))
   expect_identical(v$evidence$mode_status, 0)
   expect_identical(v$evidence$mlik, -12.5)
-  # A consumer that needs a stricter rule than the verdict's own can apply
-  # it to the evidence rather than reimplementing the verdict, which is how
-  # the two divergent consumers of A25 came about.
+  # A consumer that needs a stricter rule can apply it to the evidence
+  # without reimplementing the verdict.
   expect_true(all(
     c("mode_status", "mlik", "numerical_confirm",
       "max_rhat", "min_ess_bulk", "n_divergent") %in% names(v$evidence)
@@ -161,17 +146,13 @@ test_that("the verdict carries the evidence it was formed from", {
 
 # --- the falsifier for the old defects -------------------------------- #
 
-test_that("the A25 defects cannot be reintroduced silently", {
+test_that("clean, failed and undiagnosed fits give three distinct verdicts", {
   clean <- .fb_convergence_verdict(mock_inla_fit())
   broken <- .fb_convergence_verdict(mock_inla_fit(mode_status = 1))
   absent <- .fb_convergence_verdict(
     mock_inla_fit(mode_status = NULL, mlik = NULL, confirm = NULL)
   )
 
-  # The three must be mutually distinguishable. The old field failed exactly
-  # this: a clean fit, a failed fit and a fit with no diagnostics all read
-  # the same, because the field did not exist and every consumer supplied
-  # its own default.
   states <- c(isTRUE(clean$ok), isTRUE(broken$ok), isTRUE(absent$ok))
   expect_identical(states, c(TRUE, FALSE, FALSE))
   na_states <- c(is.na(clean$ok), is.na(broken$ok), is.na(absent$ok))

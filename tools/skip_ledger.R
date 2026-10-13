@@ -1,4 +1,4 @@
-# skip_ledger.R -- catalogue of skip() sites across the test suite.
+# skip_ledger.R: catalogue of skip() sites across the test suite.
 #
 # Parses tests/testthat/test-*.R via parse() + utils::getParseData() and
 # classifies each skip site against the audit-named reason taxonomy.
@@ -347,8 +347,8 @@ build_skip_ledger <- function(
 # classifier's catch-all (deliberately_deferred_feature) makes an
 # out-of-vocabulary class structurally impossible, so this gate is a
 # standing guarantee: an edit that broadened the vocabulary without
-# ratifying it -- e.g. a classifier branch returning a new class string
-# not added to .skip_ledger_reason_classes -- would trip here.
+# ratifying it, e.g. a classifier branch returning a new class string
+# not added to .skip_ledger_reason_classes, would trip here.
 .assert_taxonomy_lock <- function(test_dir) {
   tmp <- tempfile(fileext = ".md")
   on.exit(unlink(tmp), add = TRUE)

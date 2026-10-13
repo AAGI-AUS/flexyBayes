@@ -2,8 +2,8 @@
 # The design-preserving missing-response layer.
 #
 # A missing response removes an observation, not a design node. Where the
-# model carries a covariance indexed by the design -- a separable AR1(row) x
-# AR1(col) residual over a field trial -- deleting the row of a lost plot
+# model carries a covariance indexed by the design, a separable AR1(row) x
+# AR1(col) residual over a field trial, deleting the row of a lost plot
 # changes the index set the covariance is built over, so what gets fitted is
 # no longer the model that was written down.
 #
@@ -11,8 +11,8 @@
 # missing are retained and carried as latent quantities, and design cells
 # absent from the data frame are reinstated when their model variables are
 # determinable. Under ignorability the parameter posterior is the same as
-# under deletion -- augmentation preserves the representation, not
-# information -- but the representation is what makes the fit possible at
+# under deletion, augmentation preserves the representation, not
+# information, but the representation is what makes the fit possible at
 # all here, since deletion breaks the grid and the emit refuses.
 #
 # References: Yates (1933) missing-plot technique; Houtman and Speed (1984);
@@ -62,7 +62,7 @@ test_that("augment reinstates absent design cells with a missing response", {
   expect_equal(nrow(res$data), nrow(g))
   expect_equal(res$meta$n_cells_completed, 2L)
   expect_equal(sum(is.na(res$data$y)), 2L)
-  # Every grid node present exactly once -- the condition the emit checks.
+  # Every grid node present exactly once, the condition the emit checks.
   expect_equal(
     nrow(unique(res$data[, c("row", "col")])),
     nlevels(g$row) * nlevels(g$col)
@@ -101,7 +101,7 @@ test_that("fail refuses a missing response", {
 test_that("a missing covariate is refused under every na_action", {
   # The device carries a missing RESPONSE as a latent quantity. A filled-in
   # predictor is a fabricated observation, and no ignorability argument
-  # makes it safe -- so this refuses even under augment.
+  # makes it safe, so this refuses even under augment.
   g <- .grid_sim(4L, 3L)
   g$x <- stats::rnorm(nrow(g))
   g$x[3L] <- NA
@@ -190,7 +190,7 @@ test_that("augment fits a holed grid that omit refuses", {
 test_that("the two routes to a completed grid give the same analysis", {
   # Marking a present row NA and reinstating an absent row are two ways of
   # describing the same missing plot, so they must produce the same fit.
-  # This is the layer's internal consistency check; agreement with an
+  # This is the layer's internal consistency check. Agreement with an
   # engine-independent oracle is a separate matter.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -219,7 +219,7 @@ test_that("the two routes to a completed grid give the same analysis", {
   # the simulated nugget is 10% of the total, so the likelihood is nearly
   # flat in that direction and the optimiser stops at different points on the
   # ridge. Measured over three identical repeats of the SAME data, this
-  # parameter alone spans 2.6425 / 2.6627 / 2.7464 -- a 3.9% run-to-run
+  # parameter alone spans 2.6425 / 2.6627 / 2.7464, a 3.9% run-to-run
   # spread, with no missing-data difference involved at all. The other three
   # hyperparameters repeat to between 0.04% and 0.4%.
   #
@@ -254,7 +254,7 @@ test_that("the fit records what the layer did", {
 # High missing fraction: the estimand degrades, and the fit says so (S8)
 #
 # The augmentation identity is algebraic and holds at any missing fraction.
-# What weakens past roughly a third unobserved is identification -- variance
+# What weakens past roughly a third unobserved is identification, variance
 # components reach the boundary, the surface flattens, and approximations and
 # repeat fits can disagree. The warning states that once per session and
 # tells a user comparing against ASReml or lme4 to read a disagreement as
@@ -468,7 +468,7 @@ test_that("an asreml na.method() value fits the same model as the string", {
 # refuses when the record is short, because a re-fit that substituted a
 # default for something the user set would return a different model under
 # the same name. The INLA emit recorded six of the fifteen arguments brms
-# records, and that gap -- nothing about the engine -- was the whole of
+# records, and that gap (nothing about the engine) was the whole of
 # the refusal.
 # =============================================================================
 
@@ -500,7 +500,7 @@ test_that("an INLA fit records the same call fields a brms fit does", {
   expect_identical(fit$extras$call_info$prior_fixed_sd, 100)
 })
 
-test_that("update() re-fits an INLA model rather than refusing it", {
+test_that("update() re-fits an INLA model instead of refusing it", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -521,7 +521,7 @@ test_that("update() re-fits an INLA model rather than refusing it", {
 # Each of the three messages a user meets on a trial with lost plots now
 # names what ASReml does in the same situation, and what to type instead.
 # A refusal that only says no leaves the reader to guess whether the
-# package is stricter than ASReml or simply less capable.
+# package is stricter than ASReml or less capable.
 # =============================================================================
 
 test_that("the broken-grid refusal cites ASReml and names the remedy", {
@@ -541,7 +541,7 @@ test_that("the broken-grid refusal cites ASReml and names the remedy", {
   expect_s3_class(err, "flexybayes_ar1_spatial_refusal")
   msg <- conditionMessage(err)
 
-  # It counts what is actually there rather than describing the class of
+  # It counts what is actually there instead of describing the class of
   # problem in the abstract.
   expect_match(msg, "rows for the", fixed = TRUE)
   expect_match(msg, "nodes", fixed = TRUE)
@@ -582,13 +582,13 @@ test_that("the undeterminable-cell refusal names LANCER and the field book", {
 
 
 # ---------------------------------------------------------------- #
-# 7. The unobserved cells reach an accessor (WP-E2)                 #
+# 7. The unobserved cells reach an accessor                        #
 # ---------------------------------------------------------------- #
 
 test_that("summary()$missing names the lost plots on an INLA field fit", {
   # ASReml's `mv` factor. The engine already computes a posterior for each
-  # unobserved cell -- INLA treats an NA response as a latent prediction
-  # target -- so the test is that the accessor reports what the fit holds,
+  # unobserved cell, INLA treats an NA response as a latent prediction
+  # target, so the test is that the accessor reports what the fit holds,
   # at the right rows, on the right scale.
   skip_if_not_installed("INLA")
   skip_on_cran()
@@ -628,7 +628,7 @@ test_that("summary()$missing names the lost plots on an INLA field fit", {
   expect_identical(stats::coef(fit, what = "missing"), mv)
 
   # And the values are INLA's own fitted-value marginals, read from the
-  # full table rather than the head() copy on $extras.
+  # full table instead of the head() copy on $extras.
   expect_equal(
     mv$estimate,
     as.numeric(fit$inla$summary.fitted.values[["mean"]][lost]),
@@ -658,7 +658,7 @@ test_that("a non-identity link withholds the table and says why", {
   # INLA computes a fitted value for an NA response on the identity link
   # unless control.predictor names another, so on a Poisson fit those rows
   # would be on the linear-predictor scale while the rows around them are
-  # on the response scale. The table is withheld rather than mixed, and
+  # on the response scale. The table is withheld instead of mixed, and
   # the reason is not left to be discovered.
   skip_if_not_installed("INLA")
   skip_on_cran()

@@ -20,7 +20,7 @@
 }
 
 # Replaces the fresh-process fits with `fits`, in the order they are started,
-# and counts calls. Fit j finishes `delays[[j]]` seconds after it starts; a
+# and counts calls. Fit j finishes `delays[[j]]` seconds after it starts. A
 # condition in `fits` is raised when that fit is collected.
 .bo_mock_isolated <- function(fits, delays = 0, env = parent.frame()) {
   calls <- new.env()
@@ -95,6 +95,7 @@
 }
 
 test_that("the option is 3 by default and refuses anything but a count", {
+  withr::local_envvar(c("_R_CHECK_LIMIT_CORES_" = ""))
   withr::local_options(flexyBayes.inla_best_of = NULL)
   expect_identical(.fb_inla_best_of_k(), 3L)
   withr::local_options(flexyBayes.inla_best_of = 1)
@@ -108,6 +109,12 @@ test_that("the option is 3 by default and refuses anything but a count", {
       class = "flexybayes_refusal_inla_best_of_invalid"
     )
   }
+})
+
+test_that("the default is 1 while R CMD check limits cores", {
+  withr::local_envvar(c("_R_CHECK_LIMIT_CORES_" = "TRUE"))
+  withr::local_options(flexyBayes.inla_best_of = NULL)
+  expect_identical(.fb_inla_best_of_k(), 1L)
 })
 
 test_that("a bad option value refuses before INLA is called", {
@@ -336,7 +343,7 @@ test_that("the fits started before the session fit run beside it", {
 test_that("the fit kept and the record do not depend on which fit finishes first", {
   skip_if_not_installed("INLA")
   .bo_mock_memory()
-  # Fits 3 and 4 tie on the highest marginal likelihood; fit 3 is kept.
+  # Fits 3 and 4 tie on the highest marginal likelihood, and fit 3 is kept.
   fits <- list(.bo_fake(-9), .bo_fake(-8, status = 1L), .bo_fake(-8))
   run <- function(delays) {
     calls <- .bo_mock_isolated(fits, delays = delays)
@@ -539,7 +546,7 @@ test_that("best of 3 runs its fits at once in fresh R processes on a package fix
     flexyBayes.inla_best_of = 3L,
     flexyBayes.inla_best_of_workers = 3L
   )
-  # The fixture is small; the guard is tested above.
+  # The fixture is small. The guard is tested above.
   testthat::local_mocked_bindings(.fb_free_memory_bytes = function() 64 * 1024^3)
   t0 <- proc.time()[["elapsed"]]
   fit <- .bo_fit()

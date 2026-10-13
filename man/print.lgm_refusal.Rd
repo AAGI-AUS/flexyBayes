@@ -2,7 +2,7 @@
 % Please edit documentation in R/lgm_gate.R
 \name{print.lgm_refusal}
 \alias{print.lgm_refusal}
-\title{Print method for lgm_refusal -- LGM feasibility refusal}
+\title{Print method for lgm_refusal: LGM feasibility refusal}
 \usage{
 \method{print}{lgm_refusal}(x, ...)
 }
@@ -22,11 +22,11 @@ cannot fit the model on INLA and what to do about it, and nothing else.
 \details{
 The refusal used to print sixteen lines: a per-rule diagnostic string,
 four lines explaining what \code{backend = "auto"} already does, an
-unconditional sentence about a roadmap item for mixtures -- printed
-whether or not the model contained one -- and a two-argument override
+unconditional sentence about a roadmap item for mixtures, printed
+whether or not the model contained one, and a two-argument override
 incantation. The R Journal review of 0.10.0 read one of these and said
 so. A refusal is read by someone who wanted a fit, so it now carries the
-reasons and one route onward; \code{rule_id} and \code{diagnostic} stay on the
+reasons and one route onward, \code{rule_id} and \code{diagnostic} stay on the
 object for anything that wants to branch on them, and \code{?lgm_gate}
 documents the override.
 }

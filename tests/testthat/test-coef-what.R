@@ -1,5 +1,5 @@
 # =============================================================================
-# coef(what = ) and ranef() -- the ASReml-shaped coefficient accessors.
+# coef(what = ) and ranef(): the ASReml-shaped coefficient accessors.
 #
 # `coef(asreml_fit)$random` is how an ASReml user extracts BLUPs. The
 # equivalent here is `coef(fit, what = "random")`, and `ranef(fit)` is the
@@ -15,12 +15,12 @@
 #     new argument did not disturb it.
 #
 #   * the random table has the SAME six columns on both engines, although
-#     the engines record their random effects in unrelated shapes -- INLA a
+#     the engines record their random effects in unrelated shapes, INLA a
 #     data frame per term keyed by `ID`, brms a three-dimensional array per
 #     grouping factor.
 #
 # summary(fit)$random and coef(fit, what = "random") are one construction,
-# so the two accessors are asserted identical rather than separately
+# so the two accessors are asserted identical instead of separately
 # correct.
 # =============================================================================
 
@@ -137,7 +137,7 @@ test_that("coef() with no `what` is the fixed-effect vector on brms", {
   expect_identical(stats::coef(fit, what = "fixed"), beta)
 })
 
-test_that("an unrecognised `what` is refused rather than defaulted", {
+test_that("an unrecognised `what` is refused instead of defaulted", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
@@ -148,7 +148,7 @@ test_that("an unrecognised `what` is refused rather than defaulted", {
 
 
 # ---------------------------------------------------------------- #
-# 2. what = "random" -- one frame per grouping factor               #
+# 2. what = "random", one frame per grouping factor                 #
 # ---------------------------------------------------------------- #
 
 test_that("coef(what = 'random') has one row per level on INLA", {

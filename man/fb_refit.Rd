@@ -47,7 +47,7 @@ runs, for example \code{seed}, \code{backend}, \code{n_samples}, \code{control},
 On the brms route of "Extending the brms model", arguments that
 \code{\link[=flexybayes]{flexybayes()}} does not have go to \code{\link[brms:brm]{brms::brm()}}. Arguments that state
 the model (\code{random}, \code{residual}, \code{family}, \code{link}, \code{known_matrices},
-\code{prior}, \code{prior_fixed_sd}, \code{prior_vc_sd}) are refused; \code{\link[=update]{update()}}
+\code{prior}, \code{prior_fixed_sd}, \code{prior_vc_sd}) are refused, \code{\link[=update]{update()}}
 refits a changed model.}
 }
 \value{
@@ -77,7 +77,7 @@ are passed on.
 \item Weights and a known variance belong to rows. A refit on the fit's own
 data keeps them. A known variance is read from the column of that name
 in the fit's data, so rows of \code{fit$data} carry it. For any other \code{data},
-pass \verb{weights = } or \verb{known_variance = } with one value per row;
+pass \verb{weights = } or \verb{known_variance = } with one value per row.
 without them a weighted fit is refused, as is a fit with a known
 variance whose \code{data} lacks the column.
 }

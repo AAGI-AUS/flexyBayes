@@ -5,11 +5,11 @@
 # scheme. An s() smooth contributes an n x k dense basis matrix B
 # (built by mgcv::smoothCon() at parse time). For a large basis
 # dimension k the exact dense path costs k coefficients and an n x k
-# design block; the low-rank scheme replaces B with its rank-K
+# design block. The low-rank scheme replaces B with its rank-K
 # principal-component truncation B_K = B V_K, where V_K holds the top
-# K right singular vectors of B. An emit path carrying K (rather than
+# K right singular vectors of B. An emit path carrying K (instead of
 # k) basis coefficients would project newdata through the same V_K at
-# predict time -- see the Backend scope note below for why no active
+# predict time, see the Backend scope note below for why no active
 # engine currently consumes B_K.
 #
 # This file ships three things:
@@ -19,10 +19,10 @@
 #                                 the full singular values, and the
 #                                 realised Frobenius capture.
 #   2. .validate_low_rank_rank()  the rank refusal contract (positive
-#                                 integer; rank <= min(basis rank, n)).
+#                                 integer. Rank <= min(basis rank, n)).
 #   3. .validate_low_rank_smooth() the per-scheme validation procedure
 #                                 registered into .approximation_registry
-#                                 as the `low_rank_smooth` validation_fn;
+#                                 as the `low_rank_smooth` validation_fn.
 #                                 validate_approximation() dispatches
 #                                 here (see R/validate_approximation.R).
 #
@@ -46,12 +46,12 @@
 # own rw2 random-walk path and exposes no truncatable dense basis (see
 # R/emit_inla.R), and brms has no emit path reading `term$X_K` either.
 # The `low_rank_smooth` scheme was built for the since-withdrawn
-# native engine (see NEWS.md, 0.9.3); requesting it now refuses at
-# dispatch with `low_rank_smooth_unsupported` rather than silently
+# native engine (see NEWS.md, 0.9.3). Requesting it now refuses at
+# dispatch with `low_rank_smooth_unsupported` instead of silently
 # fitting an unrelated rw2 smooth or dropping the truncation on the
 # floor. The truncation in this file still runs during formula
-# parsing (before dispatch decides the backend) -- see
-# R/parse_formula.R -- so `approx_spec` is available for inspection
+# parsing (before dispatch decides the backend), see
+# R/parse_formula.R, so `approx_spec` is available for inspection
 # even though no emit path reads it.
 
 # --- rank refusal contract ---------------------------------------- #
@@ -143,8 +143,8 @@
 # B_K = X V_K (n x K), the projection V_K (k x K, the top-K right
 # singular vectors), the full singular-value spectrum, and the
 # realised Frobenius capture. The economy SVD gives min(n, k)
-# singular values and the k x min(n, k) right-singular-vector matrix;
-# the capture denominator sums over the full spectrum so the bound is
+# singular values and the k x min(n, k) right-singular-vector matrix.
+# The capture denominator sums over the full spectrum so the bound is
 # exact regardless of K.
 #
 # Arguments
@@ -205,7 +205,7 @@
 # (fit$extras$parse_info$approx, keyed by smooth variable) and reports
 # the realised Frobenius capture against the pass threshold.
 #
-# A fit may carry more than one low-rank smooth; the procedure returns
+# A fit may carry more than one low-rank smooth. The procedure returns
 # one per-smooth row plus an overall verdict (all smooths must clear
 # the threshold for the fit to pass). The return value is the
 # <fb_approximation_validation> classed object built by
@@ -214,9 +214,9 @@
 # Arguments
 #   fit        a fitted flexybayes object carrying at least one
 #              low_rank_smooth approximation.
-#   threshold  the Frobenius-capture pass threshold; defaults to
+#   threshold  the Frobenius-capture pass threshold. Defaults to
 #              the value 0.99.
-#   ...        ignored; present for the generic's signature.
+#   ...        ignored. Present for the generic's signature.
 .validate_low_rank_smooth <- function(fit, threshold = 0.99, ...) {
   approx <- fit$extras$parse_info$approx
   schemes <- vapply(

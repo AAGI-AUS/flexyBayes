@@ -1,11 +1,11 @@
-# tools/calibrate_boundary_collapse.R -- measure the floor the
+# tools/calibrate_boundary_collapse.R: measure the floor the
 # boundary-collapse detector is calibrated against.
 #
 # The detector in R/boundary_collapse.R warns when a variance component's
 # upper credible bound is a negligible fraction of the residual SD. The
 # question that fixes the threshold is: how small does that ratio get
 # when the component is GENUINELY zero? Anything at or above that floor
-# must not warn, or honest nulls are reported as failed modes.
+# must not warn, or genuine nulls are reported as failed modes.
 #
 # Design: group SD set to exactly zero, crossed over n and the number of
 # groups, 8 seeds per cell, on the package's default prior. A non-null
@@ -15,7 +15,7 @@
 # Run from the package root; needs INLA. Writes
 # inst/validation/boundary_calibration.csv, which
 # tests/testthat/test-boundary-collapse.R reads so that the threshold is
-# asserted against measured data rather than a number typed into a mock.
+# asserted against measured data instead of a number typed into a mock.
 #
 #   Rscript tools/calibrate_boundary_collapse.R
 

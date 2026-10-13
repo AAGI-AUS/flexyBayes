@@ -93,7 +93,7 @@ test_that("a skewed posterior separates the quantile interval from the normal on
   normal_lower <- g$coefficients - stats::qnorm(0.975) * se
 
   # The lognormal posterior is positive everywhere, so its lower quantile
-  # must be positive; the normal approximation runs below zero.
+  # must be positive. The normal approximation runs below zero.
   expect_gt(ci[1L, 1L], 0)
   expect_lt(normal_lower, 0)
 })

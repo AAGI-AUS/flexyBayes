@@ -3,14 +3,14 @@
 # The print and summary methods show an Rhat / effective-size badge, but
 # a user who assigns a fit and moves straight to downstream work never
 # sees it. The package's standing rule is to surface an anomaly the
-# moment it arises rather than wait to be asked, so a fit whose sampler
+# moment it arises, not wait to be asked, so a fit whose sampler
 # has not mixed emits a warning() as it is handed back. The warning reads
 # the same Gelman psrf + effective-size diagnostics the badge uses, so
 # the two surfaces never disagree.
 #
-# It is a no-op when no MCMC convergence information is attached -- the
+# It is a no-op when no MCMC convergence information is attached, the
 # INLA / Laplace path is deterministic and carries no Rhat, and code /
-# plan objects are not fits -- and it is suppressible (for intentionally
+# plan objects are not fits, and it is suppressible (for intentionally
 # short illustrative fits) via
 # options(flexyBayes.silence_convergence_warning = TRUE).
 .fb_warn_poor_convergence <- function(
@@ -64,12 +64,12 @@
   #
   # A factor-analytic term's raw loadings are identified only up to
   # rotation and sign, so their per-entry Rhat is meaningless and
-  # inflates this count -- fb_structured_cov() reconstructs the
+  # inflates this count, fb_structured_cov() reconstructs the
   # identified covariance and is the right place to look.
   #
   # An unstructured term is NOT that case, and saying so was worse than
   # saying nothing. brms parameterises us(f):g by standard deviations
-  # and a Cholesky correlation factor, which is identified; the note
+  # and a Cholesky correlation factor, which is identified. The note
   # invited a user to dismiss a real mixing failure as a labelling
   # artefact, and pointed at a function that abstains for us() terms.
   # What actually fails is the split between the covariance diagonal and
@@ -77,7 +77,7 @@
   # measured on agridat::yan.winterwheat (18 genotypes x 9 environments,
   # one plot per cell) the 45 covariance parameters converge while
   # `sigma` reaches Rhat 1.13 with a bulk effective size of 36, and
-  # doubling the budget makes it worse rather than better.
+  # doubling the budget makes it worse, not better.
   rt <- fit$extras$parse_info$random %||% list()
   has_type <- function(types) {
     any(vapply(rt, function(t) (t$type %||% "") %in% types, logical(1)))
@@ -88,8 +88,8 @@
       struct_note,
       " Note: this model has a factor-analytic term whose raw loadings ",
       "are non-identified (rotation/sign), so their Rhat is expected to ",
-      "be high. Read the identified covariance instead -- the reconstructed ",
-      "Sigma and the correlations derived from it -- rather than the raw ",
+      "be high. Read the identified covariance instead (the reconstructed ",
+      "Sigma and the correlations derived from it), not the raw ",
       "loadings."
     )
   }
@@ -99,20 +99,20 @@
       " Note: this model has an unstructured us() term. With one ",
       "observation per cell of the outer factor the residual variance ",
       "is confounded with the diagonal of that covariance, and the ",
-      "sampler walks the ridge between them -- divergences and a low ",
+      "sampler walks the ridge between them. Divergences and a low ",
       "effective size on `sigma` are the usual symptom, and more ",
       "iterations do not fix it. Check which parameters are failing in ",
-      "summary(): if they are `sigma` and `lp__` rather than the ",
+      "summary(): if they are `sigma` and `lp__`, not the ",
       "covariance entries, the remedy is replication within cell or an ",
       "informative prior on the residual, not a longer chain. Raising ",
       "`control = list(adapt_delta = 0.95)` will lower the divergence ",
       "count on this model without identifying the split, so it hides ",
-      "the symptom rather than treating it."
+      "the symptom instead of treating it."
     )
   }
 
   warning(
-    "flexyBayes: the sampler may not have converged -- ",
+    "flexyBayes: the sampler may not have converged: ",
     paste(parts, collapse = "; "),
     ". Treat the posterior with caution: increase `warmup` / ",
     "`n_samples`, raise `control = list(adapt_delta = 0.95)` where the ",

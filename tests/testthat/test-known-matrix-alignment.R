@@ -1,5 +1,5 @@
-# test-known-matrix-alignment.R -- v0.3.8 audit Critical Fix #2
-# (known-matrix dim/level alignment). Covers the new validators in
+# test-known-matrix-alignment.R: v0.3.8 fix for
+# known-matrix dim/level alignment). Covers the new validators in
 # R/structured_cov.R: .check_known_matrix_dim() +
 # .check_known_matrix_dimnames(), and the typed refusal classes they
 # raise via .stop_structured_cov_refusal():
@@ -12,7 +12,7 @@
 #   reason_code = "known_matrix_level_mismatch"
 #     dimnames carry levels not in (or missing from) the factor, OR
 #     dimnames carry the correct levels but in a different order
-#     than levels(<group>) -- INLA's generic0 and brms's known-
+#     than levels(<group>), INLA's generic0 and brms's known-
 #     covariance emit both require positional alignment.
 #
 # Plus the three happy paths:
@@ -24,7 +24,7 @@
 #                                              (dispatch could not
 #                                               supply the level count)
 #
-# Tests are at the validator level (no MCMC fit needed) -- the
+# Tests are at the validator level (no MCMC fit needed), the
 # refusals fire structurally before any fit attempt.
 
 suppressPackageStartupMessages({
@@ -225,7 +225,7 @@ test_that("sparse precision PD probe routes through Matrix::Cholesky (no dense c
   testthat::skip_if_not_installed("Matrix")
   # PD sparse via a small symmetric SPD construction. The validator
   # picks the sparse-native branch (inherits 'Matrix') and uses
-  # Matrix::Cholesky(forceSymmetric(Q), perm = FALSE) -- no
+  # Matrix::Cholesky(forceSymmetric(Q), perm = FALSE), no
   # as.matrix() coercion of Q to the dense representation.
   Q <- Matrix::sparseMatrix(
     i = c(1L, 2L, 3L, 4L, 5L),

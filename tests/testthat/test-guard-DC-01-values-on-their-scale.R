@@ -82,7 +82,7 @@ test_that("DC-01 guard: reported SDs follow the units of the response and covari
     flexyBayes.inla_threads = "1:1"
   )
   # Two identical calls differ by up to 3.5% on the near-zero component's
-  # lower limit; a value on the wrong scale is off by a factor.
+  # lower limit. A value on the wrong scale is off by a factor.
   off <- character(0)
   for (nm in names(.g01_fixtures())) {
     fx <- .g01_fixtures()[[nm]]

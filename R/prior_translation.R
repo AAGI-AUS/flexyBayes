@@ -1,34 +1,18 @@
-# prior_translation -- which (target, distribution) pairs of the prior
+# prior_translation: which (target, distribution) pairs of the prior
 # DSL each engine can carry, written down once.
 #
-# The sibling of R/family_traits.R and the same discipline: a fact about
-# an engine lives in exactly one table, and a test re-reads the engine to
-# check the table still describes it. family_traits.R answers "what
-# hyperparameter does this likelihood declare"; this file answers "can
-# this engine represent this prior on this parameter".
-#
-# The rule exists because it was broken. `priors_to_inla()` translated
-# `pc`, `half_normal` and `uniform` on `sigma` / `sd()` / `smooth()` and
-# silently returned nothing for every other pair -- `b()` targets,
-# `cor()` targets, and five of the ten distributions -- while
-# `prior_summary()` printed each of them as applied. A prior-sensitivity
-# analysis on INLA could vary a `student_t` scale and compare the
-# engine's default with itself (field-sweep FS-21). The brms side had the
-# mirror-image defect: its refusals were real but untyped, so no caller
-# could tell "outside the translation table" from "R fell over"
-# (field-sweep FS-15).
-#
-# A blanket refusal was the wrong fix: it would have turned six green
-# cells red, because the documented full specification legitimately
-# carries a `b("x") ~ normal(...)` row that INLA's `control.fixed` can
-# take. So the fix is the table -- translate what the engine represents,
-# refuse by name what it does not.
+# Each fact about an engine lives in exactly one table, and a test
+# re-reads the engine to check the table still describes it. The engine
+# translates what it can represent and refuses by name, with a typed
+# condition, what it cannot. A pair that is neither translated nor
+# refused would be printed by `prior_summary()` as applied while the
+# engine used its own default.
 #
 # `verdict` is one of:
-#   "translate"  the engine carries this pair; `route` names the engine
+#   "translate"  the engine carries this pair. `route` names the engine
 #                argument it arrives through, and an arrival test proves
 #                it reaches that argument.
-#   "refuse"     the engine has no representation; the fit refuses typed
+#   "refuse"     the engine has no representation. The fit refuses typed
 #                and names the two remedies (re-express in a translatable
 #                distribution, or switch backend).
 
@@ -38,20 +22,19 @@
 
 # Every (engine, target, distribution) triple the DSL can produce.
 # Targets are the `fb_prior()` target types (R/fb_prior.R
-# `.parse_prior_target`); distributions are the names of
+# `.parse_prior_target`). Distributions are the names of
 # `.fb_prior_family_table()`. Both are read from those functions in
 # `.fb_prior_translation_table()` below, so a distribution added to the
-# DSL without a verdict here is a build-time error rather than a silent
-# drop.
+# DSL without a verdict here is a build-time error, not a silent drop.
 #
 # INLA (grounded against INLA 25.10.19):
 #
 #   Variance components (`sigma`, `sd()`, `smooth()`) are parameterised
-#   by theta = log(precision). `pc` is INLA's own `pc.prec`;
+#   by theta = log(precision). `pc` is INLA's own `pc.prec`.
 #   `half_normal` and `uniform` are exact expression priors on the SD
 #   scale (R/fb_prior.R `.inla_halfnormal_sd_expr`,
-#   `.inla_uniform_sd_expr`); `exponential(rate)` IS the PC prior --
-#   `pc.prec(u, a)` is Exp(-log(a) / u) on sigma -- so it translates
+#   `.inla_uniform_sd_expr`). `exponential(rate)` is the PC prior, since
+#   `pc.prec(u, a)` is Exp(-log(a) / u) on sigma, so it translates
 #   exactly with `param = c(1 / rate, exp(-1))`. The remaining six
 #   distributions have no representation this package emits.
 #
@@ -59,7 +42,7 @@
 #   as a mean and a precision and takes per-coefficient named lists
 #   (verified live: `control.fixed = list(mean = list(x = 1, default =
 #   0), prec = list(x = 0.0625, default = 0.001))`). Only `normal`
-#   translates; INLA's fixed-effect prior is Gaussian by construction.
+#   translates, because INLA's fixed-effect prior is Gaussian.
 #
 #   `cor()` has no counterpart: the INLA emit produces no correlation
 #   hyperparameter.
@@ -86,7 +69,7 @@
 #   hierarchy over the per-level SDs (R/pooled_prior.R): prior rows on the
 #   log-sigma intercept and group SD, and stanvars for diag() terms.
 #
-#   `cor()` and `smooth()` have no reachable parameter -- the brms
+#   `cor()` and `smooth()` have no reachable parameter. The brms
 #   models flexyBayes emits carry classes `b`, `Intercept`, `sd` and
 #   `sigma` only (correlated random slopes are refused at ingest and
 #   smooths route to INLA), so a row for either would be a prior on a
@@ -185,9 +168,8 @@
   tbl[!duplicated(key, fromLast = TRUE), , drop = FALSE]
 }
 
-# The verdict for one triple. An unknown engine is "translate" so that
-# any backend outside the table -- past or future -- is not refused by
-# a table that never described it.
+# The verdict for one triple. An engine outside the table is
+# "translate", so the table never refuses a backend it does not describe.
 .fb_prior_translation_lookup <- function(engine, target_type, family) {
   if (!engine %in% c("inla", "brms")) {
     return("translate")
@@ -211,9 +193,8 @@
 # Returns invisible TRUE when every spec translates.
 #
 # The message lists the untranslatable rows one per line and names both
-# remedies -- re-express in a distribution the engine does carry, or
-# move to the other backend -- because a refusal that says only "no" is
-# the M5 class the field register files separately.
+# remedies: re-express in a distribution the engine does carry, or move
+# to the other backend.
 .fb_check_prior_translation <- function(prior, engine) {
   if (!inherits(prior, "fb_prior")) {
     return(invisible(TRUE))
@@ -258,7 +239,7 @@
   ))
 }
 
-# The per-engine menu, rendered from the table rather than re-listed.
+# The per-engine menu, rendered from the table, not re-listed.
 .fb_prior_translation_menu <- function(engine) {
   tbl <- .fb_prior_translation_table()
   tbl <- tbl[tbl$engine == engine & tbl$verdict == "translate", , drop = FALSE]
@@ -299,20 +280,15 @@
 
 
 # ---------------------------------------------------------------- #
-# Target existence (field-sweep FS-20)                              #
+# Target existence                                                  #
 # ---------------------------------------------------------------- #
 
 # Refuse a prior that names a term the model does not have.
 #
 # `available` is the engine's own list of the parameters a prior can
-# attach to, so the check is grounded on what the engine will see rather
-# than on a name list this package synthesises: on brms it is
+# attach to, not a name list this package synthesises. On brms it is
 # `brms::default_prior()`'s (class, coef, group) triples, on INLA the
 # design-matrix column names and the f()-term labels.
-#
-# Before 0.9.2 the mismatch was delegated to brms's parser, which
-# reported a synthesised Stan parameter name (`b_nonexistent_term`) the
-# user never wrote, untyped; on INLA it was not reported at all.
 .fb_stop_prior_target_absent <- function(
   target_label,
   kind,

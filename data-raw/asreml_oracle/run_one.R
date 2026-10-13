@@ -1,4 +1,4 @@
-# run_one.R -- run one paired scenario and write its manifest row.
+# run_one.R: run one paired scenario and write its manifest row.
 #
 #   FB_LIB=<lib> FB_SCENARIO=<id> FB_OUT=<dir> R --file=run_one.R
 #
@@ -11,7 +11,7 @@
 suppressMessages(library(asreml))
 suppressMessages(library(flexyBayes))
 # Scenario 19 reads its substrate from lme4. Loaded unconditionally so a
-# missing dependency fails at the top of the run rather than inside one
+# missing dependency fails at the top of the run, not inside one
 # scenario, where it would look like a modelling failure.
 suppressMessages(library(lme4))
 
@@ -133,7 +133,7 @@ for (b in sc$blup) {
     sub(paste0("^", b$asreml, "_"), "", rownames(ra)[keep])
   )
   # ranef() returns a named list of data frames, one per group, not a
-  # single frame. Read the contract rather than the shape it happened to
+  # single frame. Read the contract, not the shape it happened to
   # print in.
   rf_all <- ranef(fb)
   rf <- if (is.data.frame(rf_all)) {
@@ -152,7 +152,7 @@ for (b in sc$blup) {
 # Correlations. ASReml parameterises us() as variances and a covariance, so
 # the correlation is reconstructed from the three named parameters; flexyBayes
 # reports it directly. Comparing the reconstruction against the reported value
-# is the point -- it is the one quantity invariant to the two systems'
+# is the point: it is the one quantity invariant to the two systems'
 # different parameterisations, and the one a breeder reads.
 for (r in sc$correlations %||% list()) {
   nm <- r$asreml
@@ -165,7 +165,7 @@ for (r in sc$correlations %||% list()) {
   } else {
     checks[[length(checks) + 1L]] <- list(
       quantity = paste0("correlation: ", r$label), pass = NA,
-      note = "not asserted -- a named component was absent on one side"
+      note = "not asserted: a named component was absent on one side"
     )
   }
 }

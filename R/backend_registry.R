@@ -4,10 +4,10 @@
 # (R/representation_registry.R), approximation (R/approximation_registry.R),
 # backend-independence (R/backend_independence_registry.R), and refusal
 # (R/refusal_taxonomy.R). It models *backend* as a first-class axis
-# rather than a value hard-coded into each verb's match.arg vocabulary
+# and not a value hard-coded into each verb's match.arg vocabulary
 # and into .routing_policy_table(). The package's whole architecture is
 # built on "extend by registration, not by API growth" but backend was
-# the one concept still hard-coded; this registry supplies the
+# the one concept still hard-coded. This registry supplies the
 # extension point that philosophy always implied.
 #
 # Same shape as the other four registries: an environment allocated at
@@ -19,40 +19,38 @@
 # The registry is the single source of truth for backend *facts*:
 # legitimate names, per-backend capability_predicate, auto-membership
 # (default_in_auto), availability (available_pkg), and the emit
-# entry-point (engine). Dispatch (R/dispatch.R) CONSUMES these facts ---
-# backend availability via .available_backend_names(); per-backend
-# capability via .backend_can_fit(); the emit function via the `engine`
+# entry-point (engine). Dispatch (R/dispatch.R) CONSUMES these facts,
+# backend availability via .available_backend_names(). per-backend
+# capability via .backend_can_fit(). The emit function via the `engine`
 # field. The brms structured-cov gate and the INLA lgm_gate reconcile with
 # the registry predicates (the predicates delegate to the same authorities,
 # so refusal semantics cannot drift).
 #
 # What stays EXPLICIT, by design: the per-paradigm routing ORDER and
-# fallback policy (INLA Laplace fast-path; brms/Stan compile-latency
+# fallback policy (INLA Laplace fast-path, brms/Stan compile-latency
 # opt-out from auto) is genuine policy, not
-# mechanical iteration, so dispatch keeps it as code rather than deriving
+# mechanical iteration, so dispatch keeps it as code instead of deriving
 # it. Consequence, and the limit of the extensibility claim: a new
 # same-paradigm
-# formula engine is added by registration plus an emit hookup; a new
+# formula engine is added by registration plus an emit hookup. A new
 # inference paradigm additionally needs an orchestration step.
 #
-# NAMING. The proposed user-facing "brms" -> "stan" engine rename was
-# REVERSED (2026-05-31): brms is retained as the engine label so the
-# backend axis stays consistent (inla / brms are both front-ends); the
-# Stan/HMC sampler is recorded as the paradigm attribute
-# (paradigm = "hmc_nuts") so the backend-independence registry grades
-# pairs on what the engines actually share.
+# NAMING. brms is the engine label, so the backend axis stays consistent
+# (inla / brms are both front-ends). The Stan/HMC sampler is recorded as
+# the paradigm attribute (paradigm = "hmc_nuts") so the backend-independence
+# registry grades pairs on what the engines actually share.
 # `rename_to` is therefore NA for every backend.
 #
-# Internal -- not exported.
+# Internal: not exported.
 
 # --- closed status vocabulary ------------------------------------- #
 
 # A backend entry is one of these lifecycle states. `active` backends are
-# reachable today; `dormant` backends have a provisioned but inactive
+# reachable today. `dormant` backends have a provisioned but inactive
 # slot and refuse at dispatch until activated. `reserved` is
 # documentation-only and not registered here (NIMBLE is the reserved next
-# slot; it has no slot yet, so registering it would be a stub -- it is
-# named in this comment instead). The vocabulary is closed; a new state
+# slot. It has no slot yet, so registering it would be a stub, it is
+# named in this comment instead). The vocabulary is closed. A new state
 # requires a deliberate amendment.
 .BACKEND_STATUS_VOCABULARY <- c("active", "dormant")
 
@@ -68,14 +66,14 @@
 
 # --- registration helper ------------------------------------------ #
 
-# .register_backend() --- the one-shot registration call. Validates the
+# .register_backend(): the one-shot registration call. Validates the
 # status + grammar vocabularies (an unknown value is a hard error naming
 # the offender), refuses a duplicate, refuses once the registry is
 # locked. Field schema:
 #   name            chr(1)  canonical backend name (the routing label).
 #   status          chr(1)  one of .BACKEND_STATUS_VOCABULARY.
 #   engine          chr(1)  emit entry-point function name, or NA for a
-#                           dormant backend (resolved lazily at dispatch;
+#                           dormant backend (resolved lazily at dispatch,
 #                           stored as a name string, not a closure, so a
 #                           load-time reference cannot fail).
 #   grammars        chr     subset of .BACKEND_GRAMMAR_VOCABULARY.
@@ -87,9 +85,8 @@
 #   capability_predicate function(fb) -> TRUE (capable) or a single
 #                           reason-code string naming why the engine
 #                           cannot represent the model. Default permissive.
-#   rename_to       chr(1)  reserved for a future user-facing rename; NA
-#                           for every backend today (the proposed
-#                           brms -> stan rename was reversed 2026-05-31).
+#   rename_to       chr(1)  reserved for a future user-facing rename. NA
+#                           for every backend today.
 #   registered_in_adr chr(1)
 .register_backend <- function(
   name,
@@ -104,8 +101,8 @@
   registered_in_adr = "0031"
 ) {
   # Validate inputs before checking mutability, so a caller passing an
-  # unknown status / grammar sees the actionable vocabulary error rather
-  # than a lock error even on a loaded (locked) package.
+  # unknown status / grammar sees the actionable vocabulary error and not
+  # a lock error even on a loaded (locked) package.
   if (
     !is.character(name) || length(name) != 1L || is.na(name) || !nzchar(name)
   ) {
@@ -123,7 +120,7 @@
       status,
       "'. The closed vocabulary is ",
       paste(.BACKEND_STATUS_VOCABULARY, collapse = ", "),
-      "; expanding it requires an ADR 0031 amendment.",
+      ". Expanding it is a design change.",
       call. = FALSE
     )
   }
@@ -151,8 +148,8 @@
 
   if (environmentIsLocked(.backend_registry)) {
     stop(
-      ".register_backend(): the backend registry is locked; ",
-      "backends must be registered before .lock_backend_registry() ",
+      ".register_backend(): the backend registry is locked. ",
+      "Backends must be registered before .lock_backend_registry() ",
       "fires at end of .onLoad().",
       call. = FALSE
     )
@@ -190,7 +187,7 @@
 
 # --- accessors ---------------------------------------------------- #
 
-# .lookup_backend() --- internal accessor returning the full entry, or
+# .lookup_backend(): internal accessor returning the full entry, or
 # NULL when the name is not registered.
 .lookup_backend <- function(name) {
   if (
@@ -204,16 +201,16 @@
   get(name, envir = .backend_registry, inherits = FALSE)
 }
 
-# .registered_backend_names() --- every registered backend name (any
+# .registered_backend_names(): every registered backend name (any
 # status), sorted for determinism.
 .registered_backend_names <- function() {
   sort(ls(envir = .backend_registry, all.names = FALSE))
 }
 
-# .available_backend_names() --- the active backends whose required
+# .available_backend_names(): the active backends whose required
 # package is installed (NA available_pkg means always-on). Dormant
 # backends are excluded. This is the candidate set the universal entry
-# defaults to; it is also read by the consistency test.
+# defaults to. It is also read by the consistency test.
 .available_backend_names <- function() {
   out <- character(0)
   for (nm in .registered_backend_names()) {
@@ -228,7 +225,7 @@
   out
 }
 
-# .auto_default_backend_names() --- registered backends flagged for
+# .auto_default_backend_names(): registered backends flagged for
 # auto's default candidate set AND currently `active`. A non-active
 # (dormant / quarantined) backend can never be an auto candidate, so the
 # invariant "auto never selects a quarantined engine" is structural here,
@@ -257,14 +254,14 @@
 
 # Each predicate takes the fb_terms IR and returns TRUE (the engine can
 # represent the model) or a single reason-code string naming why it
-# cannot. The registry stores them; .backend_can_fit() is the
+# cannot. The registry stores them. .backend_can_fit() is the
 # dispatch-facing accessor. The predicates are the systematic
 # replacement for the special-cased gates (low_rank_smooth_unsupported,
-# lgm_gate) -- they delegate to the existing authorities rather than
+# lgm_gate): they delegate to the existing authorities, not
 # duplicate them, so refusal semantics do not drift.
 
 # inla is capable iff lgm_gate() accepts the model. The 11-rule gate is
-# INLA's capability predicate; the closure delegates to it (single
+# INLA's capability predicate. The closure delegates to it (single
 # authority, no duplication).
 .capability_inla <- function(fb) {
   gated <- tryCatch(lgm_gate(fb), error = function(e) NULL)
@@ -275,18 +272,18 @@
 }
 
 # The asreml structured-covariance term types with no lossless brms /
-# Stan translation (dispatch.R names fa / us / ar1; vm / ped add
-# known-matrix and pedigree carriers). Closed set; extending it is a
+# Stan translation (dispatch.R names fa / us / ar1, vm / ped add
+# known-matrix and pedigree carriers). Closed set. Extending it is a
 # deliberate amendment.
 .STRUCTURED_COV_TYPES <- c("vm", "ped", "fa", "us", "ar1")
 
 # brms / Stan reaches the vm() / ped() relationship random effects via
-# its native known-covariance group term, (1 | gr(var, cov = K)) -- brms
+# its native known-covariance group term, (1 | gr(var, cov = K)), brms
 # Cholesky-factors the supplied covariance internally (the K = L L'
 # decorrelation Stan fits directly), so GBLUP / pedigree BLUP fit on
 # both engines (brms and INLA). This holds only for an exact
 # dense-able
-# carrier (dense / chol / precision / pedigree sparse precision); the
+# carrier (dense / chol / precision / pedigree sparse precision). The
 # remaining asreml structured-covariance terms (fa / us / ar1), a
 # block-diagonal or low-rank vm() carrier, and a low_rank_smooth
 # approximation have no lossless brms / Stan translation.
@@ -298,17 +295,17 @@
 #
 #   units      the iid residual, which brms carries implicitly as the family
 #              scale parameter (sigma).
-#   at_units   a heterogeneous residual sectioned by a factor -- ASReml's
-#              dsum(~ units | f) and the at(f):units spelling -- lowered to
+#   at_units   a heterogeneous residual sectioned by a factor, ASReml's
+#              dsum(~ units | f) and the at(f):units spelling, lowered to
 #              distributional regression on sigma, `sigma ~ 0 + f`. Validated
 #              against ASReml's dsum on the same data to within 4.8% on the
 #              per-level variances (posterior mean against REML), largest on
 #              the smallest of them.
 #
-# Every structured residual form -- ar1, separable ar1_spatial, and any
-# future correlated residual -- has no emit path at all: the reconstructed
+# Every structured residual form, ar1, separable ar1_spatial, and any
+# future correlated residual, has no emit path at all: the reconstructed
 # brms formula rebuilds the fixed and random blocks and would drop the
-# residual block silently. Naming the supported set here (rather than the
+# residual block silently. Naming the supported set here (not the
 # unsupported one) keeps a newly parsed residual type refused by default
 # instead of silently dropped.
 .BRMS_RESIDUAL_TYPE_ALLOWLIST <- c("units", "at_units")
@@ -317,9 +314,9 @@
   rt <- fb$random_terms %||% list()
   for (t in rt) {
     ty <- t$type %||% ""
-    # A random-side AR1 field -- ar1(t) or the separable ar1(row):ar1(col)
-    # -- is a Kronecker autoregressive precision that only the INLA emit
-    # builds. Naming it here rather than leaving it to the generic
+    # A random-side AR1 field, ar1(t) or the separable ar1(row):ar1(col)
+    # is a Kronecker autoregressive precision that only the INLA emit
+    # builds. Naming it here instead of leaving it to the generic
     # structured-covariance code matters on the auto path: without this
     # branch the separable form was invisible to the predicate (only the
     # 1-D `ar1` is in .STRUCTURED_COV_TYPES) and auto would route a failed
@@ -359,7 +356,7 @@
   TRUE
 }
 
-# .backend_can_fit() --- dispatch-facing capability check. Returns
+# .backend_can_fit(): dispatch-facing capability check. Returns
 # list(ok = TRUE) or list(ok = FALSE, reason_code = <chr>). An
 # unregistered backend or one without a predicate returns ok = TRUE
 # (its own dispatch-side handling owns the outcome).
@@ -377,12 +374,12 @@
   }
 }
 
-# .backend_emit_fn() --- dispatch-facing resolver for a backend's emit
+# .backend_emit_fn(): dispatch-facing resolver for a backend's emit
 # entry-point. The registry stores the emit function by NAME (a string,
-# e.g. "emit_inla") rather than as a closure, so a load-time reference
-# cannot fail; this resolves the name to the function within the package
+# e.g. "emit_inla"), not as a closure, so a load-time reference
+# cannot fail. This resolves the name to the function within the package
 # namespace at dispatch time. Errors loudly on an unregistered backend or
-# one whose engine is NA (a dormant slot reached in error) -- the caller
+# one whose engine is NA (a dormant slot reached in error), the caller
 # is expected to have handled dormancy upstream.
 # This is the seam that lets a newly-registered same-paradigm engine be
 # dispatched without hard-coding its emit symbol at the call site.
@@ -403,7 +400,7 @@
       "' has no emit engine ",
       "(status '",
       e$status,
-      "'); it cannot be dispatched.",
+      "'). It cannot be dispatched.",
       call. = FALSE
     )
   }
@@ -412,10 +409,9 @@
 
 # --- v0.5.0 population --------------------------------------------- #
 
-# .populate_backend_registry_v050() --- registers the two active
-# backends. brms is retained as the engine label (the brms -> stan
-# rename was reversed 2026-05-31); the Stan/HMC sampler is the paradigm
-# attribute, not the name. `default_in_auto` encodes the auto candidate
+# .populate_backend_registry_v050(): registers the two active
+# backends. brms is the engine label. The Stan/HMC sampler is the
+# paradigm attribute, not the name. `default_in_auto` encodes the auto candidate
 # set c("inla"): INLA is auto-considered, brms is opt-in only (its
 # 30--60 s Stan compile would break the auto fast-path promise).
 # Dispatch reads this set via .available_backend_names() /
@@ -441,10 +437,8 @@
     default_in_auto = FALSE,
     capability_predicate = .capability_brms
   )
-  # (koine, the dormant synthesis fourth-opinion slot, moved to
-  # flexyBayesOrchestra in the lean-core split, 2026-06-06. The backend
-  # registry locks at .onLoad and resolves engines from the flexyBayes
-  # namespace, so a companion-hosted dispatchable backend is out of scope;
-  # koine now ships as an informational surface (koine_status()) there.)
+  # koine, the synthesis fourth-opinion slot, lives in flexyBayesOrchestra.
+  # The backend registry locks at .onLoad and resolves engines from this
+  # namespace, so a companion-hosted backend cannot be registered.
   invisible(NULL)
 }

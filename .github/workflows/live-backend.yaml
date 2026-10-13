@@ -1,16 +1,16 @@
-# Live-backend integration job (audit F04).
+# Live-backend integration job.
 #
 # The ordinary R-CMD-check workflow installs INLA on its Linux release leg and
 # then does not exercise it: `skip_on_ci()` reads the `CI` variable GitHub sets
 # on every runner, and `skip_on_cran()` fires because `NOT_CRAN` is unset under
 # `R CMD check`. Measured on the maintainer's machine at 0.10.0.9000, the two
-# routes disagree by hundreds of assertions -- the as-cran route reported 4,190
+# routes disagree by hundreds of assertions: the as-cran route reported 4,190
 # passes and 348 skips where an unfiltered local run reported 5,716 and 5. The
 # skipped set is the live translation paths, which is where every claim in
 # inst/TRANSLATION.md lives. A green check on that route establishes that the
 # package builds, not that the advertised translations still fit.
 #
-# This job removes both skips rather than editing 461 call sites: `CI` is set
+# This job removes both skips instead of editing 461 call sites: `CI` is set
 # empty for the job so `skip_on_ci()` does not fire, and `NOT_CRAN=true` so
 # `skip_on_cran()` does not either.
 #
@@ -23,17 +23,15 @@
 # BUDGET. 16 anchor files at 0.10.0.9000. Measured 2026-09-11 on the
 # maintainer's machine (Apple M-series, R 4.6.1, INLA 25.10.19, sequential,
 # `CI=` and `NOT_CRAN=true`): **404 seconds, 659 assertions, 0 failures and
-# 0 skips**. The zero is the point -- it is the direct evidence that the two
+# 0 skips**. The zero is the point. It is the direct evidence that the two
 # levers below defeat the skips this job exists to defeat, measured rather
 # than reasoned about. A GitHub-hosted Linux runner is slower and has to
 # compile Stan models for the brms legs, so the timeout is set with a wide
 # margin and deliberately not tuned: a job that fails on a timeout teaches
-# maintainers to re-run it rather than read it.
+# maintainers to re-run it, not read it.
 #
-# NOT YET EXECUTED. This workflow has never run: the branch it belongs to is
-# local and the push is blocked on the relicensing consent recorded in
-# PROJECT_LOG.md. It is committed so that the job exists the moment the push
-# does, and its first run is expected to be its own first test.
+# This workflow fits live models with INLA and brms on a pushed branch, so
+# its first run on a new host is also the first test of that host.
 
 on:
   push:
@@ -75,13 +73,14 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          # Enumerated from the anchor files themselves rather than guessed:
+          # Enumerated from the anchor files themselves, not guessed:
           # every `pkg::`, `library(pkg)` and `skip_if_not_installed("pkg")`
           # they contain, minus base and this package's own Imports. A job
           # that installs less would skip, and a skip here is a failure.
           extra-packages: >-
             any::testthat, any::withr, any::pkgload, any::lme4, any::agridat,
-            any::mgcv, any::brms, any::MASS, any::posterior, any::sommer
+            any::mgcv, any::brms, any::MASS, any::posterior, any::sommer,
+            any::emmeans
           dependencies: '"hard"'
 
       - name: Install INLA
@@ -126,7 +125,7 @@ jobs:
           # brittle for the wrong reason: an optional comparison package
           # missing from a runner is a different fact from a live backend
           # path being skipped, and conflating them teaches maintainers to
-          # re-run the job rather than read it.
+          # re-run the job, not read it.
           reasons <- unlist(lapply(res, function(file_res) {
             vapply(
               Filter(function(r) inherits(r, "expectation_skip"), file_res$results),

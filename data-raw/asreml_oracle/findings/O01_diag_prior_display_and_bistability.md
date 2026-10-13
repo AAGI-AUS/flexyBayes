@@ -1,4 +1,4 @@
-# O01 -- `diag(f):g` is bistable, and its summary misreports the prior
+# O01: `diag(f):g` is bistable, and its summary misreports the prior
 
 **Found** 2026-09-11 by the ASReml oracle suite, scenario `03_diag_gxe`, at
 source SHA `5e4e0ef`, tarball SHA-256 `6b8ae8aa…`. Substrate
@@ -11,7 +11,7 @@ The first draft of this document claimed that a valid `sd(gen)` prior on a
 `diag(f):g` term was accepted and silently discarded, and that the route had
 no prior branch at all. **Both claims were false**, and they were reached the
 wrong way: from the `prior` column of `summary(fit)$varcomp`, which is a
-report about the fit rather than the fit itself.
+report about the fit and not the fit itself.
 
 Reading the emitted INLA formula settles it. Without a user prior the six
 `f()` terms carry the package's own uniform-SD default:
@@ -32,14 +32,14 @@ a display column is a proxy, and a proxy is not the fact.
 
 ## What is actually defective
 
-**O01a -- the summary misreports the prior on `at_simple` rows.**
+**O01a: the summary misreports the prior on `at_simple` rows.**
 `summary(fit)$varcomp$prior` reads `engine default` for every
 `sd_gen__env<level>` row while the emitted formula carries either the package
 default or the user's prior. The `sigma` row reports its prior correctly. This
 is a reporting defect on a claim surface, and it is how the false version of
 this finding was reached, so it has cost something already.
 
-**O01b -- the fit is bistable, and an informative prior does not settle it.**
+**O01b: the fit is bistable, and an informative prior does not settle it.**
 Eight identical calls under the default prior:
 
 | Run | genotype SD range across six environments | collapsed to ~0 |
@@ -58,11 +58,11 @@ Tightening the prior to `uniform(0, 40)` did not prevent collapse: the six
 upper credible bounds came back between 2.9e-10 and 3.9e-06.
 
 ASReml on the same rows returns genotype variances of 0.00, 3.28, 34.11, 0.00,
-3.77, 29.69 -- two at the boundary and four substantial, and stable across
+3.77, 29.69, two at the boundary and four substantial, and stable across
 refits. The disagreement with the incumbent is therefore real and is not
 explained by the prior.
 
-## The prior is not the lever -- measured, not assumed
+## The prior is not the lever: measured, not assumed
 
 Twenty-four fits, four prior settings, six identical runs each, same data.
 
@@ -94,7 +94,7 @@ package chose.
 Two qualifications, both material. The structure is not universally unstable:
 a small balanced simulation (4 environments, 12 genotypes, 2 replicates)
 returns well-identified components on every run. And `besag.met` is a
-low-signal case -- residual SD near 19.7 against genotype SDs near 5.8 -- so
+low-signal case (residual SD near 19.7 against genotype SDs near 5.8) so
 the components are weakly identified even where they are real. What is not
 acceptable is that the fit reports `Mode status: 0` and
 `Numerical confirm: PASS` on both modes, so nothing in the returned object
@@ -110,9 +110,9 @@ routes including an informative prior. A user is neither left in silence nor
 told a falsehood about the cause. The earlier draft of this document said the
 warning misattributed the cause; that was unfair and is withdrawn.
 
-## Resolution -- the better mode is adopted, not merely flagged
+## Resolution: the better mode is adopted, not merely flagged
 
-Ratified by Max 2026-09-11. `R/inla_restart_probe.R` detects components that
+Ratified by the maintainer on 2026-09-11. `R/inla_restart_probe.R` detects components that
 came back pinned at zero variance, restarts the fit from a mode where they
 carry real variance, and compares marginal likelihoods. Where the restart is
 better by more than two log units, **the restarted fit is the one returned**,
@@ -148,7 +148,7 @@ posterior over a non-negative parameter cannot be zero, and a uniform prior on
 the standard deviation puts mass away from it. This is the documented
 estimation difference between the two systems, which is why the suite's
 identification gate declines to assert on a component whose ASReml standard
-error is not small relative to its estimate -- and C1 and C4, estimated at
+error is not small relative to its estimate, and C1 and C4, estimated at
 exactly zero, are precisely such components.
 
 ## The cost

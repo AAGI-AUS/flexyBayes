@@ -84,7 +84,7 @@ test_that("emmeans pairwise contrasts on an INLA fit recover the DGP gaps", {
   )))
   expect_identical(nrow(ct), 3L) # a-b, a-c, b-c
   est <- stats::setNames(ct$estimate, ct$contrast)
-  # a - b ~ -0.8 (true), a - c ~ +0.5 (true); generous band.
+  # a - b ~ -0.8 (true), a - c ~ +0.5 (true). Generous band.
   expect_true(abs(est[["a - b"]] - (-0.8)) < 0.4)
   expect_true(abs(est[["a - c"]] - (0.5)) < 0.4)
   expect_true(all(is.finite(ct$SE)))
@@ -92,7 +92,7 @@ test_that("emmeans pairwise contrasts on an INLA fit recover the DGP gaps", {
 
 
 # ---------------------------------------------------------------- #
-# brms backend (MCMC -- gated)                                      #
+# brms backend (MCMC, gated)                                      #
 # ---------------------------------------------------------------- #
 
 test_that("emmeans(fit, ~ f) reaches a brms fit through the bare method", {
@@ -115,12 +115,12 @@ test_that("emmeans(fit, ~ f) reaches a brms fit through the bare method", {
   ))
 
   # recover_data.flexybayes() / emm_basis.flexybayes() are bare methods
-  # with no flexybayes_brms-specific override -- reached by a brms fit
+  # with no flexybayes_brms-specific override, reached by a brms fit
   # via S3 inheritance (see R/emmeans_support.R). brms is treatment-
   # coded (full rank), unlike the since-withdrawn native engine's
   # over-parameterised basis this section exercised through v0.9.2 (see
   # NEWS.md), so the non-estimability basis this integration builds is
-  # defensive here rather than load-bearing -- the EMMs are estimable
+  # defensive here instead of load-bearing, the EMMs are estimable
   # by construction.
   emm <- emmeans::emmeans(fit, ~f)
   s <- as.data.frame(summary(emm))

@@ -1,10 +1,10 @@
 # =============================================================================
-# The special-form argument contract (audit 2026-09-11, F01 + F08).
+# The special-form argument contract (review of 2026-09-11).
 #
-# The audit reported two loci: a malformed dsum() lowering to a homogeneous
+# The review reported two loci: a malformed dsum() lowering to a homogeneous
 # `units` residual, and fa() without a rank raising a base subscript error. A
 # fuzz corpus over all 22 forms in .asreml_function_vocabulary() found the
-# class was wider than both -- 129 malformed variants produced four distinct
+# class was wider than both, 129 malformed variants produced four distinct
 # escapes from the refusal taxonomy:
 #
 #   * an untyped base error (15 cases across dsum, fa, pol, s, str);
@@ -14,7 +14,7 @@
 #
 # The grid below is that corpus. Every row asserts a typed refusal, and the
 # no-backend-call block asserts that a refusal terminates before any engine is
-# reached -- a refusal that fires after INLA has been called has not prevented
+# reached, a refusal that fires after INLA has been called has not prevented
 # anything.
 #
 # The last block is the falsifier. A contract that refuses everything would
@@ -46,10 +46,10 @@
 }
 
 
-# --- F01: a malformed dsum() must never become `units` ------------------ #
+# --- a malformed dsum() must never become `units` ----------------------- #
 
 test_that("a dsum() body with no grouping bar refuses instead of lowering to units", {
-  # Each of these used to return list(type = "units") -- a one-variance
+  # Each of these used to return list(type = "units"), a one-variance
   # residual where a sectioned one was written. The fitted model is a
   # plausible neighbour, so it survives convergence checks and prints
   # credible output, which is the failure this package exists to prevent.
@@ -87,16 +87,16 @@ test_that("a well-formed dsum() still sections on its grouping factor", {
 })
 
 
-# --- F08: malformed fa() must not reach a base indexing error ----------- #
+# --- malformed fa() must not reach a base indexing error ----------------- #
 
-test_that("fa() without a rank refuses by name rather than raising a subscript error", {
+test_that("fa() without a rank refuses by name instead of raising a subscript error", {
   err <- .gc_condition("fa(a)")
   expect_s3_class(err, "flexybayes_refusal_fa_rank_missing")
   expect_false(inherits(err, "subscriptOutOfBoundsError"))
   expect_match(conditionMessage(err), "fa(a, 1)", fixed = TRUE)
 })
 
-test_that("a rank that is not a literal count refuses rather than being coerced", {
+test_that("a rank that is not a literal count refuses instead of being coerced", {
   # as.integer() turned every one of these into a rank the user did not
   # write: TRUE and 1.5 into 1, "1" into 1, and a symbol into an untyped
   # coercion error.
@@ -122,7 +122,7 @@ test_that("a bare fa() rank at or above the level count refuses on identifiabili
 })
 
 
-# --- the wider class the audit did not report --------------------------- #
+# --- the wider class the review did not report --------------------------- #
 
 test_that("no special form parses into a term carrying no variable", {
   # Fifteen zero-argument forms returned an IR node with var = NA_character_,
@@ -134,7 +134,7 @@ test_that("no special form parses into a term carrying no variable", {
   }
 })
 
-test_that("a surplus argument refuses rather than being silently dropped", {
+test_that("a surplus argument refuses instead of being silently dropped", {
   # us(a, b) read `a` and discarded `b`, so a structure written into the
   # call never reached the fitted model.
   for (fn in c("us", "diag", "idh", "ar1", "ar2", "cor", "corh", "spl", "lin", "id", "ide")) {
@@ -143,13 +143,13 @@ test_that("a surplus argument refuses rather than being silently dropped", {
   }
 })
 
-test_that("an unrecognised named argument refuses rather than being ignored", {
+test_that("an unrecognised named argument refuses instead of being ignored", {
   err <- .gc_condition("us(a, weights = b)")
   expect_s3_class(err, "flexybayes_refusal_grammar_named_argument_unknown")
   expect_match(conditionMessage(err), "weights", fixed = TRUE)
 })
 
-test_that("an empty argument slot refuses rather than raising a missing-argument error", {
+test_that("an empty argument slot refuses instead of raising a missing-argument error", {
   for (case in c("fa(a, )", "pol(x, )")) {
     err <- .gc_condition(case)
     expect_s3_class(err, "flexybayes_refusal_grammar_argument_empty")
@@ -161,16 +161,16 @@ test_that("pol() takes a literal degree", {
   expect_s3_class(err, "flexybayes_refusal_pol_degree_invalid")
 })
 
-test_that("a multivariate s() refuses by name rather than through mgcv's call handling", {
+test_that("a multivariate s() refuses by name instead of through mgcv's call handling", {
   err <- .gc_condition("s(x, a)")
   expect_s3_class(err, "flexybayes_refusal_multivariate_smooth_unsupported")
   expect_match(conditionMessage(err), "univariate", fixed = TRUE)
 })
 
 
-test_that("a named argument written twice refuses rather than resolving by accident", {
-  # Review A22. The 0.10.0.9000 contract validated the *set* of named
-  # arguments and never their multiplicity, which left the audited class
+test_that("a named argument written twice refuses instead of resolving by accident", {
+  # The 0.10.0.9000 contract validated the *set* of named
+  # arguments and never their multiplicity, which left the reviewed class
   # alive in two shapes. `vm(g, V = G, V = G)` was accepted and lowered to
   # one vm term, with the surviving copy an accident of how .walk() indexes;
   # `s(x, k = 5, k = 9)` reached mgcv's own matcher and raised "formal
@@ -203,12 +203,12 @@ test_that("a named argument written twice refuses rather than resolving by accid
 })
 
 
-# --- the no-backend-call assertion (audit work package 1, step 4) ------- #
+# --- the no-backend-call assertion -------------------------------------- #
 
 test_that("a malformed grammar never reaches an engine", {
   # A refusal raised after INLA has been called has not prevented anything.
   # .inla_call() and the brms entry are replaced with sentinels that record
-  # having been reached; neither may fire.
+  # having been reached. Neither may fire.
   skip_if_not_installed("testthat")
   reached <- new.env(parent = emptyenv())
   reached$engine <- character(0)

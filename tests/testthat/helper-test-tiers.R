@@ -1,4 +1,4 @@
-# helper-test-tiers.R -- the long test tier.
+# The long test tier.
 #
 # A block whose measured time would dominate a local `devtools::test()` or
 # `devtools::check()` calls skip_if_not_long_tier() as its first line after

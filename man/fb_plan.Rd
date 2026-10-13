@@ -90,15 +90,11 @@ estimate, and any structural refusals before paying the fit cost.
 Accepts either grammar \code{flexybayes()} accepts: a single brms-style
 two-sided formula (\code{y ~ x + s(z) + (1 | g)}), or the ASReml triple
 (\code{formula} as the fixed-effects side, plus \code{random} / \code{residual}).
-Before 0.9.3, \code{fb_plan()} was brms-formula-only and silently dropped
-\code{random} / \code{residual} into its unused \code{...} when a caller supplied
-them ASReml-style, planning a fixed-effects-only model and reporting
-a backend the full model would not reach live (FS-22). Both
-spellings now route through the same grammar detection
+Both spellings route through the same grammar detection
 \code{flexybayes()} uses (\code{syntax = "auto"} by default), so
 \code{fb_plan(y ~ x, random = ..., residual = ..., data = ...)} and
-\code{flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)} plan the identical model. Note the two spellings of the
-fixed part: \code{fb_plan()} takes it positionally as \code{formula}, the entry
+\code{flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)} plan the identical model. The two spellings of the
+fixed part differ: \code{fb_plan()} takes it positionally as \code{formula}, the entry
 point takes it as \code{fixed}.
 }
 \examples{
@@ -111,7 +107,7 @@ d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
 p1 <- fb_plan(y ~ x + (1 | g), data = d)
 print(p1)
 
-# ASReml-style grammar plans the identical model (FS-22 parity).
+# ASReml-style grammar plans the identical model.
 p2 <- fb_plan(y ~ x, random = ~ g, data = d)
 identical(p1$backend_chosen, p2$backend_chosen)
 

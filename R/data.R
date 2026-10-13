@@ -48,7 +48,7 @@
 #'
 #' # Simple model (small budget for example purposes)
 #' \dontrun{
-#' # live fit -- needs a backend (INLA, or brms/Stan)
+#' # A live fit needs a backend (INLA, or brms/Stan).
 #' fit <- flexybayes(
 #'   fixed  = yield ~ env,
 #'   random = ~ geno,

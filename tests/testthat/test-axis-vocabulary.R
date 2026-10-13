@@ -1,10 +1,7 @@
-# Backend-independence axis vocabulary (ADR 0029; v0.4.0 Wave 2
-# Phase 2B).
+# Backend-independence axis vocabulary (ADR 0029).
 #
-# Coverage: closed-vocabulary enforcement, per-pair registry symmetry +
-# shape + lock, and the one remaining backend pair (0.9.3 withdraws two
-# of the original three v0.4.0 pairs along with the engine they named --
-# see NEWS.md).
+# Coverage: closed-vocabulary enforcement, per-pair registry symmetry,
+# shape and lock, and the backend pair.
 
 # ---------------------------------------------------------------- #
 # Closed vocabulary                                                 #
@@ -33,7 +30,7 @@ test_that("registering an unknown axis refuses with a vocabulary error", {
 })
 
 test_that("a valid registration on the locked registry refuses with the lock error", {
-  # Validation passes (valid axes); the lock check then fires. This
+  # Validation passes (valid axes). The lock check then fires. This
   # proves both the lock and that valid axes clear the vocabulary gate.
   err <- tryCatch(
     flexyBayes:::.register_pair_independence(
@@ -82,7 +79,7 @@ test_that("every registry entry carries the five required fields", {
 test_that("the one remaining backend pair registers with the ADR 0029 axes", {
   # v0.4.0 registered three pairs: the withdrawn native engine paired
   # with inla, that same engine paired with brms, and (brms, inla).
-  # 0.9.3 withdraws that engine entirely (see NEWS.md); only
+  # 0.9.3 withdraws that engine entirely (see NEWS.md). Only
   # (brms, inla) survives.
   bi <- flexyBayes:::.lookup_pair_independence(c("brms", "inla"))
   expect_setequal(bi$axes, c("algorithmic", "implementation"))

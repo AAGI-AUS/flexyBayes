@@ -1,4 +1,4 @@
-# boundary_collapse.R -- a variance component pinned at zero says so.
+# boundary_collapse.R, a variance component pinned at zero says so.
 #
 # `.fb_spatial_collapse_reasons()` in emit_inla.R catches exactly one
 # term type: `sd_spatial` running to its floor against the nugget. Every
@@ -7,15 +7,15 @@
 # On a collapsed run `summary(fit)$varcomp` does mark the row
 # `note = "collapsed"`. What was missing is a warning: a note in a table
 # column is easy to read past, and a zero genotype variance read as a
-# result rather than as a failed mode is a scientific conclusion.
+# result instead of as a failed mode is a scientific conclusion.
 #
 # The threshold is calibrated against a measured floor, not a guess. An
 # earlier version of this file put it at 0.05 of the residual SD on the
 # strength of one simulation at n = 240, and claimed a genuinely null
 # component returns an upper bound near 0.43 of the residual SD. The
 # package's own test suite falsified that: `mk_inla_data()` in
-# test-emit-inla.R is `y = rnorm(30)` with `g` assigned cyclically -- no
-# group effect exists -- and the fit returns an upper bound at 0.025 of
+# test-emit-inla.R is `y = rnorm(30)` with `g` assigned cyclically, no
+# group effect exists, and the fit returns an upper bound at 0.025 of
 # the residual SD, so the warning fired on seven fixtures whose
 # components are null by construction.
 #
@@ -23,8 +23,8 @@
 # to exactly zero, crossing n in {30, 60, 120, 240, 480} with 5, 10 and
 # 20 groups, 8 seeds per cell (scratch script, `y ~ 1 + f(g, "iid")`,
 # package default prior). The ratio q97.5(sd_g) / sigma is flat in both
-# n and the group count -- min 0.0228, 5th percentile 0.0239, median
-# 0.0263 -- because it is a floor set by the prior, not by the data. A
+# n and the group count, min 0.0228, 5th percentile 0.0239, median
+# 0.0263, because it is a floor set by the prior, not by the data. A
 # truly null component does not go below about 0.023.
 #
 # The degenerate mode sits two orders of magnitude lower: `agridat`
@@ -35,7 +35,7 @@
 # INLA degenerate-mode non-reproducibility the getting-started and
 # dispatch vignettes already teach, reaching a plain iid random effect.
 #
-# The threshold is `.FB_COLLAPSE_FRACTION` (0.01), reused rather than
+# The threshold is `.FB_COLLAPSE_FRACTION` (0.01), reused instead of
 # redefined. That is the same constant, against the same residual
 # reference, that `.fb_varcomp_notes()` uses to mark a row
 # `note = "collapsed"` in `summary(fit)$varcomp`, and its comment there
@@ -43,15 +43,15 @@
 # number here would have opened a band where the table says collapsed
 # and the warning stays silent. 0.01 sits about 2.3 times below the
 # lowest null ratio measured and about 40 times above the degenerate
-# one. The floor is a property of the default prior; a user who sets a
+# one. The floor is a property of the default prior. A user who sets a
 # very different prior on the component moves it.
 #
 # On a collapsed run `summary(fit)$varcomp` does mark the row
 # `note = "collapsed"`. What was missing is a warning: a note in a table
 # column is easy to read past, and a zero genotype variance read as a
-# result rather than as a failed mode is a scientific conclusion.
+# result instead of as a failed mode is a scientific conclusion.
 #
-# Two limits on reach, both structural rather than oversight. The
+# Two limits on reach, both structural instead of oversight. The
 # detector needs a residual SD to compare against, so it reads Gaussian-
 # scale fits and stays silent on families that carry no `sigma` row. And
 # it needs credible bounds, so it covers the per-row emit paths only:
@@ -69,7 +69,7 @@
 # whether the component is truly zero.
 
 # Residual scale for the fit, on the SD scale. Prefer the posterior
-# median attribute the canonical table carries; fall back to the table's
+# median attribute the canonical table carries. Fall back to the table's
 # own `sigma` row.
 #
 # @noRd
@@ -201,7 +201,7 @@
     return(invisible(NULL))
   }
   warning(
-    "flexyBayes: a variance component in this fit is at the boundary -- ",
+    "flexyBayes: a variance component in this fit is at the boundary, ",
     paste(reasons, collapse = "; "),
     ". The term carries no signal the data could separate from residual ",
     "noise, and its variance has been absorbed into the residual. The ",
@@ -212,7 +212,7 @@
     "Three routes: give the term an informative prior with fb_prior() so ",
     "it is not left to run to a boundary; fit the same model on the other ",
     "engine for a second reading; or report the component as ",
-    "unidentified rather than as zero. Silence via ",
+    "unidentified instead of as zero. Silence via ",
     "options(flexyBayes.silence_boundary_collapse_warning = TRUE).",
     call. = FALSE
   )

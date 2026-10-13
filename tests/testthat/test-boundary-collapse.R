@@ -1,7 +1,7 @@
 # A variance component pinned at the boundary must say so, on any term
 # type, not only on the spatial field.
 #
-# These are unit tests on constructed fit objects rather than live fits.
+# These are unit tests on constructed fit objects instead of live fits.
 # That is deliberate: the trigger is a degenerate INLA mode, and three
 # runs of the identical call on besag.met C1 returned an sd_gen upper
 # bound of 0.00396, 0.0176 and 11.75. A live fixture would be a flaky
@@ -106,15 +106,15 @@ test_that("the warning can be silenced by option", {
   )
 })
 
-# The calibration itself, pinned against the measured sweep rather than
+# The calibration itself, pinned against the measured sweep, not
 # against a number typed in here. The threshold started at 0.05 of the
 # residual SD and fired on seven suite fixtures whose components are null
 # by construction (`mk_inla_data()` is `y = rnorm(30)` with no group
 # effect). `inst/validation/boundary_calibration.csv` holds 112 INLA fits
 # with the group SD set to exactly zero, produced by
-# `tools/calibrate_boundary_collapse.R`; the floor read off it is the
-# number the threshold has to sit below. Reading it here rather than
-# restating it means a wrong threshold cannot pass by also being written
+# `tools/calibrate_boundary_collapse.R`. The floor read off it is the
+# number the threshold has to sit below. Reading it here, not
+# restating it, means a wrong threshold cannot pass by also being written
 # into the test.
 
 .calib_path <- function() {
@@ -183,14 +183,14 @@ test_that("the calibration record is the shape the threshold argues from", {
 
 
 # =============================================================================
-# Signed components are not scale components (audit 2026-09-11, F18).
+# Signed components are not scale components.
 #
 # The display flag used a denylist: everything that was not a correlation and
 # not `sigma` was treated as a variance component and tested against
 # `upper < 0.01 * sigma`. Factor-analytic loadings are signed, so a negative
-# loading -- a crossover interaction, which is a real and interpretable result
-# -- has a negative upper credible bound, satisfies that inequality for
-# arithmetic reasons, and was printed as `collapsed`. The audit found it on
+# loading, a crossover interaction, which is a real and interpretable result,
+# has a negative upper credible bound, satisfies that inequality for
+# arithmetic reasons, and was printed as `collapsed`. It was found on
 # the shipped FA(1) and FA(2) summaries.
 #
 # The fit-time detector above has always used the allowlist, so the two
@@ -210,7 +210,7 @@ test_that("a negative factor-analytic loading is not marked collapsed", {
 })
 
 test_that("a genuinely collapsed specific SD is still flagged", {
-  # The falsifier. Without this the fix could simply have stopped flagging
+  # The falsifier. Without this the fix could have stopped flagging
   # anything and passed the test above.
   components <- c("sigma", "fa1_env4", "sd_gen__env3")
   upper <- c(17, -0.42, 0.004)
@@ -258,14 +258,14 @@ test_that("an unknown-domain component is never flagged", {
 
 
 # =============================================================================
-# The Representation: line names a conditional translation (audit F06).
+# The Representation: line names a conditional translation.
 #
 # `Representation: exact (model, not inference)` means the emit carries no
 # structural approximation. A reader takes it for more: "this is the model
-# ASReml would fit". For a factor-analytic term the two come apart -- the
+# ASReml would fit". For a factor-analytic term the two come apart, the
 # loadings are anchored to one at a level taken from factor-level order, which
 # spans the factor-analytic family only where the leading loading block
-# supports the anchoring. The audit found FA(1) and FA(2) summaries printing
+# supports the anchoring. FA(1) and FA(2) summaries were found printing
 # the bare `exact` badge on exactly that lowering.
 # =============================================================================
 

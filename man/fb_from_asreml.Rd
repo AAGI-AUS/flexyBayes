@@ -42,7 +42,7 @@ goes through the same family gate and supplies its own link.}
 non-\code{NULL}, mapped to a single addition term with \code{type = "weights"}.}
 
 \item{known_matrices}{Named list of known matrices (e.g.
-\code{list(Gmat = G)}); names are recorded in
+\code{list(Gmat = G)}). Names are recorded in
 \code{data_summary$known_matrices}.}
 
 \item{prior}{An \code{\link[=fb_prior]{fb_prior()}} object, or \code{NULL}. \code{NULL} falls back to
@@ -55,7 +55,7 @@ the scalar priors \code{prior_fixed_sd} / \code{prior_vc_sd}.}
 priors when \code{prior} is \code{NULL}.}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. The ASReml 3 name for the
-residual-structure argument, renamed to \code{residual} in ASReml 4;
+residual-structure argument, renamed to \code{residual} in ASReml 4.
 supplying it now raises an error. Use \code{residual} instead.}
 }
 \value{
@@ -63,7 +63,7 @@ An \code{fb_terms} object with \code{source = "asreml"}.
 }
 \description{
 Parses an ASReml-style \code{fixed} / \code{random} / \code{residual} specification into
-a \code{fb_terms} object -- flexyBayes's backend-agnostic intermediate
+a \code{fb_terms} object, flexyBayes's backend-agnostic intermediate
 representation (IR) of a model. The IR is what every engine emits
 from, so building it explicitly lets a power user inspect the parsed
 model, cache it, or hand it to a fitting verb. Most users never call
@@ -88,7 +88,7 @@ plan <- fb_plan(yield ~ env, random = ~ geno, data = df)
 class(plan)
 }
 \seealso{
-\code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal fitting entry;
+\code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal fitting entry.
 \code{\link[=fb_from_brms]{fb_from_brms()}} for the other ingest dialect.
 
 Other flexyBayes ingest adapters:

@@ -46,21 +46,16 @@
 # the package works in.
 #
 # `flexybayes()` documents `family` as a string, but `stats::binomial()`
-# and friends are what an R user reaches for first, and the roxygen
-# imports name them. Until 0.9.0 a family object reached `tolower()` and
-# the scalar `if` below it, and the user saw the raw base-R error "the
-# condition has length > 1" -- untyped, and about the wrong thing.
+# and friends are what an R user reaches for first, so both are accepted.
 #
 # A family object carries both halves of the specification, so its
-# `$link` is honoured. That is faithful rather than convenient:
-# `Gamma()` names the inverse link, not the log link `family = "gamma"`
-# defaults to, and reading it as anything else would fit a model the
-# call did not ask for. Supplying `link =` as well is refused rather
-# than resolved, because either resolution silently discards half of
-# what the call said.
+# `$link` is honoured. `Gamma()` names the inverse link, not the log link
+# `family = "gamma"` defaults to. Supplying a conflicting `link =` as
+# well is refused, because either resolution would discard half of what
+# the call said.
 .normalise_family_argument <- function(family, link) {
   # A generator passed unevaluated (`family = binomial`) is the other
-  # idiom base R accepts; evaluate it and carry on with the object.
+  # idiom base R accepts. Evaluate it and carry on with the object.
   if (is.function(family)) {
     family <- tryCatch(family(), error = function(e) e)
     if (inherits(family, "error")) {
@@ -110,8 +105,8 @@
           lnk,
           "\")` and `link = \"",
           link,
-          "\"` name different links. flexyBayes refuses rather than ",
-          "choosing one: drop `link =`, or pass the family as a string ",
+          "\"` name different links. flexyBayes refuses to choose ",
+          "between them: drop `link =`, or pass the family as a string ",
           "(family = \"",
           tolower(fam),
           "\", link = \"",
@@ -129,7 +124,7 @@
       reason_code = "family_argument_not_recognised",
       message = paste0(
         "`family` must be a single family name or a `stats` family ",
-        "object; got an object of class ",
+        "object, not an object of class ",
         paste(class(family), collapse = "/"),
         " of length ",
         length(family),
@@ -174,17 +169,15 @@
     gamma = c("log", "identity", "inverse"),
     beta = "logit",
     # brms-native, brms-only: `brms::brmsfamily("hurdle_gamma")` declares
-    # dpars mu, shape, hu on brms 2.23.0, and the entry allowlist used to
-    # refuse a family the engine behind it carries (field-sweep FS-4 /
-    # field finding C2). INLA's likelihood roster has no counterpart, so
-    # lgm_gate() refuses `backend = "inla"` for it on the family row.
+    # dpars mu, shape, hu on brms 2.23.0. INLA's likelihood roster has no
+    # counterpart, so lgm_gate() refuses `backend = "inla"` for it on the
+    # family row.
     hurdle_gamma = c("log", "identity", "inverse", "softplus", "squareplus"),
     # brms-only as well. The brms fit is checked against the complete-case
     # posterior (tests/testthat/test-brms-missing-response.R). INLA's
     # likelihood roster does carry a lognormal, but no INLA fit of it is
     # validated, so lgm_gate() refuses `backend = "inla"` for it by name on
-    # the family row. Before this gate read family objects, the family was
-    # reachable only as brms::lognormal() in the brms grammar.
+    # the family row.
     lognormal = "identity"
   )
 }
@@ -203,10 +196,9 @@
   links <- .fb_family_links()
   fam <- tolower(family)
   # The generalised extreme value and Dirichlet families are not GLM-link
-  # mixed models -- block maxima have no mean-link, and a Dirichlet response
-  # is a simplex, not a scalar -- so they are fitted through their own
-  # dedicated entry points rather than the formula emit path. Point the user
-  # there explicitly instead of refusing them as merely "unsupported".
+  # mixed models (block maxima have no mean-link, and a Dirichlet response
+  # is a simplex, not a scalar), so they are fitted through their own
+  # entry points, not the formula emit path. The refusal names them.
   # Both redirects are refusals of the formula path, typed as such, so a
   # brms::gen_extreme_value() or brms::dirichlet() family object gets the
   # same named refusal as the string.
@@ -245,7 +237,7 @@
         "\". flexyBayes supports: ",
         paste(names(links), collapse = ", "),
         ". Other families (including survival / time-to-event and ",
-        "multivariate responses) are planned future work; see ",
+        "multivariate responses) are planned future work. See ",
         "fb_refusals(). Block-maxima (generalised extreme value) and ",
         "compositional (Dirichlet) data have dedicated fitters: ",
         "see `?fb_gev` and `?fb_dirichlet`.",
@@ -281,26 +273,20 @@
 
 # The documented-boundary note for a family a user is likely to reach
 # for and not find. Appended to the unsupported-family refusal so the
-# message says which layer the boundary is at, rather than leaving the
-# user to infer that flexyBayes is merely behind its engines.
+# message says which layer the boundary is at: flexyBayes or the engine.
 #
-# The three families here were the ones the field engagement named
-# (finding C2). Their status was checked against the installed engines
-# rather than recalled -- `brms::brmsfamily()` refuses all three on brms
-# 2.23.0, so blocking them is not a narrowing over that engine; INLA's
-# roster (`names(INLA::inla.models()$likelihood)`, 107 entries at INLA
-# 25.10.19) does carry `tweedie`, so that one is a genuine flexyBayes
-# boundary and says so. Getting this backwards changes what the fix is:
-# the fourth family the field named, `hurdle_gamma`, IS brms-native and
-# is now admitted above.
+# Status checked against the installed engines: `brms::brmsfamily()`
+# refuses all three on brms 2.23.0. INLA's roster
+# (`names(INLA::inla.models()$likelihood)`, 107 entries at INLA 25.10.19)
+# carries `tweedie`, so that one is a flexyBayes boundary.
 .fb_family_boundary_note <- function(fam) {
   notes <- list(
     tweedie = paste0(
       "\n\nBoundary note. INLA's likelihood roster does carry `tweedie`, ",
-      "so this is a\nflexyBayes boundary rather than an engine one: the ",
+      "so this is a\nflexyBayes boundary, not an engine one: the ",
       "package has no INLA emit for\nit (no link / power parameter, no ",
       "validated fit). brms carries no Tweedie family\nat all. Tracked ",
-      "as a feature request in inst/KNOWN_ISSUES.md; for compound-Poisson\n",
+      "as a feature request in inst/KNOWN_ISSUES.md. For compound-Poisson\n",
       "gamma data today, fit the zero / positive parts separately and ",
       "recombine on the\nposterior, or use family = \"hurdle_gamma\" with ",
       "backend = \"brms\"."
@@ -310,7 +296,7 @@
       "`brms::brmsfamily(\n\"zero_inflated_gamma\")` refuses on brms ",
       "2.23.0, and INLA's roster has no\ncounterpart. The nearest ",
       "implemented alternative is family = \"hurdle_gamma\" with\n",
-      "backend = \"brms\" -- a hurdle and a zero-inflated gamma are the ",
+      "backend = \"brms\". A hurdle and a zero-inflated gamma are the ",
       "same model when the\npositive part has no mass at zero, which a ",
       "gamma does not."
     ),
@@ -318,7 +304,7 @@
       "\n\nBoundary note. `brms::brmsfamily(\"compound_poisson\")` ",
       "refuses on brms 2.23.0, so\nthis is not a narrowing over that ",
       "engine. INLA's roster carries `tweedie`, which\nis the ",
-      "compound-Poisson gamma; flexyBayes has no emit for it. See the ",
+      "compound-Poisson gamma, but flexyBayes has no emit for it. See the ",
       "`tweedie`\nentry in inst/KNOWN_ISSUES.md."
     )
   )
@@ -337,7 +323,7 @@
     "negbinom" = poisson(link = "log"),
     "gamma" = ,
     # The starting-value GLM for a hurdle gamma is the gamma GLM of its
-    # positive part; the zero-mass component has no `stats` counterpart
+    # positive part. The zero-mass component has no `stats` counterpart
     # and does not inform the mean-model starting values.
     "hurdle_gamma" = Gamma(link = fam_link$link),
     "beta" = gaussian(link = "identity"),

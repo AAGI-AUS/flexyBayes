@@ -12,7 +12,7 @@
 #    requireNamespace(), a helper that calls one of them, or a package
 #    that imports it (DEF-027, DEF-087, DEF-181);
 # 3. no test sets an option with a bare options() call, which outlives
-#    the test (DEF-016); setup.R and helper files set suite-wide options
+#    the test (DEF-016). setup.R and helper files set suite-wide options
 #    on purpose and are not read for this rule;
 # 4. no test writes into the installed library (DEF-074).
 #
@@ -146,22 +146,23 @@
   list.files(.g19_test_dir(), "^helper-.*\\.R$", full.names = TRUE)
 }
 
-# Packages that a check for `checked` also guarantees: their hard
-# dependencies, as installed here.
+# Suggested packages that a check for another one guarantees, from the
+# Imports field of brms 2.23.0. Written out so the result does not depend
+# on what is installed.
+.g19_hard_deps <- list(
+  brms = c("bayesplot", "coda", "loo", "posterior", "rstantools")
+)
+
 .g19_implied <- function(checked) {
-  if (!length(checked)) {
-    return(character(0))
-  }
-  db <- utils::installed.packages(fields = c("Depends", "Imports"))
-  have <- intersect(checked, rownames(db))
-  deps <- tools::package_dependencies(
-    have,
-    db = db,
-    which = c("Depends", "Imports"),
-    recursive = TRUE
-  )
-  unique(c(checked, unlist(deps, use.names = FALSE)))
+  unique(c(checked, unlist(.g19_hard_deps[checked], use.names = FALSE)))
 }
+
+# R's recommended packages, present in every standard R installation.
+.g19_recommended <- c(
+  "boot", "class", "cluster", "codetools", "foreign", "KernSmooth",
+  "lattice", "MASS", "Matrix", "mgcv", "nlme", "nnet", "rpart", "spatial",
+  "survival"
+)
 
 test_that("DC-19 guard: every package a test reaches is declared", {
   root <- .g19_root()
@@ -184,10 +185,11 @@ test_that("DC-19 guard: a block that reaches a suggested package skips without i
   skip_if(is.na(root), "package source tree not available")
   dcf <- read.dcf(file.path(root, "DESCRIPTION"))
   suggested <- .g19_declared(dcf)$Suggests
-  always_there <- rownames(utils::installed.packages(
-    priority = c("base", "recommended")
-  ))
-  # testthat runs the suite and withr is used by every file; neither can
+  always_there <- c(
+    rownames(utils::installed.packages(priority = "base")),
+    .g19_recommended
+  )
+  # testthat runs the suite and withr is used by every file. Neither can
   # be absent where the tests run.
   optional <- setdiff(suggested, c(always_there, "testthat", "withr"))
 
@@ -282,7 +284,7 @@ test_that("DC-19 guard: no test writes into the installed library", {
       for (cl in calls) {
         if (!.g19_fun_name(cl) %in% writers) next
         args <- as.list(cl)[-1L]
-        # file.copy() may read from the library; only its destination counts.
+        # file.copy() may read from the library. Only its destination counts.
         if (identical(.g19_fun_name(cl), "file.copy")) {
           args <- if (!is.null(cl[["to"]])) list(cl[["to"]]) else args[2L]
         }

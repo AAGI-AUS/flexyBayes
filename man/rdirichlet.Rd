@@ -9,7 +9,7 @@ rdirichlet(n, alpha)
 \arguments{
 \item{n}{Integer. The number of compositions (rows) to draw.}
 
-\item{alpha}{Numeric vector of positive concentration parameters; its
+\item{alpha}{Numeric vector of positive concentration parameters. Its
 length sets the number of simplex components \eqn{K}.}
 }
 \value{

@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{An \code{fb_gev_fit} object.}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 \code{x}, invisibly.

@@ -1,9 +1,9 @@
 # =============================================================================
-# No workstation path in the repository (audit 2026-09-11, F16).
+# No workstation path in the repository (review of 2026-09-11).
 #
 # `data-raw/asreml_reference.R` set .libPaths() to an absolute path under the
 # maintainer's home directory. `data-raw/` is excluded from the tarball, so it
-# was not an installed-package defect -- but it made the ASReml reference
+# was not an installed-package defect, but it made the ASReml reference
 # recipe unrunnable by anyone else, and it put a workstation path in a public
 # repository.
 #
@@ -11,7 +11,7 @@
 # pre-commit grep over `R/`, `tests/`, `vignettes/` and `inst/`. It did not
 # fire, because `data-raw/` is not one of the directories it reads. A guard
 # protects the altitude it is written at and no other, so this package now
-# carries its own, over every source directory rather than four of them.
+# carries its own, over every source directory instead of four of them.
 # =============================================================================
 
 .wp_root <- function() {
@@ -44,7 +44,7 @@ test_that("no source file carries an absolute home-directory path", {
   # This file names the pattern it searches for, so it cannot search itself.
   files <- files[!grepl("test-no-workstation-paths\\.R$", files)]
 
-  # Assembled rather than written whole, for the same reason.
+  # Assembled instead of written whole, for the same reason.
   pattern <- paste0("/", "Users", "/[A-Za-z0-9._-]+/")
 
   hits <- unlist(lapply(files, function(f) {

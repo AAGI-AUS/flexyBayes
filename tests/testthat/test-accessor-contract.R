@@ -1,6 +1,5 @@
-# Tests for the accessor contract (D7 / WP-D, ORCHESTRA fitness audit
-# 2026-08-25 section 3.1-3.4). Downstream tools -- the AAGI ORCHESTRA
-# workspace among them -- read a fitted object purely through exported
+# Tests for the accessor contract. Downstream tools: the AAGI ORCHESTRA
+# workspace among them: read a fitted object purely through exported
 # accessors, never through engine-specific internals, so the shape of
 # those accessors is itself a contract worth pinning: column names,
 # column types, and (separately) the invariant that every registered
@@ -111,7 +110,7 @@ test_that("accessor contract: pinned column names/types on a brms fit", {
 
   s <- summary(fit)
 
-  # summary(fit)$varcomp -- identical shape to the INLA fit above; the
+  # summary(fit)$varcomp, identical shape to the INLA fit above; the
   # accessor contract is that a caller need not know which engine ran.
   expect_named(
     s$varcomp,
@@ -142,7 +141,7 @@ test_that("accessor contract: pinned column names/types on a brms fit", {
   )
   expect_true(all(vapply(pr, is.numeric, logical(1))))
 
-  # the backend-decision accessor -- same field set as the INLA fit
+  # the backend-decision accessor, same field set as the INLA fit
   bd <- backend_decision(fit)
   expect_named(
     bd,

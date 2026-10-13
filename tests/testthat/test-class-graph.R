@@ -1,4 +1,4 @@
-# test-class-graph.R -- the shared `flexybayes` parent on INLA fits.
+# test-class-graph.R: the shared `flexybayes` parent on INLA fits.
 #
 # Before 0.9.0 an INLA fit was c("flexybayes_inla", "list") while a brms fit
 # was c("flexybayes_brms", "flexybayes", "list"). The split forced a
@@ -111,7 +111,7 @@ test_that("update() re-fits an INLA model now that the record is complete", {
   # Until 0.9.1 this block recorded the opposite: an INLA fit refused
   # `update_call_not_reconstructable`, naming `known_matrices` among the
   # arguments its record was missing. That refusal was correct about the
-  # record and misleading about the cause -- the INLA emit wrote six of
+  # record and misleading about the cause, the INLA emit wrote six of
   # the arguments a re-fit needs against brms's fifteen, and nothing
   # about the engine made a re-fit unsafe. The record is now complete on
   # both engines, so the refusal no longer fires here.
@@ -154,7 +154,7 @@ test_that("anova() refuses by name when a fit has no conditional logLik", {
 })
 
 # ---------------------------------------------------------------- #
-# The parent methods refuse rather than returning an empty answer  #
+# The parent methods refuse instead of returning an empty answer   #
 # ---------------------------------------------------------------- #
 
 test_that("confint.flexybayes refuses a fit carrying no posterior draws", {
@@ -187,7 +187,7 @@ test_that("logLik.flexybayes refuses instead of returning a silent NA", {
   err <- tryCatch(stats::logLik(shell), condition = function(e) e)
   expect_s3_class(err, "flexybayes_refusal_conditional_loglik_not_available")
 
-  # A family with no implemented plug-in form is named rather than
+  # A family with no implemented plug-in form is named instead of
   # reported as NA.
   shell2 <- structure(
     list(
@@ -207,9 +207,9 @@ test_that("logLik.flexybayes refuses instead of returning a silent NA", {
 test_that("update.flexybayes accepts a complete argument record", {
   # The positive control for the refusal above: with every required
   # argument recorded, the guard passes and the method proceeds to
-  # rebuild the call. The rebuild is intercepted here rather than run, so
+  # rebuild the call. The rebuild is intercepted here instead of run, so
   # the test asserts the gate and not a second fit. `na_action` joined
-  # the required set at 0.9.1, once both emits recorded it -- an `omit`
+  # the required set at 0.9.1, once both emits recorded it, an `omit`
   # fit that re-fitted as the default would be computed on a different
   # set of rows from the one it was named after. `backend` and
   # `aggregate` joined on the same reasoning: a re-fit that took the

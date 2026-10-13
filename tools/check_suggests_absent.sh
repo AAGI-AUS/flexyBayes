@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# check_suggests_absent.sh -- run the test suite as CI runs it, with the
+# check_suggests_absent.sh: run the test suite as CI runs it, with the
 # heavy Suggests absent.
 #
 # Why this exists. The maintainer's machine has brms and INLA installed,
 # so `devtools::test()` here exercises every engine path and reports
 # green. CI installs neither reliably: brms needs a C++ toolchain and
 # INLA is off-CRAN. A suite that is green locally can therefore be red on
-# the first push, and was -- 20 failures on 2026-08-28, every one a test
+# the first push, and was: 20 failures on 2026-08-28, every one a test
 # that reached an engine without guarding on it.
 #
 # The trick is a symlink farm: a library holding every installed package

@@ -8,7 +8,7 @@
 # package, so they also hold under R CMD check. Each test was shown to fail on
 # an injected violation before it was trusted.
 
-# `pkg::fun(...)` names c(pkg, fun); `fun(...)` names c("", fun); any other
+# `pkg::fun(...)` names c(pkg, fun); `fun(...)` names c("", fun). Any other
 # call head (an anonymous function, `x$f()`) names c("", "").
 .lean_call_name <- function(cl) {
   head <- cl[[1L]]

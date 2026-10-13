@@ -1,8 +1,8 @@
-# canonical_names -- per-backend parameter-name resolver for flexyBayes.
+# canonical_names: per-backend parameter-name resolver for flexyBayes.
 #
 # The `canonical_names()` S3 generic returns a list `(map, transform,
 # source)` keyed by backend-native parameter names; values give the
-# canonical (brms-style) parameter names; the optional transform
+# canonical (brms-style) parameter names. The optional transform
 # slot carries value-transform functions (used by INLA's
 # precision-to-SD `sqrt(1/prec)` mapping).
 #
@@ -10,7 +10,7 @@
 # internal list `.canonical_mappers`. Each mapper accepts (fit,
 # fb_terms) and returns `list(map, transform)`. Users can register
 # additional mappers via `register_canonical_mapper()` (internal in
-# v0.2; exported in v0.3+ when third-party backend authors might use
+# v0.2. Exported in v0.3+ when third-party backend authors might use
 # it).
 #
 # The INLA-side mapping uses summary.fixed rownames for fixed effects
@@ -29,7 +29,7 @@
 
 
 # ---------------------------------------------------------------- #
-# Internal helper -- coalescing operator                            #
+# Internal helper: coalescing operator                            #
 # ---------------------------------------------------------------- #
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
@@ -50,7 +50,7 @@
 #'
 #' On `flexybayes_inla` and `flexybayes_brms` fits, the per-backend
 #' mapper registered at package load (`inla` or `brms`) drives the
-#' resolution; the returned map is cached on
+#' resolution, the returned map is cached on
 #' `fit$extras$canonical_map` for fast repeated access.
 #'
 #' @param fit A `flexybayes_inla` or `flexybayes_brms` object.
@@ -145,7 +145,7 @@ canonical_names.flexybayes_brms <- function(fit, drop = FALSE, ...) {
 # Registration helper                                               #
 # ---------------------------------------------------------------- #
 
-# Internal in v0.2 -- exported in v0.3 once the third-party backend
+# Internal in v0.2, exported in v0.3 once the third-party backend
 # author surface is documented. The helper attaches a mapper to the
 # .canonical_mappers registry under the given backend key.
 register_canonical_mapper <- function(backend, mapper) {
@@ -181,7 +181,7 @@ register_canonical_mapper <- function(backend, mapper) {
   # Surface the aggregated-fit prior parametrization on the result so a
   # consumer can tell whether the matched-prior (per-row-equivalent)
   # guarantee holds without reaching into the fit internals. Absent on
-  # non-aggregated fits (the meta slot is NULL), so the field simply does
+  # non-aggregated fits (the meta slot is NULL), so the field does
   # not appear there. Attached on both the drop = TRUE and drop = FALSE
   # paths since it is independent of the unmapped-draws logic.
   pp <- fit$extras$aggregation_meta$prior_parametrization
@@ -204,7 +204,7 @@ register_canonical_mapper <- function(backend, mapper) {
 }
 
 # Backend-native draw names for the unmapped set. INLA fits expose them
-# via rownames(summary.fixed) + rownames(summary.hyperpar); brms fits via
+# via rownames(summary.fixed) + rownames(summary.hyperpar). brms fits via
 # posterior::as_draws_matrix().
 .backend_draw_names <- function(fit, backend) {
   if (identical(backend, "inla")) {
@@ -250,20 +250,19 @@ register_canonical_mapper <- function(backend, mapper) {
 # tag. The raw-vector index `i` maps to factor level `i + 1` because
 # the reference level (level 1) is fixed at zero and absent from the
 # raw parameter vector.
-# .fb_inla_ranef_registry() --- how ranef() reads every random-effect index
+# .fb_inla_ranef_registry(): how ranef() reads every random-effect index
 # the INLA emitter generates.
 #
 # emit_inla() indexes a structured random term by an INTEGER column it builds
-# -- `rep_block_id` for `rep:block`, `gen_at_env_E1` for one level of a
-# diag(), `geno_id` for a vm() -- and INLA names each summary.random entry
+# ---- `rep_block_id` for `rep:block`, `gen_at_env_E1` for one level of a
+# diag(), `geno_id` for a vm(), and INLA names each summary.random entry
 # after the column its f() term was indexed by, with `ID` running 1..n. Two
 # things have to be put back before ranef() prints: the GROUP, a name the user
 # never wrote and cannot look up, and the LEVELS, which no reader can match to
 # a genotype, a site or an animal. They used to live in two maps that grew one
 # route at a time, and the level map reached three of the generated indices,
 # so a BLUP from diag(), fa(), vm(), ped() or an AR1 field could not be
-# compared with ASReml's by name (review finding N5; the interaction and
-# correlated-slope cases were finding S01, defect D2).
+# compared with ASReml's by name.
 #
 # One entry per random-term type .build_inla_formula() lowers. An entry is
 # either a function `(term, ctx)` returning one specification per index the
@@ -290,13 +289,13 @@ register_canonical_mapper <- function(backend, mapper) {
     ),
     nested = .fb_inla_spec_interaction,
     combo = .fb_inla_spec_interaction,
-    # The intercept half of `(x || g)` is f(<g>) on the user's own variable;
-    # only the slope half is a generated index.
+    # The intercept half of `(x || g)` is f(<g>) on the user's own variable.
+    # Only the slope half is a generated index.
     simple_slope_uncor = .fb_inla_spec_uncor_slope,
     # Refused on INLA at the gate (correlated_covariance_requires_brms), and
     # no argument of flexybayes() lifts that refusal. emit_inla() still lowers
     # the term and a direct call still fits it, so the index keeps its
-    # specification rather than leaking on that route.
+    # specification instead of leaking on that route.
     simple_slope_cor = .fb_inla_spec_cor_slope,
     at_simple = .fb_inla_spec_at,
     # Refused at the gate and reachable by a direct emit_inla() call, as the
@@ -311,11 +310,11 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# One specification: the group ranef() reports the table under; the levels
-# in index order, NULL where there was no data to read them from; the rows of
-# INLA's table those levels cover; the length of the field the index spans;
-# any index the same f() term reads as `group =` or `replicate =`, which
-# INLA gives no table of its own; and the index value INLA writes in `ID` on
+# One specification: the group ranef() reports the table under. The levels
+# in index order, NULL where there was no data to read them from. The rows of
+# INLA's table those levels cover. The length of the field the index spans.
+# Any index the same f() term reads as `group =` or `replicate =`, which
+# INLA gives no table of its own, and the index value INLA writes in `ID` on
 # each row of the table, which is how a table is matched to the field by
 # identity. `ID` runs 1..n over a field, and restarts at 1 in every block of
 # a field read with `group =` or `replicate =` (checked on live fits of
@@ -341,10 +340,10 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# .fb_inla_index_specs() --- every generated index of a model, specified.
+# .fb_inla_index_specs(): every generated index of a model, specified.
 #
 # `data` is the fit's own copy, whose factor levels may have been legalised
-# for INLA; `level_labels` is the map back to what the user wrote, applied per
+# for INLA, `level_labels` is the map back to what the user wrote, applied per
 # variable before any label is composed, so composition happens once and in
 # the user's own vocabulary. `known_matrices` sizes the blocks of a
 # blocks-format vm() / ped(), which the IR does not carry. Returns a named
@@ -360,7 +359,7 @@ register_canonical_mapper <- function(backend, mapper) {
 ) {
   # A factor over `var`, relabelled from the legal levels back to the user's
   # own. Level relabelling is 1:1 and order-preserving, so the level
-  # POSITIONS -- which are what an integer index points at -- are the same
+  # POSITIONS, which are what an integer index points at, are the same
   # either way.
   restored_factor <- function(var) {
     if (!is.data.frame(data) || !(var %in% names(data))) {
@@ -392,7 +391,7 @@ register_canonical_mapper <- function(backend, mapper) {
   specs
 }
 
-# `a:b` and `a:b:c` -- one iid field over the observed cells, first variable
+# `a:b` and `a:b:c`: one iid field over the observed cells, first variable
 # slowest, which is the interaction emit_inla() indexes by. The separator is
 # the one the group label uses, so a level of `rep:block` reads `R1:B1`.
 .fb_inla_spec_interaction <- function(t, ctx) {
@@ -412,7 +411,7 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# `(x || g)` -- the slope half is an iid field over the levels of g, weighted
+# `(x || g)`: the slope half is an iid field over the levels of g, weighted
 # by x.
 .fb_inla_spec_uncor_slope <- function(t, ctx) {
   stats::setNames(
@@ -424,7 +423,7 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# `(x | g)` -- one iid2d field of length 2 * n_g, intercepts then slopes, and
+# `(x | g)`: one iid2d field of length 2 * n_g, intercepts then slopes, and
 # INLA returns the whole field under BOTH index names because the slope block
 # enters as a copy. Each name reads its own block out of a table carrying
 # both, so the two take two labels: mapping both to `<x> | <g>` once returned
@@ -454,7 +453,7 @@ register_canonical_mapper <- function(backend, mapper) {
   out
 }
 
-# diag(f):g -- one iid field per level of f, each spanning every level of g.
+# diag(f):g: one iid field per level of f, each spanning every level of g.
 .fb_inla_spec_at <- function(t, ctx) {
   outer_levels <- t$outer_levels %||% character(0)
   inner <- ctx$levels(t$inner)
@@ -470,7 +469,7 @@ register_canonical_mapper <- function(backend, mapper) {
   out
 }
 
-# us(f):g -- one field of length n_f * n_g holding g blocked by f: position
+# us(f):g: one field of length n_f * n_g holding g blocked by f: position
 # g + (f - 1) * n_g, so g runs fastest. A level reads `<g>:<f>`, in the order
 # the group label names the two.
 .fb_inla_spec_us <- function(t, ctx) {
@@ -490,11 +489,11 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# fa(f, k):g -- factor j enters from position j of .fb_fa_levels() onward, as
-# its anchor field there and a scaled copy at each later level, and every level of f has
-# a specific field. Each table spans the levels of g. A copy's table holds
-# that level's loading-scaled contribution rather than the anchor's values,
-# so it is labelled as the factor at that level.
+# fa(f, k):g, factor j enters from position j of .fb_fa_levels() onward, as
+# its anchor field there and a scaled copy at each later level, and every
+# level of f has a specific field. Each table spans the levels of g. A
+# copy's table holds that level's loading-scaled contribution instead of
+# the anchor's values, so it is labelled as the factor at that level.
 .fb_inla_spec_fa <- function(t, ctx) {
   levs <- .fb_fa_levels(t, t$outer_levels %||% character(0))
   inner <- ctx$levels(t$inner)
@@ -517,10 +516,10 @@ register_canonical_mapper <- function(backend, mapper) {
   out
 }
 
-# vm() / ped() -- a generic0 field over the levels of the variable, in the
+# vm() / ped(): a generic0 field over the levels of the variable, in the
 # order emit_inla() validates the known matrix against. The blocks format
 # splits those levels into consecutive blocks, one field each, sized by the
-# matrices in `known_matrices`; without them the block count is unknown and
+# matrices in `known_matrices`, without them the block count is unknown and
 # no block index is specified.
 .fb_inla_spec_known_cov <- function(t, ctx) {
   levs <- ctx$levels(t$var)
@@ -549,8 +548,8 @@ register_canonical_mapper <- function(backend, mapper) {
   out
 }
 
-# ar1(t) -- one AR1 field over the levels of t. ar1(row):ar1(col), ar1(t):g
-# and id(trial):ar1(row):ar1(col) -- one f() term indexed by the row
+# ar1(t): one AR1 field over the levels of t. ar1(row):ar1(col), ar1(t):g
+# and id(trial):ar1(row):ar1(col): one f() term indexed by the row
 # variable, reading the column variable as `group =` and the trial as
 # `replicate =`. INLA lays that table out row fastest, then column, then
 # trial: position row + (col - 1) * n_row + (trial - 1) * n_row * n_col. A
@@ -589,7 +588,7 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# at(trial):ar1(row):ar1(col) -- one f() term per level of `trial`, indexed
+# at(trial):ar1(row):ar1(col): one f() term per level of `trial`, indexed
 # by that level's row index and reading its column index as `group =`. A
 # level reads `T1:R1:C1`, row fastest, as for the shared field.
 .fb_inla_spec_ar1_at <- function(t, ctx) {
@@ -615,12 +614,12 @@ register_canonical_mapper <- function(backend, mapper) {
   out
 }
 
-# .fb_inla_group_labels() --- generated index name -> the group a user wrote.
+# .fb_inla_group_labels(): generated index name -> the group a user wrote.
 #
 # Read off .fb_inla_index_specs(). The variance COMPONENTS were mapped back to
-# user labels when that machinery was built; the random-effect table was not,
+# user labels when that machinery was built. The random-effect table was not,
 # so `ranef()` reported a grouping factor called `rep_block_id`. Returns a
-# named character vector; a group with no entry keeps its own name, which is
+# named character vector. A group with no entry keeps its own name, which is
 # right for a plain `~ g` where the index IS the variable. `known_matrices`
 # is needed only to name the blocks of a blocks-format vm() / ped().
 .fb_inla_group_labels <- function(fb, known_matrices = NULL) {
@@ -628,12 +627,12 @@ register_canonical_mapper <- function(backend, mapper) {
   vapply(specs, function(s) s$label, character(1L))
 }
 
-# .fb_inla_group_levels() --- generated index name -> the levels a reader
+# .fb_inla_group_levels(): generated index name -> the levels a reader
 # would recognise, and which rows of INLA's table they cover.
 #
 # The companion to .fb_inla_group_labels(), read off the same
 # specifications. That map fixes the GROUP a summary.random entry is reported
-# under; this one fixes the LEVELS inside it. The character-restoration path
+# under, this one fixes the LEVELS inside it. The character-restoration path
 # in .fb_random_inla() was written for the plain `~ g` case, where INLA is
 # handed the factor itself, and never fires on an integer index: `rep:block`
 # on john.alpha reported levels "1" to "18" against ASReml's
@@ -644,7 +643,7 @@ register_canonical_mapper <- function(backend, mapper) {
 # order, the rows of the INLA table they cover, the length of the table the
 # index spans, and the `ID` INLA writes on each row of that table. `rows` is
 # the whole field for a term with one index, and one block of a longer field
-# where two index names share it -- which is how the correlated slope's
+# where two index names share it, which is how the correlated slope's
 # iid2d is laid out.
 #
 # @noRd
@@ -698,7 +697,7 @@ register_canonical_mapper <- function(backend, mapper) {
 # v0.2 mapper: INLA backend                                         #
 # ---------------------------------------------------------------- #
 # INLA-side names exposed via fit$inla$summary.{fixed,hyperpar}:
-#   summary.fixed rownames    -- already brms-canonical:
+#   summary.fixed rownames   , already brms-canonical:
 #       "(Intercept)", "<term>" (treatment-coded factor levels)
 #   summary.hyperpar rownames:
 #       "Precision for the Gaussian observations" -> "sigma" + sqrt(1/prec)
@@ -745,7 +744,7 @@ register_canonical_mapper <- function(backend, mapper) {
   map <- character(0)
   transform <- list()
 
-  # Fixed effects -- identity mapping (already brms-canonical). The
+  # Fixed effects: identity mapping (already brms-canonical). The
   # summary.fixed table uses the bare name ("(Intercept)") while the
   # inla.posterior.sample() latent rows use the ":1"-suffixed form
   # ("(Intercept):1"). Register both so the rename fires regardless
@@ -756,7 +755,7 @@ register_canonical_mapper <- function(backend, mapper) {
     map[paste0(nm, ":1")] <- nm
   }
 
-  # Hyperparameters -- precision-side names; rename + sqrt(1/prec). The
+  # Hyperparameters: precision-side names. Rename + sqrt(1/prec). The
   # transform is keyed by the *native* hyperpar name (not the canonical
   # target), because .fb_canonical_draws() (R/fb_posterior.R) applies
   # transforms to a fit's draws while they still carry their
@@ -768,7 +767,7 @@ register_canonical_mapper <- function(backend, mapper) {
   # WP16: AR1 / separable AR1xAR1 spatial latent-field hyperparameters. INLA
   # names them "Rho for <idx>", "GroupRho for <idx>", "Precision for <idx>"
   # where <idx> is the f() index column (<row_var>_id). Map to canonical
-  # correlation names (.fb_ar1_rho_names()) and sd_spatial; the two Rho
+  # correlation names (.fb_ar1_rho_names()) and sd_spatial. The two Rho
   # values are correlations (identity, no transform), the Precision is the
   # field precision -> SD.
   # Matched BEFORE the generic "Precision for <group>" rule so the field
@@ -834,13 +833,13 @@ register_canonical_mapper <- function(backend, mapper) {
     # of the outer factor. Map each back to brms's name for the same
     # component, sd_<inner>__<outer><level>, so diag() reports identically
     # on both engines.
-    # us(f):g -- one iidKd field. INLA names its parts "Precision for <idx>
+    # us(f):g: one iidKd field. INLA names its parts "Precision for <idx>
     # (component j)" and "RhoI:J for <idx>". Map to what brms calls the same
     # quantities for `(0 + f | g)`: sd_<g>__<f><level> and
     # cor_<g>__<f><levelI>__<f><levelJ>.
-    # fa(f, k):g -- three kinds of hyperparameter. The anchor field's
-    # precision is the common factor's SD; each copy's Beta is a LOADING (a
-    # scaling, no transform); each psi field's precision is that level's
+    # fa(f, k):g, three kinds of hyperparameter. The anchor field's
+    # precision is the common factor's SD. Each copy's Beta is a LOADING (a
+    # scaling, no transform). Each psi field's precision is that level's
     # specific SD, which is the same quantity diag(f):g reports, so it takes
     # the same name.
     if (identical(tt, "fa_gxe")) {
@@ -897,7 +896,7 @@ register_canonical_mapper <- function(backend, mapper) {
     # precisions and one Rho. Component 1 is the intercept block and
     # component 2 the slope block, which fixes the reading of both. The
     # standard deviations take the names the UNCORRELATED sibling already
-    # reports, so the two models are read side by side; the correlation
+    # reports, so the two models are read side by side. The correlation
     # takes brms's own cor_<g>__Intercept__<x>.
     if (identical(tt, "simple_slope_cor")) {
       idx <- make.names(paste0(t$var, "_cor_", t$slope_var, "_id"))
@@ -1005,7 +1004,7 @@ register_canonical_mapper <- function(backend, mapper) {
       next
     }
     # Other hyperparameters (e.g., rho-for-ar1) left un-mapped for
-    # v0.2; future ADR will register them when the structured-cov
+    # v0.2. Future ADR will register them when the structured-cov
     # work lands.
   }
 
@@ -1027,7 +1026,7 @@ register_canonical_mapper <- function(backend, mapper) {
 #   sigma              -> sigma              (identity)
 #
 # Hyperparameters that brms exposes but flexyBayes does not yet
-# canonicalise (e.g. `lp__` log-posterior, `Intercept` -- the
+# canonicalise (e.g. `lp__` log-posterior, `Intercept`, the
 # scaled intercept brms emits alongside b_Intercept) are left
 # un-mapped and surface via `$unmapped`.
 
@@ -1087,7 +1086,7 @@ register_canonical_mapper <- function(backend, mapper) {
       # brms emits sd_<g>__<x> for uncorrelated random slopes
       # ((x || g) / (1 + x || g)) and sd_<g>__Intercept for the
       # corresponding intercept-deviation. Canonical name is
-      # sd_<x>_<g> for slopes; sd_<g> for the intercept. The
+      # sd_<x>_<g> for slopes, sd_<g> for the intercept. The
       # __Intercept rule comes first because it is a subset of the
       # __<x> rule.
       if (grepl("__Intercept$", bare)) {
@@ -1099,7 +1098,7 @@ register_canonical_mapper <- function(backend, mapper) {
       }
       m <- regmatches(bare, regexec("^([^_]+(?:_[^_]+)*?)__(.+)$", bare))[[1]]
       if (length(m) == 3L && nzchar(m[2L]) && nzchar(m[3L])) {
-        # bare matched <g>__<x>; canonicalise to sd_<x>_<g>.
+        # bare matched <g>__<x>. Canonicalise to sd_<x>_<g>.
         g_part <- m[2L]
         x_part <- m[3L]
         map[nm] <- paste0("sd_", x_part, "_", g_part)
@@ -1115,7 +1114,7 @@ register_canonical_mapper <- function(backend, mapper) {
       next
     }
     # Other names (lp__, Intercept-centered, r_<group>[<lvl>,Intercept],
-    # cor_<group>__*, etc.) left un-mapped for v0.2; surfaced via
+    # cor_<group>__*, etc.) left un-mapped for v0.2. Surfaced via
     # $unmapped when drop = FALSE.
   }
 
@@ -1127,7 +1126,7 @@ register_canonical_mapper <- function(backend, mapper) {
 # to the canonical `slope_<fac>_<con>[<level>]` slot. Returns NULL
 # when the name does not match any factor_numeric_interaction term
 # in the IR. Reference-level rows (level == lvls[1]) are absent from
-# brms's draws by design (treatment coding); they never match.
+# brms's draws by design (treatment coding). They never match.
 .brms_factor_numeric_interaction <- function(nm, fni_terms) {
   if (length(fni_terms) == 0L) {
     return(NULL)

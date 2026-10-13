@@ -1,9 +1,9 @@
-# summary_asreml.R -- one summary object for every active engine.
+# summary_asreml.R, one summary object for every active engine.
 #
 # Constructs and prints the `summary.flexybayes` object that
 # summary.flexybayes() and summary.flexybayes_inla() both return. The
-# object is a list of eleven slots -- fixed, varcomp, random, missing,
-# converge, n_design, n_observed, na_action, model, engine, call -- so
+# object is a list of eleven slots, fixed, varcomp, random, missing,
+# converge, n_design, n_observed, na_action, model, engine, call, so
 # that `summary(fit)$varcomp` answers the same question whichever engine
 # ran the fit, which it could not before: the two engines returned two
 # incomparable objects (INLA's four-slot list, brms's brmssummary) and
@@ -23,7 +23,7 @@
 #     invented for it.
 #
 # `$extras$variance_comps` keeps the five column names broom's tidier
-# reads (component, estimate, sd, q2.5, q97.5); the renaming to
+# reads (component, estimate, sd, q2.5, q97.5). The renaming to
 # estimate / std.error / conf.low / conf.high happens here, on the way
 # out, so the broom contract is untouched.
 
@@ -33,7 +33,7 @@
 
 # .fb_fit_engine() --- which engine produced this fit.
 #
-# Read off the slots the object carries rather than its class vector, so
+# Read off the slots the object carries instead of its class vector, so
 # a fit assembled by hand (the test mocks) answers as well as one that
 # came from an emit.
 #
@@ -117,7 +117,7 @@
 # Derived from the IR, never from an engine's own formula string. INLA
 # writes `f(row_id, model = "ar1", group = col_id, control.group =
 # list(model = "ar1"))`, which is the emitted program and not the model
-# the user wrote; parsing it back would make the printed description a
+# the user wrote. Parsing it back would make the printed description a
 # property of the emitter.
 
 # .fb_term_human_string() --- one IR term as a reader would say it.
@@ -195,7 +195,7 @@
       collapse = "; "
     )
   }
-  # ASReml's nugget-free residual is carried on the random side; it is
+  # ASReml's nugget-free residual is carried on the random side. It is
   # described on the residual side, where the user wrote it.
   random <- ir$random_terms %||% list()
   resid_field <- vapply(random, function(t) isTRUE(t$residual), logical(1L))
@@ -234,7 +234,7 @@
 # .fb_model_line_for_fit() --- the model line a fitted object earns.
 #
 # The G-side / R-side description is a property of the model, and the
-# aggregated representation does not change the model -- it changes the
+# aggregated representation does not change the model, it changes the
 # rows the engine was handed. That belongs on the same line, because a
 # reader comparing the fixed-effect table of an aggregated fit against a
 # per-row one otherwise has nothing on the summary object saying the two
@@ -304,7 +304,7 @@
 
 # .fb_is_spatial_varcomp() --- does this table describe a latent field?
 #
-# Read off the canonical component names rather than the IR, so the
+# Read off the canonical component names instead of the IR, so the
 # sentence on the field appears exactly when the table it explains does.
 #
 # @noRd
@@ -326,10 +326,10 @@
 # prior_summary().
 #
 # One resolved-prior source for the package. The cell for a component the
-# package priored is that prior's own canonical string; for a component
+# package priored is that prior's own canonical string. For a component
 # left to the engine the cell says so in two words and prior_summary()
 # carries the full sentence, which is too long for a table cell. The
-# legacy scalar bridge counts as priored wherever it reaches the engine --
+# legacy scalar bridge counts as priored wherever it reaches the engine,
 # see .fb_legacy_bridge_priors() below for why that needs saying.
 #
 # @noRd
@@ -365,7 +365,7 @@
     character(0)
   }
   # What the bridge priored where there is no engine table to read it
-  # off -- the INLA route. prior_summary() carries the record; this is a
+  # off, the INLA route. prior_summary() carries the record. This is a
   # projection of it, in the order the two sources deserve: the engine's
   # own table first, the declaration second.
   bridge_declared <- if (legacy) {
@@ -384,8 +384,8 @@
 
   # Ahead of the declaration on purpose. A component whose structure gives
   # the engine no slot for the declared prior did not get it, whatever the
-  # declaration says, and the cell has to report the fit rather than the
-  # intention -- see .fb_inla_wishart_sd_not_applied().
+  # declaration says, and the cell has to report the fit instead of the
+  # intention, see .fb_inla_wishart_sd_not_applied().
   not_applied <- names(ps$not_applied %||% character(0))
 
   vapply(
@@ -403,7 +403,7 @@
       }
       # A per-level row of a heterogeneous route. diag() / idh() / at()
       # emit one iid field per level of the outer factor, and every one of
-      # them carries the hyper block keyed by the INNER group -- see the
+      # them carries the hyper block keyed by the INNER group, see the
       # `at_simple` branch of .build_inla_formula(). The canonical names
       # are `sd_<group>__<outer><level>`, which never equals the spec key
       # `sd_<group>`, so the exact match above missed every one of them and
@@ -438,7 +438,7 @@
       # Ahead of the engine-default branch on purpose: a component the
       # legacy bridge priored is listed as an engine default by
       # .fb_prior_record(), which classifies whether two engines share a
-      # prior rather than for this cell.
+      # prior instead of for this cell.
       if (cmp %in% names(bridged)) {
         return(unname(bridged[[cmp]]))
       }
@@ -453,8 +453,8 @@
       }
       # Nothing recorded, nothing bridged, and the walker did not list it
       # among the parameters it hands to the engine on purpose. That last
-      # gap is reachable: a partial user prior -- `fb_prior(sigma ~ ...)`
-      # on a model with a random term the prior never names -- leaves the
+      # gap is reachable: a partial user prior, `fb_prior(sigma ~ ...)`
+      # on a model with a random term the prior never names, leaves the
       # term to the engine's own hyperprior and appears in neither list,
       # so the cell rendered blank where the engine default was in force.
       # It is the same component class the branch above names, reached by
@@ -474,22 +474,22 @@
 # `engine default` is the wrong cell for a bridged component on the Stan
 # route, and it is the cell the classification alone produces:
 # .fb_prior_record() marks every variance component `engine_default` under
-# the bridge because it is answering a cross-engine question -- do two
-# engines share a prior -- and under the bridge they do not. Projected
+# the bridge because it is answering a cross-engine question, do two
+# engines share a prior, and under the bridge they do not. Projected
 # into a single-engine table the same word says this package set no
 # prior, which on Stan is false. .brms_legacy_specs() writes
 # lognormal(0, prior_vc_sd) onto sigma and onto every named sd group.
 #
 # On the INLA route there is no engine prior table to read, so this
-# returns nothing and the branch below answers from the recorded prior --
+# returns nothing and the branch below answers from the recorded prior,
 # which since 0.9.2 carries the same lognormal, because the scalar now
 # reaches INLA as the expression prior that writes that density on the SD
 # scale. Before then the bridge handed INLA nothing and `engine default`
 # was the true cell there.
 #
-# The strings are read off the engine's own prior table rather than
+# The strings are read off the engine's own prior table instead of
 # rebuilt from the scalar, so the cell states what reached the sampler and
-# this file stays a projection of prior_summary() rather than a second
+# this file stays a projection of prior_summary() instead of a second
 # prior-string builder. A table whose shape this does not recognise
 # yields nothing and the cell falls back to what it said before.
 #
@@ -520,7 +520,7 @@
 
   out <- character(0)
   for (i in seq_len(nrow(tab))) {
-    # A coef-keyed row prices one coefficient of a group rather than the
+    # A coef-keyed row prices one coefficient of a group instead of the
     # group's own scale, and the variance-component table has no cell for
     # it.
     if (nzchar(coefs[[i]])) {
@@ -540,9 +540,9 @@
 #
 # `dsum(~ units | f)` makes the residual a distributional predictor, and
 # the package retargets the declared SD prior onto the log-sigma
-# coefficients rather than leaving a spec pointing at a `sigma` the model
+# coefficients instead of leaving a spec pointing at a `sigma` the model
 # no longer has. The retargeted spec is what reached the sampler, so it
-# is read back off the engine's own prior table -- the same discipline
+# is read back off the engine's own prior table, the same discipline
 # .fb_legacy_bridge_priors() follows, and for the same reason: this file
 # projects prior_summary(), it does not rebuild prior strings.
 #
@@ -584,16 +584,16 @@
 # The quantiles come from the same marginals or draws the row itself was
 # summarised from, so the flag cannot disagree with the row above it.
 # Correlations are skipped: they are not on a scale where "small" means
-# collapsed. With no residual scale in the model -- a sectioned residual
-# leaves none -- there is nothing to compare against and every cell is
+# collapsed. With no residual scale in the model, a sectioned residual
+# leaves none, there is nothing to compare against and every cell is
 # blank.
 #
 # The latent field carries the wider spatial threshold. A collapsed field
 # does not merely sit near zero, it hands its variance to the nugget it
 # is being compared against, so the same 1% cut that suits an independent
 # grouping factor reads a genuinely lost field as healthy: measured on a
-# holed grid, a field SD of 0.0099 beside a nugget of 0.92 -- a field the
-# fit had plainly not identified -- cleared the 1% bar on its upper bound
+# holed grid, a field SD of 0.0099 beside a nugget of 0.92, a field the
+# fit had plainly not identified, cleared the 1% bar on its upper bound
 # and the cell stayed blank while the fit-time warning fired. The two
 # surfaces now agree, which is the point of having both.
 #
@@ -615,7 +615,7 @@
   is_slope <- components %in% names(covariate_scale)
   upper[is_slope] <- upper[is_slope] * covariate_scale[components[is_slope]]
 
-  # Weakly identified (R/weak_identification.R); the spatial field has its
+  # Weakly identified (R/weak_identification.R). The spatial field has its
   # own test.
   weak <- .fb_weakly_identified(components, prior_share, interval_ratio)
   notes[weak] <- "weakly identified"
@@ -634,7 +634,7 @@
     .FB_COLLAPSE_FRACTION
   )
   # Only a non-negative scale can collapse against zero. `sigma` is that
-  # scale's reference rather than a candidate against itself.
+  # scale's reference instead of a candidate against itself.
   flagged <- .fb_component_domain(components) == "positive" &
     components != "sigma" &
     is.finite(upper) &
@@ -653,8 +653,8 @@
 # This replaces a denylist. .fb_varcomp_notes() used to flag every row that
 # was not a correlation and not `sigma`, on the reasoning that what remained
 # was a variance component. Factor-analytic loadings are not: fa(f, k):g emits
-# `fa<j>_<env><level>` rows, which are signed, and a negative loading -- a
-# crossover interaction, a real and interpretable result -- has a negative
+# `fa<j>_<env><level>` rows, which are signed, and a negative loading, a
+# crossover interaction, a real and interpretable result, has a negative
 # upper credible bound, which satisfies `upper < 0.01 * sigma` for arithmetic
 # reasons and was printed as `collapsed`. The 2026-09-11 audit found it on the
 # shipped FA(1) and FA(2) summaries (rows fa1_env4 and fa2_env5).
@@ -676,7 +676,7 @@
     startsWith(components, "sigma_")] <- "positive"
   out[startsWith(components, "cor_") |
     startsWith(components, "rho_")] <- "unit_interval"
-  # fa<j>_<factor><level> -- a loading, which carries its own sign.
+  # fa<j>_<factor><level>, a loading, which carries its own sign.
   out[grepl("^fa[0-9]+_", components)] <- "signed"
   out
 }
@@ -684,12 +684,12 @@
 # .fb_agg_varcomp_from_means() --- the last-resort aggregated table.
 #
 # The aggregated emits record their variance components as posterior
-# MEANS only -- `$extras$summary$sigma_means` and `$tau_means` -- with no
+# MEANS only, `$extras$summary$sigma_means` and `$tau_means`, with no
 # dispersion and no quantiles. On the INLA route that is not a loss,
 # because the raw fit carries the hyperparameter marginals and
 # .inla_variance_comps() reads a full row off them. On a route that kept
 # nothing but the means there is no interval to report, so the
-# three interval columns are NA rather than a spread invented from a
+# three interval columns are NA instead of a spread invented from a
 # point estimate, and the caller's `note` column says which rows they
 # are.
 #
@@ -752,15 +752,15 @@
 # The per-row emits write `$extras$variance_comps` as the five-column
 # broom-shaped data frame. The aggregated emits write a two-element list
 # of posterior means under the same name, which is why every reader of
-# that field -- summary(), tidy(effects = "random"), plot(type =
-# "variance") -- errored on an aggregated fit rather than returning
+# that field, summary(), tidy(effects = "random"), plot(type =
+# "variance"), errored on an aggregated fit instead of returning
 # something. Aggregation is the DEFAULT route for an ordinary Gaussian
 # call with a random term, so that was the ordinary case, not a corner.
 #
 # One reader normalises the two shapes. An aggregated INLA fit is routed
 # to the same marginal-transform builder the per-row INLA route uses, so
 # the aggregated table is the engine's own posterior on the
-# standard-deviation scale rather than a reciprocal square root of a
+# standard-deviation scale instead of a reciprocal square root of a
 # tabulated mean. Anything else falls back to the recorded means with
 # absent intervals.
 #
@@ -793,7 +793,7 @@
 #
 # A `dsum(~ units | f)` residual leaves no scalar `sigma` behind. What the
 # model carries instead is one coefficient on LOG sigma per level of f,
-# which the emit-time variance-component builder does not collect -- it
+# which the emit-time variance-component builder does not collect, it
 # reads `sd_*` rows and `sigma`, and `b_sigma_*` is neither. So the entire
 # point of fitting dsum() was printed by summary() and absent from the
 # object it returned: `summary(fit)$varcomp` came back with the grouping
@@ -806,7 +806,7 @@
 # MEDIANS, because exp() is convex and the median is the one summary a
 # monotone transform carries through exactly. These rows therefore carry
 # the median where the sampled `sd_*` rows carry a posterior mean. The
-# alternative -- a mean the panel never displays -- would reintroduce the
+# alternative: a mean the panel never displays, would reintroduce the
 # disagreement this closes.
 #
 # Naming follows the canonical vocabulary: `sigma_<level>`, on the
@@ -814,9 +814,9 @@
 #
 # C6 (observation weights) hits the same wall by a different door: with
 # no sectioned residual but weights present, brms's sigma is `~ 1 +
-# offset(...)` rather than a scalar -- one Intercept coefficient, not
-# one per level. .brms_weights_sigma_row() recovers that single row;
-# it is folded in here, named plainly "sigma" (there is no level to
+# offset(...)` instead of a scalar, one Intercept coefficient, not
+# one per level. .brms_weights_sigma_row() recovers that single row.
+# It is folded in here, named plainly "sigma" (there is no level to
 # suffix), so a weighted fit's varcomp table reads exactly like an
 # unweighted one's.
 #
@@ -919,7 +919,7 @@
     out$note[field_rows] <- if (absent) "collapsed" else ""
   }
   # A row the source could summarise to a point and no further says so.
-  # Blank cells beside three NAs read as a rendering slip; the words say
+  # Blank cells beside three NAs read as a rendering slip. The words say
   # the fit recorded no interval for that component.
   no_interval <- is.na(out$std.error) &
     is.na(out$conf.low) &
@@ -969,12 +969,12 @@
 #
 # One data frame per grouping factor, in the same six columns on every
 # engine: group, level, estimate, std.error, conf.low, conf.high. INLA
-# reports a data frame per term keyed by `ID`; brms a three-dimensional
+# reports a data frame per term keyed by `ID`. Brms a three-dimensional
 # array per grouping factor. A fit whose engine `.fb_fit_engine()`
 # cannot identify falls through to `.fb_random_blups()`, which reads
 # whatever `object$extras$blups` holds (a bare named vector of
 # posterior means, with no uncertainty columns, on the one record shape
-# that ever populated it -- see that function) -- and a reader
+# that ever populated it, see that function), and a reader
 # comparing two fits should not have to learn the engine-specific
 # shapes to use the table.
 #
@@ -1081,10 +1081,10 @@
   # INLA names each summary.random entry after the index column emit_inla()
   # built for the term, so a structured term arrives as `rep_block_id` rather
   # than `rep:block`. Map it back to what the user wrote.
-  # emit_inla() stores the IR as `fb`; flexybayes() also attaches it as
+  # emit_inla() stores the IR as `fb`. flexybayes() also attaches it as
   # `extras$fb_terms`. Reading only the second left a fit made by a direct
-  # emit_inla() call -- the one route by which a gate-refused us(f):g or
-  # (x | g) reaches this function -- with every generated name and index.
+  # emit_inla() call, the one route by which a gate-refused us(f):g or
+  # (x | g) reaches this function, with every generated name and index.
   fb <- object$extras$fb_terms %||% object$fb
   # A blocks-format vm() / ped() is sized by its carrier, which the IR does
   # not hold and the call record does.
@@ -1098,7 +1098,7 @@
   # carry, which is the common case (a plain `~ g` needs no relabelling).
   relabel <- function(nm) if (nm %in% names(labels)) labels[[nm]] else nm
   # The levels inside the table, for the terms INLA indexes by an integer
-  # column rather than by the factor itself. Without it those come back as
+  # column instead of by the factor itself. Without it those come back as
   # 1..n and no BLUP can be matched by name (findings S01 / N5).
   level_specs <- if (is.null(fb)) {
     list()
@@ -1143,11 +1143,11 @@
       tab <- tab[spec$rows, , drop = FALSE]
       level_vals <- spec$levels
     } else {
-      # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
-      # for a group INLA's f() indexes by a relabelled factor; restore the
+      # `tab$ID` carries the legalised level ("X1", "low.N", ...)
+      # for a group INLA's f() indexes by a relabelled factor. Restore the
       # user's own label the same way coef.flexybayes_inla() does for the
-      # fixed table, so ranef() -- which reaches this function via
-      # coef(what = "random") -- prints what the user wrote.
+      # fixed table, so ranef(), which reaches this function via
+      # coef(what = "random"), prints what the user wrote.
       level_vals <- tab$ID %||% seq_len(nrow(tab))
       if (is.character(level_vals)) {
         level_vals <- .inla_restore_level_labels(
@@ -1225,12 +1225,12 @@
 #
 # Reads `object$extras$blups`, a bare named vector of posterior means
 # with no uncertainty attached (the shape a since-withdrawn native
-# engine populated; see NEWS.md, 0.9.3). Neither active engine
+# engine populated. See NEWS.md, 0.9.3). Neither active engine
 # populates this slot, so on an inla/brms fit this path is never
-# reached; it remains as the typed no-op for a fit
-# `.fb_fit_engine()` cannot identify, returning `list()` rather than
+# reached. It remains as the typed no-op for a fit
+# `.fb_fit_engine()` cannot identify, returning `list()` instead of
 # erroring on a missing slot. The three uncertainty columns are `NA`
-# rather than filled with a number the object never held.
+# instead of filled with a number the object never held.
 #
 # @noRd
 # @keywords internal
@@ -1298,7 +1298,7 @@
 
 # .fb_coef_what() --- resolve `coef(what = )` against one fit.
 #
-# The fixed vector is passed in rather than recomputed, because the two
+# The fixed vector is passed in instead of recomputed, because the two
 # engines reach it by different routes: a brms fit keeps it on
 # `$glm$coefficients` and an INLA fit has no `$glm` slot at all. Every
 # other branch is engine-independent, and lives here so the two coef()
@@ -1326,12 +1326,12 @@
 #
 # ASReml's `mv` factor, in this package's terms: the posterior for each
 # response the design says exists and nobody observed. Both engines
-# already compute it -- INLA treats an NA response as a latent
-# prediction target, brms samples it through `mi()` -- so this reads what
-# the fit holds rather than adding a second call to either engine.
+# already compute it, INLA treats an NA response as a latent
+# prediction target, brms samples it through `mi()`, so this reads what
+# the fit holds instead of adding a second call to either engine.
 #
 # The five frozen columns come first (`row`, `estimate`, `std.error`,
-# `conf.low`, `conf.high`); the design index variables the fit recorded
+# `conf.low`, `conf.high`). The design index variables the fit recorded
 # are appended after them, so the column positions of the frozen five do
 # not move with the model.
 
@@ -1380,7 +1380,7 @@
   }
   vars <- vars[vars %in% names(dat)]
   # An index variable sharing a name with one of the frozen five would
-  # collide on the way into the frame; it is suffixed rather than
+  # collide on the way into the frame. It is suffixed instead of
   # dropped, so the value is still reachable.
   frozen <- names(.fb_missing_empty())
   out <- lapply(vars, function(v) dat[[v]][rows])
@@ -1398,8 +1398,8 @@
 # table and would silently answer for the first six rows alone.
 #
 # Restricted to the identity link. INLA says so itself on any fit with a
-# missing response and another link -- "otherwise the identity link will
-# be used to compute the fitted values for NA data" -- so on a Poisson or
+# missing response and another link, "otherwise the identity link will
+# be used to compute the fitted values for NA data", so on a Poisson or
 # binomial fit the rows for the unobserved cells are on the
 # linear-predictor scale while the rows around them are on the response
 # scale. Reporting the two under one column heading would put a number in
@@ -1503,7 +1503,7 @@
 # .fb_summary_missing() --- the unobserved design cells.
 #
 # The single construction behind `summary(fit)$missing` and
-# `coef(fit, what = "missing")`. Zero rows -- typed, never `NULL` --
+# `coef(fit, what = "missing")`. Zero rows, typed, never `NULL`,
 # whenever every response was observed, or the engine holds no posterior
 # for the ones that were not.
 #
@@ -1551,7 +1551,7 @@
 # transitions. A Laplace approximation reports whether its mode search
 # converged, whether the marginal likelihood is finite, and the largest
 # symmetric Kullback-Leibler divergence between each Gaussian
-# approximation and its corrected marginal -- INLA's own accuracy signal.
+# approximation and its corrected marginal, INLA's own accuracy signal.
 # Neither set is translated into the other's vocabulary.
 #
 # @noRd
@@ -1614,7 +1614,7 @@
       # `ok` is TRUE / FALSE / NA and is the ONE field a consumer should
       # read. It exists because two consumers previously read it when it
       # did not, and supplied opposite defaults for the absence (A25).
-      # NA means the evidence needed to decide is not there; it never
+      # NA means the evidence needed to decide is not there. It never
       # means "fine".
       ok = .fb_convergence_verdict(object)$ok,
       mode_status = object$inla$mode$mode.status %||% NA_real_,
@@ -1705,8 +1705,8 @@
 #' drift apart.
 #'
 #' The fit itself is attached as the attribute `fit`. The print method
-#' renders the engine-native blocks -- INLA's hyperparameter table and
-#' spatial-field panel, brms's per-level residual panel -- through the
+#' renders the engine-native blocks, INLA's hyperparameter table and
+#' spatial-field panel, brms's per-level residual panel, through the
 #' same helpers `print()` uses, and reading them off the summary object
 #' would mean maintaining a second copy of each.
 #'
@@ -1715,7 +1715,7 @@
 #' slot, the unified object dropped it, and the removal was silent: a
 #' caller reading `summary(fit)$spatial_field` got `NULL` and whatever
 #' arithmetic followed. It is restored here as an engine-native optional
-#' slot rather than folded into the frozen eleven, because a fit without
+#' slot instead of folded into the frozen eleven, because a fit without
 #' a field has no such table and an all-`NA` row would be worse than an
 #' absent one.
 #'
@@ -1823,7 +1823,7 @@
   # NOT reproduced here. This object's prior surface is the `prior`
   # column of the variance-component table, projected from
   # prior_summary(), which states the prior each component actually
-  # carried rather than classifying the call. The label stays on
+  # carried instead of classifying the call. The label stays on
   # print.flexybayes_aggregated(), where it has lived since v0.3.8.
   agg <- .fb_agg_line(object)
   if (!is.null(agg)) {
@@ -2033,7 +2033,7 @@
 #'
 #' Prints the fixed-effect table, the variance components with the prior
 #' each one carried, the engine's own convergence diagnostics, and
-#' whatever engine-native panels the fit earns -- INLA's hyperparameter
+#' whatever engine-native panels the fit earns, INLA's hyperparameter
 #' and spatial-field tables, brms's per-level residual table.
 #'
 #' Two sentences on the output are deliberate. The banner above the

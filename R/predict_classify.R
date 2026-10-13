@@ -1,4 +1,4 @@
-# predict_classify.R -- the marginal-means table an ASReml user takes to a
+# predict_classify.R: the marginal-means table an ASReml user takes to a
 # meeting.
 #
 # `predict(asreml_fit, classify = "Variety")` is the object a breeder
@@ -37,7 +37,7 @@
       stop(
         "predict(): `classify` given as a two-sided formula. It names the ",
         "factors the means table is broken down by, so it takes the ",
-        "one-sided form -- classify = ~ Variety, or ~ Variety * env.",
+        "one-sided form, as in classify = ~ Variety or ~ Variety * env.",
         call. = FALSE
       )
     }
@@ -108,14 +108,9 @@
 
   present <- vars[vars %in% names(tab)]
   out <- tab[, present, drop = FALSE]
-  # C4/FS-26: on an INLA fit whose model touched a non-syntactic factor
-  # level, the reference grid emmeans built (via R/emmeans_support.R's
-  # recover_data(), which reads object$data) carries the legalised
-  # (make.names()) labels; restore the user's own here so the table a
-  # breeder reads shows what they wrote. object$level_labels is NULL
-  # for every fit this legalisation never touched (every non-INLA
-  # engine, and an INLA fit with no non-syntactic level), so this is a
-  # no-op there.
+  # On an INLA fit with a non-syntactic factor level, the emmeans
+  # reference grid carries the make.names() labels. The user's own labels
+  # are restored here. object$level_labels is NULL on every other fit.
   for (v in present) {
     if (is.factor(out[[v]])) {
       levels(out[[v]]) <- .inla_restore_level_labels(
@@ -148,8 +143,8 @@
 
 # .fb_emmeans_available() --- is the estimation seam's package present?
 #
-# A named predicate rather than an inline requireNamespace(), so the
-# refusal below is reachable from a test without uninstalling emmeans.
+# A named predicate, so a test can reach the refusal below without
+# uninstalling emmeans.
 #
 # @noRd
 # @keywords internal
@@ -174,8 +169,8 @@
     reason_code = "classify_requires_emmeans",
     message = paste0(
       "predict(classify = ) builds the marginal-means table through ",
-      "emmeans, which is not installed. emmeans is a suggested package ",
-      "rather than a hard dependency because most of flexyBayes does not ",
+      "emmeans, which is not installed. emmeans is a suggested package, ",
+      "not a hard dependency, because most of flexyBayes does not ",
       "need it. Install it with install.packages(\"emmeans\"), or read the ",
       "fixed effects directly from summary(fit)$fixed and the ",
       "random-effect predictions from coef(fit, what = \"random\")."
@@ -249,8 +244,8 @@
   warning(
     "predict(): `newdata` is ignored on the classify path. The means ",
     "table averages the fitted model over the levels it was fitted to. ",
-    "To predict rows you supply -- untested lines, a new site -- call ",
-    "predict(fit, newdata = ...) without `classify`; on a brms fit, rows at ",
+    "To predict rows you supply (untested lines, a new site), call ",
+    "predict(fit, newdata = ...) without `classify`. On a brms fit, rows at ",
     "levels the fit did not see also need allow_new_levels = TRUE.",
     call. = FALSE
   )
@@ -267,7 +262,7 @@
   if (!ok) {
     stop(
       "predict(): `level` is the credible level as a proportion, strictly ",
-      "between 0 and 1 -- 0.95 for a 95% interval.",
+      "between 0 and 1, such as 0.95 for a 95% interval.",
       call. = FALSE
     )
   }
@@ -280,11 +275,14 @@
 # ---------------------------------------------------------------- #
 #
 # ASReml-R 4.2 reference manual, section 6.2 ("The prediction process"):
-# the averaging set is the variables of the fixed terms not in classify;
-# variables that define only random terms are ignored; every model term
-# built entirely from classify and averaging variables is used; cells of
-# the hyper-table are averaged with equal weights; a simple covariate is
-# held at its mean. Those five rules are matched here. The arguments that
+#   1. the averaging set is the variables of the fixed terms not in
+#      classify,
+#   2. variables that define only random terms are ignored,
+#   3. every model term built entirely from classify and averaging
+#      variables is used,
+#   4. cells of the hyper-table are averaged with equal weights,
+#   5. a simple covariate is held at its mean.
+# Those five rules are matched here. The arguments that
 # change them are refused by name (.FB_CLASSIFY_ASREML_ARGS).
 
 # predict.asreml() arguments that change the default rules or ask for
@@ -385,7 +383,7 @@
   cells <- expand.grid(values, KEEP.OUT.ATTRS = FALSE)
   table_rows <- expand.grid(values[plan$vars], KEEP.OUT.ATTRS = FALSE)
   # Each hyper-table cell averages into the classify row it shares
-  # classify values with; expand.grid() varies the first column fastest,
+  # classify values with. expand.grid() varies the first column fastest,
   # so the classify columns repeat in blocks of nrow(table_rows).
   row_of_cell <- rep(seq_len(nrow(table_rows)), length.out = nrow(cells))
   avg <- Matrix::sparseMatrix(

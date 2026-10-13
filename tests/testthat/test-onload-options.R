@@ -1,10 +1,10 @@
-# .onLoad option side effects -- the marginaleffects custom-class hook.
+# .onLoad option side effects, the marginaleffects custom-class hook.
 #
 # .onLoad() appends the flexyBayes fit classes to the
 # `marginaleffects_model_classes` option so marginaleffects will dispatch on
 # them. That is a global option mutation, so the contract is that it must be
-# (a) non-clobbering -- it never drops a user's own registered classes -- and
-# (b) idempotent -- running it again adds nothing and introduces no
+# (a) non-clobbering, it never drops a user's own registered classes, and
+# (b) idempotent, running it again adds nothing and introduces no
 # duplicates. The logic is factored into .register_marginaleffects_classes()
 # precisely so these two properties are unit-testable without re-triggering a
 # package load.

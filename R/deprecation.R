@@ -8,7 +8,7 @@
 # stops with base R's `defunctError` and keeps `lifecycle_error_deprecated`
 # for the same reason. Every call warns: there is no once-per-session latch.
 # A caller running compatibility checks may explicitly set
-# `options(flexyBayes.deprecation_warnings = FALSE)`; ordinary sessions default
+# `options(flexyBayes.deprecation_warnings = FALSE)`. Ordinary sessions default
 # to warnings on.
 
 .fb_warn_deprecated <- function(message) {

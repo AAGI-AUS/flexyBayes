@@ -1,6 +1,6 @@
 # predict(allow_new_levels = TRUE): the posterior predictive at levels the fit
 # did not see. The correspondence to ASReml's plug-in prediction is in
-# test-predict-new-levels-asreml.R; this file holds the contract.
+# test-predict-new-levels-asreml.R. This file holds the contract.
 
 .pnl_cache <- new.env(parent = emptyenv())
 

@@ -1,4 +1,4 @@
-# inla_restart_probe.R -- is a converged mode the mode, or just a mode?
+# inla_restart_probe.R, is a converged mode the mode, or just a mode?
 #
 # `.lgm_check_numerical()` reports a fit as numerically confirmed when INLA
 # returns `mode.status == 0` and a finite marginal likelihood. Neither
@@ -11,8 +11,8 @@
 # rows, returns 5.84 and 5.45 in two of the six environments, stably. Every
 # one of the twenty-four reported `mode.status = 0` and
 # `Numerical confirm: PASS`. Tightening the prior by a factor of twenty
-# changed nothing, so this is mode selection rather than a prior this package
-# chose -- which is what separates it from the factor-analytic specific
+# changed nothing, so this is mode selection instead of a prior this package
+# chose: which is what separates it from the factor-analytic specific
 # variance and the `iid2d` Wishart, both of which were our own defaults.
 #
 # The project's own conclusion from those cases is the design here: only the
@@ -20,7 +20,7 @@
 # back pinned at zero, the fit is restarted from a mode where that component
 # has real variance, and the two marginal likelihoods are compared. A restart
 # that finds a materially better solution means the first one was not the
-# answer, and the numerical-confirm verdict says so rather than passing.
+# answer, and the numerical-confirm verdict says so instead of passing.
 #
 # The probe costs one extra fit and runs only when something collapsed, so a
 # fit with nothing pinned at zero pays nothing.
@@ -34,13 +34,13 @@
 # Ratio of residual variance below which a component counts as pinned at
 # zero for this purpose. 1e-4 on the variance scale is the square of the
 # package's 1% rule on the SD scale (.FB_COLLAPSE_FRACTION), so the two
-# surfaces agree by construction rather than by coincidence.
+# surfaces agree by construction instead of by coincidence.
 .FB_RESTART_COLLAPSE_VARIANCE_RATIO <- 1e-4
 
 
 # Names of the hyperparameters that came back pinned at zero variance.
 #
-# Read from the raw INLA hyperparameter table rather than from the
+# Read from the raw INLA hyperparameter table instead of from the
 # canonicalised variance-component frame, because the probe runs inside the
 # emit, before a flexybayes object exists.
 #
@@ -75,7 +75,7 @@
 # Restart the fit from a mode where the pinned components carry real
 # variance, and report whether that solution is better.
 #
-# Returns NULL when the probe does not apply or could not run -- a probe that
+# Returns NULL when the probe does not apply or could not run, a probe that
 # fails is not evidence of stability, and the caller records the difference.
 #
 # @noRd
@@ -91,7 +91,7 @@
   if (is.null(nm)) {
     return(NULL)
   }
-  # Guarded here rather than left to the caller's tryCatch: a fit with no
+  # Guarded here instead of left to the caller's tryCatch: a fit with no
   # marginal likelihood has nothing to compare against, and that is a reason
   # to decline the probe, not an error to swallow.
   if (is.null(fit$mlik) || !nrow(fit$mlik)) {
@@ -103,7 +103,7 @@
 
   # A pinned component's log precision has run away upward. Start it two log
   # units above the residual's, which is a variance about an eighth of the
-  # residual's -- squarely inside the range a real component occupies, and
+  # residual's, squarely inside the range a real component occupies, and
   # nowhere near the boundary the first fit ran to.
   start <- theta
   collapsed_theta <- sub("^Precision for ", "Log precision for ", collapsed)
@@ -136,12 +136,11 @@
   args2 <- inla_args
   args2$control.mode <- list(theta = unname(start), restart = TRUE)
   # The restart runs in INLA's external program, and setTimeLimit() cannot
-  # bound a fit that runs outside R (cairn
-  # 2026-08-14-external-binary-timeouts-need-a-process-watchdog). A restart
-  # that hangs therefore hangs the fit. Accepted at this stage because the probe
-  # only fires on a fit that already converged once on the same data, so the
-  # surface is known to be tractable, and a watchdog belongs with the one that
-  # cairn calls for rather than as a second private implementation.
+  # bound a fit that runs outside R. A restart
+  # that hangs therefore hangs the fit. The probe only fires on a fit that
+  # already converged once on the same data, so the surface is known to be
+  # tractable. A process watchdog (decided 2026-08-14) will cover all external
+  # INLA calls and is not duplicated here.
   fit2 <- tryCatch(.inla_call(args2), error = function(e) NULL)
   if (is.null(fit2) || is.null(fit2$mlik) || !nrow(fit2$mlik)) {
     return(NULL)
@@ -158,7 +157,7 @@
     delta = m2 - m1,
     better = (m2 - m1) > .FB_RESTART_MLIK_MARGIN,
     collapsed = collapsed,
-    # The restarted fit itself, so the caller can return it rather than the
+    # The restarted fit itself, so the caller can return it instead of the
     # solution it has just shown to be worse. Carried here and dropped by
     # the caller once adopted, so it never reaches the returned object twice.
     fit = fit2

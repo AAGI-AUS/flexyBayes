@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{An \code{fb_gev_fit} object from \code{\link[=fb_gev]{fb_gev()}}.}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 A \code{data.frame} with \code{term}, \code{estimate}, \code{std.error}, \code{conf.low},

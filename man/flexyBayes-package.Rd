@@ -10,12 +10,9 @@
 you already know from ASReml or \code{lme4}/\code{brms}, dispatched through one of
 two active inference engines: INLA (integrated nested Laplace
 approximation, over the latent Gaussian model class) or brms (a Stan
-passthrough, full Hamiltonian Monte Carlo). A third native engine was
-withdrawn entirely in 0.9.3 (see \code{NEWS.md}): a \code{backend} request
-naming that withdrawn engine, or any other unrecognised name, now
-refuses with an ordinary unknown-backend error naming the two active
-engines; re-entry, should it ever be proposed, would be a fresh
-implementation, not a repair of retained code. All current exports
+passthrough, full Hamiltonian Monte Carlo). A \code{backend} request
+naming any other engine refuses with an unknown-backend error naming
+the two active engines. All current exports
 are at the experimental \code{lifecycle} stage. The same fitted object
 supports \code{summary()}, \code{predict()}, \code{emmeans::emmeans()},
 \code{marginaleffects::predictions()}, and the \verb{bayesplot::*} family.
@@ -25,19 +22,19 @@ supports \code{summary()}, \code{predict()}, \code{emmeans::emmeans()},
 The entry points share a single internal model representation
 (\code{fb_terms}):
 \itemize{
-\item \code{\link[=flexybayes]{flexybayes()}} -- ASReml-format entry: \code{fixed} / \code{random} / \code{residual}
+\item \code{\link[=flexybayes]{flexybayes()}}, ASReml-format entry: \code{fixed} / \code{random} / \code{residual}
 formulas and \code{known_matrices} for kinship / pedigree. Observation
 \code{weights} are lowered for the Gaussian family (identity link) and
-refused by name for any other family -- see \code{?flexybayes}'s
+refused by name for any other family, see \code{?flexybayes}'s
 \verb{@param weights} for the exact semantics.
-\item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} -- the universal entry. Accepts an ASReml
+\item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}}, the universal entry. Accepts an ASReml
 (\code{fixed} / \code{random} / \code{residual}) or brms-style (\code{y ~ x + (1 | g)})
 formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).
-\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} -- the two active single-engine pins.
-\item \code{\link[=fb_prior]{fb_prior()}} -- penalised-complexity-canonical prior DSL.
-\item \code{\link[=vpredict]{vpredict()}} -- ASReml's own verb for a posterior functional of the
+\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}}, the two active single-engine pins.
+\item \code{\link[=fb_prior]{fb_prior()}}, penalised-complexity-canonical prior DSL.
+\item \code{\link[=vpredict]{vpredict()}}, ASReml's own verb for a posterior functional of the
 variance components: heritabilities, ratios and genetic correlations,
-computed on the draws rather than by the delta method.
+computed on the draws, not by the delta method.
 }
 }
 
@@ -47,13 +44,13 @@ Six vignettes ship with the package: \emph{Mixed models in brief}, \emph{Bayesia
 estimation in brief}, \emph{The ASReml syntax flexyBayes covers}, \emph{ASReml and
 flexyBayes on the same trials}, \emph{A two-stage analysis of a series of
 trials}, and \emph{Moving from ASReml-R}. The first two set up the model class
-and what changes under a posterior; the third is the formula surface
-together with dispatch and the inventory of structures that are refused;
-the fourth fits the same trials through both and shows where the answers
-agree and where they do not; the fifth fits each trial of a series on its
+and what changes under a posterior. The third is the formula surface
+together with dispatch and the inventory of structures that are refused.
+The fourth fits the same trials through both and shows where the answers
+agree and where they do not. The fifth fits each trial of a series on its
 own, carries the first stage's variances into a second stage, and fits a
 penalised regression of trial-level covariates on the design whitened by
-the fitted covariance; the sixth gives the flexyBayes spelling of each
+the fitted covariance. The sixth gives the flexyBayes spelling of each
 ASReml construct, beside stored ASReml fits. The count here is checked
 against \verb{vignettes/} by a parity test, because a number written into prose
 is the first thing to drift.
@@ -65,7 +62,7 @@ What each active engine fits, emits, or refuses by model class is
 generated from one R-level table and shown in \code{README.md} and
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}. A request
 outside that set raises a typed refusal naming the nearest implemented
-alternative rather than fitting a neighbouring model under the
+alternative instead of fitting a neighbouring model under the
 requested model's name.
 }
 

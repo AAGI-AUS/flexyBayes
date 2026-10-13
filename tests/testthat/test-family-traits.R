@@ -1,21 +1,12 @@
 # =============================================================================
 # Per-engine family traits: one table, grounded on the engine.
 #
-# Two hand-maintained lists in this package disagreed about which families
-# carry a residual `sigma`. `.brms_family_has_sigma()` listed gamma and
-# beta; the heteroscedastic-residual gate in emit_brms.R did not. The wrong
-# list governed the prior emit, so every prior route on gamma and beta --
-# including the plain default with no prior argument at all -- sent brms a
-# prior for a parameter the model does not have, and brms refused the fit.
-# Two of the six advertised response families were unreachable on the Stan
-# backend, and the capability matrix said `fits`.
+# Which families carry a residual `sigma` decides the brms prior emit. A
+# prior on a parameter the model does not have makes brms refuse the fit.
 #
-# Three assertions hold the fix. The table agrees with brms's own
-# declaration of each family's distributional parameters (the engine is the
-# oracle, not a second list in our tree). Both call sites read the table.
-# And no second copy of the roster exists in the package sources -- the
-# duplicate is the defect, so the test looks for duplicates rather than for
-# the symptom.
+# Three assertions. The table agrees with brms's own declaration of each
+# family's distributional parameters. Both call sites read the table. No
+# second copy of the roster exists in the package sources.
 # =============================================================================
 
 # The response families the entry allowlist admits (R/utils.R

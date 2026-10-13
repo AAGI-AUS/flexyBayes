@@ -29,7 +29,7 @@ test_that("a matrix is carried as its diagonal and a row index, and follows its 
     .fb_known_covariance_values(attached$fb, attached$data),
     tr$k
   )
-  # Dropping and reordering rows takes the matching rows and columns; a row
+  # Dropping and reordering rows takes the matching rows and columns. A row
   # the design grid adds has no index and no known part.
   rows <- c(9L, 2L, 30L)
   kept <- attached$data[rows, ]

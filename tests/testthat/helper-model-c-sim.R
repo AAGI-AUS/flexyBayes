@@ -1,7 +1,7 @@
-# helper-model-c-sim.R -- the model C simulation of data-raw/model_c_reference.R.
+# helper-model-c-sim.R, the model C simulation of data-raw/model_c_reference.R.
 #
 # Section 1 of that script as a function of the seed. At seed 20261008 it
-# reproduces the stored fixture inst/extdata/model_c_reference.rds; the
+# reproduces the stored fixture inst/extdata/model_c_reference.rds. The
 # recovery study in test-model-c-pooled.R draws its other fixtures from it.
 
 .mc_simulate <- function(seed) {

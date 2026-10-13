@@ -1,7 +1,6 @@
-# A transformed response -- log(yield) -- is what every peer accepts and what
-# flexyBayes refused (issue #14, fit1). These tests hold the fix and, more
-# importantly, hold the two ways it can go wrong: accepting something it should
-# refuse, and resolving the response outside the data.
+# A transformed response such as log(yield) (issue #14). The tests also cover
+# the two ways it can go wrong: accepting something it should refuse, and
+# resolving the response outside the data.
 
 test_that("a transformed response parses and carries its values", {
   tab <- data.frame(
@@ -50,11 +49,9 @@ test_that("a mistyped response still refuses by name", {
 })
 
 test_that("a workspace object of the right length is not used as the response", {
-  # The guard's whole point. The first version of this fix evaluated the
-  # left-hand side with asNamespace("stats") as the enclosure, which does not
-  # exclude the workspace -- every namespace's parent chain reaches globalenv
-  # -- and a stray vector was silently accepted as the response. baseenv()
-  # terminates at the empty environment. This test fails against that version.
+  # A namespace enclosure such as asNamespace("stats") does not exclude the
+  # workspace, since every namespace's parent chain reaches globalenv.
+  # baseenv() ends at the empty environment.
   tab <- data.frame(yield = c(1, 2, 3, 4), gen = factor(c("a", "b", "a", "b")))
   notacolumn <- c(9, 9, 9, 9)
   expect_error(

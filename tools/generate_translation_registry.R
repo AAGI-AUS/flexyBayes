@@ -1,4 +1,4 @@
-# tools/generate_translation_registry.R -- regenerate the translation registry.
+# tools/generate_translation_registry.R: regenerate the translation registry.
 #
 # One R-level table (.fb_translation_registry(), R/translation_registry.R) is
 # the source of truth for what each ASReml structure is lowered to, which

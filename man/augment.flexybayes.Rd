@@ -15,7 +15,7 @@
 \item{data}{Optional \code{data.frame} to augment. Defaults to the data the
 model was fitted to.}
 
-\item{...}{Currently unused; present for generic compatibility.}
+\item{...}{Currently unused. Present for generic compatibility.}
 }
 \value{
 The supplied (or original) \code{data.frame} with \code{.fitted} and

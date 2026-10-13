@@ -178,7 +178,7 @@ test_that("an uncorrelated slope prior is restated on the standardised covariate
   )
   out <- .fb_inla_covariate_standardise_hyper(hyper, cstd)
   # A standard deviation in response units per covariate unit multiplies by
-  # the divisor; a random intercept carries no covariate and does not move.
+  # the divisor. A random intercept carries no covariate and does not move.
   expect_equal(out$x_g$meta$scale, 10)
   expect_equal(out$g$meta$scale, 3)
 
@@ -236,7 +236,7 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
     ),
     control.compute = list(config = TRUE, return.marginals = TRUE,
                            dic = TRUE, waic = TRUE),
-    # flexyBayes fits on one thread; more threads move the result.
+    # flexyBayes fits on one thread. More threads move the result.
     num.threads = "1:1"
   )
   got <- fit$inla
@@ -341,7 +341,7 @@ test_that("draws are taken on the original scale", {
   ))
   sf <- fit$inla$summary.fixed
 
-  # INLA's sampler reads the standardised internal state; unmapped, these
+  # INLA's sampler reads the standardised internal state. Unmapped, these
   # draws would sit a thousandfold away from the summary they belong to.
   draws <- fb_as_draws_simple(fit, n_samples = 2000L)
   x_draws <- draws[["x:1"]]
@@ -361,7 +361,7 @@ test_that("vpredict comes back in the covariate's own units", {
 
   # vpredict() is the only caller of the joint hyperparameter sampler, so it
   # is the only route on which that mapping shows. A slope standard deviation
-  # is in response units per covariate unit; unmapped, it would sit a
+  # is in response units per covariate unit. Unmapped, it would sit a
   # thousandfold from the table it belongs to at x * 1000.
   #
   # The tolerance is the sampler's own. Over five repeated draw sets on one

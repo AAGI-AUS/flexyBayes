@@ -1,4 +1,4 @@
-# fb_backend_status() -- the backend-readiness diagnostic. It is read-only and
+# fb_backend_status(), the backend-readiness diagnostic. It is read-only and
 # runs without any backend installed, so these checks are environment-
 # independent (no skip gates needed).
 

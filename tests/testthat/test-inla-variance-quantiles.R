@@ -30,7 +30,7 @@ test_that("DEF-001: SD quantiles match INLA's summary on a near-zero component",
   vc <- vc[match(ref$component, vc$component), ]
   med <- attr(fit$extras$variance_comps, "posterior_median")[ref$component]
 
-  # INLA computes its summary on its own grid; on the Barley base model it
+  # INLA computes its summary on its own grid. On the Barley base model it
   # differs from 20,000 draws by up to 2.8%.
   expect_lt(max(abs(med / ref$q50 - 1)), 0.03)
   expect_lt(max(abs(vc$q2.5 / ref$q2.5 - 1)), 0.03)
@@ -61,7 +61,7 @@ test_that("DEF-001: SD quantiles match inla.hyperpar.sample() draws", {
 
 # DEF-002: hyperparameter draws reproduce the reported medians and 95% limits
 # on every component. Improved draws match the medians to about 1e-9 and the
-# limits to under 1e-3 at 20,000 draws; default draws missed by up to 1%.
+# limits to under 1e-3 at 20,000 draws, and default draws missed by up to 1%.
 
 .vq_draw_error <- function(fit, draws) {
   vc <- fit$extras$variance_comps

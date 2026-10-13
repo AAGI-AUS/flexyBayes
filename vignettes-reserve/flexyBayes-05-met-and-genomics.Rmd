@@ -29,7 +29,7 @@ of a breeding programme.</dd>
 genotype-by-environment terms are a brms capability.</dd>
 <dt>What the posterior adds</dt>
 <dd>Heritability, a ratio of variance components, is computed on the
-draws rather than through the delta method.</dd>
+draws, not through the delta method.</dd>
 <dt>What it costs</dt>
 <dd>The factor-analytic model, the workhorse of large METs, is refused
 by both engines. Section 5 says what that means in practice.</dd>
@@ -62,7 +62,7 @@ component. The ratio of the two is the question a breeder asks: how much
 of the varietal signal survives across sites.
 
 **Heterogeneous by environment.** `random = ~ diag(env):gen` says the
-genotype spread itself differs between environments -- a high-yielding
+genotype spread itself differs between environments: a high-yielding
 site may separate varieties more than a stressed one.
 
 # 2. Main effect plus interaction
@@ -187,8 +187,8 @@ tidy(fit_g, effects = "random")
 ```
 
 The two engines take the relationship in different forms, and naming the
-wrong one refuses rather than converting silently. INLA works from the
-**precision** -- the inverse of the relationship matrix -- because its
+wrong one refuses instead of converting silently. INLA works from the
+**precision**, the inverse of the relationship matrix, because its
 latent field is parameterised that way and a sparse precision is what
 makes the fit affordable. brms takes the **covariance** directly:
 
