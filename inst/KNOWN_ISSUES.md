@@ -384,6 +384,12 @@ Each is reproducible on this release. Priority is for the MET use case.
     *What is open*: a loading prior under which genetic correlations can be
     negative. The emit is unchanged and still
     reachable by a direct `emit_inla()` call, as the `us()` branch is.
+    A rebuilt fit that estimates the loadings directly, as ASReml does, was
+    tested in October 2026 against thresholds fixed before it ran, and failed
+    for every k. In simulation-based calibration its genetic-correlation
+    intervals were too narrow: each 5% tail held 6 to 11% of the true values.
+    The Stan fits used as the reference did not converge on 36 of 60
+    simulated data sets at k = 2. The rebuilt fit is not in this release.
 22. **Separate variances with one shared correlation, `corh(f):g`, are refused
     on both engines.** The structure sits between `diag(f):g`, with k
     variances, and `us(f):g`, with k(k+1)/2 parameters: k variances and one
