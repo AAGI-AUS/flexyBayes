@@ -50,7 +50,7 @@
 #' @examples
 #' \donttest{
 #' set.seed(1)
-#' n <- 80L. M <- 400L
+#' n <- 80L; m <- 400L
 #' Z <- matrix(rbinom(n * m, 2L, 0.3), n, m)
 #' Zc <- scale(Z, scale = FALSE)
 #' G <- tcrossprod(Zc) / m + diag(n) * 1e-3
