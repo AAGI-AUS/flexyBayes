@@ -105,9 +105,8 @@ the models neither engine fits, are in
 
 ## Documentation
 
-The manual is in the package vignettes listed below. The website at
-<https://aagi-aus.github.io/flexyBayes/> will not load until GitHub Pages is
-turned on for the repository.
+The manual is in the package vignettes listed below, and on the website at
+<https://aagi-aus.github.io/flexyBayes/>.
 
 | Vignette | Content |
 |---|---|
@@ -123,6 +122,13 @@ turned on for the repository.
 Please report bugs at <https://github.com/AAGI-AUS/flexyBayes/issues>, with a
 reproducible example and the output of `sessionInfo()`.
 
+## Contributing
+
+Fixes, documentation and discussion of new features are welcome. See
+[CONTRIBUTING.md](https://github.com/AAGI-AUS/flexyBayes/blob/main/CONTRIBUTING.md)
+for the development setup and the test tiers. The project follows the
+[Code of Conduct](https://github.com/AAGI-AUS/flexyBayes/blob/main/CODE_OF_CONDUCT.md).
+
 ## Citation
 
 ```
@@ -135,4 +141,6 @@ reproducible example and the output of `sessionInfo()`.
 }
 ```
 
-Licence: MIT.
+## Licence
+
+MIT. See [LICENSE.md](https://github.com/AAGI-AUS/flexyBayes/blob/main/LICENSE.md).

@@ -8,12 +8,13 @@ development:
   mode: auto
 
 home:
-  title: flexyBayes — Bayesian mixed models with ASReml syntax via INLA and brms
+  title: "flexyBayes: Bayesian mixed models with ASReml syntax via INLA and brms"
   description: >
     Specify mixed models using ASReml-style or brms-style formula syntax
     and estimate them via INLA or brms (Stan). The ASReml grammar reaches
-    INLA natively, so multi-stratum designs, per-environment residuals and
-    factor-analytic covariance fit by approximation instead of MCMC.
+    INLA natively, so multi-stratum designs and per-environment residuals
+    fit by approximation instead of MCMC. Factor-analytic covariance is
+    refused in this release.
 
 navbar:
   structure:
@@ -26,14 +27,18 @@ navbar:
     articles:
       text: Articles
       menu:
-        - text: 01 — Mixed models in brief
+        - text: "01: Mixed models in brief"
           href: articles/flexyBayes-01-mixed-models.html
-        - text: 02 — Bayesian estimation in brief
+        - text: "02: Bayesian estimation in brief"
           href: articles/flexyBayes-02-bayesian.html
-        - text: 03 — The ASReml syntax covered
+        - text: "03: The ASReml syntax covered"
           href: articles/flexyBayes-03-syntax.html
-        - text: 04 — ASReml and flexyBayes side by side
+        - text: "04: ASReml and flexyBayes side by side"
           href: articles/flexyBayes-04-illustration.html
+        - text: "06: A two-stage analysis of a series of trials"
+          href: articles/flexyBayes-06-two-stage.html
+        - text: "07: Moving from ASReml-R"
+          href: articles/flexyBayes-07-from-asreml.html
 reference:
   - title: Verbs
     desc: >

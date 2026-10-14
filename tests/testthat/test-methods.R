@@ -1,4 +1,4 @@
-# Tests for S3 methods — these test the method dispatch and output structure
+# Tests for S3 methods: these test the method dispatch and output structure
 # without requiring a live backend fit (use mock objects where needed)
 
 # Create a mock flexybayes object for testing methods

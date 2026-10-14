@@ -16,7 +16,7 @@ body:
     id: summary
     attributes:
       label: Summary
-      description: One paragraph — what you expected, what happened instead.
+      description: "One paragraph: what you expected, what happened instead."
     validations:
       required: true
 
@@ -33,7 +33,7 @@ body:
     id: session
     attributes:
       label: Session info
-      description: Output of `sessionInfo()` — especially the `flexyBayes` and `INLA` versions.
+      description: Output of `sessionInfo()`, especially the `flexyBayes` and `INLA` versions.
       render: text
     validations:
       required: true
@@ -55,6 +55,6 @@ body:
     id: extra
     attributes:
       label: Additional context
-      description: Anything else — verbose output, generated model code, screenshots, related issues.
+      description: "Anything else: verbose output, generated model code, screenshots, related issues."
     validations:
       required: false
