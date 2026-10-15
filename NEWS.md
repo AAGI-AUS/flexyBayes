@@ -1,165 +1,47 @@
 # flexyBayes 0.18.0
 
-## Changes since the last public release (0.10.0)
+## For users of 0.10.0
 
-A summary for readers coming from 0.10.0. Each point is described in full
-under the release named in brackets.
+0.10.0 was the last public release. These changes can stop an existing script
+or change its results. Each is described in full under its release below.
 
-* Models are fitted with INLA or with Stan through brms. `backend = "auto"`
-  sends a model INLA cannot fit to brms (0.12.0, 0.12.1).
-* Every INLA fit runs on one thread, `num.threads = "1:1"`.
-  `options(flexyBayes.inla_threads = )` sets the plan, and
-  `INLA::inla.setOption(num.threads = )` no longer does (0.14.3).
-* Every INLA fit is run three times, and the fit with the highest log marginal
-  likelihood is returned. The fits run at the same time, and
-  `options(flexyBayes.inla_best_of = 1)` fits once (0.17.0).
-* INLA fits run once, not three times, while `R CMD check` limits cores
-  (`_R_CHECK_LIMIT_CORES_` set and option `flexyBayes.inla_best_of` unset).
-* The default prior on each random-effect and residual standard deviation is
-  half-normal, on both engines, and an AR1 field's standard deviation takes
-  the same default (0.13.0, 0.14.5).
-* Gaussian models on INLA are fitted per row on a standardised response, and
-  default priors follow the units of the response and of each covariate
-  (0.12.0).
-* Every fit carries a model manifest, `fit$extras$manifest`, listing each
-  stated or default prior and the prior each engine slot reports back.
-  `prior_summary()` prints from it and names the scale each prior is on
-  (0.12.0, 0.14.1).
-* An INLA fit outside the bound of a stated uniform prior is refused with
-  `prior_support_violated` (0.12.1).
-* `us(f):g` and the correlated random slope `(x | g)` fit on brms only. INLA
-  refuses them with `correlated_covariance_requires_brms`, and
-  `backend = "auto"` sends them to brms (0.12.0).
-* `fa(env, k):gen` is refused on both engines with
-  `factor_analytic_not_repeatable`. The refusal message,
-  `inst/TRANSLATION.md` and `inst/KNOWN_ISSUES.md` give the simulation test
-  behind it (0.13.0, 0.17.0, this release).
-* More ASReml spellings fit: `at(f, level):g`,
-  `id(trial):ar1(row):ar1(col)`, `at(trial):ar1(row):ar1(col)` on INLA, the
-  nugget-free `residual = ~ ar1(row):ar1(col)` and
-  `residual = ~ dsum(~ ar1(row):ar1(col) | trial)` (0.14.1, 0.16.0).
-* A series of trials with its own genotype-by-trial and residual variance in
-  every trial fits on INLA past 15 variance parameters, by empirical Bayes
-  (0.16.0).
-* `predict(fit, classify = "gen")` works when `gen` is random, as ASReml's
-  default `predict()` does. ASReml arguments that change those rules refuse
-  with `classify_argument_not_supported` (0.16.0).
-* `predict(fit, newdata, allow_new_levels = TRUE)` predicts trials and
-  localities the fit did not see, and `mean_by` gives trial or cell means
-  (0.16.0).
-* Fixed-effect columns the data do not estimate are refused with
-  `fixed_effects_aliased`. `fixed_alias = "drop"` fits them as ASReml 4.2
-  does (0.14.1).
-* `offset()` in the fixed formula fits on both engines (0.12.0).
-* `flexybayes(known_variance = )` takes a known variance per row or a full
-  covariance matrix, for the second stage of a two-stage analysis (0.14.0,
-  0.15.0).
-* Per-trial standard deviations can be partially pooled with `pooled()` in
-  `fb_prior()`, on brms only (0.17.0).
-* On INLA fits, `summary(fit)$varcomp` marks a variance component the data
-  barely identify as `weakly identified`, and an AR1 field the data do not
-  support as `collapsed` (0.14.5, 0.16.0, this release).
-* The median and 95% limits of INLA variance components are read from the
-  marginal of the log precision, and `vcov()` on an INLA fit no longer varies
-  between calls. Variance components saved from earlier versions differ from
-  a refit (0.16.0).
-* The correlations of an AR1 x AR1 field are named after the factor each runs
-  along, `rho_<factor>` (0.16.0, this release).
-* Refusals are `flexybayes_refusal` conditions with a registered reason
-  code. Other packages can register their own codes with
-  `fb_register_refusals()` (0.16.0).
-* Packages that build on flexyBayes can use `fb_marginal_cov()`,
-  `fb_refit()`, `fb_isolated_lapply()` and the functions listed by
-  `fb_extension_api()` (0.16.0).
-* Penalised selection is no longer part of flexyBayes. `fb_select()` and the
-  six functions beside it stop with `flexybayes_refusal_selection_removed`,
-  and the two-stage vignette shows the glmnet replacement. `triangulate()`
-  and `triangulate_genomic()` are removed (0.14.0, 0.16.0, this release).
+* `triangulate()` and `triangulate_genomic()` are removed.
 * `fb_brms()`, `fb_engine()`, `fb_from_asreml()` and `fb_from_brms()` are
-  deprecated in favour of `flexybayes()` and `fb_plan()` (0.13.0).
-* New vignette *Moving from ASReml-R*. The package title is "Bayesian Mixed
-  Models with ASReml Syntax via INLA and brms", and Max Moldovan is the sole
-  author (0.16.0, this release).
+  deprecated in favour of `flexybayes()` and `fb_plan()`.
+* The default prior on each standard deviation is half-normal on both engines
+  and follows the units of the response, so estimates can differ from 0.10.0.
+* INLA fits run on one thread and are fitted three times, keeping the fit with
+  the highest marginal likelihood. A fit takes about three times as long, and
+  `options(flexyBayes.inla_best_of = 1)` fits once.
+* `us(f):g` and `(x | g)` fit on brms only, and `backend = "auto"` sends them
+  there. `fa(env, k):gen` is refused on both engines.
 
-## Selection functions
+## New since 0.10.0
 
-* `triangulate()` and `triangulate_genomic()`, exported in the public 0.10.0
-  release, were removed in 0.14.0. A script that calls them stops with
-  "could not find function". They compared two engines fitted from one parsed
-  model, which cannot detect a translation error both engines share.
-* `fb_select()`, `fb_select_path()`, `fb_select_refit()`, `fb_select_fold_data()`,
-  `fb_penalty()`, `fb_resamples()` and `fb_decision()` stay in the package but
-  only refuse. A script written against the public 0.10.0 release stops with
-  the error class `flexybayes_refusal_selection_removed`, and the message
-  points to the section "Penalised selection on the whitened design" of the
-  two-stage vignette. The functions will be removed in the release after the
-  first public release that announces their removal.
+* More ASReml syntax: `at()`, `dsum()` residuals, AR1 x AR1 fields per trial,
+  `predict(classify = )` and predictions for unseen levels. See the vignette
+  *Moving from ASReml-R*.
+* `known_variance` for the second stage of a two-stage analysis, and
+  `pooled()` priors on brms.
+* Every fit records the priors it used (`prior_summary()`) and how it was run.
+* Refusals carry a reason code, and other packages can register their own with
+  `fb_register_refusals()`.
 
-## Weak-identification flag
+## In this release
 
-* On INLA fits a second reading joins the weak-identification flag as a
-  backstop. A variance component whose 95% interval on the standard
-  deviation is 4.24 or more times its posterior median is marked `weakly
-  identified`, as is one whose interval covers 40% or more of its prior's
-  probability. The threshold is the 99th percentile of the ratio over ten
-  simulated data sets for each of five designs with five or more levels
-  (`inst/extdata/weak_identification_calibration.csv`). Of the 80 fits
-  measured, it flags one that the prior-share reading did not: a
-  five-level group with no true variance.
-* Expect more weak-identification warnings than under 0.17.0, mostly on
-  terms with few levels. In the default test run, at least 16 of the 55
-  warnings printed come from the interval reading alone.
-* The `besag.met` counties C2 and C5 under `diag(env):gen` are still not
-  flagged. Their intervals are 1.7 times their medians, while ASReml's
-  standard errors are six to seven times its estimates (KNOWN_ISSUES
-  item 24).
-* The refusal of `fa()` now says that, on INLA, `summary(fit)$varcomp`
-  marks some variances the data barely identify after a `diag(env):gen`
-  fit.
-
-## Factor-analytic covariance
-
-* `fa(env, k):gen` is still refused on both engines, with the same code,
-  `factor_analytic_not_repeatable`, so scripts that catch it need no change.
-* In a test whose thresholds were set before it ran, INLA fitted 10
-  simulated trials per k (60 genotypes, 6 environments) with a known
-  covariance. The genetic-correlation intervals covered the true value 134
-  of 150 times for k = 1 and 125 of 150 for k = 2, against 136 required. The
-  refusal message, `inst/TRANSLATION.md` and `inst/KNOWN_ISSUES.md` now give
-  these results.
-* `inst/TRANSLATION.md` no longer reports the 0.13.0 measurement in which
-  identical fits on `agridat::besag.met` differed by a ratio of 1.23 in a
-  variance. The refusal now rests on the simulation test.
-
-## Bug fixes
-
-* A field with one AR1 factor, such as `random = ~ ar1(t):g`, now names its
-  correlation after that factor, `rho_t`, in `summary()`, the field panel,
-  `fb_variance_draws()` and `vpredict()`. It was `rho_row` whatever the factor
-  was called. The same holds per trial for `at(trial):ar1(x):id(col)`
-  (`rho_x__trial<level>`). A fit saved under an earlier version still shows
-  `rho_row` in `summary()` until it is refitted, while its draws already use
-  `rho_t`. Asking `vpredict()` for `rho_row` stops and names the correlation
-  to use. The names of an `ar1(row):ar1(col)` field are unchanged.
-* On INLA, the `prior` column of `summary(fit)$varcomp` names the residual
-  prior on every section of `dsum(~ units | f)`. It used to read "engine
-  default" although INLA received that prior on each section.
-
-## Documentation
-
-* The manual is in the package vignettes. The website at
-  <https://aagi-aus.github.io/flexyBayes/> will not load until GitHub Pages is
-  turned on for the repository.
-
-## Authors
-
-* Max Moldovan is the sole author. Anabel Forte Deltell, Emi Tanaka and
-  Francis K.C. Hui are listed as contributors in `DESCRIPTION`,
-  `CITATION.cff`, `codemeta.json` and `.zenodo.json`, and the citation names
-  the author only.
-* The package title is now "Bayesian Mixed Models with ASReml Syntax via INLA
-  and brms" in `DESCRIPTION`, the citation, `CITATION.cff`, `codemeta.json`,
-  `.zenodo.json`, the pkgdown site and the README.
+* On INLA fits, a variance component whose 95% interval is 4.24 or more times
+  its median is marked `weakly identified`. Expect more of these warnings than
+  under 0.17.0, mostly on terms with few levels.
+* `fa()` is still refused. In a simulation test, intervals for the genetic
+  correlation covered the true value 134 and 125 times in 150 for k = 1 and 2,
+  against 136 required. The refusal message gives the details.
+* A field with one AR1 factor names its correlation after that factor, for
+  example `rho_t`, instead of `rho_row`.
+* On INLA, `summary(fit)$varcomp` names the residual prior on each `dsum()`
+  section.
+* INLA fits run once under `R CMD check` when cores are limited.
+* The package title is "Bayesian Mixed Models with ASReml Syntax via INLA and
+  brms".
 
 # flexyBayes 0.17.0
 
