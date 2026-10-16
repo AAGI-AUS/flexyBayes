@@ -46,7 +46,6 @@ Suggests:
     bayesplot,
     posterior,
     rstantools,
-    glmnet,
     emmeans,
     estimability,
     marginaleffects,

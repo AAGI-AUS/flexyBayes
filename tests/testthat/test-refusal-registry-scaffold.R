@@ -618,7 +618,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("refit_not_reconstructable" %in% entries)
   expect_true("refit_hooks_require_brms" %in% entries)
   expect_true("marginal_cov_not_buildable" %in% entries)
-  expect_true("selection_removed" %in% entries)
+  expect_false("selection_removed" %in% entries)
   expect_true("plan_argument_unknown" %in% entries)
   expect_true("predict_new_levels_structure_not_supported" %in% entries)
   expect_true("predict_new_levels_no_variance" %in% entries)
@@ -630,7 +630,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("method_argument_not_supported" %in% entries)
   expect_true("inla_best_of_invalid" %in% entries)
   expect_true("pooled_prior_requires_brms" %in% entries)
-  expect_equal(length(entries), 181L)
+  expect_equal(length(entries), 180L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
@@ -650,8 +650,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # 0.17.0 adds inla_best_of_invalid, option flexyBayes.inla_best_of that is
   # not a whole number of one or more (= 180), and pooled_prior_requires_brms,
   # a pooled() prior sent to INLA (= 181).
+  # 0.18.0 removes the selection functions themselves, and with them
+  # selection_removed (= 180).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 181L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 180L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

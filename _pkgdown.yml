@@ -167,16 +167,6 @@ reference:
   - title: Package
     contents:
       - flexyBayes-package
-  - title: Deprecated
-    desc: Functions that refuse in this release and will be removed in the next.
-    contents:
-      - fb_select
-      - fb_select_path
-      - fb_select_refit
-      - fb_select_fold_data
-      - fb_penalty
-      - fb_resamples
-      - fb_decision
 
 articles:
   - title: Read in order

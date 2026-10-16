@@ -861,8 +861,6 @@ LINT_BASELINE <- 0L
         pg <- page_of(e)
         if (is.na(pg)) return(TRUE)
         if (basename(pg) == "reexports.Rd") return(FALSE)
-        # A removed selection function only stops, so it has no example.
-        if (basename(pg) == "fb_selection_removed.Rd") return(FALSE)
         !any(grepl("\\examples", pages[[pg]], fixed = TRUE))
       }, logical(1))]
       .dod_ok(length(no_ex) == 0L,

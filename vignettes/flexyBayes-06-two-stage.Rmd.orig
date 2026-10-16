@@ -31,8 +31,7 @@ rnd <- function(d, k = 3) {
 }
 ```
 
-This vignette analyses a simulated series of trials in two stages, and then
-fits a penalised regression of the trial means on trial-level covariates.
+This vignette analyses a simulated series of trials in two stages.
 
 In the first stage each trial is fitted on its own and returns a mean for
 each variety. The second stage models those means across trials. The means
@@ -43,8 +42,7 @@ first stage.
 # The trials
 
 Twenty trials, six varieties, three or four blocks per trial, and a few lost
-plots. Four covariates are measured on each trial. `z1` shifts the trial
-mean, and `z2`, `z3` and `z4` have no effect.
+plots. A trial-level covariate `z1` shifts the trial mean.
 
 ```{r simulate}
 set.seed(20260920)
@@ -179,57 +177,3 @@ rnd(data.frame(
 
 The matrix is fitted on INLA only, and brms stops with
 `known_variance_not_supported`.
-
-# Penalised selection on the whitened design
-
-Penalised regression is a well-grounded way to choose among candidate
-covariates: the lasso and the elastic net shrink the coefficients of
-covariates that do not improve the fit to exactly zero. Its usual software
-assumes independent rows, and the trial means are not independent: means
-from one trial share its random effect and their first-stage errors. The
-fitted model gives their covariance $V$, and with $V = U^\top U$ its Cholesky
-factor, $U^{-\top} y$ and $U^{-\top} X$ have independent errors of variance
-one. A penalised regression on these whitened values is generalised least
-squares with a penalty.
-
-`fb_marginal_cov()` returns $V$ for the fitted model, here the model with the
-full first-stage covariance, and `as.matrix()` makes it dense. The variety
-columns are the part of the model that is not penalised, and the four trial
-covariates are the candidates.
-
-```{r whiten}
-V <- as.matrix(fb_marginal_cov(base_k))
-U <- chol(V)
-
-X_variety <- stats::model.matrix(~ variety, stage1)
-Z <- as.matrix(stage1[, c("z1", "z2", "z3", "z4")])
-
-y_w <- backsolve(U, stage1$ybar, transpose = TRUE)
-X_w <- backsolve(U, cbind(X_variety, Z), transpose = TRUE)
-colnames(X_w) <- c(colnames(X_variety), colnames(Z))
-```
-
-glmnet then fits the lasso path. The whitened intercept is not a constant
-column, so it enters as one of the unpenalised columns and glmnet fits no
-intercept of its own. The folds hold out whole trials. Whitening mixes rows
-only within a trial, because $V$ is block-diagonal by trial.
-
-```{r glmnet, eval = requireNamespace("glmnet", quietly = TRUE)}
-penalised <- c(rep(0, ncol(X_variety)), rep(1, ncol(Z)))
-fold <- as.integer(stage1$trial) %% 5L + 1L
-
-set.seed(20260920)
-cv <- glmnet::cv.glmnet(
-  X_w, y_w,
-  penalty.factor = penalised,
-  intercept = FALSE,
-  foldid = fold
-)
-round(as.matrix(stats::coef(cv, s = "lambda.1se"))[colnames(Z), , drop = FALSE], 3)
-```
-
-The lasso keeps `z1`, the covariate with an effect, shrunk towards zero, and
-sets the other three to zero. Here one $V$, estimated from all trials,
-serves every fold. To keep the held-out trials out of $V$ as well, refit the
-model on each fold's training trials with `fb_refit()` and whiten with that
-fold's $V$.

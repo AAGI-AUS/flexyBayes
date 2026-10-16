@@ -138,9 +138,6 @@
   # A model whose marginal covariance is not built.
   .populate_refusal_registry_marginal_cov()
 
-  # A call to a penalised-selection function that left the package.
-  .populate_refusal_registry_selection_removed()
-
   # An argument fb_plan() does not take.
   .populate_refusal_registry_plan_arguments()
 
