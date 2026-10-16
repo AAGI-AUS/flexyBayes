@@ -40,13 +40,14 @@ fit <- flexybayes(
   backend = "inla",
   verbose = FALSE
 )
+#> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 3.049) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
 
 prior_summary(fit)
 #> <prior_summary>  backend = inla
 #>   Source: auto-default half-normal on SD (weakly informative, no upper bound)
 #>     Scale s        = 3.049069 (in the units of the response)
 #>     Scale basis    = identity_sd_half_normal
-#>     prior_fixed_sd:  not supplied -- the fixed effects carry INLA's own control.fixed defaults -- prec = 0.001 (a standard deviation near 32, in standard deviations of the response on a Gaussian identity-link fit), and prec.intercept = 0, which is flat
+#>     prior_fixed_sd:  not supplied, the fixed effects carry INLA's own control.fixed defaults, prec = 0.001 (a standard deviation near 32, in standard deviations of the response on a Gaussian identity-link fit), and prec.intercept = 0, which is flat
 #> 
 #> <fb_prior> 3 specifications
 #>   sigma ~ half_normal(scale = 3.049069)  -> family:INLA.Data1:theta1
@@ -73,9 +74,9 @@ prior should then be chosen with care (see `?fb_prior`).
 ``` r
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2925200 0.2288441 0.3713359
-#> 2 sd_rep:block 0.2878226 0.1630016 0.4669522
-#> 3       sd_gen 0.3970952 0.2733145 0.5602157
+#> 1        sigma 0.2925640 0.2289292 0.3713493
+#> 2 sd_rep:block 0.2878209 0.1630867 0.4656972
+#> 3       sd_gen 0.3971314 0.2735894 0.5601524
 ```
 
 `estimate` is the posterior mean. `conf.low` and `conf.high` bound a 95%
@@ -95,10 +96,10 @@ therefore the interval, lies between 0 and 1:
 ``` r
 h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
 range(h2[, "h2"])
-#> [1] 0.2473929 0.8876038
+#> [1] 0.3319959 0.9061478
 quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
 #>      2.5%       50%     97.5% 
-#> 0.4319658 0.6424342 0.8208294
+#> 0.4435957 0.6388054 0.8122733
 ```
 
 # Variances near zero

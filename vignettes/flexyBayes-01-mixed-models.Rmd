@@ -68,9 +68,9 @@ fit <- flexybayes(
 
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2925199 0.2288439 0.3713356
-#> 2 sd_rep:block 0.2878225 0.1630014 0.4669505
-#> 3       sd_gen 0.3970951 0.2733142 0.5602151
+#> 1        sigma 0.2925640 0.2289292 0.3713493
+#> 2 sd_rep:block 0.2878209 0.1630867 0.4656972
+#> 3       sd_gen 0.3971314 0.2735894 0.5601524
 ```
 
 Each row is a standard deviation on the scale of the response:
@@ -88,8 +88,8 @@ Heritability is the share of the observed variance that is genetic.
 
 ``` r
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
-#>   functional  estimate    median std.error  conf.low conf.high
-#> 1         h2 0.6344958 0.6390776 0.1045838 0.4113224 0.8173643
+#>   functional estimate    median std.error  conf.low conf.high
+#> 1         h2 0.637993 0.6419598 0.0990967 0.4441723 0.8133427
 ```
 
 It is about two thirds here. Raw plot means cannot give this figure, because
@@ -103,10 +103,10 @@ they mix genotype effects with block effects.
 ``` r
 head(ranef(fit)$gen, 4)
 #>   group level     estimate std.error   conf.low  conf.high
-#> 1   gen   G01  0.497093161 0.1904809  0.1242596  0.8736975
-#> 2   gen   G02  0.005308447 0.1854307 -0.3595319  0.3703541
-#> 3   gen   G03 -0.777421251 0.1973738 -1.1685272 -0.3924689
-#> 4   gen   G04  0.005926315 0.1858581 -0.3607092  0.3708516
+#> 1   gen   G01  0.496998190 0.1904387  0.1242450  0.8735222
+#> 2   gen   G02  0.005313437 0.1853891 -0.3594447  0.3702770
+#> 3   gen   G03 -0.777286433 0.1973290 -1.1683177 -0.3924252
+#> 4   gen   G04  0.005913840 0.1858164 -0.3606392  0.3707568
 ```
 
 # Next

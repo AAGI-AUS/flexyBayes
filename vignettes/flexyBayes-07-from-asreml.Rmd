@@ -93,22 +93,22 @@ fit_alpha <- flexybayes(
   data = john.alpha,
   verbose = FALSE
 )
-#> Warning: flexyBayes: a variance component in this fit is weakly identified --
+#> Warning: flexyBayes: a variance component in this fit is weakly identified:
 #> sd_rep (95% interval 0.167 to 3.15, 66% of its prior's probability, 4.91 times
 #> its median). Its 95% interval spans 40% or more of its prior's probability, or
 #> is 4.24 or more times its posterior median, so the data say little about the
 #> reported value. Common causes are a grouping factor with few levels and a
 #> random term that splits the rows as a fixed term already does. Report the
-#> component as weakly identified rather than as an estimate; state a prior you
-#> can defend with fb_prior(); or remove the term the data cannot separate.
+#> component as weakly identified, not as an estimate, state a prior you can
+#> defend with fb_prior(), or remove the term the data cannot separate.
 #> summary(fit)$varcomp marks the row `weakly identified`. Silence via
 #> options(flexyBayes.silence_weak_identification_warning = TRUE).
 summary(fit_alpha)$varcomp[, c("component", "estimate", "conf.low",
                                "conf.high", "note")]
 #>      component  estimate  conf.low conf.high              note
-#> 1        sigma 0.2996941 0.2321713 0.3848511                  
-#> 2       sd_rep 0.8698998 0.1668338 3.1547277 weakly identified
-#> 3 sd_rep:block 0.2681673 0.1421128 0.4469463
+#> 1        sigma 0.2996943 0.2321706 0.3848505                  
+#> 2       sd_rep 0.8698708 0.1668384 3.1545241 weakly identified
+#> 3 sd_rep:block 0.2681673 0.1421129 0.4469493
 ```
 
 ASReml, asreml(yield ~ gen, random = ~ rep + rep:block):
@@ -133,9 +133,9 @@ data.frame(
   flexybayes = unname(med[c("sd_rep", "sd_rep:block", "sigma")]^2)
 )
 #>   component     asreml flexybayes
-#> 1       rep 0.11396119 0.37034033
-#> 2 rep:block 0.06195183 0.06736901
-#> 3  residual 0.08523612 0.08796705
+#> 1       rep 0.11396119 0.37033237
+#> 2 rep:block 0.06195183 0.06736870
+#> 3  residual 0.08523612 0.08796735
 ```
 
 The residual and block variances agree to within 10%. The replicate
@@ -166,7 +166,7 @@ rnd(head(both))
 #> 5 G05   5.04     0.276       5.04         0.627
 #> 6 G06   4.54     0.276       4.54         0.628
 max(abs(both$flexybayes - both$asreml))
-#> [1] 0.001462815
+#> [1] 0.001461847
 ```
 
 The means agree to within 0.0015.
@@ -365,7 +365,7 @@ fit_c <- flexybayes(y ~ VARIETY,
                     residual = ~ dsum(~ units | TRIAL),
                     data = ref_c$data, verbose = FALSE)
 backend_decision(fit_c)$reason
-#> [1] "lgm_gate() accepted; INLA dispatch by empirical Bayes (int.strategy = \"eb\"), past the hyperparameter budget."
+#> [1] "lgm_gate() accepted, INLA dispatch by empirical Bayes (int.strategy = \"eb\"), past the hyperparameter budget."
 grep("Inference", utils::capture.output(print(fit_c)), value = TRUE)
 #> [1] "  Inference: empirical Bayes (INLA int.strategy = \"eb\"): the fixed and random effects are conditional on the posterior mode of the variance parameters; each variance component keeps its own posterior. 26 variance parameters, above the 15 INLA integrates over."
 ```
@@ -568,10 +568,10 @@ fit_field <- flexybayes(yield ~ rep, random = ~ gen + ar1(row):ar1(col),
                         data = serp, verbose = FALSE)
 summary(fit_field)$spatial_field
 #>                         parameter      median       lower       upper
-#> 1 correlation along row (rho_row)   0.9890323   0.9704025   0.9962941
-#> 2 correlation along col (rho_col)   0.8062922   0.5390564   0.9287521
-#> 3          field SD (sigma_field) 190.2259245 109.5858631 345.4892004
-#> 4             nugget SD (sigma_e)  41.1773183  35.7047197  47.5720912
+#> 1 correlation along row (rho_row)   0.9890324   0.9704036   0.9962942
+#> 2 correlation along col (rho_col)   0.8062943   0.5390735   0.9287542
+#> 3          field SD (sigma_field) 190.2227807 109.5873345 345.4879599
+#> 4             nugget SD (sigma_e)  41.1773030  35.7047855  47.5723757
 ```
 
 The same correlations appear in `summary(fit)$varcomp` as `rho_row` and
@@ -662,7 +662,7 @@ p_nl <- predict(fit_nl, newdata = new, allow_new_levels = TRUE,
                 mean_by = ~ env)
 p_nl
 #> Posterior predictive: mean over the rows of each env  (95% predictive interval)
-#> Levels the fit did not see are drawn from their fitted variances; the residual is included.
+#> Levels the fit did not see are drawn from their fitted variances, and the residual is included.
 #>  env n_rows estimate    sd  lower upper
 #>   C6    192    110.1 66.23 -24.93 243.7
 mean(new$yield)

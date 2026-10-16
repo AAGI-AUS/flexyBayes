@@ -45,7 +45,7 @@ fit <- flexybayes(
 
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
 #>   functional  estimate    median std.error  conf.low conf.high
-#> 1         h2 0.6384212 0.6428212 0.1026304 0.4230152 0.8172955
+#> 1         h2 0.6377657 0.6434589 0.1013271 0.4270362    0.8204
 ```
 
 ASReml:
@@ -116,11 +116,11 @@ out <- do.call(rbind, lapply(names(designs), function(nm) {
 }))
 rnd(out)
 #>                           design  n    h2 lower upper
-#> 1   24 genotypes, 3 reps (whole) 72 0.640 0.428 0.817
-#> 2           12 genotypes, 3 reps 36 0.677 0.381 0.894
-#> 3            6 genotypes, 3 reps 18 0.756 0.373 0.965
-#> 4 50% of plots dropped at random 36 0.383 0.049 0.806
-#> 5 65% of plots dropped at random 25 0.276 0.012 0.764
+#> 1   24 genotypes, 3 reps (whole) 72 0.638 0.422 0.816
+#> 2           12 genotypes, 3 reps 36 0.682 0.398 0.896
+#> 3            6 genotypes, 3 reps 18 0.755 0.369 0.965
+#> 4 50% of plots dropped at random 36 0.398 0.050 0.799
+#> 5 65% of plots dropped at random 25 0.290 0.013 0.785
 ```
 
 Every interval lies between 0 and 1, because every posterior draw does. The
