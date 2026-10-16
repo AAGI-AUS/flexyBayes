@@ -66,7 +66,7 @@
 #'   priors when `prior` is `NULL`.
 #' @param carry_n_rows Advanced: a positive integer enabling the
 #'   metadata-only IR path (`data = NULL`). The formula's variables are
-#'   realised as a one-row placeholder and the row count is recorded as
+#'   realised as a one-row stand-in data frame and the row count is recorded as
 #'   `carry_n_rows`, for stress-testing the preflight layer without
 #'   materialising the full data. Leave `NULL` for ordinary use.
 #' @param ... Reserved for future brms-ingest options (specials, autocor
@@ -152,7 +152,7 @@ fb_from_brms <- function(
   # Metadata-only path: data = NULL + carry_n_rows lets
   # the caller build an IR for stress-testing the preflight layer
   # without materialising N rows of data. The formula's free variables
-  # are realised as a one-row placeholder data.frame (all numeric).
+  # are realised as a one-row stand-in data.frame (all numeric).
   # Random-term level counts are stripped from the IR so .fb_preflight()
   # reads them from the <fb_dataset>'s dictionaries instead.
   if (is.null(data)) {
@@ -175,7 +175,7 @@ fb_from_brms <- function(
         call. = FALSE
       )
     }
-    data <- .fb_from_brms_placeholder_data(formula)
+    data <- .fb_from_brms_standin_data(formula)
     fb <- .fb_from_brms_impl(
       formula = formula,
       data = data,
@@ -452,17 +452,17 @@ fb_from_brms <- function(
 }
 
 
-# Synthesise a one-row, all-numeric placeholder
+# Synthesise a one-row, all-numeric stand-in
 # data.frame from a brms-style formula. Used by the data = NULL +
 # carry_n_rows ingest path so the brms walker can produce the IR
 # shape. The realised level counts are stripped after the walk, and
 # the preflight layer reads them from <fb_dataset>.
-.fb_from_brms_placeholder_data <- function(formula) {
+.fb_from_brms_standin_data <- function(formula) {
   all_vars <- all.vars(formula)
   if (!length(all_vars)) {
     stop(
       "formula references no variables; cannot synthesise ",
-      "placeholder data.",
+      "stand-in data.",
       call. = FALSE
     )
   }

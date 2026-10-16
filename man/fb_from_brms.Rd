@@ -41,7 +41,7 @@ priors when \code{prior} is \code{NULL}.}
 
 \item{carry_n_rows}{Advanced: a positive integer enabling the
 metadata-only IR path (\code{data = NULL}). The formula's variables are
-realised as a one-row placeholder and the row count is recorded as
+realised as a one-row stand-in data frame and the row count is recorded as
 \code{carry_n_rows}, for stress-testing the preflight layer without
 materialising the full data. Leave \code{NULL} for ordinary use.}
 

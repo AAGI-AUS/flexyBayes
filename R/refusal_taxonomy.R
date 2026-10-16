@@ -53,7 +53,7 @@
 #                      refusal means in plain language.
 #   message_template   the template string used to render the
 #                      message, conventionally uses base::sprintf()
-#                      placeholders so the refusal site can fill in
+#                      format specifiers so the refusal site can fill in
 #                      the data-specific slots.
 #   registered_in_adr  the ADR number the refusal traces to (e.g.,
 #                      "ADR 0024" for the routing-policy refusals,
