@@ -6,8 +6,11 @@
 or change its results. Each is described in full under its release below.
 
 * `triangulate()` and `triangulate_genomic()` are removed.
-* `fb_brms()`, `fb_engine()`, `fb_from_asreml()` and `fb_from_brms()` are
-  deprecated in favour of `flexybayes()` and `fb_plan()`.
+* `fb()`, `fb_inla()`, `fb_brms()`, `fb_engine()`, `fb_from_asreml()` and
+  `fb_from_brms()` are deprecated in favour of `flexybayes()` and `fb_plan()`.
+  `proceed()`, `cat_code()`, `is_fb_cov()`, `is_fb_engine()` and
+  `is_fb_approx()` are deprecated too. Each still runs and warns with what to
+  call instead.
 * The default prior on each standard deviation is half-normal on both engines
   and follows the units of the response, so estimates can differ from 0.10.0.
 * INLA fits run on one thread and are fitted three times, keeping the fit with
@@ -42,6 +45,8 @@ or change its results. Each is described in full under its release below.
 * INLA fits run once under `R CMD check` when cores are limited.
 * The package title is "Bayesian Mixed Models with ASReml Syntax via INLA and
   brms".
+* The penalised-selection functions deprecated in 0.16.0, `fb_select()` and
+  the six beside it, are removed, and glmnet leaves Suggests.
 
 # flexyBayes 0.17.0
 

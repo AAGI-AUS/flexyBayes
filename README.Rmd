@@ -33,6 +33,14 @@ install.packages("INLA",
             INLA = "https://inla.r-inla-download.org/R/stable"))
 ```
 
+## Dependencies
+
+flexyBayes needs R 4.1.0 or later. Its required packages install from CRAN
+with it. The two engines, INLA and brms, are optional, but at least one is
+needed. With `backend = "auto"`, a model INLA can fit goes to INLA when it is
+installed, and to brms otherwise. Packages used only by particular functions or
+vignettes are listed under Suggests in `DESCRIPTION`.
+
 ## Example
 
 An alpha design from agridat: 24 genotypes in three replicates, with blocks
@@ -119,6 +127,12 @@ for the development setup and the test tiers. The project follows the
   url    = {https://github.com/AAGI-AUS/flexyBayes}
 }
 ```
+
+## Acknowledgement
+
+flexyBayes is developed within Analytics for the Australian Grains Industry
+(AAGI), funded by the Grains Research and Development Corporation (GRDC) under
+projects CUR2210-005OPX and UOA2301-005OPX.
 
 ## Licence
 
