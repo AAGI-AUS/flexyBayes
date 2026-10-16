@@ -1,3 +1,9 @@
+# flexyBayes 0.18.1
+
+* On Windows, a brms fit that fails no longer blames a working C++ toolchain.
+* Messages about unrecognised `engine` settings and `fb_engine()` options
+  quote the names the same way on every operating system.
+
 # flexyBayes 0.18.0
 
 ## For users of 0.10.0

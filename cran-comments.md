@@ -1,6 +1,6 @@
 ## Submission
 
-This is a new submission of flexyBayes 0.18.0.
+This is a new submission of flexyBayes 0.18.1.
 
 flexyBayes fits mixed models written in ASReml-style or brms-style formula
 syntax with one of two inference engines, INLA or brms (Stan). The fitted

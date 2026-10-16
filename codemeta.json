@@ -8,7 +8,7 @@
   "codeRepository": "https://github.com/AAGI-AUS/flexyBayes",
   "issueTracker": "https://github.com/AAGI-AUS/flexyBayes/issues",
   "license": "https://spdx.org/licenses/MIT",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
@@ -525,7 +525,7 @@
       ],
       "name": "flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms",
       "url": "https://github.com/AAGI-AUS/flexyBayes",
-      "description": "R package version 0.18.0"
+      "description": "R package version 0.18.1"
     }
   ],
   "releaseNotes": "https://github.com/AAGI-AUS/flexyBayes/blob/main/NEWS.md",
