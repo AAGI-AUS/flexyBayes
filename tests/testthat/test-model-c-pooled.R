@@ -352,9 +352,10 @@ test_that("the pooled prior lands on a per-level SD vector brms declares", {
 test_that("the recovery helper reproduces the stored model C fixture", {
   ref <- .mcp_reference()
   sim <- .mc_simulate(20261008L)
-  expect_identical(sim$data, ref$data)
-  expect_identical(sim$truth$sd_gxe, ref$truth$sd_gxe)
-  expect_identical(sim$truth$sd_res, ref$truth$sd_res)
+  # The fixture was written on arm64; x86_64 differs in the last digit.
+  expect_equal(sim$data, ref$data, tolerance = 1e-12)
+  expect_equal(sim$truth$sd_gxe, ref$truth$sd_gxe, tolerance = 1e-12)
+  expect_equal(sim$truth$sd_res, ref$truth$sd_res, tolerance = 1e-12)
 })
 
 test_that("the package reproduces the B1 posterior to Monte Carlo error", {
