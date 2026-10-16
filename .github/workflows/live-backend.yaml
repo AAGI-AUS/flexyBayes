@@ -77,10 +77,12 @@ jobs:
           # every `pkg::`, `library(pkg)` and `skip_if_not_installed("pkg")`
           # they contain, minus base and this package's own Imports. A job
           # that installs less would skip, and a skip here is a failure.
+          # fmesher is INLA's own dependency; installed here, pak also installs
+          # the system libraries that its sf and units dependencies load.
           extra-packages: >-
             any::testthat, any::withr, any::pkgload, any::lme4, any::agridat,
             any::mgcv, any::brms, any::MASS, any::posterior, any::sommer,
-            any::emmeans
+            any::emmeans, any::fmesher
           dependencies: '"hard"'
 
       - name: Install INLA
@@ -89,7 +91,7 @@ jobs:
             getOption("repos"),
             INLA = "https://inla.r-inla-download.org/R/stable"
           ))
-          stopifnot(requireNamespace("INLA", quietly = TRUE))
+          loadNamespace("INLA")
           cat("INLA ", as.character(packageVersion("INLA")), "\n", sep = "")
         shell: Rscript {0}
 
