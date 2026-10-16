@@ -33,6 +33,7 @@
 }
 
 test_that("DC-07 guard: every call names only arguments its callee takes", {
+  skip_if_covr()
   root <- .g07_root()
   skip_if(is.na(root), "package source tree not available")
   ns <- asNamespace("flexyBayes")
@@ -89,6 +90,7 @@ test_that("DC-07 guard: every call names only arguments its callee takes", {
 })
 
 test_that("DC-07 guard: every refusal code is registered once", {
+  skip_if_covr()
   root <- .g07_root()
   skip_if(is.na(root), "package source tree not available")
   codes <- character(0)

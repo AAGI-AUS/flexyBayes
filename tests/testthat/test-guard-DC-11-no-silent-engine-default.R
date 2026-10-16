@@ -136,6 +136,7 @@ test_that("DC-11 guard: every INLA hyperparameter is in the prior record, on the
 })
 
 test_that("DC-11 guard: the package's INLA draws set the sampler arguments", {
+  skip_if_covr()
   root <- testthat::test_path("..", "..")
   skip_if(
     !dir.exists(file.path(root, "R")),

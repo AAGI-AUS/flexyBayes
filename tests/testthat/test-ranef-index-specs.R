@@ -181,6 +181,7 @@
 }
 
 test_that("every term type the INLA formula builder lowers has a specification", {
+  skip_if_covr()
   types <- .ris_emitter_types(.build_inla_formula)
   # A walk that found nothing would pass the comparison below vacuously.
   expect_gt(length(types), 5L)

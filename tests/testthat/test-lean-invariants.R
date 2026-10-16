@@ -226,6 +226,7 @@ test_that("Imports and namespace imports stay within the listed set", {
 })
 
 test_that("every pkg:: call in the namespace names a declared or base R package", {
+  skip_if_covr()
   # A package dropped from Imports can survive as a `pkg::` call, which the
   # DESCRIPTION and NAMESPACE reads above do not see.
   dcf <- read.dcf(

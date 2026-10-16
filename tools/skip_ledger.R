@@ -13,6 +13,7 @@
 #   testthat::skip_on_ci()                           skip_on_ci()
 #   project-local helpers .skip_if_no_<pkg>()        skip_if_no_<pkg>()
 #   the long tier's skip_if_not_long_tier()
+#   the coverage job's skip_if_covr()
 #
 # Reason taxonomy (five audit classes from
 # feedback_v0.3.7_to_v0.4.0_2026-05-25.md plus two in-portfolio extensions
@@ -77,6 +78,10 @@
   # The long tier's helper (tests/testthat/helper-test-tiers.R): skipped for
   # time unless FLEXYBAYES_RUN_LONG is "true"
   if (call_name == "skip_if_not_long_tier") {
+    return("cran_ci_time_budget")
+  }
+  # skip_if_covr() (same helper file): skipped only inside the CI coverage job
+  if (call_name == "skip_if_covr") {
     return("cran_ci_time_budget")
   }
 

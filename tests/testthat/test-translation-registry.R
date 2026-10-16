@@ -74,6 +74,7 @@ test_that("spl() is registered as an analogue, not as a translation", {
 })
 
 test_that("inst/TRANSLATION.md matches a fresh render", {
+  skip_if_covr()
   root <- .tr_root()
   if (is.na(root)) {
     testthat::skip("source tree not reachable (installed-package test run)")
@@ -91,6 +92,7 @@ test_that("inst/TRANSLATION.md matches a fresh render", {
 })
 
 test_that("the shipped CSV matches the table", {
+  skip_if_covr()
   root <- .tr_root()
   if (is.na(root)) {
     testthat::skip("source tree not reachable (installed-package test run)")

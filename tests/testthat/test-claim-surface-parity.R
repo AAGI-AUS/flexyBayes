@@ -94,6 +94,7 @@ test_that("the vignette count in cran-comments matches the vignettes that ship",
 })
 
 test_that("the landing surfaces do not offer a verb the user cannot call", {
+  skip_if_covr()
   # An unexported function may keep its help page, so a link to it still
   # resolves. The landing page and the README must not offer it as an entry
   # point. Internal documentation may name internal functions.

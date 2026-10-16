@@ -190,6 +190,7 @@ test_that("cran-comments.md sits at the root, outside the build", {
 })
 
 test_that("every working folder at the root is kept out of the build", {
+  skip_if_covr()
   root <- .rh_root()
   package <- c(
     "DESCRIPTION",

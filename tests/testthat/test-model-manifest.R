@@ -508,6 +508,7 @@ test_that("T6: on a three-way interaction only its own key takes a prior", {
 # --- T7 ---------------------------------------------------------------------
 
 test_that("T7: every emitter call site returns a manifest or returns code", {
+  skip_if_covr()
   dir_r <- testthat::test_path("..", "..", "R")
   skip_if_not(dir.exists(dir_r), "package sources are not available")
   emitters <- c(

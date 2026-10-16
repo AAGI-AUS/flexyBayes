@@ -19,3 +19,14 @@ skip_if_not_long_tier <- function() {
   }
   invisible(TRUE)
 }
+
+# covr runs the suite from the installed package, whose function bodies it
+# has rewritten and which holds no source tree. Blocks that read R/ sources,
+# root files or function bodies call skip_if_covr() first; R CMD check and
+# the release suite still run them.
+skip_if_covr <- function() {
+  if (identical(Sys.getenv("R_COVR"), "true")) {
+    testthat::skip("R_COVR is \"true\"; reads sources or function bodies")
+  }
+  invisible(TRUE)
+}

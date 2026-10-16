@@ -108,4 +108,8 @@ test_that("the skip ledger files the long tier under the time budget", {
     env$.skip_classify_site("skip_if_not_long_tier", ""),
     "cran_ci_time_budget"
   )
+  expect_identical(
+    env$.skip_classify_site("skip_if_covr", ""),
+    "cran_ci_time_budget"
+  )
 })
