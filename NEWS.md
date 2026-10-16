@@ -14,8 +14,11 @@ or change its results. Each is described in full under its release below.
 * The default prior on each standard deviation is half-normal on both engines
   and follows the units of the response, so estimates can differ from 0.10.0.
 * INLA fits run on one thread and are fitted three times, keeping the fit with
-  the highest marginal likelihood. A fit takes about three times as long, and
-  `options(flexyBayes.inla_best_of = 1)` fits once.
+  the highest marginal likelihood. The three fits run at the same time, so a
+  fit takes little longer than a single fit.
+  `options(flexyBayes.inla_best_of = 1)` fits once, and
+  `options(flexyBayes.inla_best_of_workers = 1)` runs the three one after
+  another, which takes about three times as long.
 * `us(f):g` and `(x | g)` fit on brms only, and `backend = "auto"` sends them
   there. `fa(env, k):gen` is refused on both engines.
 
@@ -32,9 +35,13 @@ or change its results. Each is described in full under its release below.
 
 ## In this release
 
-* On INLA fits, a variance component whose 95% interval is 4.24 or more times
-  its median is marked `weakly identified`. Expect more of these warnings than
-  under 0.17.0, mostly on terms with few levels.
+* On INLA fits, a variance component is marked `weakly identified` when its
+  95% interval covers 40% or more of its prior's probability, or is 4.24 or
+  more times its median. Expect more of these warnings than under 0.17.0,
+  mostly on terms with few levels. Under a prior tighter than the default, a
+  component whose interval sits close to its median can be marked as well.
+  The flag can stay silent on a component the data cannot identify, as item
+  24 of `inst/KNOWN_ISSUES.md` describes.
 * `fa()` is still refused. In a simulation test, intervals for the genetic
   correlation covered the true value 134 and 125 times in 150 for k = 1 and 2,
   against 136 required. The refusal message gives the details.

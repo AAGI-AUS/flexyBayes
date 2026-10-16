@@ -87,9 +87,10 @@ Heritability is the share of the observed variance that is genetic.
 
 
 ``` r
+set.seed(1)
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
-#>   functional estimate    median std.error  conf.low conf.high
-#> 1         h2 0.637993 0.6419598 0.0990967 0.4441723 0.8133427
+#>   functional  estimate    median std.error  conf.low conf.high
+#> 1         h2 0.6377367 0.6385981 0.1009037 0.4294839 0.8065957
 ```
 
 It is about two thirds here. Raw plot means cannot give this figure, because

@@ -74,6 +74,7 @@ Each row is a standard deviation on the scale of the response:
 Heritability is the share of the observed variance that is genetic.
 
 ```{r h2}
+set.seed(1)
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
 ```
 

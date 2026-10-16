@@ -94,12 +94,13 @@ therefore the interval, lies between 0 and 1:
 
 
 ``` r
+set.seed(1)
 h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
 range(h2[, "h2"])
-#> [1] 0.3319959 0.9061478
+#> [1] 0.2762516 0.9009326
 quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
 #>      2.5%       50%     97.5% 
-#> 0.4435957 0.6388054 0.8122733
+#> 0.4294839 0.6385981 0.8065957
 ```
 
 # Variances near zero

@@ -71,6 +71,7 @@ Here the heritability is computed on each posterior draw, so every draw, and
 therefore the interval, lies between 0 and 1:
 
 ```{r h2}
+set.seed(1)
 h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
 range(h2[, "h2"])
 quantile(h2[, "h2"], c(0.025, 0.5, 0.975))

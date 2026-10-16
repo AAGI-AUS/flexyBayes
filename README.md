@@ -113,8 +113,7 @@ the models neither engine fits, are in
 
 ## Documentation
 
-The manual is in the package vignettes listed below, and on the website at
-<https://aagi-aus.github.io/flexyBayes/>.
+The manual is in the package vignettes listed below.
 
 | Vignette | Content |
 |---|---|
