@@ -13,7 +13,7 @@ estimate, and any structural refusals before paying the fit cost."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,19 +21,16 @@ estimate, and any structural refusals before paying the fit cost."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -117,7 +114,7 @@ reports on, with <code>"auto"</code> planning the route dispatch would take.</p>
 
 <dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
 <dd><p>An optional <code><a href="fb_prior.html">fb_prior()</a></code> list. Defaults to the
-uniform-on-SD default the fit would inject.</p></dd>
+half-normal-on-SD default the fit would inject.</p></dd>
 
 
 <dt id="arg-known-matrices">known_matrices<a class="anchor" aria-label="anchor" href="#arg-known-matrices"></a></dt>
@@ -160,7 +157,8 @@ detected from <code>formula</code> / <code>random</code> / <code>residual</code>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Currently unused, reserved for future plan inputs.</p></dd>
+<dd><p>Not used. Any argument <code>fb_plan()</code> does not take,
+such as a misspelt name, is refused with <code>plan_argument_unknown</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -174,15 +172,11 @@ one-screen surface, <code><a href="summary.fb_plan.html">summary.fb_plan()</a></
     <p>Accepts either grammar <code><a href="flexybayes.html">flexybayes()</a></code> accepts: a single brms-style
 two-sided formula (<code>y ~ x + s(z) + (1 | g)</code>), or the ASReml triple
 (<code>formula</code> as the fixed-effects side, plus <code>random</code> / <code>residual</code>).
-Before 0.9.3, <code>fb_plan()</code> was brms-formula-only and silently dropped
-<code>random</code> / <code>residual</code> into its unused <code>...</code> when a caller supplied
-them ASReml-style, planning a fixed-effects-only model and reporting
-a backend the full model would not reach live (FS-22). Both
-spellings now route through the same grammar detection
+Both spellings route through the same grammar detection
 <code><a href="flexybayes.html">flexybayes()</a></code> uses (<code>syntax = "auto"</code> by default), so
 <code>fb_plan(y ~ x, random = ..., residual = ..., data = ...)</code> and
-<code>flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)</code> plan the identical model. Note the two spellings of the
-fixed part: <code>fb_plan()</code> takes it positionally as <code>formula</code>, the entry
+<code>flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)</code> plan the identical model. The two spellings of the
+fixed part differ: <code>fb_plan()</code> takes it positionally as <code>formula</code>, the entry
 point takes it as <code>fixed</code>.</p>
     </div>
 
@@ -218,7 +212,7 @@ point takes it as <code>fixed</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Engine:                  NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ==========================================================</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># ASReml-style grammar plans the identical model (FS-22 parity).</span></span></span>
+<span class="r-in"><span><span class="co"># ASReml-style grammar plans the identical model.</span></span></span>
 <span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">fb_plan</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">g</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">p1</span><span class="op">$</span><span class="va">backend_chosen</span>, <span class="va">p2</span><span class="op">$</span><span class="va">backend_chosen</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
@@ -235,7 +229,7 @@ point takes it as <code>fixed</code>.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

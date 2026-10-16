@@ -3,15 +3,15 @@
 approximation) only. This is sugar for
 flexybayes()(..., backend = "inla") and accepts the same arguments
 and grammars (an ASReml fixed / random / residual specification or a
-brms-style bar-grouped formula – see flexybayes() for the full
-argument list). The model must be latent-Gaussian feasible; if it is
+brms-style bar-grouped formula, see flexybayes() for the full
+argument list). The model must be latent-Gaussian feasible. If it is
 not, the shared lgm_gate() raises a structured refusal naming the
 offending term, exactly as flexybayes(backend = "inla") does.'><meta property="og:description" content='Engine pin: fits the model with INLA (integrated nested Laplace
 approximation) only. This is sugar for
 flexybayes()(..., backend = "inla") and accepts the same arguments
 and grammars (an ASReml fixed / random / residual specification or a
-brms-style bar-grouped formula – see flexybayes() for the full
-argument list). The model must be latent-Gaussian feasible; if it is
+brms-style bar-grouped formula, see flexybayes() for the full
+argument list). The model must be latent-Gaussian feasible. If it is
 not, the shared lgm_gate() raises a structured refusal naming the
 offending term, exactly as flexybayes(backend = "inla") does.'></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -21,7 +21,7 @@ offending term, exactly as flexybayes(backend = "inla") does.'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,19 +29,16 @@ offending term, exactly as flexybayes(backend = "inla") does.'></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -65,8 +62,8 @@ offending term, exactly as flexybayes(backend = "inla") does.'></head><body>
 approximation) only. This is sugar for
 <code><a href="flexybayes.html">flexybayes()</a></code><code>(..., backend = "inla")</code> and accepts the same arguments
 and grammars (an ASReml <code>fixed</code> / <code>random</code> / <code>residual</code> specification or a
-brms-style bar-grouped formula – see <code><a href="flexybayes.html">flexybayes()</a></code> for the full
-argument list). The model must be latent-Gaussian feasible; if it is
+brms-style bar-grouped formula, see <code><a href="flexybayes.html">flexybayes()</a></code> for the full
+argument list). The model must be latent-Gaussian feasible. If it is
 not, the shared <code>lgm_gate()</code> raises a structured refusal naming the
 offending term, exactly as <code>flexybayes(backend = "inla")</code> does.</p>
     </div>
@@ -89,7 +86,7 @@ is pinned to <code>"inla"</code> and must not be supplied.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>"flexybayes"</code> (specifically a
-<code>flexybayes_inla</code> fit); see <code><a href="flexybayes.html">flexybayes()</a></code> for the structure.</p>
+<code>flexybayes_inla</code> fit). See <code><a href="flexybayes.html">flexybayes()</a></code> for the structure.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -101,23 +98,34 @@ repeatable without a seed, because nothing in the approximation is
 drawn.</p>
     </div>
     <div class="section level2">
+    <h2 id="deprecated">Deprecated<a class="anchor" aria-label="anchor" href="#deprecated"></a></h2>
+
+
+<p><code>fb_inla()</code> is deprecated in flexyBayes 0.13.0 and will be removed in a
+later release. Call <code>flexybayes(..., backend = "inla")</code>, which takes the
+same arguments. A call warns with a condition of class
+<code>flexybayes_deprecated</code>.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="flexybayes.html">flexybayes()</a></code> and <code><a href="flexybayes.html">fb()</a></code> for the universal entry that picks a
-backend; <code><a href="fb_from_asreml.html">fb_from_asreml()</a></code> / <code><a href="fb_from_brms.html">fb_from_brms()</a></code> for the ingest layer.</p>
+    <div class="dont-index"><p><code><a href="flexybayes.html">flexybayes()</a></code> for the universal entry that picks a
+backend. <code><a href="fb_from_asreml.html">fb_from_asreml()</a></code> / <code><a href="fb_from_brms.html">fb_from_brms()</a></code> for the ingest layer.</p>
 <p>Other flexyBayes engine pins:
 <code><a href="fb_brms.html">fb_brms()</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  yield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">40</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  geno  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">letters</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  env   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"INLA"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">fb_inla</span><span class="op">(</span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">geno</span>, data <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">geno</span>, data <span class="op">=</span> <span class="va">df</span>,</span></span>
+<span class="r-in"><span>                    backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
@@ -127,7 +135,7 @@ backend; <code><a href="fb_from_asreml.html">fb_from_asreml()</a></code> / <code
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

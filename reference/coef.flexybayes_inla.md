@@ -32,21 +32,21 @@ coef(object, what = c("fixed", "random", "missing", "all"), ...)
 ## Value
 
 For the default `what = "fixed"`, a named numeric vector of fixed-effect
-posterior means; otherwise as documented for
+posterior means. Otherwise as documented for
 [`coef.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md).
 
 ## Details
 
-An INLA fit carries no `$glm` slot, so the fixed vector is read here
-rather than inherited; every other value of `what` is resolved by the
-shared body
+An INLA fit carries no `$glm` slot, so the fixed vector is read here and
+not inherited. Every other value of `what` is resolved by the shared
+body
 [`coef.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md)
 uses, so the two engines answer the same question the same way.
 
 A factor with a non-syntactic level (for example a level containing a
 space, `"low N"`) is legalised internally
 ([`make.names()`](https://rdrr.io/r/base/make.names.html)) before the
-INLA emit, so the fit itself never dies on it; this method restores the
+INLA emit, so the fit itself never dies on it. This method restores the
 user's own, unlegalised label in the names it returns, as do
 [`ranef()`](https://aagi-aus.github.io/flexyBayes/reference/ranef.md),
 [`summary()`](https://rdrr.io/r/base/summary.html) and

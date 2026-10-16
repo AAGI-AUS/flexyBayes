@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -15,19 +15,16 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -49,36 +46,38 @@
 
 <div class="section level2">
 <h2 id="supported-versions">Supported versions<a class="anchor" aria-label="anchor" href="#supported-versions"></a></h2>
-<p>Security fixes are issued against the development release in progress (<code>0.10.0</code>, on the 0.10.x line) and the latest CRAN release (when present). Older released versions are not back-patched.</p>
-<table class="table"><colgroup><col width="45%"><col width="55%"></colgroup><thead><tr><th>Version</th>
+<p>Security fixes are made on the 0.18.x line (0.18.0 and later 0.18.x releases) and on the latest CRAN release once there is one. Older versions are not patched.</p>
+<table class="table"><thead><tr><th>Version</th>
 <th>Supported</th>
-</tr></thead><tbody><tr><td>0.10.x</td>
-<td>yes (the line under active development)</td>
-</tr><tr><td>0.3.x – 0.9.x</td>
-<td>best-effort (local release tarballs only; no public release)</td>
+</tr></thead><tbody><tr><td>0.18.x</td>
+<td>yes</td>
+</tr><tr><td>0.10.x to 0.17.x</td>
+<td>best effort</td>
+</tr><tr><td>0.3.x to 0.9.x</td>
+<td>best effort (never released publicly)</td>
 </tr><tr><td>&lt; 0.3</td>
 <td>no</td>
 </tr></tbody></table></div>
 <div class="section level2">
 <h2 id="reporting-a-vulnerability">Reporting a vulnerability<a class="anchor" aria-label="anchor" href="#reporting-a-vulnerability"></a></h2>
-<p>Please <strong>do not file a public GitHub issue</strong> for security problems. Instead, email the maintainer privately:</p>
+<p>Please <strong>do not open a public GitHub issue</strong> for a security problem. Email the maintainer privately instead:</p>
 <blockquote>
 <p><strong><a href="mailto:max.moldovan@adelaide.edu.au" class="email">max.moldovan@adelaide.edu.au</a></strong></p>
 </blockquote>
-<p>Use a clear subject line such as <code>[flexyBayes SECURITY] &lt;one-line description&gt;</code>.</p>
-<p>We commit to:</p>
-<ol style="list-style-type: decimal"><li>Acknowledge receipt within 7 days.</li>
-<li>Provide a substantive reply within 30 days, including either a patch / fix plan or an explanation of why the issue is not actionable.</li>
-<li>Coordinate a fix and (where appropriate) public disclosure on a timeline that protects users – typically a 90-day embargo from first acknowledgement.</li>
-</ol><p>If you do not receive a response within the windows above, please follow up with a public GitHub issue (without sensitive details) so we can confirm the report was received.</p>
+<p>Use a subject line such as <code>[flexyBayes SECURITY] &lt;one-line description&gt;</code>.</p>
+<p>The maintainer will:</p>
+<ol style="list-style-type: decimal"><li>Acknowledge the report within 7 days.</li>
+<li>Reply in substance within 30 days, with a fix plan or an explanation of why the issue will not be fixed.</li>
+<li>Coordinate the fix and any public disclosure, normally with a 90-day embargo from the first acknowledgement.</li>
+</ol><p>If you have had no response within these times, open a public GitHub issue at <a href="https://github.com/AAGI-AUS/flexyBayes/issues" class="external-link uri">https://github.com/AAGI-AUS/flexyBayes/issues</a>, without sensitive details, asking whether the report arrived.</p>
 </div>
 <div class="section level2">
 <h2 id="scope">Scope<a class="anchor" aria-label="anchor" href="#scope"></a></h2>
-<p>The package is pure R glue plus generated INLA and brms / Stan code. Likely areas of security interest:</p>
-<ul><li>inputs that can reach <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code> / <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code> paths during formula parsing or code generation;</li>
-<li>file paths supplied to <code>R CMD INSTALL</code> or to vignette compilation scripts;</li>
-<li>handling of user-supplied numeric data in code-generation paths.</li>
-</ul><p>Reports outside the package – e.g. issues in upstream <code>INLA</code> or <code>brms</code> – should be directed to those projects’ security channels.</p>
+<p>flexyBayes is written in R and generates INLA and Stan model code. Areas of likely security interest are:</p>
+<ul><li>input that can reach <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code> or <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code> during formula parsing or code generation</li>
+<li>file paths passed to <code>R CMD INSTALL</code> or to vignette build scripts</li>
+<li>user-supplied numeric data in code generation.</li>
+</ul><p>Problems in INLA, brms or Stan themselves should be reported to those projects.</p>
 </div>
 </div>
 
@@ -87,7 +86,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

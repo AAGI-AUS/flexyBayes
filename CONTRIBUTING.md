@@ -1,171 +1,141 @@
 # Contributing to flexyBayes
 
-Thanks for your interest in contributing. The package is an `AAGI-AUS`
-collective effort; we welcome bug reports, fixes, documentation
-improvements, and discussion of new features.
+flexyBayes is an AAGI-AUS collective effort. Bug reports, fixes,
+documentation improvements and discussion of new features are welcome.
 
 ## Bug reports and feature requests
 
 Please use the GitHub issue tracker:
 <https://github.com/AAGI-AUS/flexyBayes/issues>.
 
-Useful information to include:
+A report is easiest to act on when it includes:
 
-- a minimal reproducible example;
+- a minimal reproducible example
 - the output of
-  [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html);
-- the output of `packageVersion("flexyBayes")` and, if relevant,
-  `packageVersion("INLA")`;
-- whether the issue reproduces on a fresh R session.
+  [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html)
+- the output of `packageVersion("flexyBayes")` and, where relevant,
+  `packageVersion("INLA")` or `packageVersion("brms")`
+- whether the issue reproduces in a fresh R session
 
 ## Pull requests
 
-Small fixes (typos, doc clarifications, minor bug fixes) are welcome as
-direct PRs against `main`. For non-trivial changes, please open an issue
-first to discuss the approach.
+Small fixes (typos, documentation, minor bugs) are welcome as direct
+pull requests against `main`. For anything larger, please open an issue
+first so the approach can be agreed before the work is done. A pull
+request that closes an issue says so in its body with
+`Fixes #<issue-number>`.
 
 ### Development setup
 
 ``` r
 
-# clone the repo, then in R:
+# clone the repository, then in R:
 install.packages(c("devtools", "testthat", "roxygen2"))
 devtools::load_all()
 devtools::test()
 devtools::check()
 ```
 
-For release-grade checks, **build the tarball first and check the
-tarball** rather than running `R CMD check` against the source
-directory:
+For a release-grade check, build the tarball first and check the
+tarball:
 
 ``` sh
 R CMD build flexyBayes
 R CMD check --as-cran --no-manual flexyBayes_*.tar.gz
 ```
 
-`R CMD check` against the raw source directory fails immediately with
-`Required fields missing or empty: 'Author' 'Maintainer'`. The `Author`
-/ `Maintainer` fields are materialised from `Authors@R` by
-`R CMD build`; this is the canonical check path for the project.
-`devtools::check()` calls `R CMD build` internally, so the R-side
-workflow is unaffected.
+`R CMD check` on the raw source directory stops with
+`Required fields missing or empty: 'Author' 'Maintainer'`, because those
+fields are written from `Authors@R` by `R CMD build`.
+`devtools::check()` builds first, so the R-side workflow is unaffected.
 
-The package fits on two active backends, `INLA` (Laplace approximation)
-and `brms` (Stan MCMC, on CRAN). `INLA` is hosted at
-<https://inla.r-inla-download.org/R/stable>. A third native engine was
-withdrawn entirely in 0.9.3 – see `NEWS.md`.
+The package fits through two engines, INLA (Laplace approximation) and
+brms (Stan MCMC, on CRAN). INLA is installed from
+<https://inla.r-inla-download.org/R/stable>, which `DESCRIPTION` names
+in `Additional_repositories`. Both engines are optional and the package
+installs without either.
 
 ### Code style
 
 - snake_case for function and argument names.
-- Australian / British English in user-facing prose (`optimise`,
+- Australian/British English in user-facing prose (`optimise`,
   `behaviour`, `parameterise`, `centred`).
-- ISO-8601 dates (`YYYY-MM-DD`).
-- Two-space indentation; line width ≤ 80 chars where practicable.
+- ISO 8601 dates (`YYYY-MM-DD`).
+- Formatting follows `air.toml` (two-space indentation, 80-character
+  lines). Run `air format .` before committing, and leave code you did
+  not change as it is.
+- `lintr::lint_package()` reads `.lintr` and should return nothing new.
 
 ### Tests
 
-Add tests under `tests/testthat/`. Tests that depend on `INLA` or `brms`
-should `skip_if_not_installed(.)`. The test suite uses testthat edition
-3.
+Tests live under `tests/testthat/` and use testthat edition 3. A test
+that needs INLA or brms starts with `skip_if_not_installed()`. Files run
+sequentially (`Config/testthat/parallel: false`), because INLA and brms
+fits do not share a process safely.
 
-#### Three-tier test discipline
+The suite has two tiers. `devtools::test()` and `devtools::check()` run
+the short tier, which takes about 15 minutes on a ten-core Apple Silicon
+machine with INLA held to one thread. The blocks that dominate the wall
+clock run only when `FLEXYBAYES_RUN_LONG` is set:
 
-The test suite is organised into three implicit tiers via
-`testthat::skip_*` guards. Pick the tier that matches what you can warm
-in your environment.
+``` sh
+# the short tier, the default
+Rscript -e 'devtools::test()'
 
-**Tier 1 – CRAN-fast (no heavy engines).**
-
-``` r
-
-devtools::test()           # ~30 s; engine-free path only
+# every tier, as a release runs it
+FLEXYBAYES_RUN_LONG=true Rscript -e 'devtools::test()'
 ```
 
-Guards: `skip_on_cran()`, `skip_on_ci()`, `skip_if_not_installed()`.
-Covers IR parsing, prior DSL, refusal templates, registry lookups,
-canonical-name transforms, dispatch trace shape, and the review-code
-workflow. Expected: roughly **PASS 700+ / FAIL 0** with many SKIPs.
+A block joins the long tier by calling `skip_if_not_long_tier()` after
+its `skip_on_cran()` and `skip_if_not_installed()` guards. Choose a
+block for the long tier on its measured time in the short tier as it
+runs, because several files build an expensive fixture in one block and
+reuse it in later ones. Stress tests on very large inputs run only when
+`FLEXYBAYES_RUN_STRESS=true`.
 
-**Tier 2 – local integration (INLA warm; brms gated).**
+Every release runs every tier. `tools/run_test_suite.R` records one row
+per block with the reason it was skipped, and criterion D11 of
+`tools/definition_of_done.R` fails when a block was held back, so a
+release cannot be evidenced by a short-tier run.
 
-``` r
+### `R CMD check --as-cran`
 
-Sys.setenv(NOT_CRAN = "true")
-devtools::test()           # ~1-3 min
-```
-
-Same suite, but `skip_on_cran()` is now `FALSE`, so INLA round-trip
-tests fire. `skip_if_not_installed("brms")` still gates the Stan
-passthrough tests. Expected: **PASS 850+ / FAIL 0** with a small handful
-of SKIPs (brms round-trip, vdiffr).
-
-**Tier 3 – full triangulation (INLA + brms / Stan).**
-
-``` r
-
-Sys.setenv(NOT_CRAN = "true")
-Sys.setenv(FLEXYBAYES_RUN_BRMS = "true")  # opt-in flag
-devtools::test()           # ~10-20 min; brms first-call Stan
-                           # compile is 30-60 s per backend test
-```
-
-Adds the Stan passthrough round-trips and cross-engine triangulation
-tests on top of Tier 2. The gate is **FAIL 0**; PASS counts grow across
-the 0.8.x line (the 90+-file suite is well above the early-release
-floors quoted above). The residual SKIPs are vdiffr snapshots and
-asreml-dependent reference comparisons.
-
-#### Full `R CMD check --as-cran` rehearsal
-
-``` bash
-cd /path/to/flexyBayes_dev
+``` sh
 R CMD build flexyBayes
-_R_CHECK_CRAN_INCOMING_REMOTE_=true R CMD check --as-cran \
-  flexyBayes_<version>.tar.gz
+_R_CHECK_CRAN_INCOMING_REMOTE_=true R CMD check --as-cran flexyBayes_<version>.tar.gz
 ```
 
-Expected: **Status: 2 NOTEs** baseline preserved (CRAN-incoming
-feasibility with URL 404 sub-item gated on the upstream rename
-conversation; HTML Tidy environmental). A third NOTE
-(`unable to verify current time`) fires on offline / firewalled check
-hosts where `R CMD check` cannot reach a network time source; it does
-not appear on networked machines or on CRAN. See `cran-comments.md` for
-the per-NOTE itemisation.
+The expected result is one NOTE, on CRAN incoming feasibility: a new
+submission, INLA from an additional repository, and the documentation
+URL until the site is published. On a machine that cannot reach a
+network time service a second NOTE, `unable to verify current time`, can
+appear. It is a property of that host. `cran-comments.md` lists the NOTE
+for the current release.
 
-#### Re-precompile vignettes
+### Vignettes
 
-When a `.Rmd.orig` source changes – or when the `DESCRIPTION` version
-bumps and you want the
-[`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) chunks to
-refresh – re-precompile via:
+The six vignettes ship pre-evaluated. Each `.Rmd.orig` source holds live
+model fits and is knitted into its sibling `.Rmd` by the maintainer, so
+building the package renders static markdown and fits nothing. When a
+`.Rmd.orig` changes, or the version bumps and the
+[`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) chunks
+should refresh:
 
-``` bash
+``` sh
 R CMD build flexyBayes
 R CMD INSTALL flexyBayes_<version>.tar.gz
 cd flexyBayes && Rscript vignettes/_precompile.R
 ```
 
-Pre-requisites: INLA installed, brms installed with a warm Stan
-toolchain. The driver knits each `.Rmd.orig` into its sibling `.Rmd`;
-failures are reported per-vignette and the script exits non-zero on any.
-Selective refresh is `Rscript vignettes/_precompile.R --only 01`.
-Expected wall-time on a warm M1 / M2 Mac: 10-15 minutes for the full
-eleven-vignette deck.
+This needs INLA and brms installed with a working Stan toolchain. The
+driver reports each failure per vignette and exits non-zero on any.
+`Rscript vignettes/_precompile.R --only 01` refreshes one vignette.
 
 ### Documentation
 
-Roxygen2 (`@param`, `@return`, `@examples`, `@family`) is the source of
-truth for `man/`; do not hand-edit `.Rd` files. Long-running examples
-should use `\donttest{}`, not `\dontrun{}`.
-
-### Vignettes
-
-Vignettes follow the brms / tidymodels register: motivation → theory →
-implementation → interpretation → pitfalls → extensions. See
-`vignettes-stage1-plan.md` (workspace-level) for the deck-wide
-conventions.
+roxygen2 (`@param`, `@return`, `@examples`, `@family`) is the source of
+truth for `man/`. Do not hand-edit `.Rd` files. Long-running examples
+use `\donttest{}`, not `\dontrun{}`.
 
 ## Community
 
@@ -173,6 +143,6 @@ The project follows the [Contributor Covenant Code of
 Conduct](https://aagi-aus.github.io/flexyBayes/CODE_OF_CONDUCT.md). By
 participating, you agree to abide by its terms.
 
-For security-relevant disclosures, please follow
-[SECURITY.md](https://aagi-aus.github.io/flexyBayes/SECURITY.md) rather
-than the public issue tracker.
+For security disclosures, please follow
+[SECURITY.md](https://aagi-aus.github.io/flexyBayes/SECURITY.md) instead
+of the public issue tracker.

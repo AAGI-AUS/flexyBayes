@@ -1,7 +1,7 @@
 # Ingest an ASReml-format model specification into the flexyBayes IR
 
 Parses an ASReml-style `fixed` / `random` / `residual` specification
-into a `fb_terms` object – flexyBayes's backend-agnostic intermediate
+into a `fb_terms` object, flexyBayes's backend-agnostic intermediate
 representation (IR) of a model. The IR is what every engine emits from,
 so building it explicitly lets a power user inspect the parsed model,
 cache it, or hand it to a fitting verb. Most users never call this
@@ -29,7 +29,7 @@ fb_from_asreml(
   prior = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
-  rcov = lifecycle::deprecated()
+  rcov
 )
 ```
 
@@ -56,7 +56,9 @@ fb_from_asreml(
 - family:
 
   Character family name (`gaussian`, `binomial`, `binary`, `poisson`,
-  `negative_binomial`, `negbinom`, `gamma`, `beta`).
+  `negative_binomial`, `negbinom`, `gamma`, `beta`, and, for brms only,
+  `hurdle_gamma` and `lognormal`), or a family object, which goes
+  through the same family gate and supplies its own link.
 
 - link:
 
@@ -69,7 +71,7 @@ fb_from_asreml(
 
 - known_matrices:
 
-  Named list of known matrices (e.g. `list(Gmat = G)`); names are
+  Named list of known matrices (e.g. `list(Gmat = G)`). Names are
   recorded in `data_summary$known_matrices`.
 
 - prior:
@@ -91,19 +93,25 @@ fb_from_asreml(
 - rcov:
 
   Defunct in flexyBayes 0.9.0. The ASReml 3 name for the
-  residual-structure argument, renamed to `residual` in ASReml 4;
+  residual-structure argument, renamed to `residual` in ASReml 4.
   supplying it now raises an error. Use `residual` instead.
 
 ## Value
 
 An `fb_terms` object with `source = "asreml"`.
 
+## Deprecated
+
+`fb_from_asreml()` is deprecated as of 0.13.0. Use
+[`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+to inspect the backend-neutral model plan without fitting it.
+
 ## See also
 
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 and
 [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-for the universal fitting entry;
+for the universal fitting entry.
 [`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md)
 for the other ingest dialect.
 
@@ -113,12 +121,13 @@ Other flexyBayes ingest adapters:
 ## Examples
 
 ``` r
+set.seed(1L)
 df <- data.frame(
   yield = rnorm(20),
   geno  = factor(rep(letters[1:4], 5)),
   env   = factor(rep(c("a", "b"), 10))
 )
-ir <- fb_from_asreml(yield ~ env, random = ~ geno, data = df)
-class(ir)
-#> [1] "fb_terms" "list"    
+plan <- fb_plan(yield ~ env, random = ~ geno, data = df)
+class(plan)
+#> [1] "fb_plan" "list"   
 ```

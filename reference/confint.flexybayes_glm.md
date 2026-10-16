@@ -41,7 +41,7 @@ Where the draws are unavailable the method falls back to the
 normal-approximation interval \\\hat\beta \pm z\_{\alpha/2}
 \mathrm{sd}\\, and marks the returned matrix with
 `attr(, "interval_basis") == "normal_approximation"`. The two agree only
-for a symmetric posterior; on a skewed one they can differ materially,
-which is why the basis is reported rather than assumed. Earlier versions
+for a symmetric posterior. On a skewed one they can differ materially,
+which is why the basis is reported instead of assumed. Earlier versions
 documented this method as quantile-based while always returning the
 approximation.

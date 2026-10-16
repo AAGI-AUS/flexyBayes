@@ -3,8 +3,8 @@
 Reinstates the design cells that are absent from a data frame, returning
 the Cartesian product of the index variables with the response set to
 `NA` on every cell that was added. A field book already records a lost
-plot this way – one row per sown plot, with the design columns filled in
-and the yield missing – so this helper is for the trials where the plot
+plot this way (one row per sown plot, with the design columns filled in
+and the yield missing) so this helper is for the trials where the plot
 is missing from the file altogether.
 
 ## Usage
@@ -22,7 +22,7 @@ fb_complete_grid(data, index = ~row * col, response, unused_level = NULL)
 - index:
 
   A one-sided formula naming the design index variables, for example
-  `~ row * col`. The operators are ignored; what is read is the set of
+  `~ row * col`. The operators are ignored. What is read is the set of
   variables, whose observed levels are crossed.
 
 - response:
@@ -54,13 +54,13 @@ states for `residual = ~ ar1:ar1`.
 
 A cell can only be reinstated when every other model column at it is
 determined: it is one of the index variables, or it takes one value
-across the whole trial. A column that varies – a variety label, a block
-– is a real quantity nobody recorded at the absent cell, and the default
-is to refuse rather than write one in. `unused_level` opens that door
+across the whole trial. A column that varies (a variety label, a block)
+is a real quantity nobody recorded at the absent cell, and the default
+is to refuse instead of write one in. `unused_level` opens that door
 explicitly, filling the varying design factors with a level of your
 naming and warning with every column it wrote to. It is ASReml's nin89
-LANCER coding, made a decision with a name on it rather than a default.
-A varying *numeric* column is refused whatever `unused_level` says: a
+LANCER coding, made a decision with a name on it, not a default. A
+varying *numeric* column is refused whatever `unused_level` says: a
 measured covariate has no level to name.
 
 ## See also
@@ -71,6 +71,7 @@ whose `na_action` argument carries the completed grid into the fit.
 ## Examples
 
 ``` r
+set.seed(1L)
 trial <- expand.grid(row = factor(1:4), col = factor(1:3))
 trial$yield <- rnorm(nrow(trial))
 holed <- trial[-c(2L, 7L), ]

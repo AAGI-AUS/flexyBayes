@@ -3,7 +3,7 @@
 Quantiles of INLA's own posterior marginals for the fixed effects, not
 frequentist confidence intervals and not a normal approximation to them.
 The bounds come from `INLA::inla.qmarginal()` applied to the marginal
-densities the fit stores, so any credible level is available rather than
+densities the fit stores, so any credible level is available and not
 only the 0.95 that `summary.fixed` tabulates.
 
 ## Usage

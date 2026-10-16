@@ -5,7 +5,7 @@ with the prior each one carried, the engine's own convergence
 diagnostics, and whatever engine-native panels the fit earns. On a brms
 fit with a sectioned residual it additionally prints the residual
 variance and standard deviation for each level of the sectioning factor,
-computed from the draws rather than by transforming a posterior mean.
+computed from the draws, not by transforming a posterior mean.
 
 ## Usage
 
@@ -44,7 +44,7 @@ the slots below. Printed as a side effect.
   is a projection of
   [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md).
   `note` is `"collapsed"` when the component's 97.5% quantile sits below
-  1% of the posterior-median residual standard deviation – a display
+  1% of the posterior-median residual standard deviation, a display
   heuristic for a posterior piled against zero, not a test.
 
 - `random`:
@@ -57,19 +57,19 @@ the slots below. Printed as a side effect.
 
 - `missing`:
 
-  Data frame of the unobserved design cells – ASReml's `mv` factor –
-  with the columns `row`, `estimate`, `std.error`, `conf.low`,
-  `conf.high`, followed by any design index variables the fit recorded.
-  `row` indexes the data the engine was handed. The posterior is the
-  engine's own: INLA's fitted-value marginal at that row, brms's sampled
-  `mi()` response. Zero rows – never `NULL` – when every response was
-  observed. The same table [`coef()`](https://rdrr.io/r/stats/coef.html)
-  returns for `what = "missing"`.
+  Data frame of the unobserved design cells, ASReml's `mv` factor, with
+  the columns `row`, `estimate`, `std.error`, `conf.low`, `conf.high`,
+  followed by any design index variables the fit recorded. `row` indexes
+  the data the engine was handed. The posterior is the engine's own:
+  INLA's fitted-value marginal at that row, brms's sampled `mi()`
+  response. Zero rows (never `NULL`) when every response was observed.
+  The same table [`coef()`](https://rdrr.io/r/stats/coef.html) returns
+  for `what = "missing"`.
 
 - `converge`:
 
   List, in the engine's own terms: R-hat, effective sample sizes and
-  divergent transitions where a sampler ran; mode status, marginal
+  divergent transitions where a sampler ran. Mode status, marginal
   likelihood and the largest Kullback-Leibler divergence where INLA's
   Laplace approximation did. No R-hat is invented for an approximation
   that has none.
@@ -90,8 +90,7 @@ the slots below. Printed as a side effect.
 - `model`:
 
   One-line description of the random and residual structure, derived
-  from the model representation rather than from any engine's emitted
-  formula.
+  from the model representation, not from any engine's emitted formula.
 
 - `engine`:
 
@@ -104,21 +103,28 @@ the slots below. Printed as a side effect.
 - `spatial_field`:
 
   **Present only on a fit carrying an autoregressive latent field**, and
-  absent – not `NULL`-valued – otherwise. A data frame of `parameter`,
+  absent (not `NULL`-valued) otherwise. A data frame of `parameter`,
   `median`, `lower`, `upper`: the field's correlation and
   standard-deviation parameters and the nugget standard deviation, on
-  the scale a reader thinks in rather than INLA's precision scale. The
-  point estimate is the posterior median, because the standard
-  deviations are read off precision marginals and only a monotone
-  summary survives the reciprocal square root exactly. The same table
-  the printed field panel renders, unrounded.
+  the scale a reader thinks in, not INLA's precision scale. The point
+  estimate is the posterior median, because the standard deviations are
+  read off precision marginals and only a monotone summary survives the
+  reciprocal square root exactly. The same table the printed field panel
+  renders, unrounded.
+
+- `offset`:
+
+  **Present only on a fit whose fixed formula carries
+  [`offset()`](https://rdrr.io/r/stats/offset.html) terms**, and absent
+  otherwise: the offset calls as written, in formula order. Each has a
+  fixed coefficient of one.
 
 ## Details
 
 The returned object is the same eleven-slot `summary.flexybayes` object
 on every active engine, so `summary(fit)$varcomp` answers whichever
 engine ran the fit. Before 0.9.1 the two engines returned two
-incomparable objects – INLA's four-slot list and brms's `brmssummary` –
+incomparable objects, INLA's four-slot list and brms's `brmssummary`,
 and neither carried a variance-component table at all.
 
 A fit whose model carries an autoregressive latent field gains one

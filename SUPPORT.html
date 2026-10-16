@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -15,19 +15,16 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -47,67 +44,57 @@
 
 <div id="getting-help-with-flexybayes" class="section level1">
 
-<p>Thanks for using <code>flexyBayes</code>. The fastest path to a useful answer depends on what kind of question you have.</p>
 <div class="section level2">
 <h2 id="where-to-ask">Where to ask<a class="anchor" aria-label="anchor" href="#where-to-ask"></a></h2>
-<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Question type</th>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Question</th>
 <th>Where</th>
-</tr></thead><tbody><tr><td>“How do I do X with flexyBayes?”</td>
-<td><a href="https://github.com/AAGI-AUS/flexyBayes/discussions/categories/q-a" class="external-link">GitHub Discussions — Q&amp;A</a></td>
-</tr><tr><td>“I think this is a bug.”</td>
+</tr></thead><tbody><tr><td>How do I do X with flexyBayes?</td>
+<td><a href="https://github.com/AAGI-AUS/flexyBayes/issues" class="external-link">GitHub Issues</a></td>
+</tr><tr><td>I think this is a bug.</td>
 <td>
-<a href="https://github.com/AAGI-AUS/flexyBayes/issues/new?template=bug_report.yml" class="external-link">GitHub Issues — bug report</a> — please include a <a href="https://reprex.tidyverse.org" class="external-link">reprex</a>.</td>
-</tr><tr><td>“I’d like a new feature / backend / capability.”</td>
-<td><a href="https://github.com/AAGI-AUS/flexyBayes/issues/new?template=feature_request.yml" class="external-link">GitHub Issues — feature request</a></td>
-</tr><tr><td>Security-sensitive disclosure</td>
-<td>See <a href="SECURITY.html"><code>SECURITY.md</code></a> — please do <strong>not</strong> open a public issue.</td>
-</tr><tr><td>General Bayesian-mixed-model methodology</td>
+<a href="https://github.com/AAGI-AUS/flexyBayes/issues/new?template=bug_report.yml" class="external-link">Bug report</a>, with a <a href="https://reprex.tidyverse.org" class="external-link">reprex</a>
+</td>
+</tr><tr><td>I would like a new feature, engine or model structure.</td>
+<td><a href="https://github.com/AAGI-AUS/flexyBayes/issues/new?template=feature_request.yml" class="external-link">Feature request</a></td>
+</tr><tr><td>A security problem</td>
+<td>See <a href="SECURITY.html"><code>SECURITY.md</code></a>. Please do <strong>not</strong> open a public issue.</td>
+</tr><tr><td>Bayesian mixed models in general</td>
 <td>
-<a href="https://discourse.mc-stan.org/" class="external-link">Stan Forums</a> or <a href="https://www.r-inla.org/contact-us" class="external-link">INLA mailing list</a> — broader and more active than this project.</td>
+<a href="https://discourse.mc-stan.org/" class="external-link">Stan Forums</a> or the <a href="https://www.r-inla.org/contact-us" class="external-link">INLA discussion group</a>, which are larger and more active than this project.</td>
 </tr></tbody></table></div>
 <div class="section level2">
-<h2 id="maintenance-capacity">Maintenance capacity<a class="anchor" aria-label="anchor" href="#maintenance-capacity"></a></h2>
-<p><code>flexyBayes</code> is currently maintained by a small team within the Australian Agricultural Genomics Institute (AAGI-AUS) collective.</p>
-<blockquote>
-<p><strong>Note.</strong> The bus-factor / SLA / abandonment-protocol entries below are pending the AAGI-AUS collective conversation that also governs project decisions D5 (paper coauthors), D8 (upstream rename), and D10 (paper venue). Until that conversation lands, do not infer commitments from this file beyond the items already labelled with concrete values. This file is <code>.Rbuildignore</code>’d and ships only on the GitHub repository / pkgdown site, not in the CRAN tarball.</p>
-</blockquote>
-<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Field</th>
+<h2 id="maintenance">Maintenance<a class="anchor" aria-label="anchor" href="#maintenance"></a></h2>
+<p>flexyBayes is maintained by a small team within Analytics for the Australian Grains Industry (AAGI). This file is in the GitHub repository and on the documentation site, not in the package tarball.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Item</th>
 <th>Current value</th>
-<th>Notes</th>
 </tr></thead><tbody><tr><td>Primary maintainer</td>
-<td>Max Moldovan</td>
-<td>Adelaide University; contact via package author email.</td>
-</tr><tr><td>Bus factor</td>
-<td>Pending AAGI-AUS collective decision</td>
-<td>Will be set jointly with D5 / D8 / D10.</td>
+<td>Max Moldovan, Adelaide University (email in <code>DESCRIPTION</code>)</td>
+</tr><tr><td>Number of maintainers</td>
+<td>Not yet set</td>
 </tr><tr><td>Weekly maintenance hours</td>
-<td>Pending AAGI-AUS collective decision</td>
-<td>The median across recent quarters will be reported once measured.</td>
-</tr><tr><td>Issue response SLA</td>
-<td>Pending AAGI-AUS collective decision</td>
-<td>No SLA committed on the <code>0.10.0</code> development line.</td>
-</tr><tr><td>Critical security SLA</td>
-<td>7 days</td>
-<td>See <a href="SECURITY.html"><code>SECURITY.md</code></a>.</td>
-</tr><tr><td>Abandonment protocol</td>
-<td>Pending AAGI-AUS collective decision; default fallback = AAGI-AUS institutional handover</td>
-<td>Concrete handover / archive plan ratified with D5 / D8.</td>
+<td>Not yet set</td>
+</tr><tr><td>Issue response time</td>
+<td>None committed for 0.18.0</td>
+</tr><tr><td>Security response time</td>
+<td>Acknowledgement within 7 days (see <a href="SECURITY.html"><code>SECURITY.md</code></a>)</td>
+</tr><tr><td>If the package is no longer maintained</td>
+<td>Not yet set. The default is handover to AAGI.</td>
 </tr></tbody></table></div>
 <div class="section level2">
-<h2 id="reprex-etiquette">Reprex etiquette<a class="anchor" aria-label="anchor" href="#reprex-etiquette"></a></h2>
-<p>A reproducible example (reprex) is encouraged, and should minimally the following:</p>
-<ol style="list-style-type: decimal"><li>A small <code>data.frame</code> we can copy-paste.</li>
-<li>The exact <code><a href="reference/flexybayes.html">flexybayes()</a></code> / <code><a href="reference/flexybayes.html">fb()</a></code> call.</li>
-<li>The full output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> — especially the INLA and brms / Stan versions.</li>
-<li>The error / unexpected output, copied verbatim.</li>
-</ol><p>For runtime issues, please run with <code>verbose = TRUE</code> and include the emitted backend code (the Stan program for <code>backend = "brms"</code>, the printed INLA formula for <code>backend = "inla"</code>).</p>
+<h2 id="a-good-reproducible-example">A good reproducible example<a class="anchor" aria-label="anchor" href="#a-good-reproducible-example"></a></h2>
+<p>Please include:</p>
+<ol style="list-style-type: decimal"><li>A small <code>data.frame</code> that can be copied and pasted.</li>
+<li>The exact <code><a href="reference/flexybayes.html">flexybayes()</a></code> call.</li>
+<li>The full output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code>, including the INLA, brms and Stan versions.</li>
+<li>The error or unexpected output, copied as printed.</li>
+</ol><p>For a problem during fitting, run with <code>verbose = TRUE</code> and include the generated model code it prints: the Stan program for <code>backend = "brms"</code>, or the INLA formula for <code>backend = "inla"</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="what-we-cannot-help-with">What we cannot help with<a class="anchor" aria-label="anchor" href="#what-we-cannot-help-with"></a></h2>
-<ul><li>General R help — see <a href="https://stackoverflow.com/questions/tagged/r" class="external-link">Stack Overflow <code>[r]</code></a>.</li>
-<li>ASReml-R proprietary syntax outside the subset that <code>flexyBayes</code> implements — see VSNi support.</li>
-<li>INLA model-tuning beyond the <code>lgm_gate()</code> / <code>priors_to_inla()</code> surface — see <a href="https://www.r-inla.org/" class="external-link">r-inla.org</a>.</li>
-<li>Stan toolchain installation for the brms backend — see <a href="https://mc-stan.org/" class="external-link">mc-stan.org</a> and the <code>rstan</code> getting-started guide.</li>
+<ul><li>General R questions. See <a href="https://stackoverflow.com/questions/tagged/r" class="external-link">Stack Overflow <code>[r]</code></a>.</li>
+<li>ASReml-R syntax outside the subset flexyBayes implements. See VSNi support.</li>
+<li>Tuning INLA beyond the settings flexyBayes exposes. See <a href="https://www.r-inla.org/" class="external-link">r-inla.org</a>.</li>
+<li>Installing a Stan toolchain for the brms engine. See <a href="https://mc-stan.org/" class="external-link">mc-stan.org</a> and the <code>rstan</code> getting-started guide.</li>
 </ul></div>
 </div>
 
@@ -116,7 +103,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

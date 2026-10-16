@@ -2,7 +2,7 @@
 
 Returns the same eleven-slot `summary.flexybayes` object every other
 engine returns, so `summary(fit)$varcomp` answers on an aggregated fit
-as it does on a per-row one. Aggregation is the default route for an
+as it does on a per-row one. Aggregation was the default route for an
 ordinary Gaussian call with a random term, so until 0.9.1 that slot was
 `NULL` on the commonest fit the package produces: this method returned
 its own list of the aggregated posterior's raw pieces and carried no
@@ -35,8 +35,8 @@ Printed as a side effect.
 
 ## Details
 
-Two things are aggregated-specific and both appear in the printed header
-rather than as extra slots. The banner names the representation
+Two things are aggregated-specific and both appear in the printed
+header, not as extra slots. The banner names the representation
 (`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`)
 where a per-row fit names its engine, and the `aggregation` line gives
 the row-to-cell compression the fit ran under. The `model` slot carries
@@ -53,8 +53,8 @@ route that recorded posterior means alone reports the means with the
 three interval columns `NA` and the row's `note` cell reading
 `"no interval recorded"`.
 
-The raw aggregated pieces this method used to return – `beta_means`,
-`beta_vcov`, `sigma_means`, `tau_means` – are unchanged at
+The raw aggregated pieces this method used to return, `beta_means`,
+`beta_vcov`, `sigma_means`, `tau_means`, are unchanged at
 `fit$extras$summary`.
 
 ## See also

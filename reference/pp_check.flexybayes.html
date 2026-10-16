@@ -4,14 +4,14 @@ fit from the brms engine the call delegates to
 brms::pp_check(): datasets are simulated from the posterior
 predictive distribution and shown against the observed response. The
 default display overlays the densities of the replicated datasets on
-the density of the response (type = &quot;dens_overlay&quot;); every other
+the density of the response (type = &quot;dens_overlay&quot;). Every other
 bayesplot check type, and every argument of
 brms::pp_check(), is reachable through ...."><meta property="og:description" content="A method for the bayesplot package's pp_check() generic. On a
 fit from the brms engine the call delegates to
 brms::pp_check(): datasets are simulated from the posterior
 predictive distribution and shown against the observed response. The
 default display overlays the densities of the replicated datasets on
-the density of the response (type = &quot;dens_overlay&quot;); every other
+the density of the response (type = &quot;dens_overlay&quot;). Every other
 bayesplot check type, and every argument of
 brms::pp_check(), is reachable through ...."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -21,7 +21,7 @@ brms::pp_check(), is reachable through ...."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,19 +29,16 @@ brms::pp_check(), is reachable through ...."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -66,7 +63,7 @@ fit from the <strong>brms</strong> engine the call delegates to
 <code>brms::pp_check()</code>: datasets are simulated from the posterior
 predictive distribution and shown against the observed response. The
 default display overlays the densities of the replicated datasets on
-the density of the response (<code>type = "dens_overlay"</code>); every other
+the density of the response (<code>type = "dens_overlay"</code>). Every other
 <span class="pkg">bayesplot</span> check type, and every argument of
 <code>brms::pp_check()</code>, is reachable through <code>...</code>.</p>
     </div>
@@ -86,8 +83,8 @@ the density of the response (<code>type = "dens_overlay"</code>); every other
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Passed to <code>brms::pp_check()</code> on the brms path – <code>type</code>,
-<code>ndraws</code>, <code>group</code> and the rest; ignored on the refusal path.</p></dd>
+<dd><p>Passed to <code>brms::pp_check()</code> on the brms path, <code>type</code>,
+<code>ndraws</code>, <code>group</code> and the rest. Ignored on the refusal path.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -101,7 +98,7 @@ raises a refusal of class
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>On a fit from the <strong>INLA</strong> engine the method refuses by name. A nested
 Laplace approximation returns marginal densities, not simulated
-datasets, so there is nothing to overlay – and a display of observed
+datasets, so there is nothing to overlay, and a display of observed
 against fitted values shown under this name would be a different
 diagnostic wearing the check's title. The refusal names the residual
 displays the fit does answer: <code>plot(fit, type = "residuals")</code> and, on
@@ -112,8 +109,8 @@ points cannot disagree about what a check is.</p>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="plot.flexybayes.html">plot.flexybayes()</a></code> for the other displays, including the
-residual diagnostics this refusal points at;
-<code><a href="as_draws_df.flexybayes.html">as_draws_df.flexybayes()</a></code> for the posterior itself;
+residual diagnostics this refusal points at.
+<code><a href="as_draws_df.flexybayes.html">as_draws_df.flexybayes()</a></code> for the posterior itself.
 <code><a href="summary.flexybayes.html">summary.flexybayes()</a></code>, whose <code>$converge</code> slot carries the engine's
 own diagnostics.</p></div>
     </div>
@@ -123,7 +120,7 @@ own diagnostics.</p></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

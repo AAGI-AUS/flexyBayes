@@ -8,11 +8,10 @@ project verbatim.
 
 ## Scope
 
-The Code of Conduct applies to all project spaces — the GitHub
+The Code of Conduct applies to all project spaces (the GitHub
 repository, issues, pull requests, discussions, vignettes and
-documentation, and any other channels where the project operates — and
-to public spaces when an individual is officially representing the
-project.
+documentation, and any other channels where the project operates) and to
+public spaces when an individual is officially representing the project.
 
 ## Enforcement
 

@@ -1,7 +1,7 @@
 # Coerce an `<fb_plan>` to data.frame — one row, stable columns
 
-Stable column ordering by the internal vector `.FB_PLAN_DF_COLS`; adding
-new fields appends rather than reorders.
+Stable column ordering by the internal vector `.FB_PLAN_DF_COLS`. New
+fields are appended, and existing columns keep their order.
 
 ## Usage
 

@@ -19,7 +19,7 @@ fb_cov(M, type = "dense", levels = NULL, scheme = NULL, ...)
 - M:
 
   The covariance carrier. For `type = "blocks"` a base-R list of K
-  square covariance matrices; otherwise a square numeric matrix (base-R
+  square covariance matrices. Otherwise a square numeric matrix (base-R
   or Matrix). Inside a formula this argument names a matrix resolved
   through `known_matrices`.
 
@@ -31,7 +31,7 @@ fb_cov(M, type = "dense", levels = NULL, scheme = NULL, ...)
 - levels:
 
   Optional character vector of grouping-factor level labels the
-  carrier's rows / columns align to. Carried as metadata; the fit-time
+  carrier's rows / columns align to. Carried as metadata. the fit-time
   validator checks alignment against the fitted factor.
 
 - scheme:
@@ -43,7 +43,7 @@ fb_cov(M, type = "dense", levels = NULL, scheme = NULL, ...)
 
 - ...:
 
-  Reserved for forward carrier-type options; currently carried verbatim
+  Reserved for forward carrier-type options. Currently carried verbatim
   on the object.
 
 ## Value
@@ -56,19 +56,27 @@ optional `levels`, and (for low-rank) `scheme` as elements, plus
 
 The carrier's `type` selects how the downstream emit path derives a
 covariance square root. `"dense"` takes the lower Cholesky of the
-supplied covariance; `"chol"` uses the supplied factor directly;
-`"precision"` inverts via the Cholesky of the precision matrix;
+supplied covariance. `"chol"` uses the supplied factor directly.
+`"precision"` inverts via the Cholesky of the precision matrix.
 `"blocks"` assembles a block-diagonal covariance from a list of
-per-block matrices; `"low_rank"` pairs a rank-K factor with a registered
-approximation scheme (reserved at v0.4.0 – the carrier vocabulary is
+per-block matrices. `"low_rank"` pairs a rank-K factor with a registered
+approximation scheme (reserved at v0.4.0, the carrier vocabulary is
 active and validated, while the approximate-covariance fit route
 activates in a subsequent release).
 
-Inside a model formula the carrier is written inline – the matrix
+A `"blocks"` carrier is one covariance with one standard deviation, and
+flexyBayes refuses it by name on both engines: its brms route has no
+blocks carrier, and its INLA route would fit each block with its own
+standard deviation. The precision carrier of
+`Matrix::bdiag(lapply(blocks, solve))` states the same covariance on
+INLA, and the dense carrier of the block-diagonal matrix states it on
+brms.
+
+Inside a model formula the carrier is written inline, the matrix
 argument names a matrix passed through `known_matrices`, exactly as the
 legacy keyword forms did. The construction-time check is a light
 structural probe (shape, lower-triangular pattern, symmetry, block
-count); the full level-aware validation runs at fit time against the
+count). The full level-aware validation runs at fit time against the
 grouping factor.
 
 ## See also
@@ -81,6 +89,7 @@ grouping factor.
 ## Examples
 
 ``` r
+set.seed(1L)
 G <- crossprod(matrix(rnorm(9L), 3L, 3L))
 fb_cov(G, type = "dense")
 #> <fb_cov> type = "dense"

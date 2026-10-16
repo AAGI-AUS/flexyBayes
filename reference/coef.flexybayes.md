@@ -2,7 +2,7 @@
 
 Returns the fixed effects by default, and the random-effect predictions
 or the unobserved design cells on request. An ASReml user reaches for
-`coef(fit)$random`; the equivalent here is `coef(fit, what = "random")`,
+`coef(fit)$random`. The equivalent here is `coef(fit, what = "random")`,
 which is what
 [`ranef()`](https://aagi-aus.github.io/flexyBayes/reference/ranef.md)
 calls.
@@ -25,7 +25,7 @@ coef(object, what = c("fixed", "random", "missing", "all"), ...)
   Which part of the fit to return. `"fixed"` (the default) is the
   fixed-effect posterior means. `"random"` is one data frame per
   grouping factor, with the columns `group`, `level`, `estimate`,
-  `std.error`, `conf.low` and `conf.high`; a grouping factor carrying
+  `std.error`, `conf.low` and `conf.high`. A grouping factor carrying
   more than one effect names the effect in `level`. `"missing"` is the
   table of unobserved design cells, in the columns `row`, `estimate`,
   `std.error`, `conf.low`, `conf.high` plus any design index variables
@@ -47,8 +47,8 @@ when every response was observed. For `"all"`, a list with the elements
 
 ## Details
 
-The default is the historical return – a named numeric vector of the
-fixed effects – so every caller that treats `coef(fit)` as a numeric
+The default is the historical return, a named numeric vector of the
+fixed effects, so every caller that treats `coef(fit)` as a numeric
 vector keeps working, including the emmeans and marginaleffects seams,
 [`predict()`](https://rdrr.io/r/stats/predict.html),
 [`vcov()`](https://rdrr.io/r/stats/vcov.html) and the tidiers.

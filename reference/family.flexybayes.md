@@ -22,5 +22,5 @@ family(object, ...)
 ## Value
 
 The response family the model was fitted under, as the `family` object
-the fit recorded at emit time – so it names the family and link the
+the fit recorded at emit time, so it names the family and link the
 engine actually used, not the string the caller passed.

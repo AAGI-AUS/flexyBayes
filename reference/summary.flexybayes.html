@@ -4,13 +4,13 @@ with the prior each one carried, the engine's own convergence
 diagnostics, and whatever engine-native panels the fit earns. On a
 brms fit with a sectioned residual it additionally prints the residual
 variance and standard deviation for each level of the sectioning
-factor, computed from the draws rather than by transforming a
+factor, computed from the draws, not by transforming a
 posterior mean."><meta property="og:description" content="Prints the fixed-effect posterior summaries, the variance components
 with the prior each one carried, the engine's own convergence
 diagnostics, and whatever engine-native panels the fit earns. On a
 brms fit with a sectioned residual it additionally prints the residual
 variance and standard deviation for each level of the sectioning
-factor, computed from the draws rather than by transforming a
+factor, computed from the draws, not by transforming a
 posterior mean."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -19,7 +19,7 @@ posterior mean."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,19 +27,16 @@ posterior mean."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -64,7 +61,7 @@ with the prior each one carried, the engine's own convergence
 diagnostics, and whatever engine-native panels the fit earns. On a
 brms fit with a sectioned residual it additionally prints the residual
 variance and standard deviation for each level of the sectioning
-factor, computed from the draws rather than by transforming a
+factor, computed from the draws, not by transforming a
 posterior mean.</p>
     </div>
 
@@ -105,7 +102,7 @@ latent field), on the standard-deviation scale, under the
 canonical component name. <code>prior</code> is a projection of
 <code><a href="prior_summary.html">prior_summary()</a></code>. <code>note</code> is <code>"collapsed"</code> when the component's
 97.5% quantile sits below 1% of the posterior-median residual
-standard deviation – a display heuristic for a posterior piled
+standard deviation, a display heuristic for a posterior piled
 against zero, not a test.</p></dd>
 
 <dt><code>random</code></dt>
@@ -115,20 +112,20 @@ with the columns <code>group</code>, <code>level</code>, <code>estimate</code>, 
 terms. The same object <code><a href="ranef.html">ranef()</a></code> returns.</p></dd>
 
 <dt><code>missing</code></dt>
-<dd><p>Data frame of the unobserved design cells –
-ASReml's <code>mv</code> factor – with the columns <code>row</code>, <code>estimate</code>,
+<dd><p>Data frame of the unobserved design cells,
+ASReml's <code>mv</code> factor, with the columns <code>row</code>, <code>estimate</code>,
 <code>std.error</code>, <code>conf.low</code>, <code>conf.high</code>, followed by any design
 index variables the fit recorded. <code>row</code> indexes the data the
 engine was handed. The posterior is the engine's own: INLA's
 fitted-value marginal at that row, brms's sampled <code>mi()</code>
-response. Zero rows – never <code>NULL</code> – when every response was
+response. Zero rows (never <code>NULL</code>) when every response was
 observed. The same table <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> returns for
 <code>what = "missing"</code>.</p></dd>
 
 <dt><code>converge</code></dt>
 <dd><p>List, in the engine's own terms: R-hat,
 effective sample sizes and divergent transitions where a sampler
-ran; mode status, marginal likelihood and the largest
+ran. Mode status, marginal likelihood and the largest
 Kullback-Leibler divergence where INLA's Laplace approximation
 did. No R-hat is invented for an approximation that has none.</p></dd>
 
@@ -145,7 +142,7 @@ response.</p></dd>
 
 <dt><code>model</code></dt>
 <dd><p>One-line description of the random and residual
-structure, derived from the model representation rather than
+structure, derived from the model representation, not
 from any engine's emitted formula.</p></dd>
 
 <dt><code>engine</code></dt>
@@ -156,15 +153,20 @@ from any engine's emitted formula.</p></dd>
 
 <dt><code>spatial_field</code></dt>
 <dd><p><strong>Present only on a fit carrying an
-autoregressive latent field</strong>, and absent – not <code>NULL</code>-valued
-– otherwise. A data frame of <code>parameter</code>, <code>median</code>, <code>lower</code>,
+autoregressive latent field</strong>, and absent (not <code>NULL</code>-valued)
+otherwise. A data frame of <code>parameter</code>, <code>median</code>, <code>lower</code>,
 <code>upper</code>: the field's correlation and standard-deviation
 parameters and the nugget standard deviation, on the scale a
-reader thinks in rather than INLA's precision scale. The point
+reader thinks in, not INLA's precision scale. The point
 estimate is the posterior median, because the standard
 deviations are read off precision marginals and only a monotone
 summary survives the reciprocal square root exactly. The same
 table the printed field panel renders, unrounded.</p></dd>
+
+<dt><code>offset</code></dt>
+<dd><p><strong>Present only on a fit whose fixed formula carries
+<code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> terms</strong>, and absent otherwise: the offset calls as
+written, in formula order. Each has a fixed coefficient of one.</p></dd>
 
 
 </dl></div>
@@ -173,8 +175,8 @@ table the printed field panel renders, unrounded.</p></dd>
     <p>The returned object is the same eleven-slot
 <code>summary.flexybayes</code> object on every active engine, so
 <code>summary(fit)$varcomp</code> answers whichever engine ran the fit. Before
-0.9.1 the two engines returned two incomparable objects – INLA's
-four-slot list and brms's <code>brmssummary</code> – and neither carried a
+0.9.1 the two engines returned two incomparable objects, INLA's
+four-slot list and brms's <code>brmssummary</code>, and neither carried a
 variance-component table at all.</p>
 <p>A fit whose model carries an autoregressive latent field gains one
 further slot, <code>spatial_field</code>, which is the field's own parameters on
@@ -193,7 +195,7 @@ model has a field, and the eleven above it are on every fit.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

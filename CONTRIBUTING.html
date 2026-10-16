@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -15,19 +15,16 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -47,93 +44,79 @@
 
 <div id="contributing-to-flexybayes" class="section level1">
 
-<p>Thanks for your interest in contributing. The package is an <code>AAGI-AUS</code> collective effort; we welcome bug reports, fixes, documentation improvements, and discussion of new features.</p>
+<p>flexyBayes is an AAGI-AUS collective effort. Bug reports, fixes, documentation improvements and discussion of new features are welcome.</p>
 <div class="section level2">
 <h2 id="bug-reports-and-feature-requests">Bug reports and feature requests<a class="anchor" aria-label="anchor" href="#bug-reports-and-feature-requests"></a></h2>
 <p>Please use the GitHub issue tracker: <a href="https://github.com/AAGI-AUS/flexyBayes/issues" class="external-link uri">https://github.com/AAGI-AUS/flexyBayes/issues</a>.</p>
-<p>Useful information to include:</p>
-<ul><li>a minimal reproducible example;</li>
-<li>the output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code>;</li>
-<li>the output of <code>packageVersion("flexyBayes")</code> and, if relevant, <code>packageVersion("INLA")</code>;</li>
-<li>whether the issue reproduces on a fresh R session.</li>
+<p>A report is easiest to act on when it includes:</p>
+<ul><li>a minimal reproducible example</li>
+<li>the output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code>
+</li>
+<li>the output of <code>packageVersion("flexyBayes")</code> and, where relevant, <code>packageVersion("INLA")</code> or <code>packageVersion("brms")</code>
+</li>
+<li>whether the issue reproduces in a fresh R session</li>
 </ul></div>
 <div class="section level2">
 <h2 id="pull-requests">Pull requests<a class="anchor" aria-label="anchor" href="#pull-requests"></a></h2>
-<p>Small fixes (typos, doc clarifications, minor bug fixes) are welcome as direct PRs against <code>main</code>. For non-trivial changes, please open an issue first to discuss the approach.</p>
+<p>Small fixes (typos, documentation, minor bugs) are welcome as direct pull requests against <code>main</code>. For anything larger, please open an issue first so the approach can be agreed before the work is done. A pull request that closes an issue says so in its body with <code>Fixes #&lt;issue-number&gt;</code>.</p>
 <div class="section level3">
 <h3 id="development-setup">Development setup<a class="anchor" aria-label="anchor" href="#development-setup"></a></h3>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># clone the repo, then in R:</span></span>
+<code class="sourceCode R"><span><span class="co"># clone the repository, then in R:</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"devtools"</span>, <span class="st">"testthat"</span>, <span class="st">"roxygen2"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">load_all</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">check</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>For release-grade checks, <strong>build the tarball first and check the tarball</strong> rather than running <code>R CMD check</code> against the source directory:</p>
+<p>For a release-grade check, build the tarball first and check the tarball:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">R</span> CMD check <span class="at">--as-cran</span> <span class="at">--no-manual</span> flexyBayes_<span class="pp">*</span>.tar.gz</span></code></pre></div>
-<p><code>R CMD check</code> against the raw source directory fails immediately with <code>Required fields missing or empty: 'Author' 'Maintainer'</code>. The <code>Author</code> / <code>Maintainer</code> fields are materialised from <code>Authors@R</code> by <code>R CMD build</code>; this is the canonical check path for the project. <code>devtools::check()</code> calls <code>R CMD build</code> internally, so the R-side workflow is unaffected.</p>
-<p>The package fits on two active backends, <code>INLA</code> (Laplace approximation) and <code>brms</code> (Stan MCMC, on CRAN). <code>INLA</code> is hosted at <a href="https://inla.r-inla-download.org/R/stable" class="external-link uri">https://inla.r-inla-download.org/R/stable</a>. A third native engine was withdrawn entirely in 0.9.3 – see <code>NEWS.md</code>.</p>
+<p><code>R CMD check</code> on the raw source directory stops with <code>Required fields missing or empty: 'Author' 'Maintainer'</code>, because those fields are written from <code>Authors@R</code> by <code>R CMD build</code>. <code>devtools::check()</code> builds first, so the R-side workflow is unaffected.</p>
+<p>The package fits through two engines, INLA (Laplace approximation) and brms (Stan MCMC, on CRAN). INLA is installed from <a href="https://inla.r-inla-download.org/R/stable" class="external-link uri">https://inla.r-inla-download.org/R/stable</a>, which <code>DESCRIPTION</code> names in <code>Additional_repositories</code>. Both engines are optional and the package installs without either.</p>
 </div>
 <div class="section level3">
 <h3 id="code-style">Code style<a class="anchor" aria-label="anchor" href="#code-style"></a></h3>
 <ul><li>snake_case for function and argument names.</li>
-<li>Australian / British English in user-facing prose (<code>optimise</code>, <code>behaviour</code>, <code>parameterise</code>, <code>centred</code>).</li>
-<li>ISO-8601 dates (<code>YYYY-MM-DD</code>).</li>
-<li>Two-space indentation; line width ≤ 80 chars where practicable.</li>
+<li>Australian/British English in user-facing prose (<code>optimise</code>, <code>behaviour</code>, <code>parameterise</code>, <code>centred</code>).</li>
+<li>ISO 8601 dates (<code>YYYY-MM-DD</code>).</li>
+<li>Formatting follows <code>air.toml</code> (two-space indentation, 80-character lines). Run <code>air format .</code> before committing, and leave code you did not change as it is.</li>
+<li>
+<code>lintr::lint_package()</code> reads <code>.lintr</code> and should return nothing new.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a></h3>
-<p>Add tests under <code>tests/testthat/</code>. Tests that depend on <code>INLA</code> or <code>brms</code> should <code>skip_if_not_installed(.)</code>. The test suite uses testthat edition 3.</p>
-<div class="section level4">
-<h4 id="three-tier-test-discipline">Three-tier test discipline<a class="anchor" aria-label="anchor" href="#three-tier-test-discipline"></a></h4>
-<p>The test suite is organised into three implicit tiers via <code>testthat::skip_*</code> guards. Pick the tier that matches what you can warm in your environment.</p>
-<p><strong>Tier 1 – CRAN-fast (no heavy engines).</strong></p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~30 s; engine-free path only</span></span></code></pre></div>
-<p>Guards: <code>skip_on_cran()</code>, <code>skip_on_ci()</code>, <code>skip_if_not_installed()</code>. Covers IR parsing, prior DSL, refusal templates, registry lookups, canonical-name transforms, dispatch trace shape, and the review-code workflow. Expected: roughly <strong>PASS 700+ / FAIL 0</strong> with many SKIPs.</p>
-<p><strong>Tier 2 – local integration (INLA warm; brms gated).</strong></p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>NOT_CRAN <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~1-3 min</span></span></code></pre></div>
-<p>Same suite, but <code>skip_on_cran()</code> is now <code>FALSE</code>, so INLA round-trip tests fire. <code>skip_if_not_installed("brms")</code> still gates the Stan passthrough tests. Expected: <strong>PASS 850+ / FAIL 0</strong> with a small handful of SKIPs (brms round-trip, vdiffr).</p>
-<p><strong>Tier 3 – full triangulation (INLA + brms / Stan).</strong></p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>NOT_CRAN <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>FLEXYBAYES_RUN_BRMS <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span>  <span class="co"># opt-in flag</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~10-20 min; brms first-call Stan</span></span>
-<span>                           <span class="co"># compile is 30-60 s per backend test</span></span></code></pre></div>
-<p>Adds the Stan passthrough round-trips and cross-engine triangulation tests on top of Tier 2. The gate is <strong>FAIL 0</strong>; PASS counts grow across the 0.8.x line (the 90+-file suite is well above the early-release floors quoted above). The residual SKIPs are vdiffr snapshots and asreml-dependent reference comparisons.</p>
-</div>
-<div class="section level4">
-<h4 id="full-r-cmd-check---as-cran-rehearsal">Full <code>R CMD check --as-cran</code> rehearsal<a class="anchor" aria-label="anchor" href="#full-r-cmd-check---as-cran-rehearsal"></a></h4>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="bu">cd</span> /path/to/flexyBayes_dev</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="va">_R_CHECK_CRAN_INCOMING_REMOTE_</span><span class="op">=</span>true <span class="ex">R</span> CMD check <span class="at">--as-cran</span> <span class="dt">\</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  flexyBayes_<span class="op">&lt;</span>version<span class="op">&gt;</span>.tar.gz</span></code></pre></div>
-<p>Expected: <strong>Status: 2 NOTEs</strong> baseline preserved (CRAN-incoming feasibility with URL 404 sub-item gated on the upstream rename conversation; HTML Tidy environmental). A third NOTE (<code>unable to verify current time</code>) fires on offline / firewalled check hosts where <code>R CMD check</code> cannot reach a network time source; it does not appear on networked machines or on CRAN. See <code>cran-comments.md</code> for the per-NOTE itemisation.</p>
-</div>
-<div class="section level4">
-<h4 id="re-precompile-vignettes">Re-precompile vignettes<a class="anchor" aria-label="anchor" href="#re-precompile-vignettes"></a></h4>
-<p>When a <code>.Rmd.orig</code> source changes – or when the <code>DESCRIPTION</code> version bumps and you want the <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> chunks to refresh – re-precompile via:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL flexyBayes_<span class="op">&lt;</span>version<span class="op">&gt;</span>.tar.gz</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="bu">cd</span> flexyBayes <span class="kw">&amp;&amp;</span> <span class="ex">Rscript</span> vignettes/_precompile.R</span></code></pre></div>
-<p>Pre-requisites: INLA installed, brms installed with a warm Stan toolchain. The driver knits each <code>.Rmd.orig</code> into its sibling <code>.Rmd</code>; failures are reported per-vignette and the script exits non-zero on any. Selective refresh is <code>Rscript vignettes/_precompile.R --only 01</code>. Expected wall-time on a warm M1 / M2 Mac: 10-15 minutes for the full eleven-vignette deck.</p>
-</div>
+<p>Tests live under <code>tests/testthat/</code> and use testthat edition 3. A test that needs INLA or brms starts with <code>skip_if_not_installed()</code>. Files run sequentially (<code>Config/testthat/parallel: false</code>), because INLA and brms fits do not share a process safely.</p>
+<p>The suite has two tiers. <code>devtools::test()</code> and <code>devtools::check()</code> run the short tier, which takes about 15 minutes on a ten-core Apple Silicon machine with INLA held to one thread. The blocks that dominate the wall clock run only when <code>FLEXYBAYES_RUN_LONG</code> is set:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># the short tier, the default</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::test()'</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># every tier, as a release runs it</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="va">FLEXYBAYES_RUN_LONG</span><span class="op">=</span>true <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'devtools::test()'</span></span></code></pre></div>
+<p>A block joins the long tier by calling <code>skip_if_not_long_tier()</code> after its <code>skip_on_cran()</code> and <code>skip_if_not_installed()</code> guards. Choose a block for the long tier on its measured time in the short tier as it runs, because several files build an expensive fixture in one block and reuse it in later ones. Stress tests on very large inputs run only when <code>FLEXYBAYES_RUN_STRESS=true</code>.</p>
+<p>Every release runs every tier. <code>tools/run_test_suite.R</code> records one row per block with the reason it was skipped, and criterion D11 of <code>tools/definition_of_done.R</code> fails when a block was held back, so a release cannot be evidenced by a short-tier run.</p>
 </div>
 <div class="section level3">
-<h3 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a></h3>
-<p>Roxygen2 (<code>@param</code>, <code>@return</code>, <code>@examples</code>, <code>@family</code>) is the source of truth for <code>man/</code>; do not hand-edit <code>.Rd</code> files. Long-running examples should use <code>\donttest{}</code>, not <code>\dontrun{}</code>.</p>
+<h3 id="r-cmd-check---as-cran"><code>R CMD check --as-cran</code><a class="anchor" aria-label="anchor" href="#r-cmd-check---as-cran"></a></h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="va">_R_CHECK_CRAN_INCOMING_REMOTE_</span><span class="op">=</span>true <span class="ex">R</span> CMD check <span class="at">--as-cran</span> flexyBayes_<span class="op">&lt;</span>version<span class="op">&gt;</span>.tar.gz</span></code></pre></div>
+<p>The expected result is one NOTE, on CRAN incoming feasibility: a new submission, INLA from an additional repository, and the documentation URL until the site is published. On a machine that cannot reach a network time service a second NOTE, <code>unable to verify current time</code>, can appear. It is a property of that host. <code>cran-comments.md</code> lists the NOTE for the current release.</p>
 </div>
 <div class="section level3">
 <h3 id="vignettes">Vignettes<a class="anchor" aria-label="anchor" href="#vignettes"></a></h3>
-<p>Vignettes follow the brms / tidymodels register: motivation → theory → implementation → interpretation → pitfalls → extensions. See <code>vignettes-stage1-plan.md</code> (workspace-level) for the deck-wide conventions.</p>
+<p>The six vignettes ship pre-evaluated. Each <code>.Rmd.orig</code> source holds live model fits and is knitted into its sibling <code>.Rmd</code> by the maintainer, so building the package renders static markdown and fits nothing. When a <code>.Rmd.orig</code> changes, or the version bumps and the <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> chunks should refresh:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL flexyBayes_<span class="op">&lt;</span>version<span class="op">&gt;</span>.tar.gz</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="bu">cd</span> flexyBayes <span class="kw">&amp;&amp;</span> <span class="ex">Rscript</span> vignettes/_precompile.R</span></code></pre></div>
+<p>This needs INLA and brms installed with a working Stan toolchain. The driver reports each failure per vignette and exits non-zero on any. <code>Rscript vignettes/_precompile.R --only 01</code> refreshes one vignette.</p>
+</div>
+<div class="section level3">
+<h3 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a></h3>
+<p>roxygen2 (<code>@param</code>, <code>@return</code>, <code>@examples</code>, <code>@family</code>) is the source of truth for <code>man/</code>. Do not hand-edit <code>.Rd</code> files. Long-running examples use <code>\donttest{}</code>, not <code>\dontrun{}</code>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="community">Community<a class="anchor" aria-label="anchor" href="#community"></a></h2>
 <p>The project follows the <a href="CODE_OF_CONDUCT.html">Contributor Covenant Code of Conduct</a>. By participating, you agree to abide by its terms.</p>
-<p>For security-relevant disclosures, please follow <a href="SECURITY.html">SECURITY.md</a> rather than the public issue tracker.</p>
+<p>For security disclosures, please follow <a href="SECURITY.html">SECURITY.md</a> instead of the public issue tracker.</p>
 </div>
 </div>
 
@@ -142,7 +125,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

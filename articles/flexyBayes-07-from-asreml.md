@@ -1,0 +1,813 @@
+# Moving from ASReml-R
+
+This page is for readers who fit mixed models with ASReml-R and want to
+fit the same models with flexyBayes. It gives the flexyBayes spelling of
+each ASReml construct the package supports, shows both systems on the
+same public trials, lists what flexyBayes refuses, and explains how to
+read a posterior summary beside a REML one.
+
+Every ASReml number on this page was computed with ASReml 4.2.0.482
+under R version 4.6.1 (2026-06-24) by the scripts in `data-raw/` and is
+stored with the package sources, so the page builds without an ASReml
+licence. In the code below `ref`, `ref_c`, `ref_at` and `ref_cr` hold
+those stored fits, and `rnd()` rounds a table for printing. The
+package’s tests compare flexyBayes with the same stored fits.
+
+## The call
+
+Most arguments and terms carry over unchanged.
+
+| ASReml-R | flexyBayes | Engine |
+|----|----|----|
+| `asreml(fixed = yield ~ gen, random = ~ rep, data = d)` | `flexybayes(fixed = yield ~ gen, random = ~ rep, data = d)` | INLA or brms |
+| `random = ~ rep + rep:block` | the same | INLA or brms |
+| `random = ~ diag(env):gen`, `~ at(env):gen` | the same | INLA or brms |
+| `random = ~ at(design, "split"):mainplot` | the same | INLA or brms |
+| `random = ~ us(env):gen` | the same | brms |
+| `residual = ~ dsum(~ units \| env)` | the same | INLA or brms |
+| `random = ~ diag(trial):gen`, `residual = ~ dsum(~ units \| trial)` on many trials | the same, but INLA uses empirical Bayes past 15 variance parameters | INLA or brms |
+| none: ASReml estimates each trial’s variances on their own | `prior = fb_prior(sd(group = "trial:gen", by = "trial") ~ pooled(...))` | brms |
+| `random = ~ units`, `residual = ~ ar1(row):ar1(col)` | `random = ~ ar1(row):ar1(col)` | INLA |
+| `residual = ~ ar1(row):ar1(col)`, with no `units` | the same | INLA |
+| `random = ~ at(trial):ar1(row):ar1(col)` | the same | INLA |
+| `weights = wt` (a column name) | `weights = d$wt` (a vector) | INLA or brms |
+| `predict(m, classify = "gen")`, `gen` fixed or random | `predict(fit, classify = "gen")` | INLA or brms |
+| a trial the fit has not seen | `predict(fit, newdata = d_new, allow_new_levels = TRUE, mean_by = ~ trial)` | INLA or brms |
+| `vpredict(m, h2 ~ V1 / (V1 + V2))` | `vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))` | INLA or brms |
+| `summary(m)$varcomp` | `summary(fit)$varcomp` | INLA or brms |
+
+Three differences run through the rest of the page.
+
+- **Standard deviations, not variances.** flexyBayes reports every
+  variance component as a standard deviation, under a name:
+
+  | ASReml `summary(m)$varcomp` row | flexyBayes component |
+  |----|----|
+  | `rep`, `rep:block`, `gen` | `sd_rep`, `sd_rep:block`, `sd_gen` |
+  | `units!R` | `sigma` |
+  | `env:gen!env_C1` (from [`diag()`](https://rdrr.io/r/base/diag.html) or `at()`) | `sd_gen__envC1` |
+  | `at(DESIGN, 'split'):MAINPLOT` | `sd_MAINPLOT__DESIGNsplit` |
+  | `env_C1!R` (from `dsum()`) | `sigma_C1` |
+  | the `us()` covariance of `C1` and `C2` | `cor_gen__envC1__envC2`, a correlation |
+  | `ROW:RANGE!ROW!cor`, `ROW:RANGE!RANGE!cor` | `rho_ROW`, `rho_RANGE` |
+  | `ROW:RANGE!R` (an AR1 x AR1 residual) | `sd_spatial` |
+
+  To compare with ASReml’s `component`, square the posterior median of
+  the standard deviation. The medians are in
+  `attr(fit$extras$variance_comps, "posterior_median")`.
+
+- **Names, not positions, in
+  [`vpredict()`](https://aagi-aus.github.io/flexyBayes/reference/vpredict.md).**
+  ASReml numbers the components `V1`, `V2`, … in the order
+  [`summary()`](https://rdrr.io/r/base/summary.html) prints them.
+  flexyBayes uses the names `summary(fit)$varcomp` reports.
+
+- **A posterior, not a REML estimate.** In `summary(fit)$varcomp`,
+  `estimate` is the posterior mean of the standard deviation, which is
+  not the square root of the mean variance, and `conf.low` and
+  `conf.high` are a 95% credible interval. The last section says what
+  that changes.
+
+## An alpha design
+
+`john.alpha` (from `agridat`) has 24 genotypes in three replicates, with
+blocks nested within replicates. Genotype is fixed, and replicate and
+block are random:
+
+``` r
+
+data(john.alpha, package = "agridat")
+
+fit_alpha <- flexybayes(
+  fixed = yield ~ gen,
+  random = ~ rep + rep:block,
+  data = john.alpha,
+  verbose = FALSE
+)
+#> Warning: flexyBayes: a variance component in this fit is weakly identified:
+#> sd_rep (95% interval 0.167 to 3.15, 66% of its prior's probability, 4.91 times
+#> its median). Its 95% interval spans 40% or more of its prior's probability, or
+#> is 4.24 or more times its posterior median, so the data say little about the
+#> reported value. Common causes are a grouping factor with few levels and a
+#> random term that splits the rows as a fixed term already does. Report the
+#> component as weakly identified, not as an estimate, state a prior you can
+#> defend with fb_prior(), or remove the term the data cannot separate.
+#> summary(fit)$varcomp marks the row `weakly identified`. Silence via
+#> options(flexyBayes.silence_weak_identification_warning = TRUE).
+summary(fit_alpha)$varcomp[, c("component", "estimate", "conf.low",
+                               "conf.high", "note")]
+#>      component  estimate  conf.low conf.high              note
+#> 1        sigma 0.2996943 0.2321706 0.3848505                  
+#> 2       sd_rep 0.8698708 0.1668384 3.1545241 weakly identified
+#> 3 sd_rep:block 0.2681673 0.1421129 0.4469493
+```
+
+ASReml, asreml(yield ~ gen, random = ~ rep + rep:block):
+
+``` r
+
+rnd(ref$fits[["02_nested_stratum"]]$varcomp)
+#>        term component std.error bound
+#> 1       rep    0.1140    0.1270     P
+#> 2 rep:block    0.0620    0.0366     P
+#> 3   units!R    0.0852    0.0219     P
+```
+
+On the variance scale the posterior medians beside the REML estimates
+are:
+
+``` r
+
+med <- attr(fit_alpha$extras$variance_comps, "posterior_median")
+data.frame(
+  component = c("rep", "rep:block", "residual"),
+  asreml = ref$fits[["02_nested_stratum"]]$varcomp$component,
+  flexybayes = unname(med[c("sd_rep", "sd_rep:block", "sigma")]^2)
+)
+#>   component     asreml flexybayes
+#> 1       rep 0.11396119 0.37033237
+#> 2 rep:block 0.06195183 0.06736870
+#> 3  residual 0.08523612 0.08796735
+```
+
+The residual and block variances agree to within 10%. The replicate
+variance does not, and the fit says why: with three replicates the data
+barely identify it, and the `note` column marks `sd_rep` as
+`weakly identified`. ASReml says the same in its own terms, with a
+standard error larger than the estimate.
+
+Genotype means, as ASReml’s `predict(m, classify = "gen")` returns them:
+
+``` r
+
+p <- predict(fit_alpha, classify = "gen")
+asr <- ref$fits[["02_nested_stratum"]]$predict_gen
+both <- data.frame(
+  gen = asr$gen,
+  asreml = asr$predicted.value,
+  asreml_se = asr$std.error,
+  flexybayes = p$estimate[match(asr$gen, p$gen)],
+  flexybayes_sd = p$std.error[match(asr$gen, p$gen)]
+)
+rnd(head(both))
+#>   gen asreml asreml_se flexybayes flexybayes_sd
+#> 1 G01   5.11     0.276       5.11         0.627
+#> 2 G02   4.48     0.276       4.48         0.627
+#> 3 G03   3.50     0.276       3.50         0.628
+#> 4 G04   4.49     0.276       4.49         0.627
+#> 5 G05   5.04     0.276       5.04         0.627
+#> 6 G06   4.54     0.276       4.54         0.628
+max(abs(both$flexybayes - both$asreml))
+#> [1] 0.001461847
+```
+
+The means agree to within 0.0015. The posterior standard deviations are
+more than twice ASReml’s standard errors. ASReml’s prediction standard
+error holds the variance components at their REML estimates. The
+posterior averages over them, and here its replicate variance is both
+larger (median 0.37 against 0.11) and uncertain. The table above holds
+standard errors of the means, not of differences between genotypes.
+
+With genotype random, `predict(classify = "gen")` returns each
+genotype’s fixed part, averaged over replicates, plus its random effect,
+as ASReml’s default [`predict()`](https://rdrr.io/r/stats/predict.html)
+does. The block effects are left out (`Ignored: block` in the print):
+
+``` r
+
+fit_alpha_r <- flexybayes(yield ~ rep, random = ~ gen + rep:block,
+                          data = ref_cr$data$rcb, verbose = FALSE)
+p_r <- predict(fit_alpha_r, classify = "gen")
+p_r
+#> Predicted values: gen  (95% credible interval)
+#> Estimate = posterior mean of the fixed part plus gen. Not an SED table.
+#> Averaged over: rep
+#> Ignored: block
+#>  gen estimate std.error conf.low conf.high
+#>  G01   4.9765    0.1890   4.6020    5.3451
+#>  G02   4.4848    0.1839   4.1232    4.8466
+#>  G03   3.7023    0.1959   3.3223    4.0921
+#>  G04   4.4854    0.1843   4.1229    4.8479
+#>  G05   4.9505    0.1867   4.5815    5.3156
+#>  G06   4.5234    0.1861   4.1573    4.8892
+#>  G07   4.1736    0.1854   3.8104    4.5395
+#>  G08   4.5416    0.1879   4.1722    4.9111
+#>  G09   3.6767    0.1970   3.2943    4.0682
+#>  G10   4.3908    0.1841   4.0292    4.7531
+#>  G11   4.2850    0.1856   3.9202    4.6500
+#>  G12   4.7026    0.1861   4.3358    5.0677
+#>  G13   4.7096    0.1847   4.3455    5.0718
+#>  G14   4.7209    0.1893   4.3478    5.0920
+#>  G15   4.9004    0.1872   4.5307    5.2670
+#>  G16   4.6785    0.1847   4.3142    5.0407
+#>  G17   4.5565    0.1857   4.1906    4.9210
+#>  G18   4.3705    0.1846   4.0075    4.7338
+#>  G19   4.7672    0.1856   4.4008    5.1306
+#>  G20   4.1436    0.1901   3.7713    4.5187
+#>  G21   4.7328    0.1850   4.3677    5.0952
+#>  G22   4.5034    0.1849   4.1393    4.8666
+#>  G23   4.3038    0.1851   3.9407    4.6688
+#>  G24   4.2278    0.1856   3.8643    4.5944
+```
+
+ASReml, `asreml(yield ~ rep, random = ~ gen + rep:block)`, on the same
+rows:
+
+``` r
+
+asr_r <- ref_cr$rcb_blk$gen
+i <- match(asr_r$gen, p_r$gen)
+rnd(data.frame(
+  max_diff_in_se = max(abs(p_r$estimate[i] - asr_r$predicted.value) /
+                         asr_r$std.error),
+  sd_over_se_min = min(p_r$std.error[i] / asr_r$std.error),
+  sd_over_se_max = max(p_r$std.error[i] / asr_r$std.error)
+))
+#>   max_diff_in_se sd_over_se_min sd_over_se_max
+#> 1         0.0413           1.04           1.12
+```
+
+Every prediction is within 0.041 ASReml standard errors of ASReml’s
+value. The posterior standard deviations are 4 to 12% larger than
+ASReml’s standard errors, because they include the uncertainty in the
+variance components.
+
+## Genotype variances by environment
+
+`besag.met` has 64 genotypes in six counties, three replicates in each.
+`diag(env):gen` fits one genotype variance per county with no
+covariance, and `at(env):gen` is the same model in both systems.
+[`summary()`](https://rdrr.io/r/base/summary.html) reports the same
+structure for both spellings, and ASReml reaches the same log-likelihood
+for both:
+
+``` r
+
+data(besag.met, package = "agridat")
+besag <- besag.met[!is.na(besag.met$yield), ]
+besag$env <- factor(besag$county)
+
+fit_diag <- flexybayes(yield ~ env, random = ~ diag(env):gen,
+                       data = besag, verbose = FALSE)
+fit_at <- flexybayes(yield ~ env, random = ~ at(env):gen,
+                     data = besag, verbose = FALSE)
+c(diag = summary(fit_diag)$model, at = summary(fit_at)$model)
+#>                     diag                       at 
+#> "G: at_simple; R: units" "G: at_simple; R: units"
+
+c(asreml_diag = ref$fits[["03_diag_gxe"]]$loglik,
+  asreml_at = ref$fits[["03_diag_gxe"]]$at$loglik)
+#> asreml_diag   asreml_at 
+#>   -3998.193   -3998.193
+```
+
+Adding `residual = ~ dsum(~ units | env)` gives each county its own
+residual variance:
+
+``` r
+
+fit_met <- flexybayes(yield ~ env, random = ~ diag(env):gen,
+                      residual = ~ dsum(~ units | env),
+                      data = besag, verbose = FALSE)
+med <- attr(fit_met$extras$variance_comps, "posterior_median")
+asr <- ref$fits[["05_combined_met"]]$varcomp
+fb_names <- c(paste0("sd_gen__envC", 1:6), paste0("sigma_C", 1:6))
+notes <- summary(fit_met)$varcomp
+data.frame(
+  asreml_term = asr$term,
+  asreml = round(asr$component, 1),
+  se_ratio = round(asr$std.error / asr$component, 2),
+  bound = asr$bound,
+  flexybayes_median_sq = round(unname(med[fb_names])^2, 1),
+  note = notes$note[match(fb_names, notes$component)]
+)
+#>       asreml_term asreml se_ratio bound flexybayes_median_sq note
+#> 1  env:gen!env_C1   13.4     1.77     P                 16.6     
+#> 2  env:gen!env_C2   22.6     1.16     P                 23.9     
+#> 3  env:gen!env_C3   42.6     0.75     P                 42.0     
+#> 4  env:gen!env_C4   26.1     0.89     P                 26.3     
+#> 5  env:gen!env_C5   57.9     0.42     P                 58.2     
+#> 6  env:gen!env_C6    0.0       NA     B                  5.7     
+#> 7        env_C1!R  299.2     0.12     P                296.1     
+#> 8        env_C2!R  315.2     0.12     P                313.7     
+#> 9        env_C3!R  347.7     0.12     P                348.5     
+#> 10       env_C4!R  266.2     0.12     P                265.9     
+#> 11       env_C5!R  210.7     0.12     P                211.7     
+#> 12       env_C6!R  709.1     0.10     P                712.5
+```
+
+`se_ratio` is ASReml’s standard error divided by its estimate. The six
+residual variances agree to within about 1%. Of the genotype variances
+only `C5` has a REML standard error under half its estimate, and it
+agrees: 57.9 against 58.2. ASReml puts the `C6` variance on the boundary
+at zero (`bound` `B`). A posterior does not put mass exactly at zero, so
+the two answers differ there by construction. The other four have REML
+standard errors between 0.75 and 1.77 times their estimates, and none of
+them is flagged in the `note` column.
+
+## An effect on chosen levels: at(f, level)
+
+`at(f, level):g` fits the random effect `g` for the named levels of `f`
+only, with one variance per level. The stored ASReml fit is six
+simulated trials, three of them split-plot, with a main-plot effect in
+the split-plot trials only:
+
+``` r
+
+fit_lev <- flexybayes(y ~ TRIAL + VARIETY,
+                      random = ~ TRIAL:REP + at(DESIGN, "split"):MAINPLOT,
+                      data = ref_at$data$at_level, verbose = FALSE)
+med <- attr(fit_lev$extras$variance_comps, "posterior_median")
+asr <- ref_at$fits$at_level$varcomp
+data.frame(
+  asreml_term = asr$term,
+  asreml = signif(asr$component, 3),
+  flexybayes_median_sq = signif(
+    unname(med[c("sd_TRIAL:REP", "sd_MAINPLOT__DESIGNsplit", "sigma")])^2, 3
+  )
+)
+#>                    asreml_term asreml flexybayes_median_sq
+#> 1                    TRIAL:REP 0.0966                0.112
+#> 2 at(DESIGN, 'split'):MAINPLOT 0.3120                0.317
+#> 3                      units!R 0.1560                0.157
+```
+
+The main-plot and residual variances agree to within 2%. The replicate
+variance differs by 16%, and ASReml’s standard error for it is half its
+estimate.
+
+## Many trials, one variance each: empirical Bayes
+
+A series of trials with its own genotype-by-trial variance and its own
+residual variance in each trial has two variance parameters per trial.
+On 12 trials that is 26, past the 15 INLA integrates over. flexyBayes
+then fits the model on INLA by empirical Bayes: the fixed and random
+effects are conditional on the posterior mode of the variance
+parameters, and each variance keeps its own posterior. The stored ASReml
+fit is 12 simulated trials of 30 genotypes:
+
+``` r
+
+fit_c <- flexybayes(y ~ VARIETY,
+                    random = ~ TRIAL + TRIAL:REP + diag(TRIAL):VARIETY,
+                    residual = ~ dsum(~ units | TRIAL),
+                    data = ref_c$data, verbose = FALSE)
+backend_decision(fit_c)$reason
+#> [1] "lgm_gate() accepted, INLA dispatch by empirical Bayes (int.strategy = \"eb\"), past the hyperparameter budget."
+grep("Inference", utils::capture.output(print(fit_c)), value = TRUE)
+#> [1] "  Inference: empirical Bayes (INLA int.strategy = \"eb\"): the fixed and random effects are conditional on the posterior mode of the variance parameters; each variance component keeps its own posterior. 26 variance parameters, above the 15 INLA integrates over."
+```
+
+Per-trial variances from both systems, and the largest difference in
+ASReml standard errors:
+
+``` r
+
+med <- attr(fit_c$extras$variance_comps, "posterior_median")
+trials <- names(ref_c$asreml$gxe_var)
+a <- ref_c$asreml
+rnd(data.frame(
+  trial = trials,
+  gxe_asreml = a$gxe_var,
+  gxe_se_ratio = a$gxe_se / a$gxe_var,
+  gxe_flexybayes = unname(med[paste0("sd_VARIETY__TRIAL", trials)]^2),
+  res_asreml = a$res_var,
+  res_flexybayes = unname(med[paste0("sigma_", trials)]^2),
+  row.names = NULL
+), 2)
+#>    trial gxe_asreml gxe_se_ratio gxe_flexybayes res_asreml res_flexybayes
+#> 1    T01     0.0520         0.72          0.054      0.190          0.190
+#> 2    T02     0.0013        31.00          0.019      0.340          0.330
+#> 3    T03     0.0770         0.94          0.087      0.470          0.470
+#> 4    T04     0.1500         0.51          0.150      0.330          0.330
+#> 5    T05     0.2100         0.35          0.220      0.160          0.160
+#> 6    T06     0.0750         0.43          0.077      0.086          0.088
+#> 7    T07     0.2700         0.32          0.290      0.130          0.130
+#> 8    T08     0.2200         0.37          0.230      0.220          0.220
+#> 9    T09     0.6300         0.37          0.660      0.660          0.670
+#> 10   T10     0.4600         0.32          0.480      0.220          0.230
+#> 11   T11     0.0200         2.00          0.029      0.300          0.290
+#> 12   T12     0.0270         1.30          0.033      0.230          0.230
+ident <- a$gxe_se / a$gxe_var < 0.5
+gap_g <- abs(med[paste0("sd_VARIETY__TRIAL", trials)]^2 - a$gxe_var) / a$gxe_se
+gap_r <- abs(med[paste0("sigma_", trials)]^2 - a$res_var) / a$res_se
+c(gxe = max(gap_g[ident]), residual = max(gap_r))
+#>       gxe  residual 
+#> 0.1648056 0.1551686
+```
+
+ASReml identifies 6 of the 12 genotype-by-trial variances (standard
+error under half the estimate). Each of those, and every residual
+variance, is within 0.16 ASReml standard errors of ASReml’s estimate.
+The other 6 genotype-by-trial variances have REML standard errors of
+half their estimate or more, and there the two systems can differ, as on
+`besag.met` above.
+
+## Per-trial variances partially pooled
+
+ASReml’s model C estimates each trial’s genotype-by-trial variance and
+residual variance on its own. flexyBayes can pool them instead: the log
+standard deviations of a block share a normal distribution whose mean
+and standard deviation are estimated, so a trial with little information
+borrows from the others. Either set can be pooled without the other:
+
+``` r
+
+pooled_prior <- fb_prior(
+  sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
+    pooled(scale = half_normal(scale = 0.5)),
+  sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))
+)
+plan_p <- fb_plan(y ~ VARIETY,
+                  random = ~ TRIAL + TRIAL:REP + diag(TRIAL):VARIETY,
+                  residual = ~ dsum(~ units | TRIAL),
+                  data = ref_c$data, priors = pooled_prior)
+plan_p$backend_chosen
+#> [1] "brms"
+plan_p$pooled
+#> [1] "per-trial SDs partially pooled"
+```
+
+`scale` is the prior on the pooling standard deviation and has no
+default. Only brms fits the model, and `backend = "auto"` sends it
+there.
+
+A pooled fit is not ASReml’s model C. On the 12 trials above, with a
+unit half-normal prior on each pooling standard deviation, the posterior
+median of T06’s residual variance was 0.099 against ASReml’s 0.086, a
+shift of 0.81 ASReml standard errors, and the largest genotype-by-trial
+variance, T09’s, came down from 0.632 to 0.550. The pooling standard
+deviation of the log residual standard deviations had a posterior median
+of 0.28, where the data were simulated with 0.35. The printed fit is
+labelled “per-trial SDs partially pooled”.
+
+## A sectioned residual and vpredict()
+
+`yan.winterwheat` has 18 genotypes in nine environments. The model has
+one genotype variance and one residual variance per environment. The
+functional is the genotype variance as a share of the genotype plus
+residual variance in environment `BH93`:
+
+``` r
+
+data(yan.winterwheat, package = "agridat")
+
+fit_yan <- flexybayes(yield ~ env, random = ~ gen,
+                      residual = ~ dsum(~ units | env),
+                      data = yan.winterwheat, verbose = FALSE)
+set.seed(1)
+vpredict(fit_yan, gen_share_BH93 ~ sd_gen^2 / (sd_gen^2 + sigma_BH93^2))
+#>       functional estimate    median std.error  conf.low conf.high
+#> 1 gen_share_BH93  0.41004 0.4043962 0.1249205 0.1843519 0.6658103
+```
+
+ASReml, `vpredict(m, gen_share_BH93 ~ V1 / (V1 + V2))`, where `V1` is
+the genotype variance and `V2` the residual variance in `BH93`:
+
+``` r
+
+rnd(ref$fits[["04_dsum_residual"]]$vpredict)
+#>       functional estimate std.error
+#> 1 gen_share_BH93    0.405     0.125
+```
+
+The posterior median and the REML estimate agree to the second decimal.
+
+## Unstructured covariance: us()
+
+`us(env):gen` estimates every genotype variance and every covariance
+between environments. flexyBayes fits estimated correlation matrices on
+brms only, and INLA refuses the term by name:
+
+``` r
+
+two <- droplevels(besag[besag$env %in% c("C1", "C2"), ])
+res <- tryCatch(
+  flexybayes(yield ~ env, random = ~ us(env):gen, data = two,
+             backend = "inla", verbose = FALSE),
+  error = function(e) e
+)
+class(res)[1]
+#> [1] "flexybayes_refusal_correlated_covariance_requires_brms"
+```
+
+Under the default `backend = "auto"` the model goes to brms:
+
+``` r
+
+fit_us <- flexybayes(yield ~ env, random = ~ us(env):gen, data = two,
+                     chains = 4, seed = 2026, verbose = FALSE,
+                     mcmc_verbose = FALSE)
+summary(fit_us)$varcomp[, c("component", "estimate", "conf.low",
+                            "conf.high")]
+#>               component   estimate   conf.low  conf.high
+#> 1         sd_gen__envC1  4.1040897  0.3257840  8.1942393
+#> 2         sd_gen__envC2  5.0481076  0.5229694  9.4461844
+#> 3 cor_gen__envC1__envC2  0.4820631 -0.7030246  0.9863628
+#> 4                 sigma 17.4949755 16.1280584 19.0000183
+```
+
+The `prior` column of `summary(fit_us)$varcomp` reads `engine default`
+for the correlation, which is brms’s LKJ prior. ASReml’s estimates
+(`bound` `?` marks the `us()` parameters) and its genetic correlation
+with the standard error
+[`vpredict()`](https://aagi-aus.github.io/flexyBayes/reference/vpredict.md)
+gives:
+
+``` r
+
+rnd(ref$fits[["06_us_dim2"]]$varcomp)
+#>                term component std.error bound
+#> 1 env:gen!env_C1:C1      22.4      24.1     ?
+#> 2 env:gen!env_C2:C1      26.2      16.7     ?
+#> 3 env:gen!env_C2:C2      33.7      25.6     ?
+#> 4           units!R     297.0      25.9     P
+rnd(ref$fits[["06_us_dim2"]]$correlations)
+#>              functional estimate std.error
+#> 1 cor_gen__envC1__envC2    0.954     0.763
+```
+
+The residual variance agrees to within about 3% (`sigma` squared against
+`units!R`). The genetic correlation does not, and neither system pins it
+down. ASReml’s estimate of 0.95 carries a standard error of 0.76, and
+ASReml adjusted its update 9 times to keep the matrix positive definite
+(the count is stored with the fit). The posterior interval for the
+correlation covers most of the range from -1 to 1. On two counties of 64
+genotypes the data say little about it.
+
+## Autoregressive fields
+
+On the random side, `ar1(row):ar1(col)` is a separable autoregressive
+field over the plot grid, fitted on INLA together with an independent
+plot error (the nugget). In ASReml the same model is usually written
+`random = ~ units, residual = ~ ar1(row):ar1(col)`. This page has no
+stored ASReml fit for it.
+
+``` r
+
+data(gilmour.serpentine, package = "agridat")
+serp <- gilmour.serpentine
+serp$row <- factor(serp$row)
+serp$col <- factor(serp$col)
+
+fit_field <- flexybayes(yield ~ rep, random = ~ gen + ar1(row):ar1(col),
+                        data = serp, verbose = FALSE)
+summary(fit_field)$spatial_field
+#>                         parameter      median       lower       upper
+#> 1 correlation along row (rho_row)   0.9890324   0.9704036   0.9962942
+#> 2 correlation along col (rho_col)   0.8062943   0.5390735   0.9287542
+#> 3          field SD (sigma_field) 190.2227807 109.5873345 345.4879599
+#> 4             nugget SD (sigma_e)  41.1773030  35.7047855  47.5723757
+```
+
+The same correlations appear in `summary(fit)$varcomp` as `rho_row` and
+`rho_col`, each named after the factor it runs along.
+
+ASReml’s `residual = ~ ar1(row):ar1(col)` without `units` is a different
+model: one correlated residual with no independent plot error.
+flexyBayes fits it on INLA when it is written on the residual side, for
+a Gaussian response. The stored ASReml fit is one simulated trial of 16
+rows and 10 ranges:
+
+``` r
+
+fit_res <- flexybayes(y ~ VARIETY, residual = ~ ar1(ROW):ar1(RANGE),
+                      data = ref_at$data$one_trial, verbose = FALSE)
+med <- attr(fit_res$extras$variance_comps, "posterior_median")
+asr <- ref_at$fits$one_trial$varcomp
+data.frame(
+  asreml_term = asr$term,
+  asreml = signif(asr$component, 3),
+  flexybayes = signif(c(med[["sd_spatial"]]^2, med[["rho_ROW"]],
+                        med[["rho_RANGE"]]), 3)
+)
+#>           asreml_term asreml flexybayes
+#> 1         ROW:RANGE!R  0.605      0.621
+#> 2   ROW:RANGE!ROW!cor  0.574      0.581
+#> 3 ROW:RANGE!RANGE!cor  0.405      0.409
+```
+
+The field variance (`sd_spatial` squared) and both correlations agree to
+within 3%, and the fit has no `sigma` row.
+
+`at(trial):ar1(row):ar1(col)` fits a separate field on each trial, with
+its own standard deviation and both correlations. On three simulated
+trials:
+
+``` r
+
+fit_at3 <- flexybayes(y ~ TRIAL + VARIETY,
+                      random = ~ at(TRIAL):ar1(ROW):ar1(RANGE),
+                      data = ref_at$data$at_field, verbose = FALSE)
+med <- attr(fit_at3$extras$variance_comps, "posterior_median")
+asr <- ref_at$fits$at_field$varcomp
+fb <- c(paste0(c("sd_spatial", "rho_ROW", "rho_RANGE"),
+               rep(paste0("__TRIAL", c("T1", "T2", "T3")), each = 3)),
+        "sigma")
+fb_value <- ifelse(startsWith(fb, "rho"), med[fb], med[fb]^2)
+data.frame(
+  asreml_term = asr$term,
+  asreml = signif(asr$component, 3),
+  flexybayes = signif(fb_value, 3)
+)
+#>                            asreml_term asreml flexybayes
+#> 1            at(TRIAL, 'T1'):ROW:RANGE  0.649      0.666
+#> 2    at(TRIAL, 'T1'):ROW:RANGE!ROW!cor  0.720      0.723
+#> 3  at(TRIAL, 'T1'):ROW:RANGE!RANGE!cor  0.179      0.177
+#> 4            at(TRIAL, 'T2'):ROW:RANGE  0.234      0.241
+#> 5    at(TRIAL, 'T2'):ROW:RANGE!ROW!cor  0.463      0.453
+#> 6  at(TRIAL, 'T2'):ROW:RANGE!RANGE!cor  0.465      0.460
+#> 7            at(TRIAL, 'T3'):ROW:RANGE  0.923      0.941
+#> 8    at(TRIAL, 'T3'):ROW:RANGE!ROW!cor  0.806      0.804
+#> 9  at(TRIAL, 'T3'):ROW:RANGE!RANGE!cor  0.512      0.508
+#> 10                             units!R  0.107      0.105
+max(abs(fb_value / asr$component - 1))
+#> [1] 0.03060834
+```
+
+Both columns give variances, not standard deviations, for the field and
+residual rows. Every parameter is within 4% of ASReml’s estimate.
+
+## Predicting a trial the fit has not seen
+
+`predict(fit, newdata, allow_new_levels = TRUE)` predicts trials or
+counties the fit did not see. Levels the fit did not see get effects
+drawn from their fitted variances, and levels it saw keep their
+posterior effects. The prediction includes the residual.
+`mean_by = ~ env` returns the mean of each county’s rows. Here the fit
+leaves out county `C6`:
+
+``` r
+
+train <- droplevels(besag[besag$env != "C6", ])
+new <- besag[besag$env == "C6", ]
+fit_nl <- flexybayes(yield ~ 1, random = ~ env + gen + env:gen,
+                     data = train, verbose = FALSE)
+set.seed(1)
+p_nl <- predict(fit_nl, newdata = new, allow_new_levels = TRUE,
+                mean_by = ~ env)
+p_nl
+#> Posterior predictive: mean over the rows of each env  (95% predictive interval)
+#> Levels the fit did not see are drawn from their fitted variances, and the residual is included.
+#>  env n_rows estimate    sd  lower upper
+#>   C6    192    110.1 66.23 -24.93 243.7
+mean(new$yield)
+#> [1] 87.64269
+```
+
+The interval is wide because only five counties inform it. The observed
+mean of `C6` falls inside it. The draws are in `attr(p_nl, "draws")`,
+and [`set.seed()`](https://rdrr.io/r/base/Random.html) makes the result
+repeat. `mean_by = ~ env + gen` gives one row per genotype in the new
+county:
+
+``` r
+
+dim(attr(p_nl, "draws"))
+#> [1] 1000    1
+set.seed(1)
+identical(p_nl, predict(fit_nl, newdata = new, allow_new_levels = TRUE,
+                        mean_by = ~ env))
+#> [1] TRUE
+set.seed(1)
+nrow(predict(fit_nl, newdata = new, allow_new_levels = TRUE,
+             mean_by = ~ env + gen))
+#> [1] 64
+```
+
+## What flexyBayes refuses
+
+A model the package cannot fit faithfully stops with a condition whose
+class names the reason. Each call below is refused on this version:
+
+``` r
+
+refused <- function(...) {
+  res <- tryCatch(flexybayes(..., verbose = FALSE), error = function(e) e)
+  sub("^flexybayes_refusal_", "", class(res)[1])
+}
+d <- besag
+c(
+  fa = refused(yield ~ env, random = ~ fa(env, 1):gen, data = d),
+  corh = refused(yield ~ env, random = ~ corh(env):gen, data = d),
+  dsum_ar1 = refused(yield ~ env, random = ~ gen,
+                     residual = ~ dsum(~ ar1(rep) | env), data = d),
+  us_on_inla = refused(yield ~ env, random = ~ us(env):gen, data = two,
+                       backend = "inla"),
+  field_twice = refused(yield ~ rep, random = ~ gen + ar1(row):ar1(col),
+                        residual = ~ ar1(row):ar1(col), data = serp),
+  residual_ar1_1d = refused(yield ~ rep, random = ~ gen,
+                            residual = ~ ar1(row), data = serp),
+  at_field_brms = refused(y ~ TRIAL + VARIETY,
+                          random = ~ at(TRIAL):ar1(ROW):ar1(RANGE),
+                          data = ref_at$data$at_field, backend = "brms")
+)
+#>                                       fa 
+#>         "factor_analytic_not_repeatable" 
+#>                                     corh 
+#> "corh_no_equicorrelation_representation" 
+#>                                 dsum_ar1 
+#>      "dsum_structured_inner_unsupported" 
+#>                               us_on_inla 
+#>    "correlated_covariance_requires_brms" 
+#>                              field_twice 
+#>         "ar1_residual_with_random_field" 
+#>                          residual_ar1_1d 
+#>         "ar1_residual_not_representable" 
+#>                            at_field_brms 
+#>        "stan_cannot_represent_ar1_field"
+```
+
+| ASReml construct | Why flexyBayes refuses it | What to write instead |
+|----|----|----|
+| `fa(env, k):gen` | On simulated trials with a known covariance, the genetic-correlation intervals of INLA fits covered the true value less often than required, and there is no factor-analytic lowering for brms (`inst/TRANSLATION.md` has the measurements) | `diag(env):gen`, or `us(env):gen` on brms for a few environments |
+| `corh(env):gen` | No lowering on either engine | `diag(env):gen`, or `us(env):gen` on brms |
+| `dsum(~ ar1(x) \| env)` | Reducing it to one variance per section would drop the structure written | `dsum(~ units \| env)` |
+| `us(env):gen` with `backend = "inla"` | On INLA the fitted covariance did not match REML and changed when the response was rescaled (`inst/TRANSLATION.md`) | `backend = "auto"` or `"brms"` |
+| `random = ~ ar1(row):ar1(col)` with `residual = ~ ar1(row):ar1(col)` | The same field written twice | one of the two |
+| `residual = ~ ar1(t)` | A one-dimensional residual with no nugget, which flexyBayes does not fit | `random = ~ ar1(t)`, which adds an independent plot error |
+| `at(trial):ar1(row):ar1(col)` with `backend = "brms"` | brms has no AR1 x AR1 field | `backend = "inla"` |
+
+flexyBayes stops on ASReml’s
+[`predict()`](https://rdrr.io/r/stats/predict.html) arguments `present`,
+`average`, `ignore`, `sed` and `vcov` instead of ignoring them:
+
+``` r
+
+asreml_args <- list(present = "rep", average = "rep", ignore = "block",
+                    sed = TRUE, vcov = TRUE)
+vapply(names(asreml_args), function(a) {
+  res <- tryCatch(
+    do.call(predict, c(list(fit_alpha_r, classify = "gen"), asreml_args[a])),
+    error = function(e) e
+  )
+  sub("^flexybayes_refusal_", "", class(res)[1])
+}, character(1))
+#>                           present                           average 
+#> "classify_argument_not_supported" "classify_argument_not_supported" 
+#>                            ignore                               sed 
+#> "classify_argument_not_supported" "classify_argument_not_supported" 
+#>                              vcov 
+#> "classify_argument_not_supported"
+```
+
+## Reading a posterior beside REML
+
+- **Point estimates.** REML maximises a restricted likelihood, and its
+  estimate is close to the posterior mode under flat priors. A posterior
+  median is the middle of a distribution. Under the package’s weakly
+  informative default prior it typically sits above the REML estimate of
+  a variance when the data say little. Compare the squared posterior
+  median of a standard deviation with ASReml’s `component`.
+  [`vpredict()`](https://aagi-aus.github.io/flexyBayes/reference/vpredict.md)
+  reports a `median` column for any function of the components.
+- **Standard errors and intervals.** ASReml’s standard error of a
+  variance component is asymptotic and symmetric, so an interval built
+  from it can run below zero. A credible interval cannot, and for a
+  poorly determined variance it is skewed to the right. For predictions,
+  ASReml holds the variance components at their estimates and the
+  posterior does not.
+- **Boundaries.** ASReml reports a variance it fixes at zero with
+  `bound` `B`. A posterior does not put mass exactly at zero, so the two
+  systems differ there by construction.
+- **Weak identification.** On INLA fits, `summary(fit)$varcomp` marks a
+  component `weakly identified` when its 95% credible interval still
+  covers 40% or more of the prior’s probability, that is, when the data
+  have barely narrowed the prior, or when the interval is 4.24 or more
+  times the posterior median on the standard deviation. Report such a
+  component as weakly identified, not as an estimate. A large ASReml
+  standard error relative to the component tells the same story, but the
+  two checks do not always agree, as the `besag.met` counties above
+  show.
+- **Priors.** The default prior on every standard deviation is a
+  half-normal scaled to the response, stated in a note when the model is
+  fitted.
+  [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)
+  sets others.
+- **Convergence.** `summary(fit)$converge` holds R-hat, effective sample
+  sizes and divergent transitions for a brms fit, and the mode status
+  and marginal likelihood for an INLA fit.
+- **Fixed effects.** On the six shapes fitted on INLA in the package’s
+  tests, every fixed effect’s posterior mean lies within 0.02 standard
+  errors (ASReml’s) of the REML estimate.
+
+## Where the comparisons come from
+
+`data-raw/asreml_parity.R` fits the eight shapes of the package’s ASReml
+oracle suite: an iid intercept, nested strata, relative weights,
+`diag(env):gen` (with `at(env):gen`), a `dsum()` residual, the two
+together, and `us(env):gen` on two and three counties. The tests in
+`tests/testthat/test-asreml-parity.R` refit each with flexyBayes, six on
+INLA and the two `us()` shapes on brms, and require fixed effects within
+a quarter of ASReml’s standard error and variance components within 15%
+wherever ASReml’s standard error is under half its estimate.
+
+The other stored fits on this page come from
+`data-raw/asreml_classify_random.R` (genotype predictions with genotype
+random), `data-raw/model_c_reference.R` (the 12 trials) and
+`data-raw/at_ar1_reference.R` (the `at()` effects and fields). Their
+tests are `test-predict-classify-random.R`,
+`test-model-c-per-trial-variances.R` and `test-at-fields.R`.
+
+Known relationship matrices, `vm(gen, K)`, are covered in *The ASReml
+syntax flexyBayes covers*, with the rest of the syntax.

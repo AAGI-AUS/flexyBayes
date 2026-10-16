@@ -1,0 +1,125 @@
+# ASReml and flexyBayes on the same trials
+
+This vignette compares ASReml and flexyBayes on one public trial, first
+as laid out and then reduced in size. The ASReml results were computed
+with ASReml 4.2.0.392 under R version 4.5.2 (2025-10-31) on 2026-09-10
+by `data-raw/asreml_reference.R`, and are stored in the package, so this
+page builds without an ASReml licence.
+
+## The whole trial
+
+`john.alpha` has 24 genotypes, three replicates, and blocks nested
+within replicates. The two calls are written the same way:
+
+|  | ASReml | flexyBayes |
+|----|----|----|
+| model | `asreml(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` | `flexybayes(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` |
+| heritability | `vpredict(m, h2 ~ V2/(V2 + V3))` | `vpredict(fit, h2 ~ sd_gen^2/(sd_gen^2 + sigma^2))` |
+
+``` r
+
+data(john.alpha, package = "agridat")
+
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla",
+  verbose = FALSE
+)
+
+vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
+#>   functional  estimate    median std.error  conf.low conf.high
+#> 1         h2 0.6377657 0.6434589 0.1013271 0.4270362    0.8204
+```
+
+ASReml:
+
+``` r
+
+rnd(asreml_ref$alpha[1, ])
+#>                         design  n    h2    se lower upper
+#> 1 24 genotypes, 3 reps (whole) 72 0.636 0.108 0.425 0.848
+```
+
+Both give a heritability of about 0.64, with similar intervals.
+
+## Smaller trials
+
+The same trial is now reduced, first by keeping fewer genotypes and then
+by dropping plots at random. ASReml:
+
+``` r
+
+rnd(asreml_ref$alpha)
+#>                           design  n    h2    se  lower upper
+#> 1   24 genotypes, 3 reps (whole) 72 0.636 0.108  0.425 0.848
+#> 2           12 genotypes, 3 reps 36 0.058 0.302 -0.533 0.649
+#> 3            8 genotypes, 3 reps 24 0.177 0.385 -0.578 0.932
+#> 4            6 genotypes, 3 reps 18 0.000 0.641 -1.256 1.256
+#> 5 25% of plots dropped at random 54 0.491 0.179  0.141 0.841
+#> 6 50% of plots dropped at random 36 0.408 0.305 -0.190 1.006
+#> 7 65% of plots dropped at random 25 0.476 0.278 -0.069 1.020
+```
+
+With 12 genotypes the lower limit is -0.53. With 6 genotypes the
+interval runs from -1.26 to 1.26. A heritability lies between 0 and 1,
+so these limits are outside its range. They come from the delta method,
+whose normal approximation fails when a variance component is near zero.
+
+flexyBayes on the same designs:
+
+``` r
+
+degrade <- function(n_gen = NULL, drop_frac = NULL) {
+  d <- john.alpha
+  if (!is.null(n_gen)) {
+    d <- droplevels(subset(d, gen %in% levels(d$gen)[seq_len(n_gen)]))
+  }
+  if (!is.null(drop_frac)) {
+    set.seed(2026)
+    d <- droplevels(d[-sample(nrow(d), round(drop_frac * nrow(d))), ])
+  }
+  d
+}
+
+designs <- list(
+  "24 genotypes, 3 reps (whole)"    = degrade(),
+  "12 genotypes, 3 reps"            = degrade(n_gen = 12),
+  "6 genotypes, 3 reps"             = degrade(n_gen = 6),
+  "50% of plots dropped at random"  = degrade(drop_frac = 0.50),
+  "65% of plots dropped at random"  = degrade(drop_frac = 0.65)
+)
+
+out <- do.call(rbind, lapply(names(designs), function(nm) {
+  f <- flexybayes(yield ~ rep, random = ~ rep:block + gen,
+                  data = designs[[nm]], backend = "inla", verbose = FALSE)
+  v <- vpredict(f, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
+  data.frame(design = nm, n = nrow(designs[[nm]]),
+             h2 = v$estimate, lower = v$conf.low, upper = v$conf.high)
+}))
+rnd(out)
+#>                           design  n    h2 lower upper
+#> 1   24 genotypes, 3 reps (whole) 72 0.638 0.422 0.816
+#> 2           12 genotypes, 3 reps 36 0.682 0.398 0.896
+#> 3            6 genotypes, 3 reps 18 0.755 0.369 0.965
+#> 4 50% of plots dropped at random 36 0.398 0.050 0.799
+#> 5 65% of plots dropped at random 25 0.290 0.013 0.785
+```
+
+Every interval lies between 0 and 1, because every posterior draw does.
+The intervals for the reduced designs are wider than for the whole
+trial.
+
+With 6 genotypes the data say little about the genetic variance. ASReml
+estimates it as zero, while the posterior stays away from zero because
+of the prior. If the true genetic variance were near zero, the prior
+would hold the estimate too high. The posterior interval is not
+guaranteed to be right, but it contains only possible values.
+
+## Summary
+
+On the whole trial the two methods agree. On smaller trials, and for
+quantities near a boundary such as a small variance, the posterior
+interval stays within the parameter’s range and the delta-method
+interval may not.

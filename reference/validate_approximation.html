@@ -3,12 +3,12 @@
 structure was lost to its approximation scheme, measured against the
 scheme's declared pass threshold. It is the user-facing entry to the
 per-scheme validation procedure registered for every approximate
-route; the contract surfaces the realised error number while the
+route, the contract surfaces the realised error number while the
 user keeps the accept / re-fit judgement."><meta property="og:description" content="validate_approximation() reports how much of a fitted model's
 structure was lost to its approximation scheme, measured against the
 scheme's declared pass threshold. It is the user-facing entry to the
 per-scheme validation procedure registered for every approximate
-route; the contract surfaces the realised error number while the
+route, the contract surfaces the realised error number while the
 user keeps the accept / re-fit judgement."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -17,7 +17,7 @@ user keeps the accept / re-fit judgement."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,19 +25,16 @@ user keeps the accept / re-fit judgement."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -61,7 +58,7 @@ user keeps the accept / re-fit judgement."></head><body>
 structure was lost to its approximation scheme, measured against the
 scheme's declared pass threshold. It is the user-facing entry to the
 per-scheme validation procedure registered for every approximate
-route; the contract surfaces the realised error number while the
+route, the contract surfaces the realised error number while the
 user keeps the accept / re-fit judgement.</p>
     </div>
 
@@ -100,17 +97,17 @@ fit, the procedure reports the realised Frobenius capture
 against the default pass threshold of <code>0.99</code>, where \(d_i\) are
 the singular values of the full smooth basis.</p>
 <p>A fit carrying no recognised approximation (an exact fit) is
-refused rather than returned as a vacuous pass.</p>
+refused instead of returned as a vacuous pass.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="flexybayes.html">flexybayes()</a></code> for fitting; the approximation registry
+    <div class="dont-index"><p><code><a href="flexybayes.html">flexybayes()</a></code> for fitting. The approximation registry
 records each scheme's bias bound and fallback.</p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># An exact fit (no registered approximation) refuses rather than</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># An exact fit (no registered approximation) refuses instead of</span></span></span>
 <span class="r-in"><span><span class="co"># returning a vacuous pass. \donttest{} + an INLA guard: this needs</span></span></span>
 <span class="r-in"><span><span class="co"># a live fit and does not fire on a machine without INLA installed.</span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
@@ -127,7 +124,7 @@ records each scheme's bias bound and fallback.</p></div>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The low_rank_smooth verdict shape, on a plan-only object carrying</span></span></span>
 <span class="r-in"><span><span class="co"># the scheme (no active engine reaches low_rank_smooth on the</span></span></span>
-<span class="r-in"><span><span class="co"># current backends -- it was built for a since-withdrawn engine and</span></span></span>
+<span class="r-in"><span><span class="co"># current backends: it was built for a since-withdrawn engine and</span></span></span>
 <span class="r-in"><span><span class="co"># now refuses at dispatch; see R/emit_smooth_low_rank.R). This part</span></span></span>
 <span class="r-in"><span><span class="co"># needs no engine and always runs.</span></span></span>
 <span class="r-in"><span><span class="va">demo_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure</a></span><span class="op">(</span></span></span>
@@ -159,7 +156,7 @@ records each scheme's bias bound and fallback.</p></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

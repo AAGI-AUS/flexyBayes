@@ -4,15 +4,15 @@ quantities a plant breeder acts on: each genotype's overall performance
 (the across-environment mean of its realised effects) and stability (the
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
-realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries would be
+realised effects are identified, invariant to the rotation and sign
+ambiguity of the raw loadings, so their posterior summaries would be
 interpretable."><meta property="og:description" content="For a fa(env, k):gen factor-analytic G x E fit, summarise the
 quantities a plant breeder acts on: each genotype's overall performance
 (the across-environment mean of its realised effects) and stability (the
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
-realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries would be
+realised effects are identified, invariant to the rotation and sign
+ambiguity of the raw loadings, so their posterior summaries would be
 interpretable."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -21,7 +21,7 @@ interpretable."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,19 +29,16 @@ interpretable."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -66,8 +63,8 @@ quantities a plant breeder acts on: each genotype's overall performance
 (the across-environment mean of its realised effects) and stability (the
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
-realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries would be
+realised effects are identified, invariant to the rotation and sign
+ambiguity of the raw loadings, so their posterior summaries would be
 interpretable.</p>
     </div>
 
@@ -86,7 +83,7 @@ interpretable.</p>
 
 <dt id="arg-genotype-levels-environment-levels">genotype_levels, environment_levels<a class="anchor" aria-label="anchor" href="#arg-genotype-levels-environment-levels"></a></dt>
 <dd><p>Optional character labels for
-the inner (genotype) and outer (environment) factors; unused (see
+the inner (genotype) and outer (environment) factors. Unused (see
 Lifecycle).</p></dd>
 
 </dl></div>
@@ -99,9 +96,9 @@ refusal.</p>
     <h2 id="lifecycle">Lifecycle<a class="anchor" aria-label="anchor" href="#lifecycle"></a></h2>
 
 
-<p>No active engine emits an <code>fa(env, k):gen</code> term – both INLA and brms
-refuse a factor-analytic structured-covariance term before a fit object
-exists – so this function always abstains (<code>met_summary_not_available</code>).
+<p>No active engine fits an <code>fa(env, k):gen</code> term: both refuse it with
+<code>factor_analytic_not_repeatable</code>. This function therefore always abstains
+(<code>met_summary_not_available</code>).
 What an active engine does report for a multi-environment trial is the
 variance components, through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, and on brms the
 genotype-by-environment covariance of a <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> or <code>us()</code> term through
@@ -109,8 +106,8 @@ genotype-by-environment covariance of a <code><a href="https://rdrr.io/r/base/di
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="fb_structured_cov.html">fb_structured_cov()</a></code> for the identified environment covariance
-and its convergence diagnostic.</p></div>
+    <div class="dont-index"><p><code><a href="vpredict.html">vpredict()</a></code> for posterior functionals of the variance
+components, including genetic correlations.</p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -118,7 +115,7 @@ and its convergence diagnostic.</p></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

@@ -6,7 +6,7 @@ once to estimate the variance components by REML, then — holding
 those components fixed (the P3D approximation of Kang et al. 2010) —
 tests every marker by exact generalised least squares in the eigenbasis
 of the relationship matrix. The single eigendecomposition is the shared
-spectral primitive; each marker is then an O(n) weighted-least-squares
+spectral primitive. Each marker is then an O(n) weighted-least-squares
 score test, so a whole-genome scan is feasible without a per-marker
 model fit."><meta property="og:description" content="Test each marker for association with a phenotype while correcting for
 polygenic background and population / family structure via a genomic
@@ -15,7 +15,7 @@ once to estimate the variance components by REML, then — holding
 those components fixed (the P3D approximation of Kang et al. 2010) —
 tests every marker by exact generalised least squares in the eigenbasis
 of the relationship matrix. The single eigendecomposition is the shared
-spectral primitive; each marker is then an O(n) weighted-least-squares
+spectral primitive. Each marker is then an O(n) weighted-least-squares
 score test, so a whole-genome scan is feasible without a per-marker
 model fit."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -25,7 +25,7 @@ model fit."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,19 +33,16 @@ model fit."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -72,7 +69,7 @@ once to estimate the variance components by REML, then — holding
 those components fixed (the P3D approximation of Kang et al. 2010) —
 tests every marker by exact generalised least squares in the eigenbasis
 of the relationship matrix. The single eigendecomposition is the shared
-spectral primitive; each marker is then an <code>O(n)</code> weighted-least-squares
+spectral primitive. Each marker is then an <code>O(n)</code> weighted-least-squares
 score test, so a whole-genome scan is feasible without a per-marker
 model fit.</p>
     </div>
@@ -93,7 +90,7 @@ with <code>- 1</code>). Use <code>y ~ 1</code> for an intercept-only background.
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>A data frame with the response and covariates; one row per
+<dd><p>A data frame with the response and covariates. One row per
 individual (the association unit).</p></dd>
 
 
@@ -109,10 +106,10 @@ marker. Column names are used as marker identifiers.</p></dd>
 \(G = Z_c Z_c^\top / m\), the average-allele-frequency genomic
 relationship (Astle &amp; Balding 2009). This normalises by the marker
 count <code>m</code>, unlike VanRaden's (2008) first method, which divides by
-\(2\sum_j p_j(1 - p_j)\); the two coincide only when every marker has
+\(2\sum_j p_j(1 - p_j)\). The two coincide only when every marker has
 minor-allele frequency 0.5 and otherwise differ by a constant scale that
 the REML variance ratio absorbs, so the scan statistics are unaffected.
-Note that building <code>K</code> from the same markers being tested causes <em>proximal
+Building <code>K</code> from the same markers being tested causes <em>proximal
 contamination</em>: a marker's own signal enters the polygenic term and
 deflates its test statistic (conservative, but a power loss). For a
 well-calibrated scan supply <code>K</code> from an independent background panel
@@ -175,11 +172,11 @@ predictions. <em>Journal of Dairy Science</em>, 91(11), 4414-4423.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 179 snp179  0.5263342 0.3437879  2.343916 1.257730e-01 1.000000e+00</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          q_value</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 50  4.009512e-17</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 98  9.851189e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 199 9.851189e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 159 9.851189e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 129 9.851189e-01</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 179 9.851189e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 98  9.851188e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 199 9.851188e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 159 9.851188e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 129 9.851188e-01</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 179 9.851188e-01</span>
 <span class="r-in"><span><span class="va">scan</span><span class="op">$</span><span class="va">lambda_gc</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5870781</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
@@ -190,7 +187,7 @@ predictions. <em>Journal of Dairy Science</em>, 91(11), 4414-4423.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

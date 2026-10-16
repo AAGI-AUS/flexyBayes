@@ -2,7 +2,7 @@
 
 Names an approximation scheme and its tuning, validated against the
 package's locked approximation registry. The result is consumed where an
-approximate representation is accepted – most directly in a smooth term,
+approximate representation is accepted, most directly in a smooth term,
 `s(x, representation = fb_approx("low_rank_smooth", rank = 5L))`.
 
 ## Usage
@@ -16,7 +16,7 @@ fb_approx(scheme, ...)
 - scheme:
 
   Character(1): the approximation-scheme name. Must be a scheme
-  registered in the approximation registry; an unregistered name is
+  registered in the approximation registry. An unregistered name is
   refused with the supported vocabulary.
 
 - ...:
@@ -35,7 +35,7 @@ scheme's bias bound.
 The only scheme with a smooth-basis fitting path in this release is
 `"low_rank_smooth"`, a rank-`K` principal-component truncation of the
 smooth basis. Its bias is the relative squared Frobenius error of the
-truncation (Wood, 2017, chapter 5);
+truncation (Wood, 2017, chapter 5).
 [`validate_approximation()`](https://aagi-aus.github.io/flexyBayes/reference/validate_approximation.md)
 reports the realised capture against the threshold for a fitted model.
 

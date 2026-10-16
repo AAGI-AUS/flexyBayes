@@ -3,12 +3,12 @@
 a vectorised, domain-safe, unnormalised log-posterior callable that
 proxymix::from_fb_posterior() compresses into a closed-form
 Gaussian-mixture proxy. It is the single inference-result outflow from
-flexyBayes; the contract is the log-density, not the draws, so the
+flexyBayes, the contract is the log-density, not the draws, so the
 returned object is addressed purely through its callable."><meta property="og:description" content="Turns a fitted flexyBayes object into a log-posterior producer:
 a vectorised, domain-safe, unnormalised log-posterior callable that
 proxymix::from_fb_posterior() compresses into a closed-form
 Gaussian-mixture proxy. It is the single inference-result outflow from
-flexyBayes; the contract is the log-density, not the draws, so the
+flexyBayes, the contract is the log-density, not the draws, so the
 returned object is addressed purely through its callable."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -17,7 +17,7 @@ returned object is addressed purely through its callable."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,19 +25,16 @@ returned object is addressed purely through its callable."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -61,7 +58,7 @@ returned object is addressed purely through its callable."></head><body>
 a vectorised, domain-safe, unnormalised log-posterior callable that
 <code>proxymix::from_fb_posterior()</code> compresses into a closed-form
 Gaussian-mixture proxy. It is the single inference-result outflow from
-flexyBayes; the contract is the <em>log-density</em>, not the draws, so the
+flexyBayes, the contract is the <em>log-density</em>, not the draws, so the
 returned object is addressed purely through its callable.</p>
     </div>
 
@@ -85,13 +82,13 @@ returned object is addressed purely through its callable.</p>
 
 <dl><dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
 <dd><p>A fitted flexyBayes object. Every current backend class
-abstains; the generic and its methods are retained so a consumer can
-dispatch on the abstention rather than discovering the gap by a
+abstains, the generic and its methods are retained so a consumer can
+dispatch on the abstention instead of discovering the gap by a
 missing method.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Reserved for future producer options; currently unused.</p></dd>
+<dd><p>Reserved for future producer options. Currently unused.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -108,19 +105,19 @@ parameters, in <code>attr(., "parameter_names")</code> order, on the natural
 (constrained) scale. Its output is a length-<code>nrow(theta_matrix)</code> numeric
 vector of <code>log p(theta | data) + const</code> (unnormalised). The callable is
 vectorised, side-effect free, and domain-safe: a row outside the
-parameters' support returns <code>-Inf</code> rather than raising an error (the
+parameters' support returns <code>-Inf</code> instead of raising an error (the
 consumer probes it at construction). It carries, as attributes:</p>
 <dl><dt><code>parameter_names</code></dt>
-<dd><p>Character vector naming the parameters; its
+<dd><p>Character vector naming the parameters. Its
 length fixes the proxy's ambient dimension. Vector-valued targets
 are flattened in column-major order with index suffixes (e.g.
 <code>beta[1,1]</code>, <code>beta[2,1]</code>).</p></dd>
 
 <dt><code>log_normalizer</code></dt>
-<dd><p>The additive correction that would normalise
-the density, i.e. <code>-log Z</code>. For a posterior the marginal likelihood
-is generally unknown, so this is <code>NA_real_</code> and the consumer
-reports a shifted (not absolute) divergence.</p></dd>
+<dd><p>The log normalising constant <code>log Z</code>, the log
+of the integral of the unnormalised density. For a posterior this is
+the log marginal likelihood, generally unknown, so this is <code>NA_real_</code>
+and the consumer reports a shifted (not absolute) divergence.</p></dd>
 
 <dt><code>support_lower</code>, <code>support_upper</code></dt>
 <dd><p>Length-<code>n_dim</code> numeric support
@@ -132,17 +129,17 @@ default importance proposal.</p></dd>
 <dt><code>draws</code></dt>
 <dd><p>An <code>n</code> by <code>n_dim</code> numeric matrix of the fit's posterior
 draws on the natural scale, column-aligned to <code>parameter_names</code>.
-Used only to seed the consumer's default proposal; never required.</p></dd>
+Used only to seed the consumer's default proposal. Never required.</p></dd>
 
 
 </dl><p>Backend support. No active backend produces a real C4 log-density today.
 The <strong>brms</strong> and <strong>INLA</strong> backends both abstain with an informative
-condition – brms's log-density lives on the Stan unconstrained scale
+condition: brms's log-density lives on the Stan unconstrained scale
 with a version-fragile name mapping, and INLA's posterior is a
 deterministic approximation, not a sampling log-density. Abstaining is
 preferred to emitting a plausible-but-wrong log-density.</p>
 <p>Acyclic note. A consumer such as proxymix uses this callable without
-depending on flexyBayes; flexyBayes does not list proxymix in <code>Imports</code>
+depending on flexyBayes, flexyBayes does not list proxymix in <code>Imports</code>
 or <code>Suggests</code>. The cross-package demonstration lives in a separate
 integration harness, not in this package, preserving the acyclic
 dependency graph.</p>
@@ -151,11 +148,11 @@ dependency graph.</p>
     <h2 id="lifecycle">Lifecycle<a class="anchor" aria-label="anchor" href="#lifecycle"></a></h2>
 
 
-<p>No active backend produces a real C4 log-density; both <code>flexybayes_brms</code>
+<p>No active backend produces a real C4 log-density. Both <code>flexybayes_brms</code>
 and <code>flexybayes_inla</code> fits abstain with the classed condition
 <code>fb_c4_unavailable</code>, for the reasons given above. The generic and its
-methods are retained so a consumer can dispatch on the abstention rather
-than discovering the gap by a missing method.</p>
+methods are retained so a consumer can dispatch on the abstention instead
+of discovering the gap by a missing method.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -168,7 +165,7 @@ the returned callable into a Gaussian-mixture proxy).</p></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

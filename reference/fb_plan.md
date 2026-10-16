@@ -63,7 +63,7 @@ fb_plan(
 
   An optional
   [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)
-  list. Defaults to the uniform-on-SD default the fit would inject.
+  list. Defaults to the half-normal-on-SD default the fit would inject.
 
 - known_matrices:
 
@@ -105,7 +105,8 @@ fb_plan(
 
 - ...:
 
-  Currently unused, reserved for future plan inputs.
+  Not used. Any argument `fb_plan()` does not take, such as a misspelt
+  name, is refused with `plan_argument_unknown`.
 
 ## Value
 
@@ -123,17 +124,13 @@ Accepts either grammar
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 accepts: a single brms-style two-sided formula
 (`y ~ x + s(z) + (1 | g)`), or the ASReml triple (`formula` as the
-fixed-effects side, plus `random` / `residual`). Before 0.9.3,
-`fb_plan()` was brms-formula-only and silently dropped `random` /
-`residual` into its unused `...` when a caller supplied them
-ASReml-style, planning a fixed-effects-only model and reporting a
-backend the full model would not reach live (FS-22). Both spellings now
-route through the same grammar detection
+fixed-effects side, plus `random` / `residual`). Both spellings route
+through the same grammar detection
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 uses (`syntax = "auto"` by default), so
 `fb_plan(y ~ x, random = ..., residual = ..., data = ...)` and
 `flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)`
-plan the identical model. Note the two spellings of the fixed part:
+plan the identical model. The two spellings of the fixed part differ:
 `fb_plan()` takes it positionally as `formula`, the entry point takes it
 as `fixed`.
 
@@ -170,7 +167,7 @@ print(p1)
 #>   Engine:                  NA
 #> ==========================================================
 
-# ASReml-style grammar plans the identical model (FS-22 parity).
+# ASReml-style grammar plans the identical model.
 p2 <- fb_plan(y ~ x, random = ~ g, data = d)
 identical(p1$backend_chosen, p2$backend_chosen)
 #> [1] TRUE

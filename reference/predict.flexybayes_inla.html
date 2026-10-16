@@ -15,7 +15,7 @@ for average predictions and slopes."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,19 +23,16 @@ for average predictions and slopes."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -50,7 +47,7 @@ for average predictions and slopes."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Population-level predictions from a per-row INLA fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/methods_inla.R" class="external-link"><code>R/methods_inla.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/methods_inla.R" class="external-link"><code>R/methods_inla.R</code></a>, <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/predict_new_levels.R" class="external-link"><code>R/predict_new_levels.R</code></a></small>
       <div class="d-none name"><code>predict.flexybayes_inla.Rd</code></div>
     </div>
 
@@ -72,8 +69,16 @@ for average predictions and slopes.</p>
 <span>  se.fit <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  classify <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  allow_new_levels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  mean_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_draws <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  re_formula <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  summary <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  <span class="va">...</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'fb_predict_new'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, digits <span class="op">=</span> <span class="fl">4L</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -85,8 +90,11 @@ for average predictions and slopes.</p>
 
 
 <dt id="arg-newdata">newdata<a class="anchor" aria-label="anchor" href="#arg-newdata"></a></dt>
-<dd><p>Optional data frame; defaults to the fit data. Ignored,
-with a warning, when <code>classify</code> is supplied.</p></dd>
+<dd><p>Optional data frame. Defaults to the fit data. Ignored,
+with a warning, when <code>classify</code> is supplied. On a model with an
+<code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> the prediction includes the offset evaluated on <code>newdata</code>,
+so <code>newdata</code> needs every column the offset reads. An absent one
+refuses with <code>newdata_offset_missing</code> instead of being taken as zero.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -99,34 +107,124 @@ the fixed-effect covariance.</p></dd>
 
 
 <dt id="arg-classify">classify<a class="anchor" aria-label="anchor" href="#arg-classify"></a></dt>
-<dd><p>The factors to break a marginal-means table down by:
+<dd><p>The factors to break a predicted-value table down by:
 a character value (<code>"Variety"</code>, <code>"Variety:env"</code>) or a one-sided
-formula (<code>~ Variety</code>). <code>NULL</code> (the default) is the historical
-behaviour.</p></dd>
+formula (<code>~ Variety</code>). The factors may be fixed or random. <code>NULL</code>
+(the default) is the historical behaviour.</p></dd>
 
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
-<dd><p>Credible level for the classify table's interval, as a
-proportion. Default <code>0.95</code>.</p></dd>
+<dd><p>Credible level for the classify table's interval, or for the
+predictive interval with <code>allow_new_levels = TRUE</code>, as a proportion.
+Default <code>0.95</code>.</p></dd>
+
+
+<dt id="arg-allow-new-levels">allow_new_levels<a class="anchor" aria-label="anchor" href="#arg-allow-new-levels"></a></dt>
+<dd><p>Logical. <code>FALSE</code> (the default) is the
+population-level prediction above. <code>TRUE</code> returns the posterior
+predictive of the rows of <code>newdata</code> (see Details), in which every random
+effect enters: a level the fit saw at its posterior draw, and a level it
+did not see drawn from its fitted variance component.</p></dd>
+
+
+<dt id="arg-mean-by">mean_by<a class="anchor" aria-label="anchor" href="#arg-mean-by"></a></dt>
+<dd><p>With <code>allow_new_levels = TRUE</code>, the columns of <code>newdata</code>
+whose combinations define the sets of rows to average: a character
+vector or a one-sided formula. <code>mean_by = ~ TRIAL</code> predicts each trial
+mean, <code>~ TRIAL + VARIETY + NRATE</code> each cell mean. <code>NULL</code> (the default)
+predicts each row.</p></dd>
+
+
+<dt id="arg-n-draws">n_draws<a class="anchor" aria-label="anchor" href="#arg-n-draws"></a></dt>
+<dd><p>With <code>allow_new_levels = TRUE</code>, the number of posterior
+draws. Default <code>1000</code>.</p></dd>
+
+
+<dt id="arg-re-formula">re_formula<a class="anchor" aria-label="anchor" href="#arg-re-formula"></a></dt>
+<dd><p><code>NA</code> (the default): the prediction is population-level,
+the fixed part of the model, as <code>re_formula = NA</code> gives on a brms fit.
+Any other value refuses with <code>method_argument_not_supported</code>. <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>
+returns the predictions at the fitted levels of the random effects.</p></dd>
+
+
+<dt id="arg-summary">summary<a class="anchor" aria-label="anchor" href="#arg-summary"></a></dt>
+<dd><p><code>TRUE</code> (the default): the prediction is the posterior
+mean. <code>FALSE</code> refuses with <code>method_argument_not_supported</code>.
+<code><a href="fb_as_draws_simple.html">fb_as_draws_simple()</a></code> returns the posterior draws.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Ignored. Present for compatibility with the generic.</p></dd>
+<dd><p>Ignored, except that an argument of ASReml's <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>
+given with <code>classify</code> is refused by name.</p></dd>
+
+
+<dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
+<dd><p>An <code>fb_predict_new</code> table, printed with a banner naming what its
+numbers are.</p></dd>
+
+
+<dt id="arg-digits">digits<a class="anchor" aria-label="anchor" href="#arg-digits"></a></dt>
+<dd><p>Number of significant digits for the printed table.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>With <code>classify</code>, a data frame of class <code>fb_predict_classify</code>.
-Otherwise a numeric vector of predictions, or a list <code>fit</code> /
-<code>se.fit</code> when <code>se.fit = TRUE</code>.</p>
+With <code>allow_new_levels = TRUE</code>, a data frame of class <code>fb_predict_new</code>:
+one row per set, holding the <code>mean_by</code> columns (or <code>row</code>), <code>n_rows</code>,
+<code>estimate</code>, <code>sd</code>, <code>lower</code> and <code>upper</code> (and <code>status</code> on a fit with
+<code>fixed_alias = "drop"</code>, where a set holding a row the fit does not
+estimate is <code>NA</code>), with the joint predictive draws, draws by sets, in
+<code>attr(, "draws")</code>. Otherwise a numeric vector of predictions, or a list
+<code>fit</code> / <code>se.fit</code> when <code>se.fit = TRUE</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The <code>classify</code> path builds a marginal-means table through the emmeans
-seam (the same construction <code><a href="predict.flexybayes_brms.html">predict.flexybayes_brms()</a></code> uses), whose
-interval on this engine comes from the Gaussian approximation of the
-joint fixed-effect posterior rather than from INLA's own marginals.
-The printed table names that.</p>
+    <p>With <code>gen</code> random, <code>classify = "gen"</code> returns each genotype's fixed part
+plus its random effect, and on a multi-environment fit with <code>gen:env</code>
+random it also adds that genotype's <code>gen:env</code> effects averaged over
+environments. This matches ASReml's default <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>: equal-weight
+averaging over the fixed-term variables not in <code>classify</code>, a covariate
+held at its mean, variables that appear only in random terms ignored, and
+every random term whose variables are all in <code>classify</code> or averaged over
+included. The intervals integrate over INLA's hyperparameter
+configurations, so they include the uncertainty in the variance
+components. A table with no random term is computed by emmeans, with
+intervals from the Gaussian approximation of the fixed-effect
+posterior. The arguments of
+ASReml's <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> that change these rules (<code>present</code>, <code>average</code>,
+<code>ignore</code>, <code>use</code>, <code>except</code>, <code>only</code>, <code>associate</code>, <code>levels</code>, <code>vcov</code>, <code>sed</code>,
+<code>parallel</code>, <code>aliased</code>, <code>design.points</code>) are refused with
+<code>classify_argument_not_supported</code>.</p>
+<p>With <code>allow_new_levels = TRUE</code>, the prediction for a set of rows is the
+mean response over them, observation noise included, as an observed trial
+or cell mean at a new locality would be. Given one posterior draw it is
+normal, with mean <code>x'beta</code> averaged over the rows plus the mean of the
+effects at levels the fit saw, and variance the sum over random terms of
+<code>sigma^2 * sum_l (n_l / n)^2</code> over the unseen levels <code>l</code> (<code>n_l</code> of the <code>n</code>
+rows at level <code>l</code>), plus <code>sigma_field^2</code> times the mean AR1 x AR1
+correlation over pairs of rows in a trial the fit did not see, plus the
+residual variance over <code>n</code>. The prediction is the mixture of these normals
+over the draws: <code>estimate</code> and <code>sd</code> are its exact mean and standard
+deviation, and <code>lower</code> and <code>upper</code> its quantiles. The fixed effects and the
+seen effects are drawn jointly from INLA's approximation, and the variances
+from their continuous joint posterior (as <code><a href="fb_variance_draws.html">fb_variance_draws()</a></code> draws
+them). Every random number comes from R's generator, so <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> before
+the call makes the result repeatable.</p>
+<p>The new-level draw is built for random intercepts, interactions
+(<code>TRIAL:REP</code>), <code>diag(f):g</code> and <code>id(trial):ar1(row):ar1(col)</code>, over an
+independent residual or <code>dsum(~ units | f)</code>, for a Gaussian response on the
+identity link. Any other structure is refused with
+<code>predict_new_levels_structure_not_supported</code>, a new level with no fitted
+variance (a new level of <code>f</code> in <code>diag(f):g</code>, a new residual section, a row
+or column off the fitted lattice) with <code>predict_new_levels_no_variance</code>,
+and another family with <code>predict_new_levels_family_not_supported</code>.</p>
+<p>On a fit with <code>fixed_alias = "drop"</code>, a row that is not a linear
+combination of the rows the model was fitted to has no estimable
+prediction: it is returned as <code>NA</code>, and the <code>status</code> attribute (a
+<code>status</code> element with <code>se.fit = TRUE</code>, a <code>status</code> column with
+<code>classify</code>) reads <code>"Aliased"</code> there and <code>"Estimable"</code> elsewhere, as in
+asreml's <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -134,7 +232,7 @@ The printed table names that.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

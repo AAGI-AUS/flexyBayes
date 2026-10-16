@@ -15,7 +15,7 @@ the default fb_engine() for that engine.'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,19 +23,16 @@ the default fb_engine() for that engine.'></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -77,7 +74,8 @@ the default <code>fb_engine()</code> for that engine.</p>
 
 <dt id="arg-opts">opts<a class="anchor" aria-label="anchor" href="#arg-opts"></a></dt>
 <dd><p>Named list of tuning options. Recognised names are
-<code>n_samples</code>, <code>warmup</code>, <code>chains</code>; an unrecognised name is an error.</p></dd>
+<code>n_samples</code>, <code>warmup</code>, <code>chains</code> and <code>adapt_delta</code>, described under
+"Recognised options" below. An unrecognised name is an error.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -95,8 +93,41 @@ the default <code>fb_engine()</code> for that engine.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>name</code> and the derived <code>paradigm</code> are closed vocabularies. <code>"auto"</code>
-is a routing directive, not an engine; pass <code>backend = "auto"</code>
+is a routing directive, not an engine. Pass <code>backend = "auto"</code>
 directly for automatic routing.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="recognised-options">Recognised options<a class="anchor" aria-label="anchor" href="#recognised-options"></a></h2>
+
+
+
+<p>All four are sampler controls, read by the routes that emit through
+Stan and ignored by the rest. An unrecognised name is an error at
+construction, not a silently dropped argument.</p>
+<dl><dt><code>n_samples</code></dt>
+<dd><p>Post-warmup draws to keep, per chain.</p></dd>
+
+<dt><code>warmup</code></dt>
+<dd><p>Warmup iterations, per chain.</p></dd>
+
+<dt><code>chains</code></dt>
+<dd><p>Number of chains.</p></dd>
+
+<dt><code>adapt_delta</code></dt>
+<dd><p>Target acceptance probability for Stan's
+step-size adaptation, between 0 and 1. Raising it makes the sampler
+take smaller steps, which costs time and removes the divergent
+transitions a smaller step would have avoided. brms's own default is
+0.8.</p></dd>
+
+
+</dl></div>
+    <div class="section level2">
+    <h2 id="deprecated">Deprecated<a class="anchor" aria-label="anchor" href="#deprecated"></a></h2>
+
+
+<p><code>fb_engine()</code> is deprecated as of 0.13.0. Pass the backend and engine
+settings directly to <code><a href="flexybayes.html">flexybayes()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -105,11 +136,11 @@ directly for automatic routing.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">e</span> <span class="op">&lt;-</span> <span class="fu">fb_engine</span><span class="op">(</span><span class="st">"brms"</span>, chains <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">e</span><span class="op">$</span><span class="va">paradigm</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "mcmc"</span>
-<span class="r-in"><span><span class="va">e</span><span class="op">$</span><span class="va">toolchain_status</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "requires_install"</span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu"><a href="flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, x <span class="op">=</span> <span class="fl">4</span><span class="op">:</span><span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   backend <span class="op">=</span> <span class="st">"brms"</span>, chains <span class="op">=</span> <span class="fl">4L</span>, plan <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 6.455) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.</span>
+<span class="r-in"><span><span class="va">plan</span><span class="op">$</span><span class="va">backend_chosen</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "brms"</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -117,7 +148,7 @@ directly for automatic routing.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

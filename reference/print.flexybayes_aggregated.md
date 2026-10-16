@@ -5,7 +5,9 @@ Brief one-screen summary of a fit produced by
 `fb_brms(..., aggregate = ...)`. The header names the fit's own family
 (`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`).
 Includes the `exactness` field and the cell compression ratio (when N/K
-\>= 2).
+\>= 2), and the versions, threads and seed the fit ran with, as
+[`print.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/print.flexybayes.md)
+prints them.
 
 ## Usage
 

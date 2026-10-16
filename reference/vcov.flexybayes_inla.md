@@ -1,11 +1,14 @@
 # Posterior covariance of a per-row INLA fit's fixed effects
 
-Monte-Carlo estimate of the joint posterior covariance of the fixed
-effects, computed from `inla.posterior.sample()`. The marginal standard
-deviations match `summary.fixed$sd`; the off-diagonals carry the joint
-dependence that contrast / marginal-mean standard errors require.
-Because the estimate is sampling-based it varies slightly between calls;
-raise `n_samples` for a tighter estimate.
+The joint posterior covariance of the fixed effects, the matrix that
+contrast and marginal-mean standard errors need. It is computed exactly
+from the Gaussian approximations INLA stores for the fit, averaged over
+INLA's hyperparameter configurations, so it involves no random draws:
+every call on the same fit returns the same matrix and the session's
+random number stream is left untouched. It is the covariance of the
+draws `INLA::inla.posterior.sample()` would give, without their Monte
+Carlo error. The standard deviations on its diagonal agree closely with
+`summary.fixed$sd`, which comes from INLA's marginal densities.
 
 ## Usage
 
@@ -22,7 +25,9 @@ vcov(object, n_samples = 2000L, ...)
 
 - n_samples:
 
-  Posterior sample size for the covariance estimate (default 2000).
+  Not used, as the covariance is exact. Accepted so that calls written
+  for earlier versions, which estimated the matrix from `n_samples`
+  posterior draws, still run.
 
 - ...:
 
@@ -30,5 +35,5 @@ vcov(object, n_samples = 2000L, ...)
 
 ## Value
 
-Posterior covariance matrix of the fixed effects, with `summary.fixed`
-rownames as dimnames.
+Posterior covariance matrix of the fixed effects, with the coefficient
+names of [`coef()`](https://rdrr.io/r/stats/coef.html) as dimnames.

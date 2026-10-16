@@ -17,7 +17,7 @@ print(x, ...)
 
 - ...:
 
-  Currently unused; present for generic compatibility.
+  Currently unused. Present for generic compatibility.
 
 ## Value
 

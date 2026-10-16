@@ -19,7 +19,7 @@ approximation."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,19 +27,16 @@ approximation."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -92,8 +89,9 @@ approximation.</p>
 
 <dl><dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
 <dd><p>A two-sided formula <code>response ~ fixed_terms</code>. The fixed
-terms must be factors or factor interactions; a continuous term
-forces one cell per row and is refused.</p></dd>
+terms must be factors or factor interactions. A continuous term
+forces one cell per row and is refused. <code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> terms are allowed
+on the Gaussian and Poisson families (see Details).</p></dd>
 
 
 <dt id="arg-random">random<a class="anchor" aria-label="anchor" href="#arg-random"></a></dt>
@@ -103,9 +101,9 @@ ASReml style (for example <code>~ geno</code>), or <code>NULL</code> for no rand
 
 <dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
 <dd><p>The data source. One of: a length-1 character path to an
-<code>.fst</code> file; a length-1 character path to a delimited file readable
-by <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code>; an in-memory <code>data.frame</code> / <code>data.table</code>
-(chunked internally, mainly for testing); or a function of one
+<code>.fst</code> file, a length-1 character path to a delimited file readable
+by <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code>, an in-memory <code>data.frame</code> / <code>data.table</code>
+(chunked internally, mainly for testing), or a function of one
 argument <code>i</code> returning the <code>i</code>-th chunk as a <code>data.frame</code> and <code>NULL</code>
 once the chunks are exhausted.</p></dd>
 
@@ -121,33 +119,38 @@ column, or <code>NULL</code> for Bernoulli (one trial per row).</p></dd>
 
 
 <dt id="arg-exposure">exposure<a class="anchor" aria-label="anchor" href="#arg-exposure"></a></dt>
-<dd><p>For <code>family = "poisson"</code>, the name of the exposure /
-offset column, or <code>NULL</code> for unit exposure.</p></dd>
+<dd><p>For <code>family = "poisson"</code>, the name of the exposure
+column, or <code>NULL</code> for unit exposure. An <code>offset(log(E))</code> in <code>fixed</code>
+is the same model as <code>exposure = "E"</code>.</p></dd>
 
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
 <dd><p>The estimation backend. <code>"inla"</code> is the default and the
 only active choice: INLA is the one engine with an aggregated emit.
-Any other value – including a formerly-registered engine name this
-package withdrew entirely – refuses with <code>unknown_backend</code>.</p></dd>
+Any other value, including a formerly-registered engine name this
+package withdrew entirely, refuses with <code>unknown_backend</code>.</p></dd>
 
 
 <dt id="arg-chunk-rows">chunk_rows<a class="anchor" aria-label="anchor" href="#arg-chunk-rows"></a></dt>
 <dd><p>The number of rows to read per chunk. Larger chunks
-read faster but use more peak memory; the default 5e6 keeps peak
+read faster but use more peak memory. The default 5e6 keeps peak
 memory modest while amortising read overhead.</p></dd>
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>An optional <code><a href="fb_prior.html">fb_prior()</a></code> object. When <code>NULL</code> the backend
-default priors are used.</p></dd>
+<dd><p>An optional <code><a href="fb_prior.html">fb_prior()</a></code> object. When <code>NULL</code>, each
+random-effect standard deviation takes the default <code><a href="flexybayes.html">flexybayes()</a></code>
+applies, <code>half_normal(scale = 3)</code> for Poisson and
+<code>half_normal(scale = 5)</code> for binomial, on the link scale. The fixed
+effects keep INLA's default priors. <code><a href="prior_summary.html">prior_summary()</a></code> lists the prior
+on every parameter of the fit.</p></dd>
 
 
 <dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
 <dd><p>When <code>TRUE</code> (default) the aggregated model is fitted and a
 <code>&lt;flexybayes&gt;</code> object is returned. When <code>FALSE</code> the function returns
-the <code>&lt;fb_aggregated&gt;</code> sufficient-statistics object without fitting –
-useful for inspecting the compression a design will achieve.</p></dd>
+the <code>&lt;fb_aggregated&gt;</code> sufficient-statistics object without fitting,
+which shows the compression a design will achieve.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -169,24 +172,42 @@ compression achieved.</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Fit a cell-aggregatable mixed model to a dataset held on disk, reading
 it in row-range chunks and accumulating exact per-cell sufficient
-statistics rather than materialising the full table in memory.</p>
+statistics instead of materialising the full table in memory.</p>
 <p>The method scales by cell count <code>K</code> (the number of distinct factor
 design combinations), not by row count <code>N</code>. A replicated factorial
 design collapses billions of rows to a few thousand cells and fits in
-seconds; a design that keys on a continuous covariate does not
+seconds. A design that keys on a continuous covariate does not
 compress and is refused before any chunk is read. Continuous fixed
 effects, random slopes, structured covariance, and smooth terms break
-the cell-constant linear-predictor property and are likewise refused
-– pass the data to <code><a href="flexybayes.html">flexybayes()</a></code> per row for those models.</p>
-<p>Supported families are <code>"gaussian"</code> (identity link), <code>"binomial"</code>,
-and <code>"poisson"</code>. For binomial data supply <code>trials</code> to name the column
-of trial counts (a 0/1 response is treated as Bernoulli with one trial
-per row). For poisson data supply <code>exposure</code> to name an exposure /
-offset column.</p>
+the cell-constant linear-predictor property and are likewise refused.
+Pass the data to <code><a href="flexybayes.html">flexybayes()</a></code> per row for those models. The
+model needs at least one factor cell-key term (a fixed factor, a
+factor interaction, or a random grouping factor named in <code>random</code>)
+to aggregate by. An intercept-only model (<code>fixed = y ~ 1</code>, no
+<code>random</code>) has nothing to compress and is refused by name
+(<code>aggregation_route_unavailable</code>).</p>
+<p>Supported families for a fit are <code>"binomial"</code> and <code>"poisson"</code>. A
+<code>"gaussian"</code> fit refuses by name
+(<code>aggregation_residual_prior_not_composed</code>): the aggregated Gaussian
+route cannot yet carry the residual prior, so fit such data per row
+with <code><a href="flexybayes.html">flexybayes()</a></code>. <code>fit = FALSE</code> still returns the Gaussian
+sufficient statistics. For binomial data supply <code>trials</code> to name the
+column of trial counts (a 0/1 response is treated as Bernoulli with one
+trial per row). For poisson data supply <code>exposure</code> to name an exposure
+column. A fit on the aggregated representation reports no marginal
+likelihood (<code>aggregated_evidence_unavailable</code>).</p>
+<p>An <code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> in <code>fixed</code> is carried exactly on two of the three
+families. On <code>"gaussian"</code> it is subtracted from the response before the
+cell statistics are taken, which reproduces the per-row likelihood
+however the offset varies inside a cell. On <code>"poisson"</code>, <code>offset(o)</code>
+multiplies each row's exposure by <code>exp(o)</code>, so <code>offset(log(E))</code> and
+<code>exposure = "E"</code> fit the same model. Given both, they multiply. On
+<code>"binomial"</code> a cell total of rows whose offsets differ is not binomial,
+and the call refuses with <code>fixed_offset_unsupported</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="flexybayes.html">flexybayes()</a></code> for the in-memory entry point;
+    <div class="dont-index"><p><code><a href="flexybayes.html">flexybayes()</a></code> for the in-memory entry point, and
 <code><a href="fb_prior.html">fb_prior()</a></code> for prior specification.</p></div>
     </div>
     <div class="section level2">
@@ -197,21 +218,19 @@ offset column.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># interactive() &amp;&amp; requireNamespace("fst", quietly = TRUE)</span></span></span>
-<span class="r-in"><span><span class="co"># The fit runs on INLA, which is distributed from its own repository</span></span></span>
-<span class="r-in"><span><span class="co"># rather than from CRAN, so the guard keeps the example readable on a</span></span></span>
-<span class="r-in"><span><span class="co"># machine that does not carry it.</span></span></span>
+<span class="r-in"><span><span class="co"># INLA is distributed from its own repository, not from CRAN.</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"INLA"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1e6</span></span></span>
 <span class="r-in"><span>  <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    env <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">letters</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span>, <span class="va">n</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    geno <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">50</span>, <span class="va">n</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>    y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    count <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".fst"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu">fst</span><span class="fu">::</span><span class="fu">write_fst</span><span class="op">(</span><span class="va">df</span>, <span class="va">path</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">flexybayes_stream</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">env</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">geno</span>, source <span class="op">=</span> <span class="va">path</span>,</span></span>
-<span class="r-in"><span>                           backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">flexybayes_stream</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">env</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">geno</span>, source <span class="op">=</span> <span class="va">path</span>,</span></span>
+<span class="r-in"><span>                           family <span class="op">=</span> <span class="st">"poisson"</span>, backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
@@ -222,7 +241,7 @@ offset column.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

@@ -1,0 +1,182 @@
+# A two-stage analysis of a series of trials
+
+This vignette analyses a simulated series of trials in two stages.
+
+In the first stage each trial is fitted on its own and returns a mean
+for each variety. The second stage models those means across trials. The
+means are not equally precise: trials differ in their number of blocks
+and lost plots. The second stage should therefore carry each mean’s
+variance from the first stage.
+
+## The trials
+
+Twenty trials, six varieties, three or four blocks per trial, and a few
+lost plots. A trial-level covariate `z1` shifts the trial mean.
+
+``` r
+
+set.seed(20260920)
+
+n_var <- 6L
+n_trial <- 20L
+trials <- sprintf("t%02d", seq_len(n_trial))
+
+alpha <- seq(-1, 1, length.out = n_var)
+z <- matrix(stats::rnorm(n_trial * 4L), n_trial, 4L)
+colnames(z) <- paste0("z", 1:4)
+trial_mean <- 4 + 1.2 * z[, "z1"] + stats::rnorm(n_trial, 0, 0.35)
+
+plots <- do.call(rbind, lapply(seq_len(n_trial), function(i) {
+  n_block <- sample(3:4, 1L)
+  d <- expand.grid(
+    variety = factor(paste0("v", seq_len(n_var))),
+    block = factor(paste0("b", seq_len(n_block)))
+  )
+  d <- d[-sample.int(nrow(d), max(1L, floor(0.08 * nrow(d)))), ]
+  b <- stats::rnorm(n_block, 0, 0.3)
+  d$yield <- trial_mean[i] + alpha[as.integer(d$variety)] +
+    b[as.integer(d$block)] + stats::rnorm(nrow(d), 0, 0.45)
+  d$trial <- trials[i]
+  d
+}))
+
+head(plots)
+#>   variety block    yield trial
+#> 1      v1    b1 4.031727   t01
+#> 2      v2    b1 5.211888   t01
+#> 3      v3    b1 4.944964   t01
+#> 4      v4    b1 5.703127   t01
+#> 5      v5    b1 6.137920   t01
+#> 6      v6    b1 6.376713   t01
+```
+
+## Stage one: variety means per trial
+
+`yield ~ 0 + variety` gives one mean per variety, and `random = ~block`
+accounts for the blocks.
+
+``` r
+
+stage1 <- do.call(rbind, lapply(trials, function(tr) {
+  dt <- plots[plots$trial == tr, ]
+  dt$variety <- droplevels(dt$variety)
+  fit <- flexybayes(
+    yield ~ 0 + variety,
+    random = ~block,
+    data = dt,
+    backend = "inla",
+    verbose = FALSE
+  )
+  est <- tidy(fit)
+  data.frame(
+    trial = tr,
+    variety = sub("^variety", "", est$term),
+    ybar = est$estimate,
+    v = est$std.error^2,
+    stringsAsFactors = FALSE
+  )
+}))
+
+stage1$trial <- factor(stage1$trial)
+stage1$variety <- factor(stage1$variety)
+stage1 <- cbind(stage1, z[match(stage1$trial, trials), ])
+
+rnd(head(stage1, 4))
+#>   trial variety  ybar     v    z1     z2     z3    z4
+#> 1   t01      v1 4.464 0.328 1.946 -0.898 -0.659 0.365
+#> 2   t01      v2 5.353 0.407 1.946 -0.898 -0.659 0.365
+#> 3   t01      v3 5.491 0.328 1.946 -0.898 -0.659 0.365
+#> 4   t01      v4 5.640 0.328 1.946 -0.898 -0.659 0.365
+round(range(stage1$v), 3)
+#> [1] 0.083 0.902
+```
+
+`v` is the squared standard error of each mean, and it varies between
+trials.
+
+## Stage two: carrying the variances
+
+With `known_variance`, row $`i`$ has variance $`\sigma^2 + v_i`$: one
+residual variance shared by all rows, plus the variance from the first
+stage.
+
+``` r
+
+base <- flexybayes(
+  ybar ~ variety,
+  random = ~trial,
+  data = stage1,
+  known_variance = stage1$v,
+  backend = "inla",
+  verbose = FALSE
+)
+
+rnd(tidy(base))
+#>          term estimate std.error conf.low conf.high
+#> 1 (Intercept)    2.864     0.401    2.072     3.656
+#> 2   varietyv2    0.342     0.149    0.049     0.634
+#> 3   varietyv3    0.775     0.148    0.484     1.066
+#> 4   varietyv4    1.133     0.149    0.841     1.426
+#> 5   varietyv5    1.637     0.149    1.344     1.930
+#> 6   varietyv6    2.079     0.148    1.789     2.369
+```
+
+The simulated variety effects are 0.4 apart, so `v6` is 2.0 above `v1`.
+
+## Carrying the full covariance of the first stage
+
+The means of one trial share its block effects, so their errors are
+correlated. [`vcov()`](https://rdrr.io/r/stats/vcov.html) of each
+stage-one fit gives their covariance, and together the trials give a
+block-diagonal matrix with one row per mean. Passed as `known_variance`,
+the matrix replaces the variances: row $`i`$ and row $`j`$ have
+covariance $`\sigma^2 [i = j] + K_{ij}`$.
+
+``` r
+
+blocks <- lapply(trials, function(tr) {
+  dt <- plots[plots$trial == tr, ]
+  dt$variety <- droplevels(dt$variety)
+  fit <- flexybayes(
+    yield ~ 0 + variety,
+    random = ~block,
+    data = dt,
+    backend = "inla",
+    verbose = FALSE
+  )
+  v <- vcov(fit)
+  rownames(v) <- colnames(v) <- paste(tr, sub("^variety", "", rownames(v)))
+  v
+})
+K <- matrix(0, nrow(stage1), nrow(stage1))
+key <- paste(stage1$trial, stage1$variety)
+for (v in blocks) {
+  at <- match(rownames(v), key)
+  K[at, at] <- v
+}
+
+base_k <- flexybayes(
+  ybar ~ variety,
+  random = ~trial,
+  data = stage1,
+  known_variance = K,
+  backend = "inla",
+  verbose = FALSE
+)
+
+rnd(data.frame(
+  term = names(coef(base)),
+  variances_only = coef(base),
+  full_covariance = coef(base_k)
+))
+#>                    term variances_only full_covariance
+#> (Intercept) (Intercept)          2.864           2.835
+#> varietyv2     varietyv2          0.342           0.413
+#> varietyv3     varietyv3          0.775           0.785
+#> varietyv4     varietyv4          1.133           1.175
+#> varietyv5     varietyv5          1.637           1.612
+#> varietyv6     varietyv6          2.079           2.132
+```
+
+The matrix is fitted on INLA only, and brms stops with
+`known_variance_not_supported`.

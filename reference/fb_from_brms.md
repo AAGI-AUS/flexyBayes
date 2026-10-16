@@ -73,8 +73,8 @@ fb_from_brms(
 
   Advanced: a positive integer enabling the metadata-only IR path
   (`data = NULL`). The formula's variables are realised as a one-row
-  placeholder and the row count is recorded as `carry_n_rows`, for
-  stress-testing the preflight layer without materialising the full
+  stand-in data frame and the row count is recorded as `carry_n_rows`,
+  for stress-testing the preflight layer without materialising the full
   data. Leave `NULL` for ordinary use.
 
 - ...:
@@ -93,6 +93,12 @@ uncorrelated random intercept+slope (`(x || g)`) are supported;
 correlated random slopes (`(x | g)`), smoothers, Gaussian processes and
 autocorrelation terms refuse at ingest with a structured message.
 
+## Deprecated
+
+`fb_from_brms()` is deprecated as of 0.13.0. Use
+[`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+to inspect the backend-neutral model plan without fitting it.
+
 ## See also
 
 [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
@@ -108,12 +114,13 @@ Other flexyBayes ingest adapters:
 ## Examples
 
 ``` r
+set.seed(1L)
 df <- data.frame(
   y = rnorm(30),
   x = rnorm(30),
   g = factor(rep(letters[1:5], 6))
 )
-ir <- fb_from_brms(y ~ x + (1 | g), data = df)
-class(ir)
-#> [1] "fb_terms" "list"    
+plan <- fb_plan(y ~ x + (1 | g), data = df)
+class(plan)
+#> [1] "fb_plan" "list"   
 ```

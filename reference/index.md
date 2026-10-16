@@ -3,7 +3,7 @@
 ## Verbs
 
 The universal entry, the single-engine pins, the feasibility planner,
-cross-engine triangulation, and approximation validation.
+and approximation validation.
 
 - [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
   [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
@@ -16,8 +16,6 @@ cross-engine triangulation, and approximation validation.
   : Fit a flexyBayes model via the brms (Stan) engine
 - [`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
   : Plan a flexyBayes fit without firing the backend
-- [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
-  : Cross-engine posterior triangulation
 - [`validate_approximation()`](https://aagi-aus.github.io/flexyBayes/reference/validate_approximation.md)
   : Validate an approximate model fit against its bias bound
 - [`proceed()`](https://aagi-aus.github.io/flexyBayes/reference/proceed.md)
@@ -34,8 +32,8 @@ Turn a model specification into a backend-agnostic representation.
 
 ## Constructor nouns
 
-The four classed input constructors: priors, covariance carriers,
-approximation schemes, and engine selections.
+The classed input constructors: priors, covariance carriers,
+approximation schemes and engine selections.
 
 - [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)
   : Specify priors via the PC-canonical hybrid DSL
@@ -77,10 +75,18 @@ status.
   : Report inference-backend readiness
 - [`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md)
   : List flexyBayes refusal reasons
+- [`fb_register_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_register_refusals.md)
+  : Register a package's refusal reasons
+- [`fb_refuse()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refuse.md)
+  : Raise a registered refusal
+- [`fb_isolated_lapply()`](https://aagi-aus.github.io/flexyBayes/reference/fb_isolated_lapply.md)
+  : Run jobs, each in its own R process
 - [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md)
   : Resolved-prior summary for a flexyBayes fit
 - [`ranef()`](https://aagi-aus.github.io/flexyBayes/reference/ranef.md)
   : Random-effect predictions from a flexyBayes fit
+- [`vpredict()`](https://aagi-aus.github.io/flexyBayes/reference/vpredict.md)
+  : Posterior functionals of the variance components
 - [`fb_complete_grid()`](https://aagi-aus.github.io/flexyBayes/reference/fb_complete_grid.md)
   : Complete a design grid before fitting
 - [`cat_code()`](https://aagi-aus.github.io/flexyBayes/reference/cat_code.md)
@@ -210,10 +216,18 @@ here for completeness.
 - [`vcov(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/vcov.flexybayes_inla.md)
   : Posterior covariance of a per-row INLA fit's fixed effects
 
+- [`fb_variance_draws()`](https://aagi-aus.github.io/flexyBayes/reference/fb_variance_draws.md)
+  : Joint posterior draws of the variance components of an INLA fit
+
+- [`fb_marginal_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_marginal_cov.md)
+  [`as.matrix(`*`<fb_marginal_cov>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fb_marginal_cov.md)
+  : The marginal covariance of the response of a fitted model
+
 - [`predict(`*`<flexybayes_brms>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_brms.md)
   : Predict from a brms-passthrough flexybayes fit
 
 - [`predict(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_inla.md)
+  [`print(`*`<fb_predict_new>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_inla.md)
   : Population-level predictions from a per-row INLA fit
 
 - [`print(`*`<fb_predict_classify>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_predict_classify.md)
@@ -225,11 +239,17 @@ here for completeness.
 - [`fitted(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fitted.flexybayes_inla.md)
   : In-sample fitted values from a per-row INLA fit
 
+- [`fitted(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fitted.flexybayes_aggregated.md)
+  : Fitted values of an aggregated count fit
+
 - [`residuals(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes.md)
   : Extract residuals
 
 - [`residuals(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes_inla.md)
   : Response residuals from a per-row INLA fit
+
+- [`residuals(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes_aggregated.md)
+  : Residuals of an aggregated count fit
 
 - [`plot(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
   [`plot(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
@@ -271,6 +291,9 @@ here for completeness.
 - [`update(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/update.flexybayes.md)
   : Re-fit a flexyBayes model with modified arguments
 
+- [`fb_refit()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refit.md)
+  : Refit a model on new data, with added fixed columns
+
 - [`as.data.frame(`*`<fb_plan>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/as.data.frame.fb_plan.md)
   :
 
@@ -284,9 +307,6 @@ Genomic selection and the cross-engine genomic accessors.
   : Genomic-prediction accuracy by cross-validation
 - [`genomic_summary()`](https://aagi-aus.github.io/flexyBayes/reference/genomic_summary.md)
   : Genomic summary of a fitted relationship model
-- [`triangulate_genomic()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_genomic.md)
-  : Triangulate genomic model outputs across engines or against a field
-  lens
 
 ## Datasets
 

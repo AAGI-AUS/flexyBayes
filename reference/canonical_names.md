@@ -2,8 +2,8 @@
 
 Returns the backend-native -\> canonical parameter-name map for a fit,
 plus per-parameter value transforms where applicable (e.g., the INLA
-precision-to-SD `sqrt(1/prec)` transform applied to hyperparameters
-before triangulation). The canonical convention follows brms
+precision-to-SD `sqrt(1/prec)` transform applied to hyperparameter draws
+before they are renamed). The canonical convention follows brms
 (`(Intercept)`, `<term>`, `sd_<group>`, `sigma`, `r_<group>[<level>]`).
 
 ## Usage
@@ -65,15 +65,13 @@ A list holding the canonical-name map and its provenance.
   ran under. `"per_row_equivalent"` is the legacy scalar bridge, whose
   precision prior makes the aggregated posterior match the per-row
   posterior to numerical precision. `"package_default"` is the automatic
-  bounded-uniform-on-SD prior, which claims no such equivalence on this
-  route. `"custom"` is an explicit prior from the caller (see the
-  "Matched priors" note on
-  [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)).
+  half-normal-on-SD prior, which claims no such equivalence on this
+  route. `"custom"` is an explicit prior from the caller.
 
 ## Details
 
 On `flexybayes_inla` and `flexybayes_brms` fits, the per-backend mapper
-registered at package load (`inla` or `brms`) drives the resolution; the
+registered at package load (`inla` or `brms`) drives the resolution, the
 returned map is cached on `fit$extras$canonical_map` for fast repeated
 access.
 

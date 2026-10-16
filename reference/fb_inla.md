@@ -4,11 +4,11 @@ Engine pin: fits the model with INLA (integrated nested Laplace
 approximation) only. This is sugar for
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)`(..., backend = "inla")`
 and accepts the same arguments and grammars (an ASReml `fixed` /
-`random` / `residual` specification or a brms-style bar-grouped formula
-– see
+`random` / `residual` specification or a brms-style bar-grouped formula,
+see
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-for the full argument list). The model must be latent-Gaussian feasible;
-if it is not, the shared `lgm_gate()` raises a structured refusal naming
+for the full argument list). The model must be latent-Gaussian feasible.
+If it is not, the shared `lgm_gate()` raises a structured refusal naming
 the offending term, exactly as `flexybayes(backend = "inla")` does.
 
 ## Usage
@@ -30,7 +30,7 @@ fb_inla(...)
 ## Value
 
 An object of class `"flexybayes"` (specifically a `flexybayes_inla`
-fit); see
+fit). See
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 for the structure.
 
@@ -43,12 +43,17 @@ approximation. `seed` and `control` say so when supplied: the fit is
 repeatable without a seed, because nothing in the approximation is
 drawn.
 
+## Deprecated
+
+`fb_inla()` is deprecated in flexyBayes 0.13.0 and will be removed in a
+later release. Call `flexybayes(..., backend = "inla")`, which takes the
+same arguments. A call warns with a condition of class
+`flexybayes_deprecated`.
+
 ## See also
 
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-and
-[`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-for the universal entry that picks a backend;
+for the universal entry that picks a backend.
 [`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md)
 /
 [`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md)
@@ -60,6 +65,7 @@ Other flexyBayes engine pins:
 ## Examples
 
 ``` r
+set.seed(1L)
 df <- data.frame(
   yield = rnorm(40),
   geno  = factor(rep(letters[1:8], 5)),
@@ -67,7 +73,8 @@ df <- data.frame(
 )
 # \donttest{
 if (requireNamespace("INLA", quietly = TRUE)) {
-  fit <- fb_inla(yield ~ env, random = ~ geno, data = df)
+  fit <- flexybayes(yield ~ env, random = ~ geno, data = df,
+                    backend = "inla")
 }
 # }
 ```

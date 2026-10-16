@@ -1,4 +1,4 @@
-# Format method for fb_terms – one-line summary
+# Format method for fb_terms: one-line summary
 
 Internal S3 method, registered for dispatch only. Used by R's default
 print/format machinery for compact display in lists and `data.frame`

@@ -4,7 +4,7 @@ Turns a fitted flexyBayes object into a log-posterior producer: a
 vectorised, domain-safe, unnormalised log-posterior callable that
 `proxymix::from_fb_posterior()` compresses into a closed-form
 Gaussian-mixture proxy. It is the single inference-result outflow from
-flexyBayes; the contract is the *log-density*, not the draws, so the
+flexyBayes, the contract is the *log-density*, not the draws, so the
 returned object is addressed purely through its callable.
 
 ## Usage
@@ -26,13 +26,13 @@ fb_log_posterior(fit, ...)
 
 - fit:
 
-  A fitted flexyBayes object. Every current backend class abstains; the
+  A fitted flexyBayes object. Every current backend class abstains, the
   generic and its methods are retained so a consumer can dispatch on the
-  abstention rather than discovering the gap by a missing method.
+  abstention instead of discovering the gap by a missing method.
 
 - ...:
 
-  Reserved for future producer options; currently unused.
+  Reserved for future producer options. Currently unused.
 
 ## Value
 
@@ -48,21 +48,21 @@ parameters, in `attr(., "parameter_names")` order, on the natural
 (constrained) scale. Its output is a length-`nrow(theta_matrix)` numeric
 vector of `log p(theta | data) + const` (unnormalised). The callable is
 vectorised, side-effect free, and domain-safe: a row outside the
-parameters' support returns `-Inf` rather than raising an error (the
+parameters' support returns `-Inf` instead of raising an error (the
 consumer probes it at construction). It carries, as attributes:
 
 - `parameter_names`:
 
-  Character vector naming the parameters; its length fixes the proxy's
+  Character vector naming the parameters. Its length fixes the proxy's
   ambient dimension. Vector-valued targets are flattened in column-major
   order with index suffixes (e.g. `beta[1,1]`, `beta[2,1]`).
 
 - `log_normalizer`:
 
-  The additive correction that would normalise the density, i.e.
-  `-log Z`. For a posterior the marginal likelihood is generally
-  unknown, so this is `NA_real_` and the consumer reports a shifted (not
-  absolute) divergence.
+  The log normalising constant `log Z`, the log of the integral of the
+  unnormalised density. For a posterior this is the log marginal
+  likelihood, generally unknown, so this is `NA_real_` and the consumer
+  reports a shifted (not absolute) divergence.
 
 - `support_lower`, `support_upper`:
 
@@ -75,28 +75,28 @@ consumer probes it at construction). It carries, as attributes:
 
   An `n` by `n_dim` numeric matrix of the fit's posterior draws on the
   natural scale, column-aligned to `parameter_names`. Used only to seed
-  the consumer's default proposal; never required.
+  the consumer's default proposal. Never required.
 
 Backend support. No active backend produces a real C4 log-density today.
 The **brms** and **INLA** backends both abstain with an informative
-condition – brms's log-density lives on the Stan unconstrained scale
-with a version-fragile name mapping, and INLA's posterior is a
-deterministic approximation, not a sampling log-density. Abstaining is
-preferred to emitting a plausible-but-wrong log-density.
+condition: brms's log-density lives on the Stan unconstrained scale with
+a version-fragile name mapping, and INLA's posterior is a deterministic
+approximation, not a sampling log-density. Abstaining is preferred to
+emitting a plausible-but-wrong log-density.
 
 Acyclic note. A consumer such as proxymix uses this callable without
-depending on flexyBayes; flexyBayes does not list proxymix in `Imports`
+depending on flexyBayes, flexyBayes does not list proxymix in `Imports`
 or `Suggests`. The cross-package demonstration lives in a separate
 integration harness, not in this package, preserving the acyclic
 dependency graph.
 
 ## Lifecycle
 
-No active backend produces a real C4 log-density; both `flexybayes_brms`
+No active backend produces a real C4 log-density. Both `flexybayes_brms`
 and `flexybayes_inla` fits abstain with the classed condition
 `fb_c4_unavailable`, for the reasons given above. The generic and its
-methods are retained so a consumer can dispatch on the abstention rather
-than discovering the gap by a missing method.
+methods are retained so a consumer can dispatch on the abstention
+instead of discovering the gap by a missing method.
 
 ## See also
 

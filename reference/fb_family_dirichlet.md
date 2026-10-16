@@ -2,11 +2,11 @@
 
 Constructs the family descriptor for the Dirichlet distribution, the
 natural model for compositional (simplex) data. The object mirrors the
-shape of the other flexyBayes family descriptors – a named list carrying
-the family name, the parameter description, and the support – while
+shape of the other flexyBayes family descriptors, a named list carrying
+the family name, the parameter description, and the support, while
 signalling that the Dirichlet is fitted through the dedicated
 [`fb_dirichlet()`](https://aagi-aus.github.io/flexyBayes/reference/fb_dirichlet.md)
-entry point rather than the GLM-link emit path.
+entry point instead of the GLM-link emit path.
 
 ## Usage
 

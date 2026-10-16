@@ -17,7 +17,7 @@ rdirichlet(n, alpha)
 
 - alpha:
 
-  Numeric vector of positive concentration parameters; its length sets
+  Numeric vector of positive concentration parameters. Its length sets
   the number of simplex components \\K\\.
 
 ## Value

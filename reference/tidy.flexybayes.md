@@ -44,7 +44,7 @@ tidy(
 
 - ...:
 
-  Currently unused; present for generic compatibility.
+  Currently unused. Present for generic compatibility.
 
 ## Value
 
@@ -76,15 +76,15 @@ An empty `data.frame` is returned when the requested effects are absent
 ## Details
 
 This is the supported accessor for cross-engine summaries. The hub
-returns backend-specific objects – `flexybayes_brms` (brms) and
-`flexybayes_inla` (INLA) – whose internal layouts differ. Tidying
-through this generic yields the same columns across both, so a
-brms-versus-INLA triangulation table can be assembled by `rbind`-ing two
+returns backend-specific objects, `flexybayes_brms` (brms) and
+`flexybayes_inla` (INLA), whose internal layouts differ. Tidying through
+this generic yields the same columns across both, so a brms-versus-INLA
+comparison table can be assembled by `rbind`-ing two
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html) outputs
-rather than reaching into each backend's slots by hand.
+instead of reaching into each backend's slots by hand.
 
 The credible intervals are posterior quantile-based intervals, not
-frequentist confidence intervals; they are reported in the
+frequentist confidence intervals. They are reported in the
 `broom`-canonical `conf.low` / `conf.high` columns. The `std.error`
 column carries the posterior standard deviation of each term, again
 under the `broom`-canonical (dotless to the user, dotted in the column

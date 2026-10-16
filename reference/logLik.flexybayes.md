@@ -1,7 +1,7 @@
 # Plug-in conditional log-likelihood of a flexyBayes fit
 
 Evaluates the conditional log-likelihood at the posterior-mean fitted
-values – a plug-in quantity, not a posterior summary, and not the
+values: a plug-in quantity, not a posterior summary, and not the
 marginal likelihood. It exists so
 [`AIC()`](https://rdrr.io/r/stats/AIC.html)-style comparisons of two
 fits from the same engine have something to read.
@@ -37,8 +37,8 @@ runs: the response vector in `$glm$y`, the fitted values from
 [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), and a recorded
 family. A Gaussian fit uses the residual root-mean-square as its plug-in
 scale. Families outside the Gaussian, binomial and Poisson set have no
-plug-in form here and are refused rather than reported as `NA`, because
-a silent `NA` propagates into
+plug-in form here and are refused and not reported as `NA`, because a
+silent `NA` propagates into
 [`anova()`](https://rdrr.io/r/stats/anova.html) and
 [`AIC()`](https://rdrr.io/r/stats/AIC.html) as though the comparison had
 been made.

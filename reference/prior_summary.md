@@ -1,12 +1,12 @@
 # Resolved-prior summary for a flexyBayes fit
 
-Returns the resolved priors used to fit the model – either the
+Returns the resolved priors used to fit the model, either the
 user-supplied
 [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)
-object, the auto-default bounded uniform on the standard-deviation scale
-(Gelman, 2006), or the legacy scalar bridge (`prior_fixed_sd` +
-`prior_vc_sd`). The return value is an S3 object with a
-[`print()`](https://rdrr.io/r/base/print.html) method; the underlying
+object, the auto-default half-normal on the standard-deviation scale, or
+the legacy scalar bridge (`prior_fixed_sd` + `prior_vc_sd`). The return
+value is an S3 object with a
+[`print()`](https://rdrr.io/r/base/print.html) method. The underlying
 `fb_prior` (when applicable) is exposed under `$fb_prior` for
 programmatic access.
 
@@ -55,16 +55,15 @@ below.
 
 - `default_origin`:
 
-  `"auto"` when the prior was constructed by the bounded-uniform
-  auto-default; `"user"` when supplied via the `prior` argument; `NA`
+  `"auto"` when the prior was constructed by the half-normal
+  auto-default. `"user"` when supplied via the `prior` argument; `NA`
   for legacy / no-prior cases.
 
 - `default_scale`, `default_basis`:
 
-  Attributes carried by the auto-default prior naming the response-scale
-  upper bound and its basis (response-scale `sd(y)`, logit-scale
-  constant, log-scale constant). `NULL` when the prior was
-  user-supplied.
+  Attributes carried by the auto-default prior naming the half-normal
+  scale and its basis (response-scale `sd(y)`, logit-scale constant,
+  log-scale constant). `NULL` when the prior was user-supplied.
 
 - `fixed_sd`, `vc_sd`:
 
@@ -85,18 +84,41 @@ below.
 - `not_applied`:
 
   Named character: a prior this package declared that the engine has no
-  parameter for – a residual prior on a family whose dispersion is a
+  parameter for, a residual prior on a family whose dispersion is a
   function of the mean.
 
 - `declaration_only`:
 
-  Reserved; always `FALSE` for every current backend.
+  Reserved. Always `FALSE` for every current backend.
+
+- `inputs`:
+
+  Data frame: every prior specification the fit was given, stated or
+  chosen by the package, with its source and the number of engine slots
+  that used it.
+
+- `slots`:
+
+  Data frame: every engine slot, with the prior the package sent, the
+  input it came from, the prior the engine reports after fitting and
+  whether the two agree. A slot carrying the engine's own prior is
+  listed with that source.
+
+- `not_consumed`:
+
+  Named character: each input no engine slot used, with the reason code.
+
+## Details
+
+The methods are also registered on rstantools' `prior_summary()`
+generic, which brms re-exports, so `prior_summary(fit)` returns this
+summary when brms is attached after flexyBayes.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-# live brms (Stan) fit -- needs a working Stan toolchain
+# live brms (Stan) fit, needs a working Stan toolchain
 data(sleepstudy, package = "lme4")
 fit <- fb_brms(Reaction ~ Days + (1 | Subject),
                data = sleepstudy,

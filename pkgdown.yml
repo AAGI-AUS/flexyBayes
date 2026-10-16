@@ -2,15 +2,13 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
-  flexyBayes-01-getting-started: flexyBayes-01-getting-started.html
-  flexyBayes-02-formulas-and-dispatch: flexyBayes-02-formulas-and-dispatch.html
-  flexyBayes-03-regression-and-hierarchical: flexyBayes-03-regression-and-hierarchical.html
-  flexyBayes-04-priors: flexyBayes-04-priors.html
-  flexyBayes-05-met-and-genomics: flexyBayes-05-met-and-genomics.html
-  flexyBayes-06-spatial-and-temporal: flexyBayes-06-spatial-and-temporal.html
-  flexyBayes-07-after-the-fit: flexyBayes-07-after-the-fit.html
-  flexyBayes-08-big-data: flexyBayes-08-big-data.html
-last_built: 2026-09-07T09:42Z
+  flexyBayes-01-mixed-models: flexyBayes-01-mixed-models.html
+  flexyBayes-02-bayesian: flexyBayes-02-bayesian.html
+  flexyBayes-03-syntax: flexyBayes-03-syntax.html
+  flexyBayes-04-illustration: flexyBayes-04-illustration.html
+  flexyBayes-06-two-stage: flexyBayes-06-two-stage.html
+  flexyBayes-07-from-asreml: flexyBayes-07-from-asreml.html
+last_built: 2026-10-16T22:04Z
 urls:
   reference: https://aagi-aus.github.io/flexyBayes/reference
   article: https://aagi-aus.github.io/flexyBayes/articles

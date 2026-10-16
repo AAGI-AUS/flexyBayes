@@ -4,14 +4,14 @@ standard-deviation scale (never precision / variance) and accepts
 two canonical idioms: distributional (half_normal(scale = 1))
 and tail-quantile / PC (penalised complexity)
 (pc(upper = 1, prob = 0.01) meaning Pr(sigma &amp;gt; 1) = 0.01).
-The PC idiom is the cross-engine interlingua – it survives every
+The PC idiom is the cross-engine interlingua, it survives every
 backend because it is a probability statement, not a
 distributional name."><meta property="og:description" content="The flexyBayes prior DSL (domain-specific language) lives on the
 standard-deviation scale (never precision / variance) and accepts
 two canonical idioms: distributional (half_normal(scale = 1))
 and tail-quantile / PC (penalised complexity)
 (pc(upper = 1, prob = 0.01) meaning Pr(sigma &amp;gt; 1) = 0.01).
-The PC idiom is the cross-engine interlingua – it survives every
+The PC idiom is the cross-engine interlingua, it survives every
 backend because it is a probability statement, not a
 distributional name."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -21,7 +21,7 @@ distributional name."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,19 +29,16 @@ distributional name."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -66,7 +63,7 @@ standard-deviation scale (never precision / variance) and accepts
 two canonical idioms: distributional (<code>half_normal(scale = 1)</code>)
 and tail-quantile / PC (penalised complexity)
 (<code>pc(upper = 1, prob = 0.01)</code> meaning <code>Pr(sigma &gt; 1) = 0.01</code>).
-The PC idiom is the cross-engine interlingua – it survives every
+The PC idiom is the cross-engine interlingua, it survives every
 backend because it is a probability statement, not a
 distributional name.</p>
     </div>
@@ -91,10 +88,10 @@ prior.</p>
 <li><p><code>sd(group = "subject") ~ uniform(lower = 0, upper = 5)</code></p></li>
 </ul><p>Supported distribution families: <code>pc</code>, <code>half_normal</code>, <code>half_cauchy</code>,
 <code>student_t</code>, <code>normal</code>, <code>exponential</code>, <code>lkj</code>, <code>cauchy</code>, <code>gamma</code>,
-<code>uniform</code>. Note that <code>uniform()</code> on a variance component sits
-outside the PC-canonical interlingua, but both active backends
-represent it faithfully on the SD scale: the INLA backend via an
-expression-prior on the log-precision, and brms as a bounded
+<code>uniform</code>, and <code>pooled</code> (see "Partially pooled SDs" below). <code>uniform()</code> on
+a variance component sits outside the PC-canonical interlingua, but both
+active backends represent it faithfully on the SD scale: the INLA backend
+via an expression-prior on the log-precision, and brms as a bounded
 <code>uniform()</code> prior on each simple random-effect (and residual) SD.</p></dd>
 
 </dl></div>
@@ -117,9 +114,9 @@ duplicated argument, a missing required argument, a non-scalar or
 non-finite value, or a value outside its domain (a non-positive
 scale, a tail probability outside <code>(0, 1)</code>) is refused at
 construction with a condition carrying a <code>flexybayes_refusal_*</code>
-class – see <code><a href="fb_refusals.html">fb_refusals()</a></code>. Both halves of a PC prior are
+class: see <code><a href="fb_refusals.html">fb_refusals()</a></code>. Both halves of a PC prior are
 required: <code>pc(upper = 1)</code> states no probability, and is refused
-rather than completed with a default the caller never wrote.</p>
+instead of completed with a default the caller never wrote.</p>
     </div>
     <div class="section level2">
     <h2 id="what-each-backend-can-carry">What each backend can carry<a class="anchor" aria-label="anchor" href="#what-each-backend-can-carry"></a></h2>
@@ -129,27 +126,73 @@ rather than completed with a default the caller never wrote.</p>
 <p><code>fb_prior()</code> is engine-neutral: it records what was asked for. Whether
 a given (target, distribution) pair can be <em>carried</em> depends on the
 backend, and the two differ.</p><ul><li><p><strong>brms</strong> takes any of the ten distributions on <code>sigma</code> and
-<code>sd(group = )</code> – the parameter is bounded below at zero and brms
+<code>sd(group = )</code>: the parameter is bounded below at zero and brms
 renormalises a two-sided density over that support, which is why
-<code>normal(0, s)</code> and <code>half_normal(s)</code> are the same prior there – and
+<code>normal(0, s)</code> and <code>half_normal(s)</code> are the same prior there, and
 <code>normal</code> / <code>student_t</code> on <code>b()</code>. It carries no <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> or
 <code><a href="https://rdrr.io/r/stats/smooth.html" class="external-link">smooth()</a></code> prior, because no model this package emits on brms has
 either parameter.</p></li>
 <li><p><strong>INLA</strong> takes <code>half_normal</code>, <code>uniform</code>, <code>pc</code> and <code>exponential</code> on
 <code>sigma</code>, <code>sd(group = )</code> and <code><a href="https://rdrr.io/r/stats/smooth.html" class="external-link">smooth()</a></code> (<code>exponential</code> is the PC
-prior written in its distributional form), and <code>normal</code> on <code>b()</code>,
-which arrives through <code>control.fixed</code>.</p></li>
+prior written in its distributional form), <code>normal</code> on <code>b()</code>,
+which arrives through <code>control.fixed</code>, and <code>normal</code> on
+<code>loading(group = )</code>, the loadings of <code>fa(f, k):group</code> relative to the
+anchor level. With no loading prior stated, each loading takes
+<code>normal(mean = 1, sd = 0.316)</code>, which is INLA's own prior on a copy
+scaling, <code><a href="prior_summary.html">prior_summary()</a></code> lists it.</p></li>
 </ul><p>A specification the selected backend cannot carry is refused at the
-fit, naming the row and both remedies – re-express it in a
+fit, naming the row and both remedies, re-express it in a
 distribution that engine does carry, or switch backend. Before 0.9.2
 the INLA route discarded such a row silently while
 <code><a href="prior_summary.html">prior_summary()</a></code> printed it as applied, so a prior-sensitivity
 analysis could vary a scale and compare the engine's default with
-itself. Whatever <code><a href="prior_summary.html">prior_summary()</a></code> shows on a fit now reached the
-engine.</p>
+itself. <code><a href="prior_summary.html">prior_summary()</a></code> lists each prior with the engine slot it
+reached, as the engine reports it after fitting, and names each stated
+or default prior that reached no slot, with the reason.</p>
 <p>A prior naming a coefficient or a variance component the model does
 not have is likewise refused at the fit, against the engine's own
 parameter list and in the vocabulary the caller wrote.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-default-prior">The default prior<a class="anchor" aria-label="anchor" href="#the-default-prior"></a></h2>
+
+
+
+<p>A fit that states neither <code>prior</code> nor <code>prior_vc_sd</code> runs under the
+package default: <code>half_normal(scale = s)</code> on the residual standard
+deviation and on the standard deviation of every variance component
+the default reaches, on both engines. <code>s</code> is <code>5 * sd(y)</code> on an identity
+link, <code>3</code> on a log link and <code>5</code> on a logit link. On an uncorrelated
+random slope on a numeric covariate <code>x</code> it is <code>s / sd(x)</code>. The default
+has no upper bound. <code><a href="prior_summary.html">prior_summary()</a></code> prints the scale a fit ran under.
+A Gaussian identity-link fit on INLA runs on the response divided by
+<code>sd(y)</code>, where the same prior is <code>half_normal(scale = 5)</code>. The printed
+formula and <code><a href="prior_summary.html">prior_summary()</a></code> show it on both scales.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="partially-pooled-sds">Partially pooled SDs<a class="anchor" aria-label="anchor" href="#partially-pooled-sds"></a></h2>
+
+
+
+<p><code>pooled()</code> puts one shared prior on a set of per-level standard
+deviations, instead of a separate prior on each. The target names the
+term, and <code>by</code> the factor whose levels are pooled:</p><ul><li><p><code>sd(group = "TRIAL:VARIETY", by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))</code> for the genotype-by-trial SDs
+of <code>diag(TRIAL):VARIETY</code>.</p></li>
+<li><p><code>sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))</code> for the
+residual SDs of <code>dsum(~ units | TRIAL)</code>.</p></li>
+</ul><p>Either set can be pooled without the other. The log SDs of a pooled set
+are normal with an estimated mean and an estimated SD, the pooling SD.
+<code>scale</code> is the prior on the pooling SD and has no default. It can be any
+prior brms accepts for a standard deviation. The mean has a
+<code>normal(log(s / 5), 2)</code> prior, where <code>s</code> is the scale of the package's
+default SD prior. On an identity link that is <code>normal(log(sd(y)), 2)</code>.</p>
+<p>Pooling shrinks the per-level SDs toward each other, so the estimates
+differ from ASReml's, which fits each SD separately. Only brms fits it,
+because INLA cannot put a shared prior on separate variance parameters:
+<code>backend = "inla"</code> refuses with <code>pooled_prior_requires_brms</code>, and
+<code>backend = "auto"</code> uses brms. Printed output labels the fit
+"per-trial SDs partially pooled", with the <code>by</code> factor's name in place
+of "trial".</p>
     </div>
 
     <div class="section level2">
@@ -164,6 +207,16 @@ parameter list and in the vocabulary the caller wrote.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigma ~ pc(upper = 2, prob = 0.05)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sd(group = "subject") ~ half_normal(scale = 1)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   b("treatment") ~ student_t(df = 4, scale = 2.5)</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Model C with both per-trial SD blocks partially pooled</span></span></span>
+<span class="r-in"><span><span class="fu">fb_prior</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span>group <span class="op">=</span> <span class="st">"TRIAL:VARIETY"</span>, by <span class="op">=</span> <span class="st">"TRIAL"</span><span class="op">)</span> <span class="op">~</span></span></span>
+<span class="r-in"><span>    <span class="fu">pooled</span><span class="op">(</span>scale <span class="op">=</span> <span class="fu">half_normal</span><span class="op">(</span>scale <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/stats/sigma.html" class="external-link">sigma</a></span><span class="op">(</span>by <span class="op">=</span> <span class="st">"TRIAL"</span><span class="op">)</span> <span class="op">~</span> <span class="fu">pooled</span><span class="op">(</span>scale <span class="op">=</span> <span class="fu">half_normal</span><span class="op">(</span>scale <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;fb_prior&gt; 2 specifications</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sd(group = "TRIAL:VARIETY", by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -171,7 +224,7 @@ parameter list and in the vocabulary the caller wrote.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

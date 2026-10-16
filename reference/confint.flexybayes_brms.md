@@ -3,7 +3,7 @@
 Uses the brms posterior draws directly (the parent `confint.flexybayes`
 refuses unconditionally with `fit_lacks_posterior_draws`, since no
 active engine reaches it without its own override). Returns
-quantile-based credible bounds over the `b_<term>` rows; row names are
+quantile-based credible bounds over the `b_<term>` rows. Row names are
 stripped of the brms `b_` prefix to align with
 [`coef()`](https://rdrr.io/r/stats/coef.html).
 

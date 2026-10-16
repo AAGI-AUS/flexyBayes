@@ -1,0 +1,115 @@
+# Bayesian estimation in brief
+
+This vignette fits the model from
+[`vignette("flexyBayes-01-mixed-models")`](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-01-mixed-models.md)
+and shows what a Bayesian fit adds.
+
+## Point estimates and distributions
+
+REML returns a point estimate and a standard error for each variance
+component. A Bayesian fit returns a posterior distribution for each one.
+Intervals, heritabilities and comparisons between genotypes are all
+computed from that distribution.
+
+## The prior
+
+The prior states which values a parameter can plausibly take before the
+data are seen. The posterior combines the prior with the likelihood. By
+default flexyBayes puts a half-normal prior on every standard deviation,
+scaled to the response.
+[`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md)
+shows what it chose:
+
+``` r
+
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla",
+  verbose = FALSE
+)
+#> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 3.049) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
+
+prior_summary(fit)
+#> <prior_summary>  backend = inla
+#>   Source: auto-default half-normal on SD (weakly informative, no upper bound)
+#>     Scale s        = 3.049069 (in the units of the response)
+#>     Scale basis    = identity_sd_half_normal
+#>     prior_fixed_sd:  not supplied, the fixed effects carry INLA's own control.fixed defaults, prec = 0.001 (a standard deviation near 32, in standard deviations of the response on a Gaussian identity-link fit), and prec.intercept = 0, which is flat
+#> 
+#> <fb_prior> 3 specifications
+#>   sigma ~ half_normal(scale = 3.049069)  -> family:INLA.Data1:theta1
+#>   sd(group = "rep:block") ~ half_normal(scale = 3.049069)  -> random:rep_block_id:theta
+#>   sd(group = "gen") ~ half_normal(scale = 3.049069)  -> random:gen:theta
+#> 
+#>   As each engine slot received it (read back from the fit):
+#>     the fit runs on the standardised response, so a bound or scale
+#>     on a standard deviation is the stated one divided by the
+#>     response scale 0.609814
+#>     family:INLA.Data1:theta1  <prior: half-normal-SD(5) on the standardised response = half-normal-SD(3.049) on the response>  [sigma:sigma]  read back as sent
+#>     random:rep_block_id:theta  <prior: half-normal-SD(5) on the standardised response = half-normal-SD(3.049) on the response>  [sd:rep:block]  read back as sent
+#>     random:gen:theta  <prior: half-normal-SD(5) on the standardised response = half-normal-SD(3.049) on the response>  [sd:gen]  read back as sent
+#>     3 further slots carry the engine's own prior (listed in `$slots`)
+```
+
+A different prior gives a different answer. With many levels per
+variance component the difference is small. With few levels it can be
+large, and the prior should then be chosen with care (see
+[`?fb_prior`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)).
+
+## The posterior
+
+``` r
+
+summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
+#>      component  estimate  conf.low conf.high
+#> 1        sigma 0.2925640 0.2289292 0.3713493
+#> 2 sd_rep:block 0.2878209 0.1630867 0.4656972
+#> 3       sd_gen 0.3971314 0.2735894 0.5601524
+```
+
+`estimate` is the posterior mean. `conf.low` and `conf.high` bound a 95%
+credible interval: given the model and the prior, the parameter lies
+inside it with probability 0.95.
+
+## Functions of the parameters
+
+In REML, a heritability and its standard error come from the delta
+method, which assumes approximate normality. Near a boundary this can
+give an interval below zero or above one.
+
+Here the heritability is computed on each posterior draw, so every draw,
+and therefore the interval, lies between 0 and 1:
+
+``` r
+
+set.seed(1)
+h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
+range(h2[, "h2"])
+#> [1] 0.2762516 0.9009326
+quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
+#>      2.5%       50%     97.5% 
+#> 0.4294839 0.6385981 0.8065957
+```
+
+## Variances near zero
+
+REML can estimate a variance component as exactly zero, which reads as
+certainty that the effect is absent. When the whole credible interval of
+a standard deviation lies close to zero, flexyBayes warns, names the
+term, and suggests reporting it as not identified, not as zero.
+
+## Small trials
+
+With many levels, the posterior mean is close to the REML estimate and
+the credible interval is close to the Wald interval. With few levels
+they differ.
+[`vignette("flexyBayes-04-illustration")`](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-04-illustration.md)
+shows this on a trial reduced in size.
+
+## Run time
+
+INLA approximates the posterior and returns in seconds. brms samples it
+with Stan and takes minutes. The printed fit names the engine that was
+used.

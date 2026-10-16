@@ -17,7 +17,10 @@ vcov(object, ...)
 
 - ...:
 
-  Ignored, present for compatibility with the generic.
+  Ignored, present for compatibility with the generic, except that
+  `n_samples`, which the INLA method takes, is refused with
+  `method_argument_not_supported`: the matrix comes from every stored
+  posterior draw.
 
 ## Value
 

@@ -15,7 +15,7 @@ fb_backend_status(deep = TRUE)
 
 - deep:
 
-  Logical; currently unused (reserved for a future backend whose
+  Logical. Currently unused (reserved for a future backend whose
   readiness probe is expensive enough to need an opt-out). Default
   `TRUE`.
 
@@ -49,5 +49,5 @@ fb_backend_status()
 #>   [--] INLA    not installed: install.packages('INLA', repos = c(getOption('repos'), INLA = 'https://inla.r-inla-download.org/R/stable'))
 #>   [--] brms    not installed: install.packages('brms')
 #> 
-#>   No active inference backend is usable -- install at least one of the above before fitting.
+#>   No active inference backend is usable, install at least one of the above before fitting.
 ```

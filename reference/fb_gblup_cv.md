@@ -5,10 +5,10 @@ genotypes whose phenotypes are held out. For each fold the variance
 components are estimated by REML on the training genotypes, the held-out
 breeding values are predicted from the genomic relationship matrix
 (\\\hat{u}\_V = K\_{VT}(K\_{TT} + \delta I)^{-1}(y_T - X_T\hat\beta)\\),
-and the predictions are compared with the observed phenotypes. The
-headline metric is *prediction accuracy*, the correlation between
-predicted and observed across the held-out genotypes; *bias* is the
-slope of observed on predicted (1 is unbiased).
+and the predictions are compared with the observed phenotypes. The main
+metric is *prediction accuracy*, the correlation between predicted and
+observed across the held-out genotypes. *bias* is the slope of observed
+on predicted (1 is unbiased).
 
 ## Usage
 
@@ -38,8 +38,8 @@ fb_gblup_cv(y, K, X = NULL, folds = 5L, repeats = 1L, seed = NULL, tol = 1e-08)
 
 - repeats:
 
-  Number of independent fold partitions to average over (default 1);
-  repeated CV stabilises the estimate.
+  Number of independent fold partitions to average over (default 1).
+  Repeated CV stabilises the estimate.
 
 - seed:
 

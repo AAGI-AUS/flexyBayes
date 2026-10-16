@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -15,19 +15,16 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -47,7 +44,7 @@
     <div class="section level2">
       <h2 id="verbs">Verbs<a class="anchor" aria-label="anchor" href="#verbs"></a></h2>
 
-      <div class="section-desc"><p>The universal entry, the single-engine pins, the feasibility planner, cross-engine triangulation, and approximation validation.</p></div>
+      <div class="section-desc"><p>The universal entry, the single-engine pins, the feasibility planner, and approximation validation.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -91,13 +88,6 @@
 
         <dt>
 
-          <code><a href="triangulate.html">triangulate()</a></code>
-
-        </dt>
-        <dd>Cross-engine posterior triangulation</dd>
-
-        <dt>
-
           <code><a href="validate_approximation.html">validate_approximation()</a></code>
 
         </dt>
@@ -135,7 +125,7 @@
       </dl></div><div class="section level2">
       <h2 id="constructor-nouns">Constructor nouns<a class="anchor" aria-label="anchor" href="#constructor-nouns"></a></h2>
 
-      <div class="section-desc"><p>The four classed input constructors: priors, covariance carriers, approximation schemes, and engine selections.</p></div>
+      <div class="section-desc"><p>The classed input constructors: priors, covariance carriers, approximation schemes and engine selections.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -230,6 +220,27 @@
 
         <dt>
 
+          <code><a href="fb_register_refusals.html">fb_register_refusals()</a></code>
+
+        </dt>
+        <dd>Register a package's refusal reasons</dd>
+
+        <dt>
+
+          <code><a href="fb_refuse.html">fb_refuse()</a></code>
+
+        </dt>
+        <dd>Raise a registered refusal</dd>
+
+        <dt>
+
+          <code><a href="fb_isolated_lapply.html">fb_isolated_lapply()</a></code>
+
+        </dt>
+        <dd>Run jobs, each in its own R process</dd>
+
+        <dt>
+
           <code><a href="prior_summary.html">prior_summary()</a></code>
 
         </dt>
@@ -241,6 +252,13 @@
 
         </dt>
         <dd>Random-effect predictions from a flexyBayes fit</dd>
+
+        <dt>
+
+          <code><a href="vpredict.html">vpredict()</a></code>
+
+        </dt>
+        <dd>Posterior functionals of the variance components</dd>
 
         <dt>
 
@@ -521,6 +539,20 @@
 
         <dt>
 
+          <code><a href="fb_variance_draws.html">fb_variance_draws()</a></code>
+
+        </dt>
+        <dd>Joint posterior draws of the variance components of an INLA fit</dd>
+
+        <dt>
+
+          <code><a href="fb_marginal_cov.html">fb_marginal_cov()</a></code> <code><a href="fb_marginal_cov.html">as.matrix(<i>&lt;fb_marginal_cov&gt;</i>)</a></code>
+
+        </dt>
+        <dd>The marginal covariance of the response of a fitted model</dd>
+
+        <dt>
+
           <code><a href="predict.flexybayes_brms.html">predict(<i>&lt;flexybayes_brms&gt;</i>)</a></code>
 
         </dt>
@@ -528,7 +560,7 @@
 
         <dt>
 
-          <code><a href="predict.flexybayes_inla.html">predict(<i>&lt;flexybayes_inla&gt;</i>)</a></code>
+          <code><a href="predict.flexybayes_inla.html">predict(<i>&lt;flexybayes_inla&gt;</i>)</a></code> <code><a href="predict.flexybayes_inla.html">print(<i>&lt;fb_predict_new&gt;</i>)</a></code>
 
         </dt>
         <dd>Population-level predictions from a per-row INLA fit</dd>
@@ -556,6 +588,13 @@
 
         <dt>
 
+          <code><a href="fitted.flexybayes_aggregated.html">fitted(<i>&lt;flexybayes_aggregated&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Fitted values of an aggregated count fit</dd>
+
+        <dt>
+
           <code><a href="residuals.flexybayes.html">residuals(<i>&lt;flexybayes&gt;</i>)</a></code>
 
         </dt>
@@ -567,6 +606,13 @@
 
         </dt>
         <dd>Response residuals from a per-row INLA fit</dd>
+
+        <dt>
+
+          <code><a href="residuals.flexybayes_aggregated.html">residuals(<i>&lt;flexybayes_aggregated&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Residuals of an aggregated count fit</dd>
 
         <dt>
 
@@ -654,6 +700,13 @@
 
         <dt>
 
+          <code><a href="fb_refit.html">fb_refit()</a></code>
+
+        </dt>
+        <dd>Refit a model on new data, with added fixed columns</dd>
+
+        <dt>
+
           <code><a href="as.data.frame.fb_plan.html">as.data.frame(<i>&lt;fb_plan&gt;</i>)</a></code>
 
         </dt>
@@ -681,13 +734,6 @@
 
         </dt>
         <dd>Genomic summary of a fitted relationship model</dd>
-
-        <dt>
-
-          <code><a href="triangulate_genomic.html">triangulate_genomic()</a></code>
-
-        </dt>
-        <dd>Triangulate genomic model outputs across engines or against a field lens</dd>
       </dl></div><div class="section level2">
       <h2 id="datasets">Datasets<a class="anchor" aria-label="anchor" href="#datasets"></a></h2>
 
@@ -726,7 +772,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

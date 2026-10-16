@@ -4,7 +4,7 @@ Two-line summary of a `<flexybayes_review>` object returned when
 `review_code = TRUE` is passed to
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md).
 The first line reports the backend and the IR (intermediate
-representation) dimensions; the second is a prompt directing the user to
+representation) dimensions. The second is a prompt directing the user to
 [`cat_code()`](https://aagi-aus.github.io/flexyBayes/reference/cat_code.md)
 for inspection and
 [`proceed()`](https://aagi-aus.github.io/flexyBayes/reference/proceed.md)

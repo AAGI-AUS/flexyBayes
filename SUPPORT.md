@@ -1,68 +1,55 @@
 # Getting help with flexyBayes
 
-Thanks for using `flexyBayes`. The fastest path to a useful answer
-depends on what kind of question you have.
-
 ## Where to ask
 
-| Question type | Where |
+| Question | Where |
 |----|----|
-| “How do I do X with flexyBayes?” | [GitHub Discussions — Q&A](https://github.com/AAGI-AUS/flexyBayes/discussions/categories/q-a) |
-| “I think this is a bug.” | [GitHub Issues — bug report](https://github.com/AAGI-AUS/flexyBayes/issues/new?template=bug_report.yml) — please include a [reprex](https://reprex.tidyverse.org). |
-| “I’d like a new feature / backend / capability.” | [GitHub Issues — feature request](https://github.com/AAGI-AUS/flexyBayes/issues/new?template=feature_request.yml) |
-| Security-sensitive disclosure | See [`SECURITY.md`](https://aagi-aus.github.io/flexyBayes/SECURITY.md) — please do **not** open a public issue. |
-| General Bayesian-mixed-model methodology | [Stan Forums](https://discourse.mc-stan.org/) or [INLA mailing list](https://www.r-inla.org/contact-us) — broader and more active than this project. |
+| How do I do X with flexyBayes? | [GitHub Issues](https://github.com/AAGI-AUS/flexyBayes/issues) |
+| I think this is a bug. | [Bug report](https://github.com/AAGI-AUS/flexyBayes/issues/new?template=bug_report.yml), with a [reprex](https://reprex.tidyverse.org) |
+| I would like a new feature, engine or model structure. | [Feature request](https://github.com/AAGI-AUS/flexyBayes/issues/new?template=feature_request.yml) |
+| A security problem | See [`SECURITY.md`](https://aagi-aus.github.io/flexyBayes/SECURITY.md). Please do **not** open a public issue. |
+| Bayesian mixed models in general | [Stan Forums](https://discourse.mc-stan.org/) or the [INLA discussion group](https://www.r-inla.org/contact-us), which are larger and more active than this project. |
 
-## Maintenance capacity
+## Maintenance
 
-`flexyBayes` is currently maintained by a small team within the
-Australian Agricultural Genomics Institute (AAGI-AUS) collective.
+flexyBayes is maintained by a small team within Analytics for the
+Australian Grains Industry (AAGI). This file is in the GitHub repository
+and on the documentation site, not in the package tarball.
 
-> **Note.** The bus-factor / SLA / abandonment-protocol entries below
-> are pending the AAGI-AUS collective conversation that also governs
-> project decisions D5 (paper coauthors), D8 (upstream rename), and D10
-> (paper venue). Until that conversation lands, do not infer commitments
-> from this file beyond the items already labelled with concrete values.
-> This file is `.Rbuildignore`’d and ships only on the GitHub repository
-> / pkgdown site, not in the CRAN tarball.
+| Item | Current value |
+|----|----|
+| Primary maintainer | Max Moldovan, Adelaide University (email in `DESCRIPTION`) |
+| Number of maintainers | Not yet set |
+| Weekly maintenance hours | Not yet set |
+| Issue response time | None committed for 0.18.0 |
+| Security response time | Acknowledgement within 7 days (see [`SECURITY.md`](https://aagi-aus.github.io/flexyBayes/SECURITY.md)) |
+| If the package is no longer maintained | Not yet set. The default is handover to AAGI. |
 
-| Field | Current value | Notes |
-|----|----|----|
-| Primary maintainer | Max Moldovan | Adelaide University; contact via package author email. |
-| Bus factor | Pending AAGI-AUS collective decision | Will be set jointly with D5 / D8 / D10. |
-| Weekly maintenance hours | Pending AAGI-AUS collective decision | The median across recent quarters will be reported once measured. |
-| Issue response SLA | Pending AAGI-AUS collective decision | No SLA committed on the `0.10.0` development line. |
-| Critical security SLA | 7 days | See [`SECURITY.md`](https://aagi-aus.github.io/flexyBayes/SECURITY.md). |
-| Abandonment protocol | Pending AAGI-AUS collective decision; default fallback = AAGI-AUS institutional handover | Concrete handover / archive plan ratified with D5 / D8. |
+## A good reproducible example
 
-## Reprex etiquette
+Please include:
 
-A reproducible example (reprex) is encouraged, and should minimally the
-following:
-
-1.  A small `data.frame` we can copy-paste.
+1.  A small `data.frame` that can be copied and pasted.
 2.  The exact
     [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-    /
-    [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
     call.
 3.  The full output of
-    [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) —
-    especially the INLA and brms / Stan versions.
-4.  The error / unexpected output, copied verbatim.
+    [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html),
+    including the INLA, brms and Stan versions.
+4.  The error or unexpected output, copied as printed.
 
-For runtime issues, please run with `verbose = TRUE` and include the
-emitted backend code (the Stan program for `backend = "brms"`, the
-printed INLA formula for `backend = "inla"`).
+For a problem during fitting, run with `verbose = TRUE` and include the
+generated model code it prints: the Stan program for `backend = "brms"`,
+or the INLA formula for `backend = "inla"`.
 
 ## What we cannot help with
 
-- General R help — see [Stack Overflow
+- General R questions. See [Stack Overflow
   `[r]`](https://stackoverflow.com/questions/tagged/r).
-- ASReml-R proprietary syntax outside the subset that `flexyBayes`
-  implements — see VSNi support.
-- INLA model-tuning beyond the `lgm_gate()` / `priors_to_inla()` surface
-  — see [r-inla.org](https://www.r-inla.org/).
-- Stan toolchain installation for the brms backend — see
+- ASReml-R syntax outside the subset flexyBayes implements. See VSNi
+  support.
+- Tuning INLA beyond the settings flexyBayes exposes. See
+  [r-inla.org](https://www.r-inla.org/).
+- Installing a Stan toolchain for the brms engine. See
   [mc-stan.org](https://mc-stan.org/) and the `rstan` getting-started
   guide.

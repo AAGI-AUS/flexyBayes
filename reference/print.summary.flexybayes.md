@@ -2,7 +2,7 @@
 
 Prints the fixed-effect table, the variance components with the prior
 each one carried, the engine's own convergence diagnostics, and whatever
-engine-native panels the fit earns – INLA's hyperparameter and
+engine-native panels the fit earns, INLA's hyperparameter and
 spatial-field tables, brms's per-level residual table.
 
 ## Usage

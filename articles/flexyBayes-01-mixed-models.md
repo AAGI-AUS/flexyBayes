@@ -1,0 +1,106 @@
+# Mixed models in brief
+
+Readers who already use ASReml can go straight to
+[`vignette("flexyBayes-03-syntax")`](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-03-syntax.md).
+
+## The idea
+
+A field trial varies for several reasons at once: between treatments,
+between replicates, between blocks within replicates and between plots.
+Usually only the treatment differences are of interest. If the other
+sources are left out of the model, their variation is attributed to the
+treatments.
+
+A mixed model separates the two. **Fixed effects** are levels of direct
+interest, such as three varieties or two nitrogen rates, and each level
+is estimated. **Random effects** are levels treated as a sample from a
+population, such as this year’s blocks or this trial’s genotypes. For a
+random effect the model estimates the *variance* of the levels, and the
+predicted levels are shrunk toward the mean. A genotype seen in one
+block is shrunk more than one seen in twenty.
+
+## Example
+
+`john.alpha` is an alpha design: 24 genotypes, three replicates, and
+blocks nested within replicates.
+
+``` r
+
+data(john.alpha, package = "agridat")
+str(john.alpha)
+#> 'data.frame':    72 obs. of  7 variables:
+#>  $ plot : int  1 2 3 4 5 6 7 8 9 10 ...
+#>  $ rep  : Factor w/ 3 levels "R1","R2","R3": 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ block: Factor w/ 6 levels "B1","B2","B3",..: 1 1 1 1 2 2 2 2 3 3 ...
+#>  $ gen  : Factor w/ 24 levels "G01","G02","G03",..: 11 4 5 22 21 10 20 2 23 14 ...
+#>  $ yield: num  4.12 4.45 5.88 4.58 4.65 ...
+#>  $ row  : int  1 2 3 4 5 6 7 8 9 10 ...
+#>  $ col  : int  1 1 1 1 1 1 1 1 1 1 ...
+```
+
+Replicate is fixed, because there are only three and they are not a
+sample of interest. Blocks within replicates and genotypes are random.
+The `fixed` and `random` arguments, and the `rep:block` nesting, are
+written as in ASReml.
+
+``` r
+
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla",
+  verbose = FALSE
+)
+#> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 3.049) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
+
+summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
+#>      component  estimate  conf.low conf.high
+#> 1        sigma 0.2925640 0.2289292 0.3713493
+#> 2 sd_rep:block 0.2878209 0.1630867 0.4656972
+#> 3       sd_gen 0.3971314 0.2735894 0.5601524
+```
+
+Each row is a standard deviation on the scale of the response:
+
+- `sd_gen`: the spread of true genotype means, the variation a breeder
+  selects on.
+- `sd_rep:block`: the variation between blocks within a replicate, which
+  the blocking removes from the genotype comparison.
+- `sigma`: the remaining plot-to-plot variation.
+
+## Heritability
+
+Heritability is the share of the observed variance that is genetic.
+
+``` r
+
+set.seed(1)
+vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
+#>   functional  estimate    median std.error  conf.low conf.high
+#> 1         h2 0.6377367 0.6385981 0.1009037 0.4294839 0.8065957
+```
+
+It is about two thirds here. Raw plot means cannot give this figure,
+because they mix genotype effects with block effects.
+
+## Predicted genotype effects
+
+[`ranef()`](https://aagi-aus.github.io/flexyBayes/reference/ranef.md)
+returns the predicted genotype effects (BLUPs in REML terms).
+
+``` r
+
+head(ranef(fit)$gen, 4)
+#>   group level     estimate std.error   conf.low  conf.high
+#> 1   gen   G01  0.496998190 0.1904387  0.1242450  0.8735222
+#> 2   gen   G02  0.005313437 0.1853891 -0.3594447  0.3702770
+#> 3   gen   G03 -0.777286433 0.1973290 -1.1683177 -0.3924252
+#> 4   gen   G04  0.005913840 0.1858164 -0.3606392  0.3707568
+```
+
+## Next
+
+[`vignette("flexyBayes-02-bayesian")`](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-02-bayesian.md)
+explains what changes when these quantities are estimated as posterior
+distributions.

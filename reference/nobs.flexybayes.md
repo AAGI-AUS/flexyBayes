@@ -1,10 +1,10 @@
 # Number of observations a flexyBayes fit was fitted to
 
-A fit whose missing responses were augmented rather than dropped was
-handed more rows than it has observations: the design cell of a lost
-plot is still a row, carried as a latent quantity so the index set a
-structured covariance is built over survives. The two counts are
-therefore different numbers and the argument says which one is wanted.
+A fit whose missing responses were augmented, not dropped was handed
+more rows than it has observations: the design cell of a lost plot is
+still a row, carried as a latent quantity so the index set a structured
+covariance is built over survives. The two counts are therefore
+different numbers and the argument says which one is wanted.
 
 ## Usage
 

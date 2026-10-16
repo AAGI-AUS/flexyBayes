@@ -2,7 +2,7 @@
 
 Opens with the header every engine's print shares, then adds the sampler
 diagnostics and a brms-specific footer (the live `brmsfit` lives at
-`$brms`; the GLM shim at `$glm`; `$extras` carries the same diagnostics
+`$brms`. The GLM shim at `$glm`; `$extras` carries the same diagnostics
 as the INLA path).
 
 ## Usage

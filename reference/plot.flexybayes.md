@@ -1,11 +1,11 @@
 # Plot diagnostics for a flexyBayes model
 
-Draws one of seven standard displays for a fitted model, chosen by
+Draws one of eight standard displays for a fitted model, chosen by
 `type`. Every backend reaches the same method, and a display that needs
-a slot a given engine does not populate – posterior draws on the
-deterministic INLA path, for instance – prints a message naming what is
-missing and returns invisibly rather than erroring or drawing an empty
-panel. The one exception is `"pp_check"`, which raises the refusal
+a slot a given engine does not populate (posterior draws on an INLA fit,
+for instance) prints a message naming what is missing and returns
+invisibly instead of erroring or drawing an empty panel. The one
+exception is `"pp_check"`, which raises the refusal
 [`pp_check.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/pp_check.flexybayes.md)
 raises, so a caller can catch it by class.
 
@@ -40,33 +40,44 @@ plot(x, ...)
 
   A single string naming the display to draw. One of: `"diagnostics"`,
   trace plots and marginal densities per parameter (needs a sampled
-  posterior); `"residuals"`, residuals against fitted values beside a
-  normal quantile-quantile plot; `"effects"`, a forest plot of the fixed
+  posterior), `"residuals"`, residuals against fitted values beside a
+  normal quantile-quantile plot, `"effects"`, a forest plot of the fixed
   effects with their credible intervals, available on every backend that
   supplies [`coef()`](https://rdrr.io/r/stats/coef.html) and
-  [`confint()`](https://rdrr.io/r/stats/confint.html); `"variance"`, a
-  bar chart of the variance components with credible intervals;
+  [`confint()`](https://rdrr.io/r/stats/confint.html). `"variance"`, a
+  bar chart of the variance components with credible intervals,
   `"blups"`, a caterpillar plot of the random-effect predictions ordered
-  by magnitude; `"pp_check"`, a posterior predictive check overlaying
+  by magnitude, `"pp_check"`, a posterior predictive check overlaying
   replicated datasets on the observed response, which needs predictive
   draws and so refuses by name on a fit that carries none (see
-  [`pp_check.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/pp_check.flexybayes.md));
+  [`pp_check.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/pp_check.flexybayes.md)),
   and `"variogram"`, the empirical semivariance of the residuals over
-  the design index. `NULL` (the default) resolves to `"diagnostics"` on
-  a sampled fit and `"residuals"` otherwise.
+  the design index, and `"spatial_field"`, the posterior mean of a
+  separable autoregressive field, `random = ~ ar1(row):ar1(col)`, drawn
+  on the row-by-column array of the trial on the response scale. `NULL`
+  (the default) resolves to `"diagnostics"` on a sampled fit and
+  `"residuals"` otherwise.
 
 - ...:
 
   Further arguments passed to the underlying plotting call, for example
   `variable` to restrict which parameters a diagnostic display covers,
-  or `type` and `ndraws` for `"pp_check"`.
+  or `type` and `ndraws` for `"pp_check"`. The spatial field takes
+  `trial`, the identifier printed in its title and the only label it
+  adds to the array's own row and column labels. On a fit with one field
+  per trial, `random = ~ id(trial):ar1(row):ar1(col)`, it names the
+  level whose field is drawn.
 
 ## Value
 
-Invisibly, the object the underlying plotting call returns – a ggplot2
+Invisibly, the object the underlying plotting call returns: a ggplot2
 object for the displays built with it, the semivariance table for
-`"variogram"`, and `NULL` for those drawn on the base graphics device.
-Called for the plot it draws.
+`"variogram"`, for `"spatial_field"` a list holding `values` (the field,
+one row per row level and one column per column level), `row_var`,
+`col_var`, `trial`, `title` and `spelling` (the field's term as
+written), and `NULL` for those drawn on the base graphics device. A fit
+with no separable field refuses `"spatial_field"` with
+`spatial_field_requires_ar1_field`. Called for the plot it draws.
 
 ## Details
 

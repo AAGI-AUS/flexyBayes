@@ -38,16 +38,23 @@ cat_code(x, file = stdout(), ...)
 Invisibly, the code as a character vector. Called for the code it writes
 to `file`.
 
+## Deprecated
+
+`cat_code()` is deprecated in flexyBayes 0.13.0 and will be removed in a
+later release. The generated code is the `code` element of the review
+object, and `flexybayes(..., return_code = TRUE)` returns it directly. A
+call warns with a condition of class `flexybayes_deprecated`.
+
 ## Examples
 
 ``` r
-# review_code = TRUE defers the fit, but generating the code still
-# goes through brms::make_stancode(), so brms must be present.
+# Generating the code goes through brms::make_stancode(), so brms must be
+# present.
 if (requireNamespace("brms", quietly = TRUE)) {
   set.seed(1)
   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
-  rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
-                   review_code = TRUE)
-  cat_code(rv)
+  code <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+                     return_code = TRUE)
+  cat(code)
 }
 ```

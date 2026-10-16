@@ -18,12 +18,18 @@ is_fb_approx(x)
 
 `TRUE` if `x` is an `fb_approx` object, `FALSE` otherwise.
 
+## Deprecated
+
+`is_fb_approx()` is deprecated in flexyBayes 0.13.0 and will be removed
+in a later release. Use `inherits(x, "fb_approx")`. A call warns with a
+condition of class `flexybayes_deprecated`.
+
 ## Examples
 
 ``` r
 a <- fb_approx("low_rank_smooth")
-is_fb_approx(a)
+inherits(a, "fb_approx")
 #> [1] TRUE
-is_fb_approx("low_rank_smooth")
+inherits("low_rank_smooth", "fb_approx")
 #> [1] FALSE
 ```

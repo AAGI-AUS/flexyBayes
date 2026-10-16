@@ -1,0 +1,93 @@
+# The ASReml syntax flexyBayes covers
+
+This vignette lists the ASReml spellings flexyBayes reads, what each is
+for, and which engine fits it. A spelling the chosen engine cannot fit
+stops with a message that names it and says what to write instead. Under
+the default `backend = "auto"`, flexyBayes chooses the engine and
+reports its choice.
+
+## Fixed effects
+
+The fixed part is an ordinary R formula.
+
+| Spelling | Use |
+|----|----|
+| `yield ~ env` | A treatment factor, with treatment contrasts as in [`lm()`](https://rdrr.io/r/stats/lm.html) |
+| `yield ~ 0 + env` | One mean per level instead of differences from a reference level |
+| `yield ~ env + moisture` | A factor and a covariate (analysis of covariance) |
+| `yield ~ env * moisture` | A separate slope for each level of `env` |
+| `log(yield) ~ env` | A transformed response |
+| `yield ~ env + I(moisture^2)` | A quadratic term |
+| `yield ~ lin(day)` | ASReml’s spelling for a linear covariate |
+| `yield ~ pol(day, 2)` | An orthogonal polynomial |
+
+## Random effects
+
+Each term has one variance unless stated otherwise.
+
+| Spelling | Use | Engine |
+|----|----|----|
+| `~ gen`, `~ id(gen)`, `~ ide(gen)` | Levels treated as a sample, each shrunk toward the mean | both |
+| `~ rep:block` | Blocks nested within replicates, as in an alpha design | both |
+| `~ gen:env` | Genotype-by-environment effects with one variance | both |
+| `~ diag(env):gen` | A separate genotype variance in each environment, with no covariance. `idh()` and `at()` are synonyms | both |
+| `~ at(design, "split"):mainplot` | An effect only where `design` takes the named levels, with a variance for each | both |
+| `~ us(env):gen` | All genotype variances and covariances between environments | brms |
+| `~ vm(gen, K)` | A known relationship matrix, as in genomic prediction | both |
+| `~ ped(animal, A)` | The same with a pedigree matrix, in the ASReml 3 spelling (ASReml 4 uses `vm()`) | both |
+| `~ ar1(row):ar1(col)` | A separable autoregressive field over a plot grid, plus independent plot error | INLA |
+| `~ ar1(t)` | An autoregressive field in one dimension | INLA |
+| `~ ar1(t):g` | An autoregressive field within each level of `g`, independent between levels | INLA |
+| `~ id(trial):ar1(row):ar1(col)` | One field per trial, with the correlations shared across trials | INLA |
+| `~ at(trial):ar1(row):ar1(col)` | One field per trial, each with its own variance and correlations. `at(trial, "T1")` keeps the named trials | INLA |
+| `~ spl(x)` | A penalised spline, fitted as a second-order random walk. It is similar to, but not the same as, ASReml’s spline | INLA |
+| `(x \| g)` | Correlated random intercept and slope | brms |
+| `(x \|\| g)` | Uncorrelated random intercept and slope | both |
+
+## Residual
+
+| Spelling | Use | Engine |
+|----|----|----|
+| `~ units` | Independent residuals with one variance (the default) | both |
+| `~ dsum(~ units \| env)` | One residual variance per environment | both |
+| `~ at(env):units` | The same, in ASReml 3’s spelling | both |
+| `~ ar1(row):ar1(col)` | A separable autoregressive residual with no independent plot error, for a Gaussian response | INLA |
+| `~ dsum(~ ar1(row):ar1(col) \| trial)` | The same residual in each trial, with its own variance and correlations | INLA |
+
+## Families
+
+`gaussian`, `binomial`, `poisson`, `negative_binomial`, `gamma` and
+`beta` on both engines. `hurdle_gamma` on brms only.
+
+## Not supported
+
+| Spelling | Alternative |
+|----|----|
+| `~ fa(env, k):gen` | `diag(env):gen` on either engine, or `us(env):gen` on brms (repeated INLA fits gave different covariances when the genetic signal was weak) |
+| `~ corh(env):gen` | `~ gen + env:gen`, if one genetic variance for all environments and a correlation of zero or more are acceptable |
+| `~ us(trait):vm(gen)` | Fit it in brms directly as `(0 + trait \| gr(gen, cov = K))`, or fit each trait separately |
+| `~ cor(env):gen` | `us(env):gen` on brms, or `diag(env):gen` without correlations |
+| `~ ar2(t)`, `~ ar3(t)` | `ar1(t)` |
+| `~ str(...)` | Write the structure on the term that carries it |
+| `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | `spl(x)` for one covariate |
+| `residual = ~ ar1(t)` | The same field on the random side, which adds an independent plot error |
+
+ASReml’s `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`, `rr`, `own`,
+`exp`, `gau` and `mtrn` are not recognised. The error message suggests
+the nearest spelling that is.
+
+Every message flexyBayes can stop with is listed by
+[`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md):
+
+``` r
+
+nrow(fb_refusals())
+#> [1] 180
+head(fb_refusals()$reason_code)
+#> [1] "aggregate_argument_invalid"             
+#> [2] "aggregated_evidence_unavailable"        
+#> [3] "aggregation_out_of_scope"               
+#> [4] "aggregation_plan_ineligible"            
+#> [5] "aggregation_residual_prior_not_composed"
+#> [6] "aggregation_response_incomplete"
+```

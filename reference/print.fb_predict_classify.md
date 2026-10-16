@@ -1,11 +1,10 @@
 # Print a classify means table
 
 Prints the table with a banner naming what the numbers are. The estimate
-is a posterior mean of a marginal mean, and the table is not a
-standard-error-of-difference table – ASReml's
-[`predict()`](https://rdrr.io/r/stats/predict.html) prints one beside
-the means and this does not, so the banner says so rather than leaving
-the absence to be noticed.
+is a posterior mean. The banner also states that the table has no
+standard errors of difference, which ASReml's
+[`predict()`](https://rdrr.io/r/stats/predict.html) prints beside its
+means.
 
 ## Usage
 
@@ -35,7 +34,8 @@ Invisibly, `x` unchanged. Called for the table it prints.
 
 ## Details
 
-On an INLA fit the banner carries a second line. The interval there
-comes from the Gaussian approximation of the joint fixed-effect
-posterior, which is what the estimation basis supplies to emmeans, and
-not from INLA's own marginal densities.
+When the table includes random effects, the banner names the random
+terms included, the variables averaged over and the variables left out,
+as ASReml's own notes do. Otherwise, on an INLA fit, the banner says the
+interval comes from the Gaussian approximation of the joint fixed-effect
+posterior, not from INLA's own marginal densities.

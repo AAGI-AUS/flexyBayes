@@ -3,14 +3,14 @@
 mean) or posterior_linpred() (linear-predictor scale) on the
 live brmsfit carried at $brms. The parent
 predict.flexybayes() path uses a $glm$linear.predictors
-point estimate that handles only the original-data case; this
+point estimate that handles only the original-data case. This
 subclass override accepts newdata and returns the posterior-mean
 prediction (per-row mean over draws), or the full posterior
 matrix when summary = FALSE."><meta property="og:description" content="Delegates to brms's posterior_epred() (response-scale posterior
 mean) or posterior_linpred() (linear-predictor scale) on the
 live brmsfit carried at $brms. The parent
 predict.flexybayes() path uses a $glm$linear.predictors
-point estimate that handles only the original-data case; this
+point estimate that handles only the original-data case. This
 subclass override accepts newdata and returns the posterior-mean
 prediction (per-row mean over draws), or the full posterior
 matrix when summary = FALSE."></head><body>
@@ -21,7 +21,7 @@ matrix when summary = FALSE."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,19 +29,16 @@ matrix when summary = FALSE."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -65,7 +62,7 @@ matrix when summary = FALSE."></head><body>
 mean) or <code>posterior_linpred()</code> (linear-predictor scale) on the
 live <code>brmsfit</code> carried at <code>$brms</code>. The parent
 <code>predict.flexybayes()</code> path uses a <code>$glm$linear.predictors</code>
-point estimate that handles only the original-data case; this
+point estimate that handles only the original-data case. This
 subclass override accepts <code>newdata</code> and returns the posterior-mean
 prediction (per-row mean over draws), or the full posterior
 matrix when <code>summary = FALSE</code>.</p>
@@ -83,6 +80,9 @@ matrix when <code>summary = FALSE</code>.</p>
 <span>  summary <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  classify <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  allow_new_levels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  mean_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_draws <span class="op">=</span> <span class="fl">1000L</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -97,11 +97,14 @@ matrix when <code>summary = FALSE</code>.</p>
 
 <dt id="arg-newdata">newdata<a class="anchor" aria-label="anchor" href="#arg-newdata"></a></dt>
 <dd><p>Optional data.frame at which to predict. When
-omitted, returns the in-sample posterior summary.</p></dd>
+omitted, returns the in-sample posterior summary. On a model with an
+<code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> brms evaluates the offset on <code>newdata</code>, so <code>newdata</code> needs
+every column the offset reads. An absent one refuses with
+<code>newdata_offset_missing</code> instead of being taken as zero.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
-<dd><p><code>"response"</code> (default; posterior_epred) or <code>"link"</code>
+<dd><p><code>"response"</code> (default. posterior_epred) or <code>"link"</code>
 (posterior_linpred).</p></dd>
 
 
@@ -117,21 +120,47 @@ all random effects, <code>NA</code> excludes them (population-level).</p></dd>
 
 <dt id="arg-summary">summary<a class="anchor" aria-label="anchor" href="#arg-summary"></a></dt>
 <dd><p>Logical: if <code>TRUE</code> (default), summarise across
-draws to a numeric vector; if <code>FALSE</code>, return the
+draws to a numeric vector. If <code>FALSE</code>, return the
 <code>draws x rows</code> posterior matrix.</p></dd>
 
 
 <dt id="arg-classify">classify<a class="anchor" aria-label="anchor" href="#arg-classify"></a></dt>
-<dd><p>The factors to break a marginal-means table down by:
+<dd><p>The factors to break a predicted-value table down by:
 a character value (<code>"Variety"</code>, <code>"Variety:env"</code>) or a one-sided
-formula (<code>~ Variety</code>). <code>NULL</code> (the default) is the historical
-behaviour. See <code><a href="predict.flexybayes_inla.html">predict.flexybayes_inla()</a></code> for how the two active
-engines' prediction paths differ.</p></dd>
+formula (<code>~ Variety</code>). The factors may be fixed or random, and the
+table follows ASReml's default rules, described under
+<code><a href="predict.flexybayes_inla.html">predict.flexybayes_inla()</a></code>. On this engine the values come from the
+posterior draws. A level combination the data never held is drawn
+from its fitted normal distribution. <code>NULL</code> (the default) is the
+historical behaviour.</p></dd>
 
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
-<dd><p>Credible level for the classify table's interval, as a
-proportion. Default <code>0.95</code>.</p></dd>
+<dd><p>Credible level for the classify table's interval, or for the
+predictive interval with <code>allow_new_levels = TRUE</code>, as a proportion.
+Default <code>0.95</code>.</p></dd>
+
+
+<dt id="arg-allow-new-levels">allow_new_levels<a class="anchor" aria-label="anchor" href="#arg-allow-new-levels"></a></dt>
+<dd><p>Logical. <code>TRUE</code> returns the posterior predictive of
+the rows of <code>newdata</code>, observation noise included, in which a level the
+fit did not see is drawn from its fitted standard deviation:
+<code>brms::posterior_predict(allow_new_levels = TRUE, sample_new_levels = "gaussian")</code>. The table matches the INLA method's. See
+<code><a href="predict.flexybayes_inla.html">predict.flexybayes_inla()</a></code> for the structures it is built for and the
+refusals. Its <code>estimate</code>, <code>sd</code>, <code>lower</code> and <code>upper</code> are the mean,
+standard deviation and quantiles of the draws. <code>FALSE</code> (the default)
+leaves the paths above unchanged.</p></dd>
+
+
+<dt id="arg-mean-by">mean_by<a class="anchor" aria-label="anchor" href="#arg-mean-by"></a></dt>
+<dd><p>With <code>allow_new_levels = TRUE</code>, the columns of <code>newdata</code>
+whose combinations define the sets of rows to average, as a character
+vector or a one-sided formula (<code>~ TRIAL</code>). <code>NULL</code> predicts each row.</p></dd>
+
+
+<dt id="arg-n-draws">n_draws<a class="anchor" aria-label="anchor" href="#arg-n-draws"></a></dt>
+<dd><p>With <code>allow_new_levels = TRUE</code>, the number of posterior
+draws used, at most the number the fit holds. Default <code>1000</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -141,18 +170,20 @@ proportion. Default <code>0.95</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>One of four shapes, by argument. With <code>classify</code> set, the
-marginal-means table for those factors. Otherwise with
-<code>summary = FALSE</code>, the <code>draws x rows</code> posterior matrix; with
+    <p>One of five shapes, by argument. With <code>classify</code> set, the
+marginal-means table for those factors. With <code>allow_new_levels = TRUE</code>,
+the <code>fb_predict_new</code> table described in <code><a href="predict.flexybayes_inla.html">predict.flexybayes_inla()</a></code>.
+Otherwise with
+<code>summary = FALSE</code>, the <code>draws x rows</code> posterior matrix. With
 <code>se.fit = TRUE</code>, a list of <code>fit</code> (posterior mean per row) and
-<code>se.fit</code> (posterior SD per row); and by default a numeric vector of
+<code>se.fit</code> (posterior SD per row). And by default a numeric vector of
 posterior means, one per row of <code>newdata</code> or of the fitted data.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Population-level vs. group-level prediction follows brms's
 <code>re_formula</code> convention: the default <code>re_formula = NULL</code> includes
-all random effects; pass <code>re_formula = NA</code> for population-level
+all random effects. Pass <code>re_formula = NA</code> for population-level
 predictions only.</p>
     </div>
 
@@ -161,7 +192,7 @@ predictions only.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">

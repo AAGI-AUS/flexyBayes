@@ -1,7 +1,7 @@
 # Tidy a per-row INLA fit into a one-row-per-term data frame
 
 The INLA backend returns a `flexybayes_inla` object whose internal
-layout differs from the other engines' – it has no `$glm` shim – so it
+layout differs from the other engines', it has no `$glm` shim, so it
 needs its own [`tidy()`](https://generics.r-lib.org/reference/tidy.html)
 method even though it shares the `flexybayes` parent class. The
 fixed-effect summary is read directly off INLA's `summary.fixed` table,
@@ -35,7 +35,7 @@ tidy(
 
 - conf.level:
 
-  Numeric in `(0, 1)`. Accepted for generic compatibility; INLA reports
+  Numeric in `(0, 1)`. Accepted for generic compatibility. INLA reports
   the 95% marginal bounds, so a non-0.95 request is noted.
 
 - effects:
@@ -46,7 +46,7 @@ tidy(
 
 - ...:
 
-  Currently unused; present for generic compatibility.
+  Currently unused. Present for generic compatibility.
 
 ## Value
 
@@ -60,7 +60,7 @@ variance components under `effects = "random"`.
 Because the INLA fixed-effect intervals come from the marginal
 posteriors INLA has already integrated, the `conf.level` argument is
 accepted for generic compatibility but only the 95% bounds INLA reports
-are returned; a one-off message notes this when a different level is
+are returned. A one-off message notes this when a different level is
 requested rather than silently ignoring it.
 
 The `effects` argument is the same one
@@ -70,7 +70,7 @@ population-level coefficients, `"random"` the variance-component
 summary. Before 0.9.1 this method had no such argument, so
 `effects = "random"` on an INLA fit was absorbed by `...` and the
 FIXED-effect table came back under a call that asked for variance
-components – a wrong answer with no error. An unrecognised value now
+components, a wrong answer with no error. An unrecognised value now
 stops.
 
 ## See also

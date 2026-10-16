@@ -17,7 +17,7 @@ diagnostics, and extras for secondary analyses."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,19 +25,16 @@ diagnostics, and extras for secondary analyses."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-getting-started.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/flexyBayes-01-mixed-models.html">Get started</a></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/flexyBayes-01-mixed-models.html">01: Mixed models in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-bayesian.html">02: Bayesian estimation in brief</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-syntax.html">03: The ASReml syntax covered</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -93,7 +90,9 @@ diagnostics, and extras for secondary analyses.</p>
 <span>  aggregate <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  plan <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  syntax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"asreml"</span>, <span class="st">"brms"</span><span class="op">)</span>,</span>
-<span>  rcov <span class="op">=</span> <span class="fu">lifecycle</span><span class="fu">::</span><span class="fu"><a href="https://lifecycle.r-lib.org/reference/deprecated.html" class="external-link">deprecated</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  known_variance <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fixed_alias <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"refuse"</span>, <span class="st">"drop"</span><span class="op">)</span>,</span>
+<span>  <span class="va">rcov</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">fb</span><span class="op">(</span></span>
@@ -122,7 +121,9 @@ diagnostics, and extras for secondary analyses.</p>
 <span>  aggregate <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  plan <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  syntax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"asreml"</span>, <span class="st">"brms"</span><span class="op">)</span>,</span>
-<span>  rcov <span class="op">=</span> <span class="fu">lifecycle</span><span class="fu">::</span><span class="fu"><a href="https://lifecycle.r-lib.org/reference/deprecated.html" class="external-link">deprecated</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  known_variance <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fixed_alias <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"refuse"</span>, <span class="st">"drop"</span><span class="op">)</span>,</span>
+<span>  <span class="va">rcov</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -136,8 +137,22 @@ universal entry's model slot: it accepts the ASReml <code>fixed</code> form
 (paired with <code>random</code> / <code>residual</code>) <strong>or</strong> a brms / lme4-style
 bar-grouped formula such as <code>response ~ x + (1 | g)</code> (in which case
 the grouping lives in the formula and <code>random</code> / <code>residual</code> must be
-left <code>NULL</code>). The grammar is detected from the call shape; use
-<code>syntax</code> to force it.</p></dd>
+left <code>NULL</code>). The grammar is detected from the call shape. Use
+<code>syntax</code> to force it.</p>
+<p><strong>Offsets.</strong> <code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> terms in the fixed formula enter the linear
+predictor with a fixed coefficient of one on both engines, and several
+add. Each is evaluated against <code>data</code> and has to be a finite number on
+every row (<code>fixed_offset_invalid</code> otherwise). brms receives the terms
+in its formula; INLA receives the evaluated offset through <code>inla()</code>'s
+<code>offset</code> argument, and a Gaussian identity-link fit reads its centre,
+scale and default priors from the response minus the offset. The
+aggregated route carries an offset exactly on the Gaussian family
+(subtracted before the cell statistics are taken) and the Poisson
+family (as exposure), and refuses one on the binomial family
+(<code>fixed_offset_unsupported</code>), where <code>aggregate = "auto"</code> takes the
+per-row route. <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> on new data evaluates the offset there and
+refuses when a column it reads is absent (<code>newdata_offset_missing</code>).
+An <code><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset()</a></code> in <code>random</code> or <code>residual</code> is refused.</p></dd>
 
 
 <dt id="arg-random">random<a class="anchor" aria-label="anchor" href="#arg-random"></a></dt>
@@ -149,58 +164,88 @@ two lists.</p>
 <code>id()</code>, and nested colon terms, including the per-trial separable AR1
 field described under "Spatial and temporal autoregressive fields"
 below.</p>
-<p><strong>Parsed and refused by name</strong> (recognised syntax, no active engine has
-a lowering for it): <code>fa()</code>, the factor-analytic genotype-by-environment
-covariance, is refused on both engines (<code>fa_not_representable</code>) – it
-parses into the formula catalogue and stops there. <code>corh(f):g</code> and
-<code>at(f, level):g</code> are likewise real syntax with no active emit rather
-than unsupported syntax; both are described in full just below.</p>
+<p><strong>Parsed and refused by name.</strong> <code>fa(f, k):g</code>, the factor-analytic
+genotype-by-environment covariance, is refused on both engines
+(<code>factor_analytic_not_repeatable</code>). On simulated trials with a known
+covariance, the genetic-correlation intervals of INLA fits covered the
+true value less often than required (134 and 125 of 150 for k = 1 and
+2, against 136), and flexyBayes has no factor-analytic lowering for
+brms.
+Write <code>diag(f):g</code>, which fits on both engines, or <code>us(f):g</code> on brms.
+The bare spelling <code>fa(v, k)</code>, with no grouping factor for the covariance
+to apply to, keeps its own refusal (<code>fa_not_representable</code>).
+<code>corh(f):g</code> is likewise ASReml syntax that flexyBayes parses and
+refuses by name. It is described just below.</p>
 <p><strong>Heterogeneous variances.</strong> <code>diag(f):g</code>, <code>idh(f):g</code> and <code>at(f):g</code> all fit
-one variance per level of <code>f</code> with no covariance between levels – the
+one variance per level of <code>f</code> with no covariance between levels: the
 usual multi-environment structure, where the genotype variance differs by
-site. ASReml treats <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> and <code>idh()</code> as the same structure and so does
-flexyBayes; the three spellings emit identical code. <code>us(f):g</code> estimates
-every pairwise correlation instead, at <code>k(k+1)/2</code> parameters against
-<code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code>'s <code>k</code>.</p>
-<p><code>corh(f):g</code> – heterogeneous variances with a single shared correlation –
-is refused: no active backend has an equicorrelation group-level
-structure, and approximating it with either neighbour would change the
-parameter count. <code>at(f, level):g</code> is also refused, because conditioning
-on selected levels is a different model from varying the variance across
-all of them.</p>
-<p>These structures fit on brms. INLA refuses them structurally, so <code>auto</code>
-routes such a model to brms.</p>
+site. ASReml treats <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> and <code>idh()</code> as the same structure, and so
+does flexyBayes. The three spellings emit identical code. <code>us(f):g</code>
+estimates every pairwise correlation instead, at <code>k(k+1)/2</code> parameters
+against <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code>'s <code>k</code>.</p>
+<p><code>corh(f):g</code>, heterogeneous variances with a single shared correlation,
+is refused on both engines: flexyBayes has no lowering for it, and
+approximating it with either neighbour would change the parameter count.
+With one variance for every level and a correlation of zero or more,
+<code>random = ~ g + f:g</code> is the same covariance and fits on both engines.</p>
+<p><strong>Selected levels.</strong> <code>at(f, level):g</code> gives the random effect <code>g</code> only
+to the rows where <code>f</code> takes one of the named levels, with one variance
+per named level, as in ASReml. <code>at(design, "split"):mainplot</code> is a
+main-plot effect in the split-plot trials alone. Levels are written as
+values, <code>at(f, c("a", "b"))</code>, or as positions in <code>levels(f)</code>,
+<code>at(f, 2)</code>. A level the data do not have is refused
+(<code>at_level_not_in_data</code>). It fits on both engines and reports
+<code>sd_&lt;g&gt;__&lt;f&gt;&lt;level&gt;</code>, the name <code>at(f):g</code> gives the same level.</p>
+<p><code>diag(f):g</code> fits on both engines. <code>us(f):g</code> fits on brms, and INLA
+refuses it, so <code>auto</code> routes such a model to brms.</p>
 <p><strong>Spatial and temporal autoregressive fields.</strong> <code>ar1(t)</code> and the
 separable <code>ar1(row):ar1(col)</code> are written here, on the random side, and
 emitted on INLA as a latent autoregressive field plus the Gaussian
 observation nugget. Four hyperparameters on a field grid: the row
 correlation, the column correlation, the field SD and the nugget SD, all
-four printed by <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>. The field is faithful only with one
+four printed by <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>. Each correlation is named after the factor
+it runs along, <code>rho_&lt;factor&gt;</code>: <code>rho_row</code> and <code>rho_col</code> for
+<code>ar1(row):ar1(col)</code>, and the same two names for <code>ar1(col):ar1(row)</code>.
+The field is faithful only with one
 observation per grid node, so an incomplete or replicated grid refuses
 (keep the unobserved nodes as design cells with the default
-<code>na_action = "augment"</code>). brms has no lowering for a Kronecker
-autoregressive precision and refuses.</p>
+<code>na_action = "augment"</code>). flexyBayes has no brms lowering for the
+field, so brms refuses.</p>
 <p>That four-parameter model is <strong>not</strong> ASReml's separable residual, which
-is one correlated residual with no independent plot error – three
+is one correlated residual with no independent plot error: three
 parameters, nested inside this one as the nugget goes to zero. On data
 with real plot-to-plot noise the two return different correlations,
 because a nugget-free model must absorb independent noise into the
 correlated structure and is pulled towards zero by it. The gap grows
 with the share of the total variance the nugget holds, and it falls on
-the correlations a reader acts on. Neither model is wrong. They are
-different models, and writing the field on the random side is what
-keeps them distinguishable by name.</p>
-<p><strong>Per-trial nested field.</strong> <code>at(trial):ar1(row):ar1(col)</code>, with no
-<code>level</code> argument on <code>at()</code>, fits one separable AR1 field per level of
-<code>trial</code> on INLA, via the <code>replicate =</code> mechanism – one complete grid
-per trial, each with its own realised field, but the row correlation,
-column correlation and field SD are <strong>shared across every level of
-<code>trial</code></strong>, not estimated per trial. <code>at(trial, level):ar1(row):ar1(col)</code>
-(a <code>level</code> argument) asks for either a single conditioned trial or
-per-trial (unshared) hyperparameters, and both are refused
-(<code>at_field_per_level_hyper_not_representable</code>): there is no lowering
-for a level-conditioned field or for hyperparameters that vary by
-level. brms has no lowering for this field at all and refuses.</p></dd>
+the correlations a reader acts on. Neither model is wrong. The residual
+form is written on the residual side, <code>residual = ~ ar1(row):ar1(col)</code>,
+described under <code>residual</code> below.</p>
+<p><strong>Per-trial nested field.</strong> <code>id(trial):ar1(row):ar1(col)</code> fits one
+separable AR1 field per level of <code>trial</code> on INLA, via the <code>replicate =</code>
+mechanism: one complete grid per trial, each with its own realised
+field. The row correlation, column correlation and field SD are
+<strong>shared across every level of <code>trial</code></strong>, not estimated per trial. This
+is the model ASReml fits under the same spelling.</p>
+<p><strong>A field for each trial.</strong> <code>at(trial):ar1(row):ar1(col)</code> fits a
+separate field on each trial, with its own SD and correlations, as
+ASReml does: three parameters per trial, reported as
+<code>sd_spatial__trial&lt;level&gt;</code>, <code>rho_row__trial&lt;level&gt;</code> and
+<code>rho_col__trial&lt;level&gt;</code> for <code>ar1(row):ar1(col)</code>, plus the shared
+Gaussian nugget.
+<code>at(trial, level):ar1(row):ar1(col)</code> fits the field on the named trials
+only. Each trial's plots must fill its own grid. brms refuses both.</p>
+<p><strong>Units followed through time.</strong> <code>ar1(t):g</code>, or the same term written
+<code>g:ar1(t)</code>, fits one AR1 series along <code>t</code> within each level of <code>g</code>,
+independent across levels, with one correlation and one field SD
+shared by every level and the Gaussian nugget on top, three
+hyperparameters in all. This is the units-by-occasions repeated-measures
+covariance of Verbyla and Cullis (1992) written on the random side:
+<code>g</code> indexes the plots, animals or series and <code>t</code> the occasions, whose
+levels must be in time order. An occasion a unit missed stays as a
+design row with the response <code>NA</code> under the default
+<code>na_action = "augment"</code>, and the <code>t</code> by <code>g</code> grid must be complete in
+that sense, one row per node. brms refuses, as for the other fields.</p></dd>
 
 
 <dt id="arg-residual">residual<a class="anchor" aria-label="anchor" href="#arg-residual"></a></dt>
@@ -208,12 +253,18 @@ level. brms has no lowering for this field at all and refuses.</p></dd>
 (iid residuals). <code>~ dsum(~ units | env)</code>, and the equivalent
 <code>~ at(env):units</code>, give a separate residual variance per level of <code>env</code>.
 Only families that carry a residual scale parameter can have one made
-heterogeneous – a Poisson's dispersion is a function of its mean, so
+heterogeneous. A Poisson's dispersion is a function of its mean, so
 there is nothing there to vary, and the request is refused.</p>
-<p><code>~ ar1(row):ar1(col)</code> and <code>~ ar1(t)</code> are <strong>refused</strong> here: they name
-ASReml's nugget-free separable residual, which neither active engine
-fits. The refusal points at the random-side field described under
-<code>random</code> above, and at ASReml for the residual formulation itself.</p></dd>
+<p><code>~ ar1(row):ar1(col)</code> is ASReml's separable residual: one correlated
+residual with no nugget, three parameters (<code>sd_spatial</code>, <code>rho_row</code>,
+<code>rho_col</code>), and no <code>sigma</code> row. <code>~ dsum(~ ar1(row):ar1(col) | trial)</code>
+fits it separately in each trial, with names suffixed
+<code>__trial&lt;level&gt;</code>. Both fit on INLA for a Gaussian response with the
+identity link and one plot per grid cell, where the observation error
+is fixed at a variance of <code>exp(-12)</code> on the standardised response;
+brms refuses them. They cannot be combined with a random-side field.
+<code>~ ar1(t)</code> and <code>~ ar1(row):col</code> are refused on both engines, with a
+pointer to the random-side field described under <code>random</code> above.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
@@ -222,22 +273,40 @@ fits. The refusal points at the random-side field described under
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
 <dd><p>Character: <code>"gaussian"</code>, <code>"binomial"</code>, <code>"poisson"</code>,
-<code>"negative_binomial"</code>, <code>"gamma"</code>, <code>"beta"</code>, or <code>"hurdle_gamma"</code>
-(brms only – INLA's likelihood roster has no counterpart, so the
-family gate refuses it there and <code>backend = "auto"</code> routes to brms).
-A <code>stats</code> family object (<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial()</a></code>, <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian()</a></code>) is also
-accepted and supplies its own link, so <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">Gamma()</a></code> means the inverse
-link it names rather than the log link <code>family = "gamma"</code> defaults
-to. Passing a family object together with a contradicting <code>link</code> is
-refused rather than resolved. A family outside this set is refused
-at the door; where the boundary is flexyBayes's own rather than the
-engines', the refusal says so and <code>inst/KNOWN_ISSUES.md</code> records it.</p></dd>
+<code>"negative_binomial"</code>, <code>"gamma"</code>, <code>"beta"</code>, <code>"hurdle_gamma"</code> or
+<code>"lognormal"</code>. The last two are brms only: INLA's likelihood roster
+has no hurdle gamma, and no INLA lognormal fit is validated, so the
+family gate refuses both there and <code>backend = "auto"</code> routes them to
+brms.
+A family object (<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial()</a></code>, <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian()</a></code>, <code>brms::lognormal()</code>) is
+also accepted, goes through the same gate as
+its name, and supplies its own link, so <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">Gamma()</a></code> means the inverse
+link it names, not the log link <code>family = "gamma"</code> defaults to.
+Passing a family object together with a contradicting <code>link</code> is
+refused, not resolved. A family outside this set is refused at the
+door. Where the boundary is flexyBayes's own and not the engines',
+the refusal says so and <code>inst/KNOWN_ISSUES.md</code> records it.
+A response outside the family's domain (0 or negative for <code>"gamma"</code>
+or <code>"lognormal"</code>, negative for <code>"hurdle_gamma"</code>, at or outside [0, 1]
+for <code>"beta"</code>) is refused by name (<code>family_response_domain_violation</code>)
+before any engine runs. A missing (<code>NA</code>) response is <code>na_action</code>'s
+concern, not a domain violation.</p></dd>
 
 
 <dt id="arg-link">link<a class="anchor" aria-label="anchor" href="#arg-link"></a></dt>
 <dd><p>Character or NULL: override the default link function
 (e.g., <code>"probit"</code> for binomial). Leave it unset when <code>family</code> is a
-family object, which carries its own link.</p></dd>
+family object, which carries its own link. The links fitted, default
+first: gaussian <code>identity</code>, <code>log</code>, <code>inverse</code>, <code>logit</code>, <code>probit</code>,
+<code>cloglog</code>, <code>cauchit</code>; binomial <code>logit</code>, <code>probit</code>, <code>probit_approx</code>,
+<code>cloglog</code>, <code>cauchit</code>, <code>softit</code>, <code>identity</code>, <code>log</code>; poisson <code>log</code>,
+<code>identity</code>, <code>sqrt</code>; negative_binomial <code>log</code>, <code>identity</code>, <code>sqrt</code>,
+<code>softplus</code>, <code>squareplus</code>; gamma <code>log</code>, <code>identity</code>, <code>inverse</code>;
+hurdle_gamma <code>log</code>, <code>identity</code>, <code>inverse</code>, <code>softplus</code>, <code>squareplus</code>;
+beta <code>logit</code>; lognormal <code>identity</code>. <code>backend = "inla"</code> takes the default
+link only, refusing any other by name (<code>inla_gate_refused</code>), and
+<code>backend = "auto"</code> fits another link on brms. A link outside the list
+is refused by name (<code>unsupported_family</code>) on every backend.</p></dd>
 
 
 <dt id="arg-known-matrices">known_matrices<a class="anchor" aria-label="anchor" href="#arg-known-matrices"></a></dt>
@@ -249,10 +318,13 @@ brms), a user-supplied lower-triangular Cholesky factor
 (<code>vm(group, cov = fb_cov(L, type = "chol"))</code>; brms),
 or a sparse precision matrix <code>Matrix::dgCMatrix</code>
 (<code>vm(group, cov = fb_cov(Q, type = "precision"))</code>; INLA and brms).
-INLA takes the precision, pedigree-precision and block carriers only,
-and refuses a dense or Cholesky carrier by name, pointing at
-<code>solve(V)</code> or at brms. The bare dense forms <code>vm(group, V = ...)</code> /
-<code>ped(group, A = ...)</code> remain the default; the legacy v0.3.7
+INLA takes the precision and pedigree-precision carriers only, and
+refuses by name a dense or Cholesky carrier, pointing at <code>solve(V)</code> or
+at brms, and a block carrier, which INLA would fit with one standard
+deviation per block, pointing at the precision carrier of the
+block-diagonal inverse.
+The bare dense forms <code>vm(group, V = ...)</code> /
+<code>ped(group, A = ...)</code> remain the default. The legacy v0.3.7
 keyword carriers (<code>chol = </code>, <code>precision = </code>, <code>blocks = </code>,
 <code>low_rank_factor = </code>) are deprecated and emit a migration warning.
 See the formula-surface vignette for per-type worked examples.</p></dd>
@@ -269,8 +341,8 @@ different, likelihood-power quantity). A constant vector (including
 <code>rep(1, N)</code>) is the unweighted model under a different spelling and
 passes through unchanged. A non-constant vector on any other family,
 or a non-identity link on Gaussian, is refused by name
-(<code>weights_requires_gaussian</code>) rather than silently producing the
-unweighted posterior – likelihood-power, frequency, trials, and
+(<code>weights_requires_gaussian</code>) instead of silently producing the
+unweighted posterior. Likelihood-power, frequency, trials and
 exposure are different models and cannot share this argument
 silently. <code>aggregate = TRUE</code> together with weights is also refused
 by name (<code>weights_not_aggregatable</code>): the aggregated route's
@@ -280,7 +352,7 @@ weight through the compression.</p></dd>
 
 <dt id="arg-na-action">na_action<a class="anchor" aria-label="anchor" href="#arg-na-action"></a></dt>
 <dd><p>How to treat observations whose response is missing,
-and – through the list form below – observations whose predictors
+and, through the list form below, observations whose predictors
 are missing.</p>
 <p><code>"augment"</code> (default) retains missing-response rows, carrying the
 missing response as a latent quantity the engine marginalises, and
@@ -290,26 +362,32 @@ matters whenever the model carries a covariance indexed by the
 design: deleting the row of a lost plot changes the index set a
 separable AR1 field is built over, so the fitted model is no longer
 the model that was written down. <code>"omit"</code> drops the rows
-(complete-case); a structured covariance over the resulting broken
-grid then refuses downstream. <code>"fail"</code> refuses if any response is
+(complete-case), and a structured covariance over the resulting
+broken grid then refuses downstream. <code>"fail"</code> refuses if any response is
 missing, and leaves the design grid alone.</p>
+<p>A response value that is <code>NaN</code> or infinite, as <code>log(0)</code> gives, is not a
+missing observation. It refuses by name under every setting
+(<code>response_not_finite</code>). Set it to <code>NA</code> to treat it as missing.</p>
 <p>The argument also accepts the object an ASReml user already writes,
 <code>asreml::na.method(y = , x = )</code>, and the bare list of the same shape
 for readers without an asreml licence:</p>
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">flexybayes</span>(..., <span class="at">na_action =</span> <span class="fu">list</span>(<span class="at">y =</span> <span class="st">"include"</span>, <span class="at">x =</span> <span class="st">"fail"</span>))</span></code></pre><p></p></div>
 <p>The response words map <code>include</code> to <code>"augment"</code>, <code>omit</code> to
-<code>"omit"</code>, <code>fail</code> to <code>"fail"</code>. The covariate words are ASReml's own:
+<code>"omit"</code>, <code>fail</code> to <code>"fail"</code>. The covariate words are ASReml's own.
 <code>x = "fail"</code> (the default, and ASReml's) refuses a missing
-predictor; <code>x = "omit"</code> drops the affected rows with a warning
-naming the count and the columns; <code>x = "include"</code> – ASReml's
-zero-fill (Reference Manual 4.2, section 3.11) – is refused by
+predictor. <code>x = "omit"</code> drops the affected rows with a warning
+naming the count and the columns. <code>x = "include"</code>, ASReml's
+zero-fill (Reference Manual 4.2, section 3.11), is refused by
 name, because a zero is a value the plot did not have. A value
 arriving as an unreduced <code>na.method()</code> default vector is read as
 its first element, which is the policy ASReml itself would use.</p>
-<p>Under ignorability the posterior for the model parameters is the
-same whether a missing response is augmented or omitted –
-augmentation preserves the representation, not information. That
-identity is a statement about the posterior and not a promise about
+<p>Under ignorability, and only when both representations put the same
+prior on the same model parameters, the posterior for those parameters
+is the same whether a missing response is augmented or omitted –
+augmentation preserves the representation, not information. A backend
+default prior can depend on the realised design matrix, so it does not
+establish that common-prior condition automatically. The identity is a
+statement about the posterior and not a promise about
 what an optimiser returns: the two settings hand the engine an
 intact design and a ragged one, and on a weakly identified mode they
 can land in different places. Where missingness depends on the
@@ -330,15 +408,24 @@ argument nor any diagnostic here will tell you so.</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
-<dd><p>Integer or <code>NULL</code>: the sampler's random seed, forwarded to
-<code>brms::brm(seed = )</code>. Two brms fits of the same model to the same data
-under the same seed return identical draws. <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> before the
-call does not achieve this – Stan draws from its own stream – so a
-posterior quoted to more than about two significant figures needs this
-argument. <code>NULL</code> (the default) leaves the seed to brms and the run is
-not reproducible. The INLA path is a deterministic Laplace
-approximation and has no random stream, so the argument is a no-op
-there and says so once.</p></dd>
+<dd><p>Integer or <code>NULL</code>: the seed for the sampler, on the engine
+that samples.</p>
+<p>On brms it is forwarded to <code>brms::brm(seed = )</code> and fixes Stan's
+draws: two fits of the same model to the same data under the same seed,
+chains and backend return identical draws. With <code>NULL</code> (the default)
+brms passes no seed and Stan runs with one drawn for it. On the
+cmdstanr backend that draw comes from R's random-number stream, so it
+follows <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> only when nothing else draws from the stream
+first. Either way the seed Stan ran with is kept at
+<code>fit$extras$reproducibility$seed$as_run</code>, and a refit under that value
+returns the same draws. Draws taken later from the fitted object, such
+as <code>brms::posterior_epred()</code> on new levels, follow R's random-number
+stream and not this seed.</p>
+<p>On INLA the seed has no effect: <code>INLA::inla()</code> takes no seed, and the
+argument says once that it was not used. A refit in a fresh R session
+can reach a different mode whatever the seed (see the section <em>INLA
+threads</em>). The thread setting an INLA fit ran with is recorded beside
+the engine versions, in the same record.</p></dd>
 
 
 <dt id="arg-control">control<a class="anchor" aria-label="anchor" href="#arg-control"></a></dt>
@@ -354,14 +441,19 @@ default) uses brms's own settings. A no-op on the INLA path, as
 <dd><p>An optional <code><a href="fb_prior.html">fb_prior()</a></code> object specifying priors via the
 PC-canonical hybrid DSL (preferred). When supplied it overrides
 <code>prior_vc_sd</code> for the variance components it covers. See
-<code><a href="fb_prior.html">fb_prior()</a></code>.</p></dd>
+<code><a href="fb_prior.html">fb_prior()</a></code>. On INLA, a random-effect standard deviation the prior
+does not name takes the package's default, <code>half_normal(scale = s)</code>
+with the family-aware <code>s</code> described under <code>prior_vc_sd</code> (divided by
+the covariate's standard deviation for an uncorrelated slope);
+<code><a href="prior_summary.html">prior_summary()</a></code> lists what was filled.
+A standard deviation the prior does name is left exactly as written.</p></dd>
 
 
 <dt id="arg-prior-fixed-sd">prior_fixed_sd<a class="anchor" aria-label="anchor" href="#arg-prior-fixed-sd"></a></dt>
 <dd><p>Numeric: SD for fixed-effect normal priors,
 applied uniformly to the intercept, factor contrasts, continuous
 slopes, factor x continuous interactions, and <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>-expression
-terms. Default <code>100</code> – weakly informative on the natural response
+terms. Default <code>100</code>: weakly informative on the natural response
 scale for the vast majority of agricultural / clinical responses
 (covers responses with central tendency up to several hundred
 without crushing the posterior toward zero), while still
@@ -374,27 +466,38 @@ literature for regression coefficients (e.g. Gelman et al. 2008,
 supply it</strong>, on every backend: brms receives one <code>normal(0, sd)</code>
 row per fixed-effect class, and INLA receives <code>control.fixed</code> with
 <code>prec = 1 / sd^2</code> on the slopes and the intercept alike. Left
-unsupplied, each engine keeps its own
-fixed-effect default – brms's flat coefficients and
-response-centred <code>student_t</code> intercept, INLA's <code>prec = 0.001</code> and
-flat intercept – because replacing a response-centred intercept
-prior with <code>normal(0, 100)</code> is a different model for any response
-far from zero. <code><a href="prior_summary.html">prior_summary()</a></code> names which of the two a fit ran
-under.</p></dd>
+unsupplied, brms keeps its own fixed-effect default (flat
+coefficients and a response-centred <code>student_t</code> intercept), because
+replacing a response-centred intercept prior with <code>normal(0, 100)</code> is
+a different model for any response far from zero. INLA gives each
+column built from a numeric variable the covariate-scaled default
+<code>normal(0, 1e5 * sd(y) / sd(x))</code> on an identity link and
+<code>normal(0, sqrt(1000) / sd(x))</code> on a log or logit link, with <code>sd(x)</code>
+read over the rows whose response is observed, so a
+covariate's units do not change the fit, and keeps its own
+<code>prec = 0.001</code> on factor contrasts and its flat intercept.
+<code><a href="prior_summary.html">prior_summary()</a></code> names what a fit ran under. A supplied value is
+never rescaled by a covariate: it is a standard deviation in response
+units per covariate unit, so on a covariate recorded in small units
+(a large coefficient) it can bind. Measure the covariate in natural
+units, or leave the argument unsupplied on INLA.</p></dd>
 
 
 <dt id="arg-prior-vc-sd">prior_vc_sd<a class="anchor" aria-label="anchor" href="#arg-prior-vc-sd"></a></dt>
 <dd><p>Numeric: hyperparameter for the legacy
 <code>lognormal(0, prior_vc_sd)</code> variance-component prior. <strong>Note:</strong>
-when both <code>prior</code> and <code>prior_vc_sd</code> are left at their defaults,
-v0.1 activates a bounded-uniform default on the SD scale
-(<code>uniform(0, U)</code> with family-aware <code>U</code>: <code>5 * sd(y)</code> for Gaussian;
-<code>5</code> on the logit scale for binomial / beta; <code>3</code> on the log scale
-for Poisson / negative-binomial / gamma) for <code>sigma</code> and every
-named random-effect group – a weakly-informative choice for
-moderate group counts; for very small <code>J</code>, Gelman (2006), <em>Bayesian
-Analysis</em> 1(3):515-534, recommends a half-t / half-Cauchy instead
-(see the priors vignette). The legacy <code>lognormal(0, 1)</code> default
+when both <code>prior</code> and <code>prior_vc_sd</code> are left at their defaults, the
+package applies a half-normal default on the SD scale
+(<code>half_normal(scale = s)</code> with family-aware <code>s</code>: <code>5 * sd(y)</code> for
+Gaussian, <code>5</code> on the logit scale for binomial / beta, <code>3</code> on the log
+scale for Poisson / negative-binomial / gamma) to <code>sigma</code> and every
+named random-effect group, on both engines, with the scale on the
+standard deviation of an uncorrelated random slope divided by the
+standard deviation of its numeric covariate. It is weakly informative
+and has no upper bound. A half-t or half-Cauchy (Gelman 2006,
+<em>Bayesian Analysis</em> 1(3):515-534) is stated through <code><a href="fb_prior.html">fb_prior()</a></code>.
+Before 0.13.0 the default was <code>uniform(0, U)</code> with <code>U</code> equal to the
+scale above. The legacy <code>lognormal(0, 1)</code> default
 fires only when <code>prior_vc_sd</code> is passed explicitly. Silence the
 one-time announcement message via
 <code>options(flexyBayes.silence_default_prior_note = TRUE)</code>. When it is
@@ -402,8 +505,7 @@ passed explicitly it reaches both active engines as the same
 density on the standard-deviation scale: brms as a
 <code>lognormal(0, prior_vc_sd)</code> prior row, INLA as the expression prior
 that writes that density in INLA's log-precision parameterisation.
-The two engines therefore carry the same variance-component prior,
-which is what <code><a href="triangulate.html">triangulate()</a></code> requires before it compares them.</p></dd>
+The two engines therefore carry the same variance-component prior.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -412,12 +514,12 @@ which is what <code><a href="triangulate.html">triangulate()</a></code> requires
 
 <dt id="arg-mcmc-verbose">mcmc_verbose<a class="anchor" aria-label="anchor" href="#arg-mcmc-verbose"></a></dt>
 <dd><p>Logical: show the sampler's progress bar. Has no
-effect on the deterministic INLA path.</p></dd>
+effect on INLA, which does not sample.</p></dd>
 
 
 <dt id="arg-return-code">return_code<a class="anchor" aria-label="anchor" href="#arg-return-code"></a></dt>
 <dd><p>Logical: if TRUE, return the generated backend code
-without fitting the model – the Stan program on <code>backend = "brms"</code>,
+without fitting the model: the Stan program on <code>backend = "brms"</code>,
 the INLA formula, family and hyperparameter list on
 <code>backend = "inla"</code>.</p></dd>
 
@@ -427,14 +529,14 @@ the INLA formula, family and hyperparameter list on
 instead return a <code>&lt;flexybayes_review&gt;</code> deferred-execution object
 carrying the generated Stan code, the resolved prior, the
 parsed intermediate representation (IR), the captured call, and
-a snapshot of <code>.Random.seed</code>. Inspect the code with <code><a href="cat_code.html">cat_code()</a></code>;
-run the deferred fit with <code><a href="proceed.html">proceed()</a></code>; a second <code><a href="proceed.html">proceed()</a></code> call
+a snapshot of <code>.Random.seed</code>. Inspect the code with <code><a href="cat_code.html">cat_code()</a></code> and
+run the deferred fit with <code><a href="proceed.html">proceed()</a></code>. A second <code><a href="proceed.html">proceed()</a></code> call
 returns the cached fit. Useful as a teaching / auditing surface
 before a long MCMC run. Default <code>FALSE</code> preserves the existing
 run-immediately semantics. A session-level override is available
-via <code>options(flexyBayes.review_code_default = TRUE)</code>; the
+via <code>options(flexyBayes.review_code_default = TRUE)</code>. The
 argument value at call time always wins. Closest published
-precedent: <code>brms::make_stancode()</code> plus the <code>chains = 0</code> idiom
+precedent: <code>brms::stancode()</code> plus the <code>chains = 0</code> idiom
 for "do everything except sampling". <code>review_code = TRUE</code> and
 <code>return_code = TRUE</code> are mutually exclusive. brms is the only engine
 with a code slot, so <code>review_code = TRUE</code> is available under
@@ -446,67 +548,57 @@ need an INLA-side code slot, which is queued for a later release.</p></dd>
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
 <dd><p>Character: one of <code>"auto"</code> (<strong>default</strong>), <code>"inla"</code>, or
-<code>"brms"</code>. INLA is the deterministic Laplace path over the
-latent-Gaussian model class; brms is the Stan passthrough. Any other
-value – including a formerly-registered engine name this package
-withdrew entirely (see <code>NEWS.md</code>) – refuses with <code>unknown_backend</code>
+<code>"brms"</code>. INLA fits the latent-Gaussian model class by nested Laplace
+approximation, without sampling. brms is the Stan passthrough. Any
+other value, including a formerly-registered engine name this package
+withdrew entirely (see <code>NEWS.md</code>), refuses with <code>unknown_backend</code>
 naming the two active engines.</p>
 <p><strong>What <code>"auto"</code> does.</strong> The call runs <code>lgm_gate()</code> and routes to INLA
 when the model is latent-Gaussian feasible and INLA is installed.
 Otherwise it routes to brms when brms is installed <em>and</em> its
 capability predicate accepts the model. When neither can represent
-the model, the call refuses with <code>auto_no_active_route</code> rather than
+the model, the call refuses with <code>auto_no_active_route</code> instead of
 fitting something else. Nothing is translated silently. <code>auto</code> does
-change engine in one case after starting – an INLA program failure
-is caught and re-routed to brms – and that is reported by a message,
-never silently; the fit's class and <code>backend</code> field always record
-which engine produced it.
+change engine in one case after starting: an INLA program failure
+is caught and re-routed to brms, and a message reports it. The fit's
+class and <code>backend</code> field always record which engine produced it.
 <code><a href="backend_decision.html">backend_decision()</a></code> surfaces the full dispatch trace (including
 <code>rejected_routes</code>) post-fit, and <code><a href="fb_backend_status.html">fb_backend_status()</a></code> reports which
 engines are usable. The one-time notes on the auto path are
 silenceable via <code>options(flexyBayes.silence_auto_fallback_note = TRUE)</code> (gate refusal or an INLA numerical failure) and
 <code>options(flexyBayes.silence_auto_inla_missing_note = TRUE)</code> (INLA not
 installed).</p>
-<p><strong>What each engine represents.</strong> INLA takes simple iid random
-effects, P-splines, the sparse-precision and pedigree carriers of
-<code>vm()</code> / <code>ped()</code>, and separable AR1 fields; it refuses
-heterogeneous variances (<code>diag</code> / <code>idh</code> / <code>at</code>), unstructured <code>us()</code>,
-interaction random effects, and heterogeneous residuals. brms takes
-interaction random effects <code>(1 | a:b)</code>, uncorrelated random slopes
-<code>(x || g)</code>, heterogeneous genotype variances (<code>diag</code> / <code>idh</code> / <code>at</code>),
-unstructured <code>us(f):g</code>, per-level residual variances
-(<code>dsum(~ units | f)</code>), and the dense / Cholesky / precision carriers
-of <code>vm()</code> / <code>ped()</code>; it refuses correlated random slopes <code>(x | g)</code>,
-AR1 residual structures, <code>corh()</code>, factor-analytic GxE, and splines.
-The generated per-class table is in <code>README.md</code> and
+<p><strong>What each engine represents.</strong>
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link). brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+The per-class table is in <code>README.md</code>, and with a note on each row in
 <code>system.file("KNOWN_ISSUES.md", package = "flexyBayes")</code>.</p>
 <p><strong>Caution (small-group random effects).</strong> Both engines apply the same
-default prior — the exact uniform-on-SD, which the INLA path
-represents via an expression-prior on the log-precision rather than
-the former PC approximation — so they agree on the variance
-component far more closely than in earlier versions. A model with
+default prior, the half-normal on each standard deviation, which the
+INLA path represents exactly as an expression prior on the
+log-precision, so they agree on the variance component far more
+closely than in earlier versions. A model with
 very few groups nonetheless carries a weakly-identified variance
 component (the data say little about the between-group spread), and
 INLA's Laplace approximation is less accurate there than full MCMC.
 For a flagship random-intercept model with few groups, pin
 <code>backend = "brms"</code> or supply an explicit informative prior (a
-half-Cauchy, per Gelman 2006; see the <em>priors and regularisation</em>
+half-Cauchy, per Gelman 2006, as in the <em>priors and regularisation</em>
 vignette).</p>
 <p><strong>Convergence.</strong> The brms fit emits a warning when the sampler may
 not have converged (a parameter with Rhat at or above 1.1, or a low
-effective sample size). Treat such a posterior with caution —
+effective sample size). Treat such a posterior with caution:
 increase <code>warmup</code> / <code>n_samples</code>, simplify the model, or supply a more
-informative prior — and inspect the full diagnostics with
+informative prior, and inspect the full diagnostics with
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>. Silence the warning (for intentionally short fits) via
-<code>options(flexyBayes.silence_convergence_warning = TRUE)</code>. The INLA
-path is deterministic and carries no such warning.</p>
+<code>options(flexyBayes.silence_convergence_warning = TRUE)</code>. An INLA fit
+does not sample and carries no such warning.</p>
 <p><strong>Code inspection.</strong> brms is the only engine with a code slot, so
 <code>return_code = TRUE</code> / <code>review_code = TRUE</code> under <code>"auto"</code> resolve to
-brms — but only when brms can represent the model. Where it cannot,
-the call refuses with <code>auto_no_active_route</code> rather than returning
+brms, but only when brms can represent the model. Where it cannot,
+the call refuses with <code>auto_no_active_route</code> instead of returning
 the code for a different model. <code>backend = "inla"</code> with
 <code>return_code = TRUE</code> returns the INLA formula, family and
-hyperparameter list; with <code>review_code = TRUE</code> it refuses until the
+hyperparameter list. With <code>review_code = TRUE</code> it refuses until the
 INLA-side code slot lands.</p></dd>
 
 
@@ -514,16 +606,19 @@ INLA-side code slot lands.</p></dd>
 <dd><p>One of <code>"auto"</code> (default), <code>TRUE</code>, or <code>FALSE</code>.
 Exact sufficient-statistics aggregation gate. INLA is the only
 engine with an aggregated emit. <code>"auto"</code> consults the aggregation
-plan and routes through the per-cell path when the IR is in scope
-(gaussian-identity, binomial-logit, or poisson-log; fixed plus
-random intercept; productive compression) and the model reaches
-INLA. <code>TRUE</code> forces aggregation and raises a structured refusal when
-the plan declares ineligibility, or when no active engine offers an
-aggregated route. <code>FALSE</code> skips the gate entirely. Aggregated fits
-carry <code>$exactness == "aggregated_exact"</code> and the dispatch trace's
-<code>path</code> slot reads <code>"aggregated_gaussian"</code> (gaussian) or
-<code>"aggregated_count"</code> (binomial / poisson). For out-of-core datasets
-that do not fit in memory, see <code><a href="flexybayes_stream.html">flexybayes_stream()</a></code>.</p></dd>
+plan and routes a binomial-logit or poisson-log model through the
+per-cell path when the IR is in scope (fixed plus random intercept;
+productive compression) and the model reaches INLA. A Gaussian model
+is fitted per row: the aggregated Gaussian route cannot yet carry the
+residual prior, so <code>TRUE</code> on a Gaussian model refuses by name
+(<code>aggregation_residual_prior_not_composed</code>). <code>TRUE</code> also raises a
+structured refusal when the plan declares ineligibility, or when no
+active engine offers an aggregated route. <code>FALSE</code> skips the gate
+entirely. Aggregated fits carry <code>$exactness == "aggregated_exact"</code>,
+the dispatch trace's <code>path</code> slot reads <code>"aggregated_count"</code>, and
+their summary reports no marginal likelihood
+(<code>aggregated_evidence_unavailable</code>). For out-of-core datasets that
+do not fit in memory, see <code><a href="flexybayes_stream.html">flexybayes_stream()</a></code>.</p></dd>
 
 
 <dt id="arg-plan">plan<a class="anchor" aria-label="anchor" href="#arg-plan"></a></dt>
@@ -532,7 +627,7 @@ representation (IR) build and return a <code>&lt;fb_plan&gt;</code> object
 carrying the IR, the routing decision, the representation plan,
 the aggregation plan, and the prediction plan, <em>without</em> emitting
 backend code or fitting.  Equivalent to calling <code><a href="fb_plan.html">fb_plan()</a></code> with
-the same formula triple — exposed inline as <code>flexybayes(plan = TRUE)</code> so users can reach the planning object without re-typing
+the same formula triple, exposed inline as <code>flexybayes(plan = TRUE)</code> so users can reach the planning object without re-typing
 the call.  Default <code>FALSE</code> preserves the run-
 immediately semantics.  Mutually exclusive with <code>return_code</code> and
 <code>review_code</code>.</p></dd>
@@ -542,14 +637,56 @@ immediately semantics.  Mutually exclusive with <code>return_code</code> and
 <dd><p>One of <code>"auto"</code> (default), <code>"asreml"</code>, or <code>"brms"</code>.
 Selects how <code>fixed</code> is interpreted. <code>"auto"</code> detects the grammar
 from the call shape (a bar-grouped formula is read as brms,
-otherwise ASReml); the other values force a grammar.</p></dd>
+otherwise ASReml). The other values force a grammar.</p></dd>
+
+
+<dt id="arg-known-variance">known_variance<a class="anchor" aria-label="anchor" href="#arg-known-variance"></a></dt>
+<dd><p>Optional numeric vector of length N, or an N x N
+covariance matrix (below). A vector is a known
+variance for each response, added to the estimated residual variance,
+<code>Var(y_i) = sigma^2 + v_i</code>. This is the second stage of a two-stage
+analysis, where each response is a first-stage estimate (a variety
+mean in one trial, say) and <code>v_i</code> is the variance of that estimate.
+<code>weights</code> is a different model, <code>Var(y_i) = sigma^2 / w_i</code>. Given
+both, the residual variance is <code>sigma^2 / w_i + v_i</code>. Lowered for
+<code>family = "gaussian"</code> with the identity link: brms fits
+<code>y | se(sqrt(v), sigma = TRUE)</code>, and INLA a row effect with known
+variance <code>v_i</code>. The summaries report <code>sigma</code> as the estimated part,
+and fitted values on both engines leave the known part out. A vector
+of zeros fits the model without it. Any other family refuses with
+<code>known_variance_not_supported</code>, and a vector that is not one finite,
+non-negative value per row with <code>known_variance_invalid</code>.
+A symmetric positive-definite N x N matrix <code>K</code> is a known covariance,
+<code>Var(y) = sigma^2 I + K</code>, as when the first stage returns the full
+covariance of its estimates. It is fitted on INLA as a latent effect
+with precision <code>K^-1</code>. brms has no term for it and refuses with
+<code>known_variance_not_supported</code>. A row and column of zeros marks a row
+without a known part. A matrix that is not square, symmetric and
+positive definite over the rows of <code>data</code> refuses with
+<code>known_variance_invalid</code>.</p></dd>
+
+
+<dt id="arg-fixed-alias">fixed_alias<a class="anchor" aria-label="anchor" href="#arg-fixed-alias"></a></dt>
+<dd><p><code>"refuse"</code> (the default) or <code>"drop"</code>: what to do with
+a fixed-effect column that is a linear combination of the columns
+before it on the rows with a response, as in a factorial with empty
+cells. INLA and brms would report such a column at its prior, so by
+default the fit refuses with <code>fixed_effects_aliased</code> and names the
+columns. <code>"drop"</code> drops them as asreml 4.2 does, on INLA: terms are
+taken in model order, and within a term by descending factor levels,
+the term's first factor varying slowest. A column that is a linear
+combination of the columns before it is fixed at zero. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>
+reports it with estimate 0 and no standard error, the columns are
+listed in <code>fit$extras$fixed_alias$dropped</code>, and a prediction whose row
+is not a combination of the fitting rows is <code>NA</code> with status
+<code>"Aliased"</code> (see <code><a href="predict.flexybayes_inla.html">predict.flexybayes_inla()</a></code>).</p></dd>
 
 
 <dt id="arg-rcov">rcov<a class="anchor" aria-label="anchor" href="#arg-rcov"></a></dt>
 <dd><p>Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
-the residual-structure argument; ASReml 4 renamed it to <code>residual</code> and
+the residual-structure argument. ASReml 4 renamed it to <code>residual</code>, and
 flexyBayes follows the ASReml 4 name. Supplying <code>rcov</code> now raises an
-error – use <code>residual</code> instead.</p></dd>
+error. Use <code>residual</code> instead.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -562,7 +699,7 @@ etc. Works with <code><a href="https://rdrr.io/r/base/summary.html" class="exter
 <code>marginaleffects()</code>.</p></dd>
 
 <dt><code>$brms</code> or <code>$inla</code></dt>
-<dd><p>The native backend object — a live <code>brmsfit</code>
+<dd><p>The native backend object: a live <code>brmsfit</code>
 on the brms path, or INLA's own fitted object on the INLA path. Use
 with <code>bayesplot</code>, <code>posterior::as_draws()</code>, and each engine's own
 accessors.</p></dd>
@@ -570,18 +707,96 @@ accessors.</p></dd>
 <dt><code>$extras</code></dt>
 <dd><p>Additional outputs: posterior <code>summary</code>, <code>convergence</code>
 diagnostics, <code>variance_comps</code>, <code>blups</code>, <code>predictions</code>, generated <code>code</code>,
-<code>param_names</code>, <code>parse_info</code>, <code>call_info</code>, <code>run_time</code>, <code>model_info</code>.</p></dd>
+<code>param_names</code>, <code>parse_info</code>, <code>call_info</code>, <code>run_time</code>, <code>model_info</code>,
+and <code>reproducibility</code>: the R, flexyBayes and engine versions, the
+thread settings and the seed the fit ran with, which <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> shows.</p></dd>
 
 
 </dl><p>If <code>return_code = TRUE</code>, returns the generated backend code instead: a
 character string holding the Stan program on the brms path, or a list of
 the formula, family and hyperparameter specification on the INLA path.</p>
     </div>
+    <div class="section level2">
+    <h2 id="inla-threads">INLA threads<a class="anchor" aria-label="anchor" href="#inla-threads"></a></h2>
+
+
+<p>An INLA fit runs on one thread, <code>num.threads = "1:1"</code>, whatever
+<code>INLA::inla.setOption()</code> holds. With more threads, identical calls can
+return different variance components where the data inform a variance only
+weakly. On a 48-trial barley model with 22 localities, eight identical fits
+at <code>"4:1"</code> gave the locality variance from 0.58 to 42.3, and at <code>"1:1"</code>
+from 0.75 to 0.79, with the fixed effects unchanged. Set
+<code>options(flexyBayes.inla_threads = "4:1")</code> for another plan, or <code>"inla"</code>
+for INLA's own default. The plan a fit ran with is in
+<code>$extras$reproducibility</code>.</p>
+<p>One thread does not guarantee the same result in a new R session.
+Identical calls in fresh R processes can reach different modes. On a
+48-trial barley series, four processes reached two modes, 0.10 apart in
+log marginal likelihood, whose variance component standard deviations
+differed by at most 3.4%. On six trials of the same series, the modes
+differed by up to 26%.</p>
+<p>Each INLA fit is therefore run three times: once in this session and twice
+in fresh R processes started through callr. The fit
+with the highest log marginal likelihood is returned (the first of equal
+ones). <code>options(flexyBayes.inla_best_of = k)</code> sets the number of fits, a
+whole number of one or more; <code>1</code> fits once in this session, as 0.16.0 did,
+and any other value refuses with <code>inla_best_of_invalid</code>. Above 1 without
+callr installed, the fit refuses with <code>isolation_requires_callr</code>. A fit
+that fails in a separate process stops the call with that process's
+message. <code>$extras$reproducibility$best_of</code> holds each fit's log marginal
+likelihood and mode status, the fit kept, the range of the marginal
+likelihoods, and each standard deviation per fit with its largest
+difference across the fits, relative to the smallest. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> add a line when a standard deviation differs by more than 5%.
+The restart probe of the numerical-confirm gate examines the fit kept.
+The fresh-process fits run beside the session fit, at most
+<code>options(flexyBayes.inla_best_of_workers)</code> fits at once (default: all of
+them) and fewer, with a message, when the free memory holds fewer. The
+record gives each fit's time in seconds (<code>wall_s</code>) and whether they ran at
+once (<code>parallel</code>).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="fitting-in-a-separate-process">Fitting in a separate process<a class="anchor" aria-label="anchor" href="#fitting-in-a-separate-process"></a></h2>
+
+
+<p><code>options(flexyBayes.isolation = "process")</code> runs the engine fit in a
+separate R process started through callr, which is in Suggests. Without
+callr the request refuses with
+<code>isolation_requires_callr</code> before anything is fitted. The option applies
+to <code>flexybayes()</code>, <code><a href="fb_brms.html">fb_brms()</a></code>, <code><a href="fb_inla.html">fb_inla()</a></code> and <code><a href="proceed.html">proceed()</a></code>, and
+<code><a href="fb_isolated_lapply.html">fb_isolated_lapply()</a></code> runs any loop of calls the same way. The default,
+<code>"none"</code>, fits in this session.</p>
+<p>If the operating system kills that process, or compiled code crashes inside
+it, the call refuses with <code>isolated_process_died</code>, naming the engine, the
+function called, and the exit status or signal, and this session carries on.
+A failure inside the fit, a refusal for instance, arrives exactly as it would
+without the option. The call is not retried.</p>
+<p>The separate process loads the flexyBayes code this session loaded and
+starts from this session's options, INLA settings, environment variables
+and random-number state, so it fits the same model with the same seed,
+and the random-number stream moves on as it would have. Messages,
+warnings and printed output come back in the order they were raised, and
+the fit records the process in <code>$extras$isolation</code>. A brms fit with a
+<code>seed</code> returns the same draws either way. INLA does not return identical
+numbers for two identical calls in one session, and an isolated INLA fit
+agrees with an in-process one as closely as two in-process fits agree.
+The separate process starts with an empty global environment, so the
+formula finds its variables in <code>data</code>. Starting the process and
+moving the data and the fit costs time on every call.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="deprecated">Deprecated<a class="anchor" aria-label="anchor" href="#deprecated"></a></h2>
+
+
+<p><code>fb()</code> is deprecated in flexyBayes 0.13.0 and will be removed in a later
+release. Call <code>flexybayes()</code>, which takes the same arguments. A call to
+<code>fb()</code> warns with a condition of class <code>flexybayes_deprecated</code>.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># live fit -- needs an active backend (INLA or brms/Stan)</span></span></span>
+<span class="r-in"><span><span class="co"># live fit, needs an active backend (INLA or brms/Stan)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">met_example</span>, package <span class="op">=</span> <span class="st">"flexyBayes"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># Simple random intercept model (small budget for example purposes)</span></span></span>
 <span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">flexybayes</span><span class="op">(</span></span></span>
@@ -601,7 +816,7 @@ the formula, family and hyperparameter specification on the INLA path.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Max Moldovan, Anabel Forte Deltell.</p>
+  <p>Developed by Max Moldovan, Grains Research and Development Corporation.</p>
 </div>
 
 <div class="pkgdown-footer-right">
