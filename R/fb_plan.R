@@ -517,7 +517,9 @@ fb_plan <- function(
     },
     if (n_unnamed > 0L) {
       paste0(
-        n_unnamed, " unnamed argument", if (n_unnamed > 1L) "s",
+        n_unnamed,
+        " unnamed argument",
+        if (n_unnamed > 1L) "s",
         " too many"
       )
     }
@@ -525,11 +527,15 @@ fb_plan <- function(
   stop(.fb_refusal_condition(
     reason_code = "plan_argument_unknown",
     message = paste0(
-      "fb_plan() was given ", paste(what, collapse = " and "), ", which it ",
+      "fb_plan() was given ",
+      paste(what, collapse = " and "),
+      ", which it ",
       "does not take, so the plan would not describe the model as written. ",
       "Its arguments are ",
       paste0(
-        "`", setdiff(names(formals(fb_plan)), "..."), "`",
+        "`",
+        setdiff(names(formals(fb_plan)), "..."),
+        "`",
         collapse = ", "
       ),
       "."
@@ -805,7 +811,8 @@ fb_plan <- function(
         term_id = paste0("residual: dsum(~ units | ", var_name, ")"),
         representation_class = "sectioned_residual",
         justification = paste0(
-          "one residual variance per level of `", var_name,
+          "one residual variance per level of `",
+          var_name,
           "`; no scalar sigma"
         )
       )
@@ -878,7 +885,8 @@ print.fb_plan <- function(x, ...) {
   if (length(x$offsets)) {
     route <- x$aggregation$offset_route %||% NA_character_
     cat(
-      "  Offset:                  ", paste(x$offsets, collapse = " + "),
+      "  Offset:                  ",
+      paste(x$offsets, collapse = " + "),
       if (!is.na(route) && !identical(route, "none")) {
         paste0("  (aggregated route: ", route, ")")
       } else {

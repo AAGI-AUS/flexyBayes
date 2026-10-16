@@ -31,7 +31,6 @@
 # state is restated on those coordinates, so the model is the one that was
 # asked for whatever units the covariate is recorded in.
 
-
 # --- what is standardised ------------------------------------------------- #
 
 #' The numeric covariates an INLA fit is standardised on
@@ -139,9 +138,12 @@
 .fb_inla_covariate_expression_vars <- function(text) {
   out <- character(0)
   for (s in text[nzchar(text %||% character(0))]) {
-    out <- c(out, tryCatch(all.vars(str2lang(s)), error = function(e) {
-      character(0)
-    }))
+    out <- c(
+      out,
+      tryCatch(all.vars(str2lang(s)), error = function(e) {
+        character(0)
+      })
+    )
   }
   out
 }
@@ -307,10 +309,14 @@
   }
   out <- control_fixed
   out$mean <- .fb_inla_covariate_fixed_slot(
-    control_fixed$mean, d, function(v, k) v * k
+    control_fixed$mean,
+    d,
+    function(v, k) v * k
   )
   out$prec <- .fb_inla_covariate_fixed_slot(
-    control_fixed$prec, d, function(v, k) v / k^2
+    control_fixed$prec,
+    d,
+    function(v, k) v / k^2
   )
   out
 }
@@ -379,11 +385,15 @@
 
   coef_b <- function(nm) if (nm %in% names(d)) 1 / d[[nm]] else 1
   fit$summary.fixed <- .fb_inla_map_rows(
-    fit$summary.fixed, function(nm) 0, coef_b
+    fit$summary.fixed,
+    function(nm) 0,
+    coef_b
   )
   for (nm in names(fit$marginals.fixed)) {
     fit$marginals.fixed[[nm]] <- .fb_inla_map_marginal(
-      fit$marginals.fixed[[nm]], 0, coef_b(nm)
+      fit$marginals.fixed[[nm]],
+      0,
+      coef_b(nm)
     )
   }
 
@@ -391,7 +401,9 @@
 
   for (nm in intersect(names(fit$summary.random), names(s))) {
     fit$summary.random[[nm]] <- .fb_inla_map_table(
-      fit$summary.random[[nm]], 0, 1 / s[[nm]]
+      fit$summary.random[[nm]],
+      0,
+      1 / s[[nm]]
     )
     if (!is.null(fit$marginals.random[[nm]])) {
       fit$marginals.random[[nm]] <- lapply(
@@ -407,11 +419,15 @@
 
   hyper_b <- function(nm) .fb_inla_covariate_hyper_factor(nm, cstd)
   fit$summary.hyperpar <- .fb_inla_map_rows(
-    fit$summary.hyperpar, function(nm) 0, hyper_b
+    fit$summary.hyperpar,
+    function(nm) 0,
+    hyper_b
   )
   for (nm in names(fit$marginals.hyperpar)) {
     fit$marginals.hyperpar[[nm]] <- .fb_inla_map_marginal(
-      fit$marginals.hyperpar[[nm]], 0, hyper_b(nm)
+      fit$marginals.hyperpar[[nm]],
+      0,
+      hyper_b(nm)
     )
   }
   # The internal hyperparameters are log precisions, which shift.
@@ -420,15 +436,20 @@
       return(0)
     }
     log(.fb_inla_covariate_hyper_factor(
-      sub("^Log precision for ", "Precision for ", nm), cstd
+      sub("^Log precision for ", "Precision for ", nm),
+      cstd
     ))
   }
   fit$internal.summary.hyperpar <- .fb_inla_map_rows(
-    fit$internal.summary.hyperpar, internal_a, function(nm) 1
+    fit$internal.summary.hyperpar,
+    internal_a,
+    function(nm) 1
   )
   for (nm in names(fit$internal.marginals.hyperpar)) {
     fit$internal.marginals.hyperpar[[nm]] <- .fb_inla_map_marginal(
-      fit$internal.marginals.hyperpar[[nm]], internal_a(nm), 1
+      fit$internal.marginals.hyperpar[[nm]],
+      internal_a(nm),
+      1
     )
   }
 

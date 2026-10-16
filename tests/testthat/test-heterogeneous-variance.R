@@ -20,8 +20,11 @@
 
 .emitted <- function(random, data = .het_data(), fixed = y ~ site) {
   code <- flexybayes(
-    fixed, random = random, data = data,
-    backend = "brms", return_code = TRUE
+    fixed,
+    random = random,
+    data = data,
+    backend = "brms",
+    return_code = TRUE
   )
   paste(utils::capture.output(print(code)), collapse = "\n")
 }
@@ -64,7 +67,9 @@ test_that("at(f, level):g is not emitted as the diagonal structure", {
   # at(site, 2):gen gives the effect only where site == 2. diag(site):gen
   # gives it everywhere with a per-level variance.
   at_fb <- fb_from_asreml(
-    fixed = y ~ site, random = ~ at(site, 2):gen, data = d
+    fixed = y ~ site,
+    random = ~ at(site, 2):gen,
+    data = d
   )
   expect_identical(
     format(flexyBayes:::.fb_to_brms_formula(at_fb)),
@@ -77,8 +82,11 @@ test_that("at(f, level):g is not emitted as the diagonal structure", {
 })
 
 test_that("the refusal code is registered in the taxonomy", {
-  expect_true(exists("at_level_conditioning_unsupported",
-                     envir = flexyBayes:::.refusal_registry, inherits = FALSE))
+  expect_true(exists(
+    "at_level_conditioning_unsupported",
+    envir = flexyBayes:::.refusal_registry,
+    inherits = FALSE
+  ))
 })
 
 test_that("corh(f):g is refused by name, not approximated", {
@@ -87,7 +95,10 @@ test_that("corh(f):g is refused by name, not approximated", {
   # corh() asks for k variances plus one shared correlation. brms offers
   # only uncorrelated or fully unstructured, so it must refuse.
   err <- tryCatch(.emitted(~ corh(site):gen, d), error = function(e) e)
-  expect_s3_class(err, "flexybayes_refusal_corh_no_equicorrelation_representation")
+  expect_s3_class(
+    err,
+    "flexybayes_refusal_corh_no_equicorrelation_representation"
+  )
   # The refusal has to be actionable: it must name both available structures.
   expect_match(conditionMessage(err), "diag\\(")
   expect_match(conditionMessage(err), "us\\(")
@@ -100,21 +111,34 @@ test_that("auto reaches heterogeneity without the user naming a backend", {
   # If it did not, the capability would exist but be unreachable to anyone
   # who had not read the backend documentation.
   expect_no_error(flexybayes(
-    y ~ site, random = ~ diag(site):gen, data = d,
-    backend = "auto", return_code = TRUE
+    y ~ site,
+    random = ~ diag(site):gen,
+    data = d,
+    backend = "auto",
+    return_code = TRUE
   ))
 })
 
 test_that("dsum(~units|f) and at(f):units are one node with two spellings", {
   skip_if_not_installed("brms")
   d <- .het_data()
-  a <- .emitted(~ gen, d)  # baseline, homogeneous residual
-  b <- flexybayes(y ~ site, random = ~ gen,
-                  residual = ~ dsum(~ units | site), data = d,
-                  backend = "brms", return_code = TRUE)
-  cc <- flexybayes(y ~ site, random = ~ gen,
-                   residual = ~ at(site):units, data = d,
-                   backend = "brms", return_code = TRUE)
+  a <- .emitted(~gen, d) # baseline, homogeneous residual
+  b <- flexybayes(
+    y ~ site,
+    random = ~gen,
+    residual = ~ dsum(~ units | site),
+    data = d,
+    backend = "brms",
+    return_code = TRUE
+  )
+  cc <- flexybayes(
+    y ~ site,
+    random = ~gen,
+    residual = ~ at(site):units,
+    data = d,
+    backend = "brms",
+    return_code = TRUE
+  )
   b_txt <- paste(utils::capture.output(print(b)), collapse = "\n")
   c_txt <- paste(utils::capture.output(print(cc)), collapse = "\n")
   expect_identical(b_txt, c_txt)
@@ -131,13 +155,21 @@ test_that("a heterogeneous residual is refused for a family with no sigma", {
   # Poisson has no residual scale, so `sigma ~ f` names a parameter that
   # does not exist.
   err <- tryCatch(
-    flexybayes(cnt ~ site, random = ~ gen,
-               residual = ~ dsum(~ units | site), data = d,
-               family = "poisson", backend = "brms", return_code = TRUE),
+    flexybayes(
+      cnt ~ site,
+      random = ~gen,
+      residual = ~ dsum(~ units | site),
+      data = d,
+      family = "poisson",
+      backend = "brms",
+      return_code = TRUE
+    ),
     error = function(e) e
   )
   expect_s3_class(
-    err, "flexybayes_refusal_heterogeneous_residual_family_has_no_sigma")
+    err,
+    "flexybayes_refusal_heterogeneous_residual_family_has_no_sigma"
+  )
 })
 
 test_that("INLA refuses a heterogeneous residual for a family with no residual scale", {
@@ -154,13 +186,21 @@ test_that("INLA refuses a heterogeneous residual for a family with no residual s
   d$hit <- stats::rbinom(nrow(d), 1L, 0.4)
   for (spec in list(c("cnt", "poisson"), c("hit", "binomial"))) {
     err <- tryCatch(
-      flexybayes(stats::as.formula(paste(spec[[1L]], "~ site")),
-                 random = ~ gen, residual = ~ dsum(~ units | site), data = d,
-                 family = spec[[2L]], backend = "inla", verbose = FALSE),
+      flexybayes(
+        stats::as.formula(paste(spec[[1L]], "~ site")),
+        random = ~gen,
+        residual = ~ dsum(~ units | site),
+        data = d,
+        family = spec[[2L]],
+        backend = "inla",
+        verbose = FALSE
+      ),
       error = function(e) e
     )
     expect_s3_class(
-      err, "flexybayes_refusal_heterogeneous_residual_family_has_no_sigma")
+      err,
+      "flexybayes_refusal_heterogeneous_residual_family_has_no_sigma"
+    )
   }
 })
 
@@ -171,10 +211,17 @@ test_that("the scalar sigma prior is retargeted, not left to match nothing", {
   # brms refuse the fit ("The following priors do not correspond to any
   # model parameter"). The prior must land on the sigma coefficient block,
   # and the program must compile.
-  txt <- paste(utils::capture.output(print(flexybayes(
-    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site),
-    data = d, backend = "brms", return_code = TRUE
-  ))), collapse = "\n")
+  txt <- paste(
+    utils::capture.output(print(flexybayes(
+      y ~ site,
+      random = ~gen,
+      residual = ~ dsum(~ units | site),
+      data = d,
+      backend = "brms",
+      return_code = TRUE
+    ))),
+    collapse = "\n"
+  )
   expect_true(grepl("b_sigma", txt, fixed = TRUE))
   expect_match(txt, "lprior \\+= normal_lpdf\\(b_sigma")
 })
@@ -186,8 +233,13 @@ test_that("a heterogeneous fit returns one variance per level and no correlation
   skip_if_not_long_tier()
   d <- .het_data(n_gen = 12L, n_rep = 3L, seed = 4L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ site, random = ~ diag(site):gen, data = d,
-    backend = "brms", chains = 1L, n_samples = 400L, warmup = 400L
+    y ~ site,
+    random = ~ diag(site):gen,
+    data = d,
+    backend = "brms",
+    chains = 1L,
+    n_samples = 400L,
+    warmup = 400L
   )))
   vc <- brms::VarCorr(fit$brms)
   # A diagonal over k levels is exactly k variances and zero correlations.
@@ -205,8 +257,14 @@ test_that("a sectioned residual reports its per-level variances", {
   skip_if_not_long_tier()
   d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
-    backend = "brms", chains = 2L, n_samples = 400L, warmup = 400L
+    y ~ site,
+    random = ~gen,
+    residual = ~ dsum(~ units | site),
+    data = d,
+    backend = "brms",
+    chains = 2L,
+    n_samples = 400L,
+    warmup = 400L
   )))
 
   tab <- flexyBayes:::.brms_residual_by_level_table(fit)
@@ -251,12 +309,19 @@ test_that("a sectioned residual reports its per-level variances", {
 
   # A homogeneous residual must not grow the block.
   plain <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ site, random = ~ gen, data = d,
-    backend = "brms", chains = 1L, n_samples = 200L, warmup = 200L
+    y ~ site,
+    random = ~gen,
+    data = d,
+    backend = "brms",
+    chains = 1L,
+    n_samples = 200L,
+    warmup = 200L
   )))
   expect_null(flexyBayes:::.brms_residual_by_level_table(plain))
   expect_false(any(grepl(
-    "Residual by level", utils::capture.output(print(plain)), fixed = TRUE
+    "Residual by level",
+    utils::capture.output(print(plain)),
+    fixed = TRUE
   )))
 })
 
@@ -275,8 +340,14 @@ test_that("the per-level residuals are rows of summary(fit)$varcomp", {
   skip_if_not_long_tier()
   d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
-    backend = "brms", chains = 2L, n_samples = 400L, warmup = 400L
+    y ~ site,
+    random = ~gen,
+    residual = ~ dsum(~ units | site),
+    data = d,
+    backend = "brms",
+    chains = 2L,
+    n_samples = 400L,
+    warmup = 400L
   )))
 
   vc <- summary(fit)$varcomp
@@ -308,8 +379,13 @@ test_that("the per-level residuals are rows of summary(fit)$varcomp", {
 
   # A homogeneous fit gains no such rows.
   plain <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ site, random = ~ gen, data = d,
-    backend = "brms", chains = 1L, n_samples = 200L, warmup = 200L
+    y ~ site,
+    random = ~gen,
+    data = d,
+    backend = "brms",
+    chains = 1L,
+    n_samples = 200L,
+    warmup = 200L
   )))
   expect_false(any(startsWith(summary(plain)$varcomp$component, "sigma_")))
 })
@@ -322,7 +398,10 @@ test_that("on INLA each residual section's prior cell names the prior it receive
   sections <- paste0("sigma_", levels(d$site))
 
   fit <- suppressWarnings(suppressMessages(fb_inla(
-    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
+    y ~ site,
+    random = ~gen,
+    residual = ~ dsum(~ units | site),
+    data = d,
     prior = fb_prior(sigma ~ half_normal(1.5), sd(gen) ~ half_normal(2))
   )))
   vc <- summary(fit)$varcomp
@@ -332,7 +411,10 @@ test_that("on INLA each residual section's prior cell names the prior it receive
   )
 
   fit0 <- suppressWarnings(suppressMessages(fb_inla(
-    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d
+    y ~ site,
+    random = ~gen,
+    residual = ~ dsum(~ units | site),
+    data = d
   )))
   vc0 <- summary(fit0)$varcomp
   expect_identical(
@@ -350,8 +432,14 @@ test_that("a sectioned-residual fit answers the mean-model accessors", {
   skip_if_not_installed("emmeans")
   d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
-    backend = "brms", chains = 2L, n_samples = 400L, warmup = 400L
+    y ~ site,
+    random = ~gen,
+    residual = ~ dsum(~ units | site),
+    data = d,
+    backend = "brms",
+    chains = 2L,
+    n_samples = 400L,
+    warmup = 400L
   )))
 
   # Mean-model coefficients only, on coef(), vcov() and confint() alike.

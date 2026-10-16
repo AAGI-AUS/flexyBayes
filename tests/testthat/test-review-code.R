@@ -32,8 +32,10 @@ mk_review_data <- function() {
   env_effect <- c(-3, 0, 4)
   geno_effect <- seq(-6, 6, length.out = 9L)
   data.frame(
-    yield = 100 + env_effect[as.integer(env)] +
-      geno_effect[as.integer(geno)] + rnorm(n, sd = 2),
+    yield = 100 +
+      env_effect[as.integer(env)] +
+      geno_effect[as.integer(geno)] +
+      rnorm(n, sd = 2),
     env = env,
     geno = geno
   )
@@ -120,7 +122,10 @@ test_that("cat_code(rev) emits and returns the stored code", {
   )
 
   emitted <- utils::capture.output(
-    returned <- suppressWarnings(cat_code(rev), classes = "flexybayes_deprecated")
+    returned <- suppressWarnings(
+      cat_code(rev),
+      classes = "flexybayes_deprecated"
+    )
   )
   expect_identical(returned, rev$code)
   expect_true(any(grepl("generated with brms", emitted, fixed = TRUE)))

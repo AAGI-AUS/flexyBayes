@@ -22,14 +22,22 @@ suppressPackageStartupMessages(library(testthat))
 
 .pv_ar1_m <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
 
-.pv_grid <- function(n_row = 8L, n_col = 6L, rho_r = 0.6, rho_c = 0.3,
-                     sd_s = 1.2, sd_e = 0.4, seed = 2026L) {
+.pv_grid <- function(
+  n_row = 8L,
+  n_col = 6L,
+  rho_r = 0.6,
+  rho_c = 0.3,
+  sd_s = 1.2,
+  sd_e = 0.4,
+  seed = 2026L
+) {
   set.seed(seed)
   g <- expand.grid(col = seq_len(n_col), row = seq_len(n_row))
   chol_l <- t(chol(
     sd_s^2 * kronecker(.pv_ar1_m(n_row, rho_r), .pv_ar1_m(n_col, rho_c))
   ))
-  g$y <- 20 + as.numeric(chol_l %*% stats::rnorm(n_row * n_col)) +
+  g$y <- 20 +
+    as.numeric(chol_l %*% stats::rnorm(n_row * n_col)) +
     stats::rnorm(n_row * n_col, 0, sd_e)
   g$row <- factor(g$row)
   g$col <- factor(g$col)
@@ -124,8 +132,10 @@ test_that("a complete field fit draws a variogram over the array", {
 
   expect_no_error(tab <- plot(fit, type = "variogram"))
   expect_s3_class(tab, "data.frame")
-  expect_identical(names(tab), c("lag_row", "lag_col", "semivariance",
-    "n_pairs"))
+  expect_identical(
+    names(tab),
+    c("lag_row", "lag_col", "semivariance", "n_pairs")
+  )
   # Every lag of an 8 x 6 array except (0, 0), which is a plot paired with
   # itself and contributes no separation.
   expect_identical(nrow(tab), 8L * 6L - 1L)
@@ -185,7 +195,8 @@ test_that("the titles say what the picture is and what it rests on", {
   expect_identical(attr(tab, "subtitle"), "46 observed / 48 design rows")
   # No fitted-variogram overlay is claimed on the panel or in the sources.
   panel_text <- paste(
-    attr(tab, "title"), attr(tab, "subtitle")
+    attr(tab, "title"),
+    attr(tab, "subtitle")
   )
   expect_false(grepl("fitted", panel_text, ignore.case = TRUE))
   expect_false(grepl("ASReml", panel_text, fixed = TRUE))
@@ -242,8 +253,7 @@ test_that("the sampler-draws predicate reads the engine, not one slot", {
   expect_true(flexyBayes:::.fb_has_sampler_draws(brms_like))
   expect_false(flexyBayes:::.fb_has_sampler_draws(inla_like))
 
-  expect_identical(flexyBayes:::.fb_default_plot_type(brms_like),
-    "diagnostics")
+  expect_identical(flexyBayes:::.fb_default_plot_type(brms_like), "diagnostics")
   expect_identical(flexyBayes:::.fb_default_plot_type(inla_like), "residuals")
 })
 
@@ -276,9 +286,16 @@ test_that("plot(brms_fit) draws its diagnostics (AD-6, live 0.9.0 bug)", {
   )
   d$y <- 1 + 0.4 * d$x + stats::rnorm(40L)
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    y ~ x, random = ~g, data = d, backend = "brms", aggregate = FALSE,
-    n_samples = 200L, warmup = 200L, chains = 1L,
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ x,
+    random = ~g,
+    data = d,
+    backend = "brms",
+    aggregate = FALSE,
+    n_samples = 200L,
+    warmup = 200L,
+    chains = 1L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
 
   # Before the fix this emitted a message naming brms as a supported

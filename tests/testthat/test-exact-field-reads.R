@@ -94,9 +94,19 @@ test_that("a multi-way random term's level count is its observed combinations", 
 
 test_that("a three-way interaction random term plans with no partial match", {
   set.seed(1)
-  d <- expand.grid(a = factor(1:4), b = factor(1:3), cc = factor(1:2), rep = 1:3)
+  d <- expand.grid(
+    a = factor(1:4),
+    b = factor(1:3),
+    cc = factor(1:2),
+    rep = 1:3
+  )
   d$y <- rnorm(nrow(d))
-  res <- .pm_collect(flexybayes(y ~ 1, random = ~ a:b:cc, data = d, plan = TRUE))
+  res <- .pm_collect(flexybayes(
+    y ~ 1,
+    random = ~ a:b:cc,
+    data = d,
+    plan = TRUE
+  ))
 
   expect_identical(res$matches, character(0))
   expect_s3_class(res$value, "fb_plan")
@@ -123,4 +133,3 @@ test_that("the plan reads the aggregation cell count by its name", {
   expect_equal(res$value$aggregation$K, n_cells)
   expect_equal(res$value$aggregation$ratio, nrow(d) / n_cells)
 })
-

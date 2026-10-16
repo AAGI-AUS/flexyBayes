@@ -111,10 +111,15 @@ test_that("INLA recovers the same variance components as lme4 REML", {
   vc <- as.data.frame(lme4::VarCorr(m))
   ref <- stats::setNames(vc$sdcor, vc$grp)
 
-  expect_equal(unname(got[["sigma"]]), unname(ref[["Residual"]]),
-               tolerance = 0.15)
-  expect_equal(unname(got[["sd_gen"]]), unname(ref[["gen"]]),
-               tolerance = 0.15)
-  expect_equal(unname(got[["sd_rep:block"]]), unname(ref[["rep:block"]]),
-               tolerance = 0.20)
+  expect_equal(
+    unname(got[["sigma"]]),
+    unname(ref[["Residual"]]),
+    tolerance = 0.15
+  )
+  expect_equal(unname(got[["sd_gen"]]), unname(ref[["gen"]]), tolerance = 0.15)
+  expect_equal(
+    unname(got[["sd_rep:block"]]),
+    unname(ref[["rep:block"]]),
+    tolerance = 0.20
+  )
 })

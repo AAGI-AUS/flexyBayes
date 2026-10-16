@@ -9,10 +9,16 @@ test_that("DEF-227: canonical draws of a brms fit do not pass n_samples", {
       list(b_Intercept = c(1, 2))
     }
   )
-  fit <- structure(list(extras = list()), class = c("flexybayes_brms", "flexybayes"))
+  fit <- structure(
+    list(extras = list()),
+    class = c("flexybayes_brms", "flexybayes")
+  )
   flexyBayes:::.fb_canonical_draws(fit, n_samples = 20L, drop = FALSE)
   expect_false("n_samples" %in% seen)
-  fit_inla <- structure(list(extras = list()), class = c("flexybayes_inla", "flexybayes"))
+  fit_inla <- structure(
+    list(extras = list()),
+    class = c("flexybayes_inla", "flexybayes")
+  )
   flexyBayes:::.fb_canonical_draws(fit_inla, n_samples = 20L, drop = FALSE)
   expect_true("n_samples" %in% seen)
 })

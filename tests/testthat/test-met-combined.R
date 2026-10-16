@@ -37,8 +37,7 @@
   ge <- stats::rnorm(n_gen * n_env, 0, 0.7)
   cell <- (as.integer(d$env) - 1L) * n_gen + as.integer(d$gen)
   e <- stats::rnorm(nrow(d), 0, resid_sd[as.integer(d$env)])
-  d$yield <- env_mean[as.integer(d$env)] + g[as.integer(d$gen)] +
-    ge[cell] + e
+  d$yield <- env_mean[as.integer(d$env)] + g[as.integer(d$gen)] + ge[cell] + e
   # What the fit can actually be judged against: the residual variance
   # this draw realised, environment by environment.
   attr(d, "realised_resid_var") <- vapply(
@@ -62,8 +61,11 @@ test_that("the combined model emits both blocks, in the formula and in Stan", {
   bf <- flexyBayes:::.fb_to_brms_formula(fb)
   main <- paste(deparse(bf$formula), collapse = " ")
   sigma <- paste(
-    vapply(bf$pforms, function(p) paste(deparse(p), collapse = " "),
-           character(1L)),
+    vapply(
+      bf$pforms,
+      function(p) paste(deparse(p), collapse = " "),
+      character(1L)
+    ),
     collapse = " "
   )
   expect_match(main, "(1 | gen)", fixed = TRUE)
@@ -75,11 +77,18 @@ test_that("the combined model emits both blocks, in the formula and in Stan", {
   # `X_sigma` / `b_sigma` are the residual predictor's design matrix and
   # coefficients. A program with one and not the other is a different
   # model from the one the user wrote.
-  code <- paste(utils::capture.output(print(flexybayes(
-    yield ~ env, random = ~ gen + gen:env,
-    residual = ~ dsum(~ units | env), data = d,
-    backend = "brms", return_code = TRUE, verbose = FALSE
-  ))), collapse = "\n")
+  code <- paste(
+    utils::capture.output(print(flexybayes(
+      yield ~ env,
+      random = ~ gen + gen:env,
+      residual = ~ dsum(~ units | env),
+      data = d,
+      backend = "brms",
+      return_code = TRUE,
+      verbose = FALSE
+    ))),
+    collapse = "\n"
+  )
   expect_true(grepl("sd_1", code, fixed = TRUE))
   expect_true(grepl("sd_2", code, fixed = TRUE))
   expect_true(grepl("X_sigma", code, fixed = TRUE))

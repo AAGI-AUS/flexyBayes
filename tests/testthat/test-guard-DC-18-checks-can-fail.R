@@ -19,9 +19,13 @@
   walk <- function(x) {
     if (is.call(x)) {
       out[[length(out) + 1L]] <<- x
-      for (a in as.list(x)) if (!missing(a)) walk(a)
+      for (a in as.list(x)) {
+        if (!missing(a)) walk(a)
+      }
     } else if (is.pairlist(x)) {
-      for (a in as.list(x)) if (!missing(a)) walk(a)
+      for (a in as.list(x)) {
+        if (!missing(a)) walk(a)
+      }
     }
   }
   walk(e)
@@ -57,15 +61,21 @@
     return("expect_false(FALSE)")
   }
   if (
-    nm %in% c("expect_equal", "expect_identical", "expect_equivalent") &&
-      length(a) >= 2L && identical(a[[1L]], a[[2L]])
+    nm %in%
+      c("expect_equal", "expect_identical", "expect_equivalent") &&
+      length(a) >= 2L &&
+      identical(a[[1L]], a[[2L]])
   ) {
     return("the same expression on both sides")
   }
   counts <- c("length", "nrow", "ncol", "nchar", "sum", "NROW", "NCOL")
   if (
-    nm == "expect_gte" && length(a) >= 2L && is.call(a[[1L]]) &&
-      .g18_name(a[[1L]]) %in% counts && is.numeric(a[[2L]]) && a[[2L]] <= 0
+    nm == "expect_gte" &&
+      length(a) >= 2L &&
+      is.call(a[[1L]]) &&
+      .g18_name(a[[1L]]) %in% counts &&
+      is.numeric(a[[2L]]) &&
+      a[[2L]] <= 0
   ) {
     return("a count compared as at least zero")
   }
@@ -73,7 +83,11 @@
 }
 
 test_that("DC-18 guard: every test block holds an expectation that can fail", {
-  files <- list.files(testthat::test_path("."), "^test-.*\\.R$", full.names = TRUE)
+  files <- list.files(
+    testthat::test_path("."),
+    "^test-.*\\.R$",
+    full.names = TRUE
+  )
   empty <- character(0)
   tautologies <- character(0)
   blocks <- 0L
@@ -82,8 +96,11 @@ test_that("DC-18 guard: every test block holds an expectation that can fail", {
     helpers <- character(0)
     for (e in exprs) {
       if (
-        is.call(e) && .g18_name(e) %in% c("<-", "=") && is.symbol(e[[2L]]) &&
-          is.call(e[[3L]]) && identical(e[[3L]][[1L]], quote(`function`))
+        is.call(e) &&
+          .g18_name(e) %in% c("<-", "=") &&
+          is.symbol(e[[2L]]) &&
+          is.call(e[[3L]]) &&
+          identical(e[[3L]][[1L]], quote(`function`))
       ) {
         fn <- vapply(.g18_calls(e[[3L]]), .g18_name, character(1L))
         if (any(.g18_can_fail(fn, character(0)))) {
@@ -92,7 +109,9 @@ test_that("DC-18 guard: every test block holds an expectation that can fail", {
       }
     }
     for (e in exprs) {
-      if (!(is.call(e) && .g18_name(e) == "test_that")) next
+      if (!(is.call(e) && .g18_name(e) == "test_that")) {
+        next
+      }
       blocks <- blocks + 1L
       calls <- .g18_calls(e[[3L]])
       fn <- vapply(calls, .g18_name, character(1L))
@@ -104,7 +123,10 @@ test_that("DC-18 guard: every test block holds an expectation that can fail", {
       for (cl in calls[grepl("^expect_", fn)]) {
         why <- .g18_tautology(cl)
         if (nzchar(why)) {
-          tautologies <- c(tautologies, paste0(basename(f), ": ", e[[2L]], ": ", why))
+          tautologies <- c(
+            tautologies,
+            paste0(basename(f), ": ", e[[2L]], ": ", why)
+          )
         }
       }
     }

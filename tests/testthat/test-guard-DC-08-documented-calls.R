@@ -12,8 +12,10 @@
 
 .g08_root <- function() {
   candidate <- testthat::test_path("..", "..")
-  if (file.exists(file.path(candidate, "DESCRIPTION")) &&
-    dir.exists(file.path(candidate, "man"))) {
+  if (
+    file.exists(file.path(candidate, "DESCRIPTION")) &&
+      dir.exists(file.path(candidate, "man"))
+  ) {
     return(normalizePath(candidate))
   }
   NA_character_
@@ -28,11 +30,17 @@
     tag <- attr(x, "Rd_tag")
     if (identical(tag, "\\code") || identical(tag, "\\examples")) {
       text[[length(text) + 1L]] <<- paste(unlist(x), collapse = "")
-      kind[[length(kind) + 1L]] <<- if (identical(tag, "\\examples")) "example" else "code"
+      kind[[length(kind) + 1L]] <<- if (identical(tag, "\\examples")) {
+        "example"
+      } else {
+        "code"
+      }
       return(invisible())
     }
     if (is.list(x)) {
-      for (el in x) walk(el)
+      for (el in x) {
+        walk(el)
+      }
     }
   }
   walk(rd)
@@ -56,7 +64,9 @@
         is_r <- opens[i]
         buf <- character(0)
       } else {
-        if (is_r) chunks[[length(chunks) + 1L]] <- paste(buf, collapse = "\n")
+        if (is_r) {
+          chunks[[length(chunks) + 1L]] <- paste(buf, collapse = "\n")
+        }
         inside <- FALSE
       }
       next
@@ -86,8 +96,11 @@
   body_calls <- all.names(body(f))
   if ("UseMethod" %in% body_calls) {
     table_s3 <- get(".__S3MethodsTable__.", envir = ns)
-    method_names <- grep(paste0("^", gsub(".", "\\.", fname, fixed = TRUE), "\\."),
-      ls(table_s3, all.names = TRUE), value = TRUE)
+    method_names <- grep(
+      paste0("^", gsub(".", "\\.", fname, fixed = TRUE), "\\."),
+      ls(table_s3, all.names = TRUE),
+      value = TRUE
+    )
     out <- setdiff(formal_names, "...")
     for (m in method_names) {
       acc <- .g08_accepted(get(m, envir = table_s3), ns, m)
@@ -108,7 +121,11 @@
   walk <- function(e) {
     if (is.call(e)) {
       parts <- as.list(e)
-      has_dots <- any(vapply(parts[-1L], function(z) identical(z, quote(...)), logical(1L)))
+      has_dots <- any(vapply(
+        parts[-1L],
+        function(z) identical(z, quote(...)),
+        logical(1L)
+      ))
       if (has_dots) {
         if (is.name(parts[[1L]])) {
           callees[[length(callees) + 1L]] <<- as.character(parts[[1L]])
@@ -144,7 +161,8 @@
 # snippet that is not R code (prose in \code{}, a path, a shell line) is
 # skipped: only code that parses is a claim about the package's calls.
 .g08_bad_calls <- function(snippet, kind, ns, exports) {
-  exprs <- tryCatch(parse(text = snippet, keep.source = FALSE),
+  exprs <- tryCatch(
+    parse(text = snippet, keep.source = FALSE),
     error = function(e) NULL
   )
   if (is.null(exprs)) {
@@ -161,27 +179,51 @@
     internal_ok <- FALSE
     if (is.name(head)) {
       fname <- as.character(head)
-    } else if (is.call(head) && as.character(head[[1L]]) %in% c("::", ":::") &&
-      identical(as.character(head[[2L]]), "flexyBayes")) {
+    } else if (
+      is.call(head) &&
+        as.character(head[[1L]]) %in% c("::", ":::") &&
+        identical(as.character(head[[2L]]), "flexyBayes")
+    ) {
       fname <- as.character(head[[3L]])
       internal_ok <- identical(as.character(head[[1L]]), ":::")
       if (!internal_ok && !fname %in% exports) {
-        bad[[length(bad) + 1L]] <<- paste0("flexyBayes::", fname, " is not exported")
+        bad[[length(bad) + 1L]] <<- paste0(
+          "flexyBayes::",
+          fname,
+          " is not exported"
+        )
       }
     }
     if (!is.na(fname) && fname %in% c("<-", "=") && is.name(e[[2L]])) {
       defined[[length(defined) + 1L]] <<- as.character(e[[2L]])
     }
     known <- !is.na(fname) && !fname %in% defined
-    if (known && grepl("^(fb_|flexybayes)", fname) && !exists(fname, envir = ns, inherits = FALSE)) {
+    if (
+      known &&
+        grepl("^(fb_|flexybayes)", fname) &&
+        !exists(fname, envir = ns, inherits = FALSE)
+    ) {
       bad[[length(bad) + 1L]] <<- paste0(fname, "() does not exist")
     }
-    if (known && kind == "example" && is.name(head) && !fname %in% exports &&
-      exists(fname, envir = ns, inherits = FALSE) &&
-      !exists(fname, envir = baseenv()) && is.function(get(fname, envir = ns))) {
-      bad[[length(bad) + 1L]] <<- paste0(fname, "() is internal, so an example cannot call it by name")
+    if (
+      known &&
+        kind == "example" &&
+        is.name(head) &&
+        !fname %in% exports &&
+        exists(fname, envir = ns, inherits = FALSE) &&
+        !exists(fname, envir = baseenv()) &&
+        is.function(get(fname, envir = ns))
+    ) {
+      bad[[length(bad) + 1L]] <<- paste0(
+        fname,
+        "() is internal, so an example cannot call it by name"
+      )
     }
-    if (known && (fname %in% exports || internal_ok) && exists(fname, envir = ns, inherits = FALSE)) {
+    if (
+      known &&
+        (fname %in% exports || internal_ok) &&
+        exists(fname, envir = ns, inherits = FALSE)
+    ) {
       f <- get(fname, envir = ns)
       if (is.function(f) && !is.primitive(f)) {
         accepted <- .g08_accepted(f, ns, fname)
@@ -190,7 +232,12 @@
         if (!is.null(accepted)) {
           for (a in arg_names) {
             if (is.na(pmatch(a, accepted))) {
-              bad[[length(bad) + 1L]] <<- paste0(fname, "(", a, " = ) reaches no argument")
+              bad[[length(bad) + 1L]] <<- paste0(
+                fname,
+                "(",
+                a,
+                " = ) reaches no argument"
+              )
             }
           }
         }
@@ -201,7 +248,9 @@
       if (!identical(parts[[i]], quote(expr = ))) check(parts[[i]])
     }
   }
-  for (e in exprs) check(e)
+  for (e in exprs) {
+    check(e)
+  }
   unique(bad)
 }
 
@@ -211,10 +260,18 @@ test_that("DC-08 guard: every documented call to a package function can be made"
   ns <- asNamespace("flexyBayes")
   exports <- getNamespaceExports("flexyBayes")
 
-  rd_files <- list.files(file.path(root, "man"), pattern = "\\.Rd$", full.names = TRUE)
+  rd_files <- list.files(
+    file.path(root, "man"),
+    pattern = "\\.Rd$",
+    full.names = TRUE
+  )
   md_files <- c(
     file.path(root, c("README.md", "API_STABILITY.md", "inst/KNOWN_ISSUES.md")),
-    list.files(file.path(root, "vignettes"), pattern = "\\.Rmd(\\.orig)?$", full.names = TRUE)
+    list.files(
+      file.path(root, "vignettes"),
+      pattern = "\\.Rmd(\\.orig)?$",
+      full.names = TRUE
+    )
   )
   md_files <- md_files[file.exists(md_files)]
   expect_gt(length(rd_files), 0L)
@@ -222,7 +279,11 @@ test_that("DC-08 guard: every documented call to a package function can be made"
   findings <- character(0)
   n_snippets <- 0L
   for (f in c(rd_files, md_files)) {
-    snippets <- if (grepl("\\.Rd$", f)) .g08_rd_snippets(f) else .g08_md_snippets(f)
+    snippets <- if (grepl("\\.Rd$", f)) {
+      .g08_rd_snippets(f)
+    } else {
+      .g08_md_snippets(f)
+    }
     n_snippets <- n_snippets + nrow(snippets)
     for (i in seq_len(nrow(snippets))) {
       hits <- .g08_bad_calls(snippets$text[i], snippets$kind[i], ns, exports)

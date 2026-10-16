@@ -17,8 +17,10 @@
 
 .tiers_dod <- function() {
   env <- new.env(parent = globalenv())
-  sys.source(file.path(.tiers_root(), "tools", "definition_of_done.R"),
-             envir = env)
+  sys.source(
+    file.path(.tiers_root(), "tools", "definition_of_done.R"),
+    envir = env
+  )
   env
 }
 
@@ -29,8 +31,14 @@
   tab <- data.frame(
     file = c(tagged$file, "test-other.R"),
     test = c(tagged$test, "an untagged block"),
-    nb = 1L, failed = 0L, skipped = FALSE, error = FALSE, warning = 0L,
-    passed = 1L, real = 0.1, skip_reason = ""
+    nb = 1L,
+    failed = 0L,
+    skipped = FALSE,
+    error = FALSE,
+    warning = 0L,
+    passed = 1L,
+    real = 0.1,
+    skip_reason = ""
   )
   utils::write.table(tab, path, sep = "\t", row.names = FALSE, quote = FALSE)
   tab
@@ -77,8 +85,13 @@ test_that("D11 fails a record that lacks a tagged block, and a missing record", 
   path <- withr::local_tempfile(fileext = ".tsv")
   tab <- .tiers_record(dod, path)
   if (nrow(tab) > 1L) {
-    utils::write.table(tab[-1L, ], path, sep = "\t", row.names = FALSE,
-                       quote = FALSE)
+    utils::write.table(
+      tab[-1L, ],
+      path,
+      sep = "\t",
+      row.names = FALSE,
+      quote = FALSE
+    )
     res <- withr::with_dir(.tiers_root(), dod$.dod_tier_check(path))
     expect_false(res$pass)
     expect_match(res$detail, "; 1 of ")

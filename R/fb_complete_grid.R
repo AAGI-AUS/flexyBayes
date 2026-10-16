@@ -17,7 +17,6 @@
 # for "nothing was sown here". This package makes that an explicit,
 # named choice (`unused_level =`) instead of a default.
 
-
 # ---------------------------------------------------------------- #
 # The shared core                                                   #
 # ---------------------------------------------------------------- #
@@ -68,10 +67,13 @@
   full <- expand.grid(levs, stringsAsFactors = FALSE, KEEP.OUT.ATTRS = FALSE)
 
   key <- function(df) {
-    do.call(paste, c(
-      lapply(index_vars, function(v) as.character(df[[v]])),
-      list(sep = "\r")
-    ))
+    do.call(
+      paste,
+      c(
+        lapply(index_vars, function(v) as.character(df[[v]])),
+        list(sep = "\r")
+      )
+    )
   }
   list(full = full, absent = which(!key(full) %in% key(data)))
 }
@@ -112,8 +114,11 @@
   fillable <- .fb_grid_fillable(data, undetermined)
   unfillable <- setdiff(undetermined, fillable)
 
-  if (length(unfillable) > 0L || (length(fillable) > 0L &&
-    is.null(unused_level))) {
+  if (
+    length(unfillable) > 0L ||
+      (length(fillable) > 0L &&
+        is.null(unused_level))
+  ) {
     stop(.fb_grid_refusal(
       n_absent = length(absent),
       index_vars = index_vars,
@@ -139,8 +144,12 @@
     }
     filled <- fillable
     warning(
-      "flexyBayes: filled ", length(absent), " reinstated design cell(s) ",
-      "with the unused level \"", as.character(unused_level), "\" in ",
+      "flexyBayes: filled ",
+      length(absent),
+      " reinstated design cell(s) ",
+      "with the unused level \"",
+      as.character(unused_level),
+      "\" in ",
       paste(filled, collapse = ", "),
       ". Those cells now carry a design assignment nobody recorded; every ",
       "estimate that reads the named column(s) is conditional on it.",
@@ -187,7 +196,9 @@
   remedy
 ) {
   head <- paste0(
-    n_absent, " cell(s) of the ", paste(index_vars, collapse = " x "),
+    n_absent,
+    " cell(s) of the ",
+    paste(index_vars, collapse = " x "),
     " grid are absent from the data altogether, and ",
     paste(undetermined, collapse = ", "),
     " is not constant across the trial, so completing the grid would ",
@@ -280,7 +291,8 @@ fb_complete_grid <- function(
   missing_vars <- setdiff(c(index_vars, response), names(data))
   if (length(missing_vars) > 0L) {
     stop(
-      "fb_complete_grid(): `", paste(missing_vars, collapse = "`, `"),
+      "fb_complete_grid(): `",
+      paste(missing_vars, collapse = "`, `"),
       "` is not a column of `data`.",
       call. = FALSE
     )
@@ -310,7 +322,9 @@ fb_complete_grid <- function(
   if (!is.data.frame(data)) {
     stop(
       "fb_complete_grid(): `data` must be a data frame, not an object of ",
-      "class <", paste(class(data), collapse = ", "), ">.",
+      "class <",
+      paste(class(data), collapse = ", "),
+      ">.",
       call. = FALSE
     )
   }

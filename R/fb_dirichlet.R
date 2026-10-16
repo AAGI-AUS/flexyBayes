@@ -183,7 +183,9 @@ fb_dirichlet <- function(
   if (!isTRUE(opt$convergence == 0L)) {
     warning(
       "fb_dirichlet(): the maximum-likelihood optimiser did not converge ",
-      "(convergence code ", opt$convergence, "). Treat the estimates as ",
+      "(convergence code ",
+      opt$convergence,
+      "). Treat the estimates as ",
       "provisional and inspect the data.",
       call. = FALSE
     )
@@ -242,8 +244,13 @@ print.fb_dirichlet_fit <- function(x, ...) {
   cat("Dirichlet (compositional) fit  [flexyBayes]\n")
   cat(strrep("-", 50L), "\n")
   cat(
-    "  Method :", x$method, "  N =", x$n_obs,
-    "  components =", x$n_components, "\n"
+    "  Method :",
+    x$method,
+    "  N =",
+    x$n_obs,
+    "  components =",
+    x$n_components,
+    "\n"
   )
   est <- x$estimates
   for (i in seq_len(nrow(est))) {
@@ -281,14 +288,16 @@ print.fb_dirichlet_fit <- function(x, ...) {
   if (ncol(x) < 2L) {
     stop(
       "`x` must have at least two columns (simplex components); got ",
-      ncol(x), ".",
+      ncol(x),
+      ".",
       call. = FALSE
     )
   }
   if (nrow(x) < 4L) {
     stop(
       "`x` must have at least four rows to identify the concentrations; got ",
-      nrow(x), ".",
+      nrow(x),
+      ".",
       call. = FALSE
     )
   }

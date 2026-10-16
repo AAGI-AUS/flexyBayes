@@ -2587,7 +2587,9 @@ fb_register_refusals <- function(refusals, package = NULL) {
     }
     if (!is.character(x)) {
       stop(
-        "Column `", name, "` of `refusals` must be character.",
+        "Column `",
+        name,
+        "` of `refusals` must be character.",
         call. = FALSE
       )
     }
@@ -2602,12 +2604,17 @@ fb_register_refusals <- function(refusals, package = NULL) {
     since_version = column("since_version")
   )
   required <- c(
-    "reason_code", "description", "message_template", "since_version"
+    "reason_code",
+    "description",
+    "message_template",
+    "since_version"
   )
   for (name in required) {
     if (any(is.na(fields[[name]]) | !nzchar(fields[[name]]))) {
       stop(
-        "Column `", name, "` of `refusals` has an empty or missing value.",
+        "Column `",
+        name,
+        "` of `refusals` has an empty or missing value.",
         call. = FALSE
       )
     }
@@ -2652,14 +2659,22 @@ fb_register_refusals <- function(refusals, package = NULL) {
       is_new[[i1]] <- TRUE
     } else if (!identical(held$package, package)) {
       stop(
-        "reason_code '", codes[[i1]], "' is already registered by ",
-        held$package, ". Choose a code particular to ", package, ".",
+        "reason_code '",
+        codes[[i1]],
+        "' is already registered by ",
+        held$package,
+        ". Choose a code particular to ",
+        package,
+        ".",
         call. = FALSE
       )
     } else if (!identical(held, entries[[i1]])) {
       stop(
-        "reason_code '", codes[[i1]], "' is already registered by ",
-        package, " with different fields. Restart R to load the ",
+        "reason_code '",
+        codes[[i1]],
+        "' is already registered by ",
+        package,
+        " with different fields. Restart R to load the ",
         "changed registration.",
         call. = FALSE
       )
@@ -2669,12 +2684,15 @@ fb_register_refusals <- function(refusals, package = NULL) {
   if (any(is_new)) {
     if (!exists(package, envir = .refusal_plugin_registry, inherits = FALSE)) {
       assign(
-        package, new.env(parent = emptyenv()),
+        package,
+        new.env(parent = emptyenv()),
         envir = .refusal_plugin_registry
       )
     }
     partition <- get(
-      package, envir = .refusal_plugin_registry, inherits = FALSE
+      package,
+      envir = .refusal_plugin_registry,
+      inherits = FALSE
     )
     for (i1 in which(is_new)) {
       assign(codes[[i1]], entries[[i1]], envir = partition)
@@ -2740,7 +2758,9 @@ fb_refuse <- function(
   entry <- .lookup_refusal(reason_code)
   if (is.null(entry)) {
     stop(
-      "reason_code '", reason_code, "' is not registered. A package ",
+      "reason_code '",
+      reason_code,
+      "' is not registered. A package ",
       "registers its codes with fb_register_refusals() in its .onLoad() ",
       "before raising them.",
       call. = FALSE

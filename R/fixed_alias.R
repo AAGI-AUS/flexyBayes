@@ -68,7 +68,9 @@
   if ("(Intercept)" %in% colnames(m)) {
     centre <- colnames(m) != "(Intercept)"
     m[, centre] <- sweep(
-      m[, centre, drop = FALSE], 2L, colMeans(m[, centre, drop = FALSE])
+      m[, centre, drop = FALSE],
+      2L,
+      colMeans(m[, centre, drop = FALSE])
     )
   }
   entry <- design$asreml_order
@@ -123,10 +125,17 @@
     stop(.fb_refusal_condition(
       reason_code = "fixed_effects_aliased",
       message = paste0(
-        "flexybayes(): ", n, " of the ", alias$n_columns, " fixed-effect ",
+        "flexybayes(): ",
+        n,
+        " of the ",
+        alias$n_columns,
+        " fixed-effect ",
         "columns are linear combinations of the columns before them on the ",
-        alias$n_rows, " rows with a response, so the data give no estimate ",
-        "for them: ", listed, ". Fitted as written, they would be reported ",
+        alias$n_rows,
+        " rows with a response, so the data give no estimate ",
+        "for them: ",
+        listed,
+        ". Fitted as written, they would be reported ",
         "at their prior. Pass fixed_alias = \"drop\" to drop them as asreml ",
         "does, with predictions that depend on them returned as NA, or ",
         "remove the terms that create them."
@@ -137,7 +146,11 @@
   if (identical(backend, "brms")) {
     stop(
       "flexybayes(): fixed_alias = \"drop\" is fitted on INLA, which fixes ",
-      "the ", n, " aliased columns (", listed, ") at zero. Use ",
+      "the ",
+      n,
+      " aliased columns (",
+      listed,
+      ") at zero. Use ",
       "backend = \"inla\" or \"auto\".",
       call. = FALSE
     )

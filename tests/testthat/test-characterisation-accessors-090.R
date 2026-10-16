@@ -25,8 +25,7 @@ suppressPackageStartupMessages(library(testthat))
     x = stats::rnorm(n)
   )
   b_g <- stats::rnorm(5L, sd = 0.8)[as.integer(d$g)]
-  d$y <- 1 + 0.6 * (d$f == "b") + 0.4 * d$x + b_g +
-    stats::rnorm(n, sd = 0.5)
+  d$y <- 1 + 0.6 * (d$f == "b") + 0.4 * d$x + b_g + stats::rnorm(n, sd = 0.5)
   d
 }
 
@@ -119,8 +118,13 @@ test_that("an unsupplied na.method() argument arrives as its whole vector", {
 
 test_that("every recorded na.method() case keeps the same two-slot shape", {
   cases <- c(
-    "explicit", "default", "y_include", "y_omit", "y_fail",
-    "x_omit", "x_include"
+    "explicit",
+    "default",
+    "y_include",
+    "y_omit",
+    "y_fail",
+    "x_omit",
+    "x_include"
   )
   for (case in cases) {
     m <- .asreml_na_method_recorded(case)
@@ -189,8 +193,17 @@ test_that("coef() on a brms fit is identical to fit$glm$coefficients", {
 # readers use it. The full shape is tested in test-summary-asreml-shape.R.
 
 .CHAR090_SUMMARY_SLOTS <- c(
-  "fixed", "varcomp", "random", "missing", "converge",
-  "n_design", "n_observed", "na_action", "model", "engine", "call"
+  "fixed",
+  "varcomp",
+  "random",
+  "missing",
+  "converge",
+  "n_design",
+  "n_observed",
+  "na_action",
+  "model",
+  "engine",
+  "call"
 )
 
 test_that("summary() on an INLA fit returns the shared summary object", {

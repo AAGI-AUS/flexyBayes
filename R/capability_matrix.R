@@ -333,6 +333,7 @@
       anchor = "test-weights-lowering.R"
     ),
     list(
+      # fmt: skip
       model_class =
         "Exact sufficient-statistic aggregation (binomial, Poisson)",
       spelling = "`aggregate = TRUE`, `flexybayes_stream()`",
@@ -347,6 +348,7 @@
     ),
     list(
       model_class = "Exact sufficient-statistic aggregation (Gaussian)",
+      # fmt: skip
       spelling =
         "`aggregate = TRUE`, `flexybayes_stream(family = \"gaussian\")`",
       inla = "refuses",
@@ -455,7 +457,8 @@
 
   with_notes <- identical(layout, "full")
   if (!with_notes) {
-    fitted <- tab$inla %in% c("fits", "emits") |
+    fitted <- tab$inla %in%
+      c("fits", "emits") |
       tab$brms %in% c("fits", "emits")
     tab <- tab[fitted, , drop = FALSE]
   }
@@ -535,10 +538,18 @@
     paste(tab$model_class[tab[[engine]] %in% verdicts], collapse = "; ")
   }
   paste0(
-    "INLA fits: ", classes("inla", c("fits", "emits")), ". ",
-    "INLA refuses: ", classes("inla", "refuses"), ". ",
-    "brms fits: ", classes("brms", c("fits", "emits")), ". ",
-    "brms refuses: ", classes("brms", "refuses"), "."
+    "INLA fits: ",
+    classes("inla", c("fits", "emits")),
+    ". ",
+    "INLA refuses: ",
+    classes("inla", "refuses"),
+    ". ",
+    "brms fits: ",
+    classes("brms", c("fits", "emits")),
+    ". ",
+    "brms refuses: ",
+    classes("brms", "refuses"),
+    "."
   )
 }
 

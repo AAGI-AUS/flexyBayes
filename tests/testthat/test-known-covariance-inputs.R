@@ -141,7 +141,10 @@ test_that("vm(geno, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses with 
   err <- tryCatch(
     fb_from_asreml(
       fixed = y ~ 1,
-      random = ~ vm(geno, cov = fb_cov(F_mat, type = "low_rank", scheme = "low_rank_smooth")),
+      random = ~ vm(
+        geno,
+        cov = fb_cov(F_mat, type = "low_rank", scheme = "low_rank_smooth")
+      ),
       data = dat
     ),
     flexybayes_structured_cov_refusal = identity
@@ -164,7 +167,10 @@ test_that("ped(animal, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses id
   err <- tryCatch(
     fb_from_asreml(
       fixed = y ~ 1,
-      random = ~ ped(animal, cov = fb_cov(F_mat, type = "low_rank", scheme = "low_rank_smooth")),
+      random = ~ ped(
+        animal,
+        cov = fb_cov(F_mat, type = "low_rank", scheme = "low_rank_smooth")
+      ),
       data = dat
     ),
     flexybayes_structured_cov_refusal = identity
@@ -228,11 +234,31 @@ test_that("precision path: asymmetric Q refuses with precision_not_symmetric", {
   skip_if_not_installed("Matrix")
   Q <- matrix(
     c(
-      1, 0.5, 0, 0, 0,
-      0, 1, 0.5, 0, 0,
-      0, 0, 1, 0.5, 0,
-      0, 0, 0, 1, 0.5,
-      0, 0, 0, 0, 1
+      1,
+      0.5,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0.5,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0.5,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0.5,
+      0,
+      0,
+      0,
+      0,
+      1
     ),
     nrow = 5,
     byrow = TRUE

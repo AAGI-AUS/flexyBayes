@@ -153,15 +153,33 @@
 .fb_family_links <- function() {
   list(
     gaussian = c(
-      "identity", "log", "inverse", "logit", "probit", "cloglog", "cauchit"
+      "identity",
+      "log",
+      "inverse",
+      "logit",
+      "probit",
+      "cloglog",
+      "cauchit"
     ),
     binomial = c(
-      "logit", "probit", "probit_approx", "cloglog", "cauchit", "softit",
-      "identity", "log"
+      "logit",
+      "probit",
+      "probit_approx",
+      "cloglog",
+      "cauchit",
+      "softit",
+      "identity",
+      "log"
     ),
     binary = c(
-      "logit", "probit", "probit_approx", "cloglog", "cauchit", "softit",
-      "identity", "log"
+      "logit",
+      "probit",
+      "probit_approx",
+      "cloglog",
+      "cauchit",
+      "softit",
+      "identity",
+      "log"
     ),
     poisson = c("log", "identity", "sqrt"),
     negative_binomial = c("log", "identity", "sqrt", "softplus", "squareplus"),

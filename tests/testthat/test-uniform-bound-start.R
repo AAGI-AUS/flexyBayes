@@ -30,8 +30,11 @@
     f = factor(sample(letters[1:3], n, replace = TRUE)),
     g = factor(sample.int(15L, n, replace = TRUE))
   )
-  d$y <- 1 + 0.5 * (d$f == "b") - 0.3 * (d$f == "c") +
-    stats::rnorm(15L, 0, 0.3)[as.integer(d$g)] + stats::rnorm(n, 0, 0.15)
+  d$y <- 1 +
+    0.5 * (d$f == "b") -
+    0.3 * (d$f == "c") +
+    stats::rnorm(15L, 0, 0.3)[as.integer(d$g)] +
+    stats::rnorm(n, 0, 0.15)
   d
 }
 
@@ -168,11 +171,19 @@ test_that("tight and moderate bounds bind on a Gaussian fit, on a group and on t
     fit <- fit_with(eval(bquote(
       fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = .(upper)))
     )))
-    expect_lte(.bound_varcomp(fit, "sd_g"), upper * 1.01, label = paste0("sd_g, bound ", upper))
+    expect_lte(
+      .bound_varcomp(fit, "sd_g"),
+      upper * 1.01,
+      label = paste0("sd_g, bound ", upper)
+    )
   }
 
   fit <- fit_with(fb_prior(sigma ~ uniform(lower = 0, upper = 0.1)))
-  expect_lte(.bound_varcomp(fit, "sigma"), 0.1 * 1.01, label = "sigma, bound 0.1")
+  expect_lte(
+    .bound_varcomp(fit, "sigma"),
+    0.1 * 1.01,
+    label = "sigma, bound 0.1"
+  )
 })
 
 # ---------------------------------------------------------------- #
@@ -203,11 +214,17 @@ test_that("an INLA program failure on a model with a stated uniform bound names 
     )
   }
 
-  stated <- failure(fb_prior(sd(group = "geno") ~ uniform(lower = 0, upper = 0.05)))
+  stated <- failure(fb_prior(
+    sd(group = "geno") ~ uniform(lower = 0, upper = 0.05)
+  ))
   expect_s3_class(stated, "flexybayes_refusal_inla_program_failed")
   expect_match(conditionMessage(stated), "states a uniform bound", fixed = TRUE)
 
   unstated <- failure(NULL)
   expect_s3_class(unstated, "flexybayes_refusal_inla_program_failed")
-  expect_no_match(conditionMessage(unstated), "states a uniform bound", fixed = TRUE)
+  expect_no_match(
+    conditionMessage(unstated),
+    "states a uniform bound",
+    fixed = TRUE
+  )
 })

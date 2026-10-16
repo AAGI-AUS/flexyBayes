@@ -96,7 +96,10 @@ test_that("the committed capability blocks equal a fresh render", {
 
 test_that("the README block lists only what an engine fits, without notes", {
   tab <- flexyBayes:::.fb_capability_matrix()
-  block <- flexyBayes:::.fb_capability_markdown(markers = FALSE, layout = "fits")
+  block <- flexyBayes:::.fb_capability_markdown(
+    markers = FALSE,
+    layout = "fits"
+  )
   lines <- strsplit(block, "\n", fixed = TRUE)[[1L]]
   rows <- lines[startsWith(lines, "| ")][-1L]
   fitted <- tab$inla %in% c("fits", "emits") | tab$brms %in% c("fits", "emits")
@@ -106,8 +109,11 @@ test_that("the README block lists only what an engine fits, without notes", {
   for (cls in tab$model_class[!fitted]) {
     expect_false(any(startsWith(rows, paste0("| ", cls, " |"))), label = cls)
   }
-  expect_false(any(grepl(substr(tab$note[fitted][[1L]], 1L, 40L), rows,
-    fixed = TRUE)))
+  expect_false(any(grepl(
+    substr(tab$note[fitted][[1L]], 1L, 40L),
+    rows,
+    fixed = TRUE
+  )))
   # The legend names only the verdicts the rows use.
   expect_false(grepl("`emits`", block, fixed = TRUE))
 })
@@ -148,8 +154,13 @@ test_that("the translation registry and the capability table agree on refusals",
         identical(hit[[engine]], "refuses"),
         identical(reg$class[[i]], "refused"),
         label = paste0(
-          reg$structure[[i]], " on ", engine, ": capability verdict ",
-          hit[[engine]], ", translation class ", reg$class[[i]]
+          reg$structure[[i]],
+          " on ",
+          engine,
+          ": capability verdict ",
+          hit[[engine]],
+          ", translation class ",
+          reg$class[[i]]
         )
       )
       checked <- checked + 1L
@@ -174,8 +185,10 @@ test_that("the translation registry and the capability table agree on refusals",
     "lacks|is unable)"
   )
   name <- if (identical(engine, "inla")) "inla" else "(brms|stan)"
-  both <- grepl("no (active )?(engine|backend)|neither (active )?(engine|backend)",
-    lower)
+  both <- grepl(
+    "no (active )?(engine|backend)|neither (active )?(engine|backend)",
+    lower
+  )
   named <- grepl(paste0("\\b", name, "('s)?( [a-z-]+){0,3} ", negation), lower)
   sentences[both | named]
 }
@@ -183,8 +196,10 @@ test_that("the translation registry and the capability table agree on refusals",
 # test_that() blocks of test-engine-claims.R, by description, with the
 # deparsed body of each.
 .cap_engine_test_blocks <- function() {
-  exprs <- parse(testthat::test_path("test-engine-claims.R"),
-    keep.source = FALSE)
+  exprs <- parse(
+    testthat::test_path("test-engine-claims.R"),
+    keep.source = FALSE
+  )
   out <- list()
   for (e in exprs) {
     if (is.call(e) && identical(e[[1L]], as.name("test_that"))) {
@@ -213,9 +228,15 @@ test_that("a refusing row claims an engine limitation only with an engine test b
       expect_true(nzchar(basis), label = paste(label, "names a basis"))
       if (!identical(basis, "flexyBayes")) {
         body <- blocks[[basis]]
-        expect_false(is.null(body), label = paste0(
-          label, ": test-engine-claims.R has a block named '", basis, "'"
-        ))
+        expect_false(
+          is.null(body),
+          label = paste0(
+            label,
+            ": test-engine-claims.R has a block named '",
+            basis,
+            "'"
+          )
+        )
         expect_true(
           !is.null(body) && grepl(.cap_engine_call[[engine]], body),
           label = paste0(label, ": '", basis, "' calls ", engine, " directly")
@@ -223,10 +244,16 @@ test_that("a refusing row claims an engine limitation only with an engine test b
       }
       for (claim in .cap_engine_claims(tab$note[[i]], engine)) {
         claimed <- claimed + 1L
-        expect_false(identical(basis, "flexyBayes"), label = paste0(
-          label, ": the note says \"", claim, "\", and the basis names no ",
-          "engine test"
-        ))
+        expect_false(
+          identical(basis, "flexyBayes"),
+          label = paste0(
+            label,
+            ": the note says \"",
+            claim,
+            "\", and the basis names no ",
+            "engine test"
+          )
+        )
       }
     }
   }
@@ -237,27 +264,48 @@ test_that("a refusing row claims an engine limitation only with an engine test b
 test_that("the engine-claim pattern finds the claims it exists to find", {
   # The detector itself, on the sentences that were on the README before
   # 0.14.0 and on the ones that replaced them.
-  expect_length(.cap_engine_claims(
-    "No active engine represents a trait-by-genotype unstructured covariance.",
-    "brms"
-  ), 1L)
-  expect_length(.cap_engine_claims(
-    "brms has no factor-analytic lowering, so no engine fits it.", "brms"
-  ), 1L)
-  expect_length(.cap_engine_claims(
-    "INLA has no hurdle-gamma likelihood, so the INLA route refuses it.",
-    "inla"
-  ), 1L)
-  expect_length(.cap_engine_claims(
-    "INLA's likelihood roster carries no counterpart.", "inla"
-  ), 1L)
-  expect_length(.cap_engine_claims(
-    "flexyBayes has no brms lowering for the field.", "brms"
-  ), 0L)
-  expect_length(.cap_engine_claims(
-    "INLA has an exchangeable group model, which flexyBayes does not use.",
-    "inla"
-  ), 0L)
+  expect_length(
+    .cap_engine_claims(
+      "No active engine represents a trait-by-genotype unstructured covariance.",
+      "brms"
+    ),
+    1L
+  )
+  expect_length(
+    .cap_engine_claims(
+      "brms has no factor-analytic lowering, so no engine fits it.",
+      "brms"
+    ),
+    1L
+  )
+  expect_length(
+    .cap_engine_claims(
+      "INLA has no hurdle-gamma likelihood, so the INLA route refuses it.",
+      "inla"
+    ),
+    1L
+  )
+  expect_length(
+    .cap_engine_claims(
+      "INLA's likelihood roster carries no counterpart.",
+      "inla"
+    ),
+    1L
+  )
+  expect_length(
+    .cap_engine_claims(
+      "flexyBayes has no brms lowering for the field.",
+      "brms"
+    ),
+    0L
+  )
+  expect_length(
+    .cap_engine_claims(
+      "INLA has an exchangeable group model, which flexyBayes does not use.",
+      "inla"
+    ),
+    0L
+  )
 })
 
 # --- (b) behaviour anchors -------------------------------------------- #
@@ -769,14 +817,20 @@ test_that("the per-trial separable AR1 field fits on INLA and refuses on brms", 
   )
   .cap_expect(
     .cap_emit(
-      "inla", y ~ 1, random = ~ id(trial):ar1(row):ar1(col), data = g
+      "inla",
+      y ~ 1,
+      random = ~ id(trial):ar1(row):ar1(col),
+      data = g
     ),
     r$inla,
     "INLA"
   )
   .cap_expect(
     .cap_emit(
-      "brms", y ~ 1, random = ~ id(trial):ar1(row):ar1(col), data = g
+      "brms",
+      y ~ 1,
+      random = ~ id(trial):ar1(row):ar1(col),
+      data = g
     ),
     r$brms,
     "brms",
@@ -848,7 +902,11 @@ test_that("observation weights fit on both for Gaussian, typed refusal otherwise
   for (engine in c("inla", "brms")) {
     .cap_expect(
       .cap_emit(
-        engine, y ~ env, random = ~gen, data = d_poisson, weights = w,
+        engine,
+        y ~ env,
+        random = ~gen,
+        data = d_poisson,
+        weights = w,
         family = "poisson"
       ),
       "refuses",

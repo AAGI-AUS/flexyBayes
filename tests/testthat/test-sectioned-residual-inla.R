@@ -10,8 +10,13 @@
 # multi-environment-trial model, the one ASReml is actually used for, and
 # both halves refused on INLA before 0.10.0.9000.
 
-.sr_fixture <- function(seed = 31L, n_gen = 30L, n_rep = 6L,
-                        sd_resid = c(0.25, 0.80, 1.60), sd_gen = 0.7) {
+.sr_fixture <- function(
+  seed = 31L,
+  n_gen = 30L,
+  n_rep = 6L,
+  sd_resid = c(0.25, 0.80, 1.60),
+  sd_gen = 0.7
+) {
   set.seed(seed)
   n_env <- length(sd_resid)
   tab <- expand.grid(
@@ -20,7 +25,8 @@
     rep = seq_len(n_rep)
   )
   g <- rnorm(n_gen, 0, sd_gen)
-  tab$y <- 5 + g[as.integer(tab$gen)] +
+  tab$y <- 5 +
+    g[as.integer(tab$gen)] +
     rnorm(nrow(tab), 0, sd_resid[as.integer(tab$env)])
   tab
 }
@@ -87,7 +93,9 @@ test_that("the baseline MET model fits: interaction random effect and dsum", {
   g <- rnorm(n_gen, 0, 0.9)
   ge <- rnorm(n_gen * n_env, 0, 0.5)
   i_ge <- as.integer(tab$gen) + (as.integer(tab$env) - 1L) * n_gen
-  tab$y <- 5 + g[as.integer(tab$gen)] + ge[i_ge] +
+  tab$y <- 5 +
+    g[as.integer(tab$gen)] +
+    ge[i_ge] +
     rnorm(nrow(tab), 0, sd_resid[as.integer(tab$env)])
 
   fit <- suppressMessages(flexybayes(
@@ -104,8 +112,11 @@ test_that("the baseline MET model fits: interaction random effect and dsum", {
   expect_equal(unname(got[["sd_gen"]]), 0.9, tolerance = 0.20)
   expect_equal(unname(got[["sd_gen:env"]]), 0.5, tolerance = 0.25)
   for (i in seq_along(sd_resid)) {
-    expect_equal(unname(got[[paste0("sigma_", i)]]), sd_resid[[i]],
-                 tolerance = 0.20)
+    expect_equal(
+      unname(got[[paste0("sigma_", i)]]),
+      sd_resid[[i]],
+      tolerance = 0.20
+    )
   }
 })
 

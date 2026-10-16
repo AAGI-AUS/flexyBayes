@@ -39,7 +39,9 @@
 .fb_warn_deprecated_export <- function(name, use) {
   .fb_warn_deprecated(c(
     paste0(
-      "`", name, "()` is deprecated as of flexyBayes 0.13.0 and will be ",
+      "`",
+      name,
+      "()` is deprecated as of flexyBayes 0.13.0 and will be ",
       "removed in a later release."
     ),
     use

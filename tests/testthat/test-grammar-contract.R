@@ -100,7 +100,13 @@ test_that("a rank that is not a literal count refuses instead of being coerced",
   # as.integer() turned every one of these into a rank the user did not
   # write: TRUE and 1.5 into 1, "1" into 1, and a symbol into an untyped
   # coercion error.
-  for (case in c("fa(a, k)", "fa(a, 1.5)", "fa(a, NA)", "fa(a, TRUE)", "fa(a, \"1\")")) {
+  for (case in c(
+    "fa(a, k)",
+    "fa(a, 1.5)",
+    "fa(a, NA)",
+    "fa(a, TRUE)",
+    "fa(a, \"1\")"
+  )) {
     err <- .gc_condition(case)
     expect_s3_class(err, "flexybayes_refusal_fa_rank_invalid")
   }
@@ -137,7 +143,19 @@ test_that("no special form parses into a term carrying no variable", {
 test_that("a surplus argument refuses instead of being silently dropped", {
   # us(a, b) read `a` and discarded `b`, so a structure written into the
   # call never reached the fitted model.
-  for (fn in c("us", "diag", "idh", "ar1", "ar2", "cor", "corh", "spl", "lin", "id", "ide")) {
+  for (fn in c(
+    "us",
+    "diag",
+    "idh",
+    "ar1",
+    "ar2",
+    "cor",
+    "corh",
+    "spl",
+    "lin",
+    "id",
+    "ide"
+  )) {
     err <- .gc_condition(paste0(fn, "(a, b)"))
     expect_s3_class(err, "flexybayes_refusal_grammar_arity_too_many")
   }
@@ -221,8 +239,14 @@ test_that("a malformed grammar never reaches an engine", {
   )
 
   malformed <- c(
-    "dsum(~units)", "fa(a)", "fa(a, 0)", "us()", "vm()",
-    "us(a, b)", "fa(a, )", "s(x, a)"
+    "dsum(~units)",
+    "fa(a)",
+    "fa(a, 0)",
+    "us()",
+    "vm()",
+    "us(a, b)",
+    "fa(a, )",
+    "s(x, a)"
   )
   for (case in malformed) {
     err <- tryCatch(
@@ -283,5 +307,8 @@ test_that("every well-formed special form still parses into the term it always p
     .parse_formula(~ ped(g, Gmat, use_sparse_precision = FALSE), dat)[[1]]$type,
     "ped"
   )
-  expect_equal(.parse_formula(~ s(x, k = 5, bs = "cr"), dat)[[1]]$type, "smooth_mgcv")
+  expect_equal(
+    .parse_formula(~ s(x, k = 5, bs = "cr"), dat)[[1]]$type,
+    "smooth_mgcv"
+  )
 })

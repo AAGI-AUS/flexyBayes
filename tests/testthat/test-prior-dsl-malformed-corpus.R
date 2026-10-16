@@ -238,8 +238,10 @@ test_that("the family parameter table is the only list of prior families", {
     expect_true(all(entry$required %in% entry$params), info = fam)
     expect_setequal(names(entry$domain), entry$params)
     expect_true(
-      all(entry$domain %in%
-        c("positive", "nonnegative", "real", "unit_open", "distribution")),
+      all(
+        entry$domain %in%
+          c("positive", "nonnegative", "real", "unit_open", "distribution")
+      ),
       info = fam
     )
   }

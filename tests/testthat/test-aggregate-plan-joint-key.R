@@ -11,8 +11,11 @@
 # (`object 'aa2:bb2' not found`, on both the binomial and the Poisson
 # emit). The plan refuses that shape by name.
 
-.joint_key_factorial <- function(n_rep = 20L, levels = c(4L, 4L),
-                                 seed = 20260816L) {
+.joint_key_factorial <- function(
+  n_rep = 20L,
+  levels = c(4L, 4L),
+  seed = 20260816L
+) {
   set.seed(seed)
   args <- lapply(
     seq_along(levels),
@@ -125,8 +128,11 @@ test_that("aggregate = TRUE on an interaction refuses typed and explains", {
     "aggregated_interaction_column_not_representable"
   )
   msg <- conditionMessage(err)
-  expect_match(msg, "cannot reference a column whose name contains a colon",
-               fixed = TRUE)
+  expect_match(
+    msg,
+    "cannot reference a column whose name contains a colon",
+    fixed = TRUE
+  )
   expect_match(msg, "aggregate = FALSE", fixed = TRUE)
 })
 

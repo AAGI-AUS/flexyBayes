@@ -47,15 +47,32 @@
 # one message per problem otherwise.
 .ofp_verdict <- function(record, anchors) {
   msgs <- character(0)
-  need <- c("scenario", "source_sha", "tarball_sha256", "versions", "provenance")
+  need <- c(
+    "scenario",
+    "source_sha",
+    "tarball_sha256",
+    "versions",
+    "provenance"
+  )
   missing <- setdiff(need, names(record))
   if (length(missing)) {
-    msgs <- c(msgs, paste0("missing field(s): ", paste(missing, collapse = ", ")))
+    msgs <- c(
+      msgs,
+      paste0("missing field(s): ", paste(missing, collapse = ", "))
+    )
     return(msgs)
   }
   p <- record$provenance
-  for (f in c("scenarios_sha256", "compare_sha256", "runner_sha256", "dirty",
-              "run_command", "blas", "rng_kind", "platform")) {
+  for (f in c(
+    "scenarios_sha256",
+    "compare_sha256",
+    "runner_sha256",
+    "dirty",
+    "run_command",
+    "blas",
+    "rng_kind",
+    "platform"
+  )) {
     if (is.null(p[[f]])) {
       msgs <- c(msgs, paste0("provenance is missing `", f, "`"))
     }
@@ -68,8 +85,11 @@
   } else if (!record$source_sha %in% anchors) {
     msgs <- c(
       msgs,
-      paste0("source_sha ", substr(record$source_sha, 1L, 12L),
-             " is not declared in ANCHORS.md")
+      paste0(
+        "source_sha ",
+        substr(record$source_sha, 1L, 12L),
+        " is not declared in ANCHORS.md"
+      )
     )
   }
   if (!nzchar(record$tarball_sha256 %||% "")) {
@@ -172,10 +192,12 @@ test_that("each declared anchor is an ancestor of HEAD", {
     status <- suppressWarnings(system2(
       "git",
       c("-C", shQuote(root), "merge-base", "--is-ancestor", sha, "HEAD"),
-      stdout = FALSE, stderr = FALSE
+      stdout = FALSE,
+      stderr = FALSE
     ))
     expect_identical(
-      status, 0L,
+      status,
+      0L,
       label = paste0("anchor ", substr(sha, 1L, 12L), " reachable from HEAD")
     )
   }

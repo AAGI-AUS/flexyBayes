@@ -50,7 +50,10 @@ test_that("aggregate = TRUE on a Gaussian model refuses by name", {
     )),
     error = function(e) e
   )
-  expect_s3_class(err, "flexybayes_refusal_aggregation_residual_prior_not_composed")
+  expect_s3_class(
+    err,
+    "flexybayes_refusal_aggregation_residual_prior_not_composed"
+  )
   expect_s3_class(err, "flexybayes_aggregate_refusal")
   expect_match(conditionMessage(err), "per row", fixed = TRUE)
   expect_match(conditionMessage(err), "aggregate = FALSE", fixed = TRUE)
@@ -92,7 +95,13 @@ test_that("the plan of an eligible Poisson model still names the aggregated rout
 test_that("flexybayes_stream() refuses a Gaussian fit by name", {
   d <- .containment_data()
   expect_error(
-    flexybayes_stream(y ~ f, random = ~g, source = d, family = "gaussian", verbose = FALSE),
+    flexybayes_stream(
+      y ~ f,
+      random = ~g,
+      source = d,
+      family = "gaussian",
+      verbose = FALSE
+    ),
     class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
   )
 })
@@ -105,7 +114,13 @@ test_that("a chunk source is never read when a Gaussian stream refuses", {
     if (i == 1L) d else NULL
   }
   expect_error(
-    flexybayes_stream(y ~ f, random = ~g, source = src, family = "gaussian", verbose = FALSE),
+    flexybayes_stream(
+      y ~ f,
+      random = ~g,
+      source = src,
+      family = "gaussian",
+      verbose = FALSE
+    ),
     class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
   )
   expect_identical(chunks_read, 0L)
@@ -142,7 +157,13 @@ test_that("no code path calls the aggregated Gaussian emitter", {
     lines_local <- readLines(file_vec[i1], warn = FALSE)
     code_local <- sub("#.*$", "", lines_local)
     hit <- grep("emit_gaussian_aggregated(", code_local, fixed = TRUE)
-    hit <- hit[!grepl("emit_gaussian_aggregated <- function", code_local[hit], fixed = TRUE)]
+    hit <- hit[
+      !grepl(
+        "emit_gaussian_aggregated <- function",
+        code_local[hit],
+        fixed = TRUE
+      )
+    ]
     hit <- hit[!grepl("\"[^\"]*emit_gaussian_aggregated\\(", code_local[hit])]
     if (length(hit)) {
       callers <- c(callers, rep(basename(file_vec[i1]), length(hit)))
@@ -179,7 +200,10 @@ test_that("aggregate = \"auto\" fits an eligible Gaussian model per row", {
     verbose = FALSE
   ))
   expect_false(inherits(fit, "flexybayes_aggregated"))
-  expect_false(identical(fit$extras$backend_decision$path, "aggregated_gaussian"))
+  expect_false(identical(
+    fit$extras$backend_decision$path,
+    "aggregated_gaussian"
+  ))
   expect_true(is.finite(summary(fit)$converge$mlik))
 })
 
@@ -201,7 +225,10 @@ test_that("an aggregated Poisson fit reports no marginal likelihood, and says wh
   expect_s3_class(fit, "flexybayes_aggregated")
   s <- summary(fit)
   expect_true(is.na(s$converge$mlik))
-  expect_identical(s$converge$evidence_unavailable, "aggregated_evidence_unavailable")
+  expect_identical(
+    s$converge$evidence_unavailable,
+    "aggregated_evidence_unavailable"
+  )
 
   printed <- paste(utils::capture.output(print(s)), collapse = "\n")
   expect_match(printed, "aggregated_evidence_unavailable", fixed = TRUE)

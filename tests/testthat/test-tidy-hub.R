@@ -27,7 +27,9 @@
 .tidy_hub_mock_bare <- function() {
   glm_obj <- list(coefficients = c("(Intercept)" = 50.1))
   attr(glm_obj, "posterior_vcov") <- matrix(
-    0.5, 1L, 1L,
+    0.5,
+    1L,
+    1L,
     dimnames = list("(Intercept)", "(Intercept)")
   )
   class(glm_obj) <- c("flexybayes_glm", "glm", "lm")
@@ -192,8 +194,18 @@ test_that("glance() on an INLA fit returns the one-row shape, not a refusal", {
   expect_identical(nrow(g), 1L)
   expect_named(
     g,
-    c("nobs", "npar", "logLik", "family", "link", "chains", "samples",
-      "max_rhat", "min_ess", "run_time")
+    c(
+      "nobs",
+      "npar",
+      "logLik",
+      "family",
+      "link",
+      "chains",
+      "samples",
+      "max_rhat",
+      "min_ess",
+      "run_time"
+    )
   )
   expect_true(is.na(g$nobs))
   expect_true(is.na(g$logLik))
@@ -219,7 +231,8 @@ test_that("tidy(effects = 'random') returns variance components on INLA", {
     g = factor(rep(seq_len(8L), each = 10L)),
     x = stats::rnorm(80L)
   )
-  dat$y <- 2 + 0.5 * dat$x +
+  dat$y <- 2 +
+    0.5 * dat$x +
     rep(stats::rnorm(8L, 0, 0.8), each = 10L) +
     stats::rnorm(80L, 0, 0.5)
   fit <- suppressMessages(flexybayes(

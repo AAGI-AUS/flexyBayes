@@ -22,9 +22,13 @@
 .g07_walk <- function(x, visit) {
   if (is.call(x)) {
     visit(x)
-    for (a in as.list(x)) if (!missing(a)) .g07_walk(a, visit)
+    for (a in as.list(x)) {
+      if (!missing(a)) .g07_walk(a, visit)
+    }
   } else if (is.pairlist(x)) {
-    for (a in as.list(x)) if (!missing(a)) .g07_walk(a, visit)
+    for (a in as.list(x)) {
+      if (!missing(a)) .g07_walk(a, visit)
+    }
   }
 }
 
@@ -33,29 +37,49 @@ test_that("DC-07 guard: every call names only arguments its callee takes", {
   skip_if(is.na(root), "package source tree not available")
   ns <- asNamespace("flexyBayes")
   funs <- Filter(
-    function(n) is.function(get(n, envir = ns)) && !is.primitive(get(n, envir = ns)),
+    function(n) {
+      is.function(get(n, envir = ns)) && !is.primitive(get(n, envir = ns))
+    },
     ls(ns, all.names = TRUE)
   )
-  formals_of <- lapply(stats::setNames(funs, funs), function(n) names(formals(get(n, envir = ns))))
+  formals_of <- lapply(stats::setNames(funs, funs), function(n) {
+    names(formals(get(n, envir = ns)))
+  })
   hits <- character(0)
   checked <- 0L
   for (f in list.files(file.path(root, "R"), "\\.R$", full.names = TRUE)) {
     for (e in parse(f, keep.source = FALSE)) {
-      where <- if (is.call(e) && length(e) >= 2L && is.symbol(e[[2L]])) as.character(e[[2L]]) else ""
+      where <- if (is.call(e) && length(e) >= 2L && is.symbol(e[[2L]])) {
+        as.character(e[[2L]])
+      } else {
+        ""
+      }
       .g07_walk(e, function(x) {
         fn <- x[[1L]]
-        if (!is.symbol(fn) || !as.character(fn) %in% funs) return(invisible())
+        if (!is.symbol(fn) || !as.character(fn) %in% funs) {
+          return(invisible())
+        }
         fm <- formals_of[[as.character(fn)]]
-        if (is.null(fm) || "..." %in% fm) return(invisible())
+        if (is.null(fm) || "..." %in% fm) {
+          return(invisible())
+        }
         given <- names(as.list(x)[-1L])
         given <- given[!is.na(given) & nzchar(given)]
         checked <<- checked + 1L
         bad <- setdiff(given, fm)
         if (length(bad)) {
-          hits <<- c(hits, paste0(
-            basename(f), " (", where, "): ", as.character(fn), "() has no ",
-            paste0("`", bad, "`", collapse = ", ")
-          ))
+          hits <<- c(
+            hits,
+            paste0(
+              basename(f),
+              " (",
+              where,
+              "): ",
+              as.character(fn),
+              "() has no ",
+              paste0("`", bad, "`", collapse = ", ")
+            )
+          )
         }
       })
     }

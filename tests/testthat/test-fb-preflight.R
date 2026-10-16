@@ -1118,7 +1118,8 @@ test_that("the RAM probe shells out once per session, not once per plan", {
   on.exit(
     {
       assignInNamespace(
-        ".fb_probe_system_ram_uncached", original,
+        ".fb_probe_system_ram_uncached",
+        original,
         ns = "flexyBayes"
       )
       flexyBayes:::.fb_reset_ram_cache()
@@ -1193,7 +1194,8 @@ test_that("resolving a ceiling writes nothing to a child process's stderr", {
   err <- suppressWarnings(system2(
     rbin,
     c("--vanilla", "--no-echo", "-f", shQuote(script)),
-    stdout = NULL, stderr = TRUE
+    stdout = NULL,
+    stderr = TRUE
   ))
   err <- paste(err, collapse = "\n")
 
@@ -1202,7 +1204,9 @@ test_that("resolving a ceiling writes nothing to a child process's stderr", {
 
   # The probe did not: nothing before the control marker mentions a missing
   # or unpermitted system tool.
-  quiet_part <- strsplit(err, "flexybayes-no-such-probe-kstat", fixed = TRUE)[[1]][1]
+  quiet_part <- strsplit(err, "flexybayes-no-such-probe-kstat", fixed = TRUE)[[
+    1
+  ]][1]
   expect_no_match(quiet_part, "kstat", fixed = TRUE)
   expect_no_match(quiet_part, "No such file or directory", fixed = TRUE)
   expect_no_match(quiet_part, "command not found", fixed = TRUE)

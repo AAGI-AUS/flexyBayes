@@ -13,7 +13,7 @@
 
 test_that("residual = parses into the residual_terms IR field", {
   df <- .residual_df()
-  ir <- fb_from_asreml(y ~ env, random = ~ g, residual = ~ units, data = df)
+  ir <- fb_from_asreml(y ~ env, random = ~g, residual = ~units, data = df)
   expect_true("residual_terms" %in% names(unclass(ir)))
   expect_identical(ir$residual_terms, list(list(type = "units")))
 })
@@ -28,17 +28,17 @@ test_that("the defunct `rcov` argument errors, pointing to `residual`", {
   df <- .residual_df()
 
   expect_error(
-    fb_from_asreml(y ~ env, rcov = ~ units, data = df),
+    fb_from_asreml(y ~ env, rcov = ~units, data = df),
     "residual"
   )
   expect_error(
-    flexybayes(y ~ env, rcov = ~ units, data = df, backend = "inla"),
+    flexybayes(y ~ env, rcov = ~units, data = df, backend = "inla"),
     "residual"
   )
   # Engine pins forward to flexybayes(), so the tripwire covers them too.
   expect_error(
     suppressWarnings(
-      fb_inla(y ~ env, rcov = ~ units, data = df),
+      fb_inla(y ~ env, rcov = ~units, data = df),
       classes = "flexybayes_deprecated"
     ),
     "residual"

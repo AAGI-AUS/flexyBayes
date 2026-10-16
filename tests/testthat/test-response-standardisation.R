@@ -47,35 +47,50 @@ test_that("each prior family maps to the distribution of sigma / k", {
 
   # Uniform on (L, U).
   u <- .fb_inla_map_hyper_entry(
-    list(prior = .inla_uniform_sd_expr(12, 2),
-         meta = list(family = "uniform", lower = 2, upper = 12)),
+    list(
+      prior = .inla_uniform_sd_expr(12, 2),
+      meta = list(family = "uniform", lower = 2, upper = 12)
+    ),
     k
   )
-  expect_equal(stats::qunif(p, u$meta$lower, u$meta$upper),
-               stats::qunif(p, 2, 12) / k)
+  expect_equal(
+    stats::qunif(p, u$meta$lower, u$meta$upper),
+    stats::qunif(p, 2, 12) / k
+  )
 
   # Half-normal with scale 4.
   hn <- .fb_inla_map_hyper_entry(
-    list(prior = .inla_halfnormal_sd_expr(4),
-         meta = list(family = "half_normal", scale = 4)),
+    list(
+      prior = .inla_halfnormal_sd_expr(4),
+      meta = list(family = "half_normal", scale = 4)
+    ),
     k
   )
-  expect_equal(stats::qnorm((1 + p) / 2, sd = hn$meta$scale),
-               stats::qnorm((1 + p) / 2, sd = 4) / k)
+  expect_equal(
+    stats::qnorm((1 + p) / 2, sd = hn$meta$scale),
+    stats::qnorm((1 + p) / 2, sd = 4) / k
+  )
 
   # Lognormal on sigma with log-scale sd 1.5.
   ln <- .fb_inla_map_hyper_entry(
-    list(prior = .inla_lognormal_sd_expr(1.5),
-         meta = list(family = "lognormal", scale = 1.5)),
+    list(
+      prior = .inla_lognormal_sd_expr(1.5),
+      meta = list(family = "lognormal", scale = 1.5)
+    ),
     k
   )
-  expect_equal(stats::qlnorm(p, ln$meta$location, ln$meta$scale),
-               stats::qlnorm(p, 0, 1.5) / k)
+  expect_equal(
+    stats::qlnorm(p, ln$meta$location, ln$meta$scale),
+    stats::qlnorm(p, 0, 1.5) / k
+  )
 
   # Exponential with rate 0.2, carried as a PC prior.
   ex <- .fb_inla_map_hyper_entry(
-    list(prior = "pc.prec", param = c(5, exp(-1)),
-         meta = list(family = "exponential", rate = 0.2)),
+    list(
+      prior = "pc.prec",
+      param = c(5, exp(-1)),
+      meta = list(family = "exponential", rate = 0.2)
+    ),
     k
   )
   pc_rate <- -log(ex$param[[2L]]) / ex$param[[1L]]
@@ -83,14 +98,21 @@ test_that("each prior family maps to the distribution of sigma / k", {
 
   # PC prior P(sigma > 3) = 0.05, which is exponential on sigma.
   pc <- .fb_inla_map_hyper_entry(list(prior = "pc.prec", param = c(3, 0.05)), k)
-  expect_equal(stats::qexp(p, -log(pc$param[[2L]]) / pc$param[[1L]]),
-               stats::qexp(p, -log(0.05) / 3) / k)
+  expect_equal(
+    stats::qexp(p, -log(pc$param[[2L]]) / pc$param[[1L]]),
+    stats::qexp(p, -log(0.05) / 3) / k
+  )
 
   # Log-gamma on the precision: tau ~ Gamma(1, 5e-5), and sigma / k has
   # precision k^2 tau.
-  lg <- .fb_inla_map_hyper_entry(list(prior = "loggamma", param = c(1, 5e-5)), k)
-  expect_equal(stats::qgamma(p, lg$param[[1L]], rate = lg$param[[2L]]),
-               k^2 * stats::qgamma(p, 1, rate = 5e-5))
+  lg <- .fb_inla_map_hyper_entry(
+    list(prior = "loggamma", param = c(1, 5e-5)),
+    k
+  )
+  expect_equal(
+    stats::qgamma(p, lg$param[[1L]], rate = lg$param[[2L]]),
+    k^2 * stats::qgamma(p, 1, rate = 5e-5)
+  )
 })
 
 test_that("the mapped lognormal expression is the density of theta under it", {
@@ -105,8 +127,10 @@ test_that("the mapped lognormal expression is the density of theta under it", {
     log(stats::dlnorm(sigma, location, scale) * sigma / 2)
   )
   # And at location 0 the expression is the one the package always emitted.
-  expect_identical(.inla_lognormal_sd_expr(scale, location = 0),
-                   .inla_lognormal_sd_expr(scale))
+  expect_identical(
+    .inla_lognormal_sd_expr(scale, location = 0),
+    .inla_lognormal_sd_expr(scale)
+  )
 })
 
 test_that("an unmapped prior family refuses instead of passing through", {
@@ -162,18 +186,34 @@ test_that("the stored result equals a raw INLA fit under the same priors", {
     verbose = FALSE
   ))
   raw <- INLA::inla(
-    Reaction ~ 1 + Days + f(Subject, model = "iid", hyper = list(
-      prec = list(prior = .inla_halfnormal_sd_expr(5))
-    )),
+    Reaction ~ 1 +
+      Days +
+      f(
+        Subject,
+        model = "iid",
+        hyper = list(
+          prec = list(prior = .inla_halfnormal_sd_expr(5))
+        )
+      ),
     data = d,
     family = "gaussian",
-    control.family = list(hyper = list(
-      prec = list(prior = .inla_halfnormal_sd_expr(5))
-    )),
-    control.fixed = list(mean = 0, prec = 1e-4, mean.intercept = 0,
-                         prec.intercept = 1e-4),
-    control.compute = list(config = TRUE, return.marginals = TRUE,
-                           dic = TRUE, waic = TRUE)
+    control.family = list(
+      hyper = list(
+        prec = list(prior = .inla_halfnormal_sd_expr(5))
+      )
+    ),
+    control.fixed = list(
+      mean = 0,
+      prec = 1e-4,
+      mean.intercept = 0,
+      prec.intercept = 1e-4
+    ),
+    control.compute = list(
+      config = TRUE,
+      return.marginals = TRUE,
+      dic = TRUE,
+      waic = TRUE
+    )
   )
   got <- fit$inla
 
@@ -186,15 +226,23 @@ test_that("the stored result equals a raw INLA fit under the same priors", {
   # tolerance sits about three times above its measured largest value; an
   # identity error in the mapping moves these quantities by orders of
   # magnitude more.
-  expect_equal(got$summary.fixed$mean, raw$summary.fixed$mean,
-               tolerance = 1e-3)
+  expect_equal(got$summary.fixed$mean, raw$summary.fixed$mean, tolerance = 1e-3)
   expect_equal(got$summary.fixed$sd, raw$summary.fixed$sd, tolerance = 0.03)
-  expect_equal(got$summary.hyperpar$mean, raw$summary.hyperpar$mean,
-               tolerance = 0.02)
-  expect_equal(got$summary.random$Subject$mean, raw$summary.random$Subject$mean,
-               tolerance = 1e-2)
-  expect_equal(got$summary.fitted.values$mean, raw$summary.fitted.values$mean,
-               tolerance = 2e-3)
+  expect_equal(
+    got$summary.hyperpar$mean,
+    raw$summary.hyperpar$mean,
+    tolerance = 0.02
+  )
+  expect_equal(
+    got$summary.random$Subject$mean,
+    raw$summary.random$Subject$mean,
+    tolerance = 1e-2
+  )
+  expect_equal(
+    got$summary.fitted.values$mean,
+    raw$summary.fitted.values$mean,
+    tolerance = 2e-3
+  )
   expect_lt(abs(got$mlik[1L, 1L] - raw$mlik[1L, 1L]), 0.05)
   expect_lt(abs(got$dic$dic - raw$dic$dic), 0.25)
   expect_lt(abs(got$waic$waic - raw$waic$waic), 0.15)
@@ -206,7 +254,8 @@ test_that("the stored result equals a raw INLA fit under the same priors", {
   expect_equal(st$centre, mean(d$Reaction))
   expect_equal(st$scale, stats::sd(d$Reaction))
   expect_equal(
-    mean(fit$inla$.args$data[[.FB_INLA_STANDARDISED_RESPONSE]]), 0,
+    mean(fit$inla$.args$data[[.FB_INLA_STANDARDISED_RESPONSE]]),
+    0,
     tolerance = 1e-12
   )
 })
@@ -222,13 +271,17 @@ test_that("a default-prior fit does not move when the response is rescaled", {
 
   cells <- lapply(c(0.01, 1, 1000), function(k) {
     fit <- suppressWarnings(flexybayes(
-      Reaction ~ Days + (1 | Subject), data = .rs_sleepstudy(k),
-      backend = "inla", verbose = FALSE
+      Reaction ~ Days + (1 | Subject),
+      data = .rs_sleepstudy(k),
+      backend = "inla",
+      verbose = FALSE
     ))
     g <- .rs_varcomp(fit)
-    c(ratio = g[["sd_Subject"]] / g[["sigma"]],
+    c(
+      ratio = g[["sd_Subject"]] / g[["sigma"]],
       days = coef(fit)[["Days"]] / k,
-      status = fit$inla$mode$mode.status)
+      status = fit$inla$mode$mode.status
+    )
   })
   cells <- do.call(rbind, cells)
   expect_true(all(cells[, "status"] == 0))
@@ -248,19 +301,28 @@ test_that("an uncorrelated slope does not move under response or covariate scale
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
-  cells <- lapply(list(c(1, 1), c(100, 1), c(1, 1000), c(100, 1000)), function(k) {
-    fit <- suppressWarnings(flexybayes(
-      Reaction ~ Days + (Days || Subject),
-      data = .rs_sleepstudy(k[[1L]], k[[2L]]),
-      backend = "inla", verbose = FALSE
-    ))
-    g <- .rs_varcomp(fit)
-    c(slope = g[["sd_Days_Subject"]] * k[[2L]] / g[["sigma"]],
-      intercept = g[["sd_Subject"]] / g[["sigma"]])
-  })
+  cells <- lapply(
+    list(c(1, 1), c(100, 1), c(1, 1000), c(100, 1000)),
+    function(k) {
+      fit <- suppressWarnings(flexybayes(
+        Reaction ~ Days + (Days || Subject),
+        data = .rs_sleepstudy(k[[1L]], k[[2L]]),
+        backend = "inla",
+        verbose = FALSE
+      ))
+      g <- .rs_varcomp(fit)
+      c(
+        slope = g[["sd_Days_Subject"]] * k[[2L]] / g[["sigma"]],
+        intercept = g[["sd_Subject"]] / g[["sigma"]]
+      )
+    }
+  )
   cells <- do.call(rbind, cells)
   expect_lt(diff(range(cells[, "slope"])) / mean(cells[, "slope"]), 1e-3)
-  expect_lt(diff(range(cells[, "intercept"])) / mean(cells[, "intercept"]), 1e-3)
+  expect_lt(
+    diff(range(cells[, "intercept"])) / mean(cells[, "intercept"]),
+    1e-3
+  )
 })
 
 
@@ -274,8 +336,10 @@ test_that("draws are taken on the original scale", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   fit <- suppressWarnings(flexybayes(
-    Reaction ~ Days + (1 | Subject), data = .rs_sleepstudy(1000),
-    backend = "inla", verbose = FALSE
+    Reaction ~ Days + (1 | Subject),
+    data = .rs_sleepstudy(1000),
+    backend = "inla",
+    verbose = FALSE
   ))
   sf <- fit$inla$summary.fixed
 
@@ -283,8 +347,10 @@ test_that("draws are taken on the original scale", {
   # draws would sit near zero with a spread a thousandth of the summary's.
   draws <- fb_as_draws_simple(fit, n_samples = 2000L)
   days <- draws[["Days:1"]]
-  expect_lt(abs(mean(days) - sf["Days", "mean"]),
-            5 * sf["Days", "sd"] / sqrt(length(days)))
+  expect_lt(
+    abs(mean(days) - sf["Days", "mean"]),
+    5 * sf["Days", "sd"] / sqrt(length(days))
+  )
   expect_equal(stats::sd(days), sf["Days", "sd"], tolerance = 0.1)
 
   sigma <- 1 / sqrt(draws[["Precision for the Gaussian observations"]])
@@ -314,16 +380,29 @@ test_that("only a Gaussian identity-link fit is standardised", {
   d$y <- stats::rpois(nrow(d), 20)
   d$z <- stats::rnorm(nrow(d), 5, 2)
 
-  pois <- suppressMessages(flexybayes(y ~ 1, random = ~ g, data = d,
-                                      family = "poisson", backend = "inla",
-                                      return_code = TRUE, verbose = FALSE))
+  pois <- suppressMessages(flexybayes(
+    y ~ 1,
+    random = ~g,
+    data = d,
+    family = "poisson",
+    backend = "inla",
+    return_code = TRUE,
+    verbose = FALSE
+  ))
   expect_null(pois$response_standardisation)
   expect_match(deparse(pois$formula)[[1L]], "^y ~")
 
-  gauss <- suppressMessages(flexybayes(z ~ 1, random = ~ g, data = d,
-                                       backend = "inla", return_code = TRUE,
-                                       verbose = FALSE))
+  gauss <- suppressMessages(flexybayes(
+    z ~ 1,
+    random = ~g,
+    data = d,
+    backend = "inla",
+    return_code = TRUE,
+    verbose = FALSE
+  ))
   expect_equal(gauss$response_standardisation$scale, stats::sd(d$z))
-  expect_match(deparse(gauss$formula)[[1L]],
-               paste0("^", .FB_INLA_STANDARDISED_RESPONSE, " ~"))
+  expect_match(
+    deparse(gauss$formula)[[1L]],
+    paste0("^", .FB_INLA_STANDARDISED_RESPONSE, " ~")
+  )
 })

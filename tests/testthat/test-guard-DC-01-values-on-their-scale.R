@@ -33,22 +33,26 @@
   list(
     gaussian_near_zero = list(
       args = list(y ~ env, random = ~ gen + eb, data = d1),
-      response = "y", covariate = NA_character_
+      response = "y",
+      covariate = NA_character_
     ),
     gaussian_slope = list(
       args = list(y ~ x + (x || g), data = d2),
-      response = "y", covariate = "x"
+      response = "y",
+      covariate = "x"
     ),
     poisson_slope = list(
       args = list(n ~ x + (x || g), data = d2, family = "poisson"),
-      response = NA_character_, covariate = "x"
+      response = NA_character_,
+      covariate = "x"
     )
   )
 }
 
 .g01_fit <- function(args) {
   suppressWarnings(suppressMessages(do.call(
-    flexybayes, c(args, list(backend = "inla", verbose = FALSE))
+    flexybayes,
+    c(args, list(backend = "inla", verbose = FALSE))
   )))
 }
 
@@ -92,7 +96,9 @@ test_that("DC-01 guard: reported SDs follow the units of the response and covari
       a$data[[fx$response]] <- 1000 * a$data[[fx$response]]
       q_y <- .g01_quantiles(.g01_fit(a))
       err <- .g01_rel(q_y[, colnames(q)], 1000 * q)
-      if (err > 0.1) off <- c(off, sprintf("%s, response x 1000: %.2g", nm, err))
+      if (err > 0.1) {
+        off <- c(off, sprintf("%s, response x 1000: %.2g", nm, err))
+      }
     }
     if (!is.na(fx$covariate)) {
       a <- fx$args
@@ -103,7 +109,9 @@ test_that("DC-01 guard: reported SDs follow the units of the response and covari
       expected <- q
       expected[, slope] <- q[, slope] * 1000
       err <- .g01_rel(q_x, expected)
-      if (err > 0.1) off <- c(off, sprintf("%s, covariate / 1000: %.2g", nm, err))
+      if (err > 0.1) {
+        off <- c(off, sprintf("%s, covariate / 1000: %.2g", nm, err))
+      }
     }
   }
   expect_identical(off, character(0))
@@ -122,19 +130,29 @@ test_that("DC-01 guard: the variance table, the draws and vpredict() agree", {
     fit <- .g01_base_fit(nm)
     q <- .g01_quantiles(fit)
     draws <- fb_variance_draws(fit, 20000L, seed = 1L)
-    dq <- vapply(colnames(q), function(k) {
-      stats::quantile(draws[[k]], c(0.025, 0.5, 0.975), names = FALSE)
-    }, numeric(3L))
+    dq <- vapply(
+      colnames(q),
+      function(k) {
+        stats::quantile(draws[[k]], c(0.025, 0.5, 0.975), names = FALSE)
+      },
+      numeric(3L)
+    )
     # Improved draws match the medians to about 1e-9 and the limits to
     # under 1e-3 at 20,000 draws (DEF-002).
-    if (.g01_rel(dq[2L, ], q["q50", ]) > 1e-4) off <- c(off, paste(nm, "draw medians"))
-    if (.g01_rel(dq[-2L, ], q[-2L, ]) > 2e-3) off <- c(off, paste(nm, "draw limits"))
+    if (.g01_rel(dq[2L, ], q["q50", ]) > 1e-4) {
+      off <- c(off, paste(nm, "draw medians"))
+    }
+    if (.g01_rel(dq[-2L, ], q[-2L, ]) > 2e-3) {
+      off <- c(off, paste(nm, "draw limits"))
+    }
     specs <- lapply(colnames(q), function(k) {
       stats::as.formula(paste0("v", match(k, colnames(q)), " ~ `", k, "`"))
     })
     set.seed(1)
     vp <- do.call(vpredict, c(list(fit), specs, list(n_draws = 20000L)))
-    if (.g01_rel(vp$median, q["q50", ]) > 1e-4) off <- c(off, paste(nm, "vpredict medians"))
+    if (.g01_rel(vp$median, q["q50", ]) > 1e-4) {
+      off <- c(off, paste(nm, "vpredict medians"))
+    }
   }
   expect_identical(off, character(0))
 })
@@ -151,7 +169,8 @@ test_that("DC-01 guard: well-identified SDs are near lme4's on the Gaussian fixt
   fx <- .g01_fixtures()$gaussian_near_zero
   q <- .g01_quantiles(.g01_base_fit("gaussian_near_zero"))
   ref <- as.data.frame(lme4::VarCorr(lme4::lmer(
-    y ~ env + (1 | gen) + (1 | eb), data = fx$args$data
+    y ~ env + (1 | gen) + (1 | eb),
+    data = fx$args$data
   )))
   expect_lt(abs(q["q50", "sigma"] / ref$sdcor[ref$grp == "Residual"] - 1), 0.1)
   expect_lt(abs(q["q50", "sd_gen"] / ref$sdcor[ref$grp == "gen"] - 1), 0.1)

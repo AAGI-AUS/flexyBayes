@@ -6,11 +6,13 @@ mk_fit <- function(psrf_pt = NULL, n_eff = NULL) {
   gelman <- if (is.null(psrf_pt)) {
     list(psrf = NULL)
   } else {
-    list(psrf = matrix(
-      c(psrf_pt, rep(1.0, length(psrf_pt))),
-      ncol = 2L,
-      dimnames = list(NULL, c("Point est.", "Upper C.I."))
-    ))
+    list(
+      psrf = matrix(
+        c(psrf_pt, rep(1.0, length(psrf_pt))),
+        ncol = 2L,
+        dimnames = list(NULL, c("Point est.", "Upper C.I."))
+      )
+    )
   }
   fit <- list(extras = list(convergence = list(gelman = gelman, n_eff = n_eff)))
   class(fit) <- "flexybayes"
@@ -36,7 +38,10 @@ test_that("warns when effective sample size is below the floor", {
 test_that("is quiet on a well-mixed fit", {
   withr::local_options(flexyBayes.silence_convergence_warning = FALSE)
   expect_no_warning(
-    flexyBayes:::.fb_warn_poor_convergence(mk_fit(c(1.01, 1.02), n_eff = c(900, 950)))
+    flexyBayes:::.fb_warn_poor_convergence(mk_fit(
+      c(1.01, 1.02),
+      n_eff = c(900, 950)
+    ))
   )
 })
 

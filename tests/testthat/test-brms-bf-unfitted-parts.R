@@ -32,16 +32,36 @@ fbbf_routes <- function(f, d, family = "gaussian") {
       fb(f, data = d, family = family, backend = "inla", verbose = FALSE)
     },
     fb_brms = function() {
-      fb(f, data = d, family = family, backend = "brms", chains = 1L,
-         n_samples = 200L, warmup = 100L, seed = 1L, verbose = FALSE)
+      fb(
+        f,
+        data = d,
+        family = family,
+        backend = "brms",
+        chains = 1L,
+        n_samples = 200L,
+        warmup = 100L,
+        seed = 1L,
+        verbose = FALSE
+      )
     },
     fb_brms_code = function() {
-      fb(f, data = d, family = family, backend = "brms", return_code = TRUE,
-         verbose = FALSE)
+      fb(
+        f,
+        data = d,
+        family = family,
+        backend = "brms",
+        return_code = TRUE,
+        verbose = FALSE
+      )
     },
     flexybayes_inla = function() {
-      flexybayes(f, data = d, family = family, backend = "inla",
-                 verbose = FALSE)
+      flexybayes(
+        f,
+        data = d,
+        family = family,
+        backend = "inla",
+        verbose = FALSE
+      )
     },
     fb_plan = function() fb_plan(f, data = d, family = family),
     fb_from_brms = function() {
@@ -51,8 +71,13 @@ fbbf_routes <- function(f, d, family = "gaussian") {
       suppressWarnings(fb_inla(f, data = d, family = family, verbose = FALSE))
     },
     fb_brms_wrapper = function() {
-      suppressWarnings(fb_brms(f, data = d, family = family,
-                               return_code = TRUE, verbose = FALSE))
+      suppressWarnings(fb_brms(
+        f,
+        data = d,
+        family = family,
+        return_code = TRUE,
+        verbose = FALSE
+      ))
     }
   )
 }
@@ -121,13 +146,15 @@ test_that("a family inside brms::bf() that agrees with `family` is admitted", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- fbbf_data()
   expect_s3_class(
-    fb_plan(brms::bf(count ~ x + (1 | gen), family = stats::poisson()),
-            data = d, family = "poisson"),
+    fb_plan(
+      brms::bf(count ~ x + (1 | gen), family = stats::poisson()),
+      data = d,
+      family = "poisson"
+    ),
     "fb_plan"
   )
   expect_s3_class(
-    fb_plan(brms::bf(y ~ x + (1 | gen), family = stats::gaussian()),
-            data = d),
+    fb_plan(brms::bf(y ~ x + (1 | gen), family = stats::gaussian()), data = d),
     "fb_plan"
   )
 })
@@ -139,13 +166,15 @@ test_that("update() into a formula with an unfitted part refuses", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- fbbf_data()
-  base <- fb(brms::bf(y ~ x + (1 | gen)), data = d, backend = "inla",
-             verbose = FALSE)
+  base <- fb(
+    brms::bf(y ~ x + (1 | gen)),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   expect_s3_class(base, "flexybayes")
   expect_error(
     update(base, fixed = brms::bf(y ~ x + (1 | gen), sigma ~ x)),
     class = fbbf_class
   )
 })
-
-

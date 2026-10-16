@@ -227,7 +227,8 @@ test_that("brms draws match the seam exactly, INLA hyperparameters do", {
   # not the precision itself: the two live on reciprocal-square-root
   # scales, so one cannot be mistaken for the other at these magnitudes.
   prec_mean <- fit$inla$summary.hyperpar[
-    "Precision for the Gaussian observations", "mean"
+    "Precision for the Gaussian observations",
+    "mean"
   ]
   expect_lt(abs(median(as.numeric(d[["sigma"]])) - 1 / sqrt(prec_mean)), 0.1)
 })

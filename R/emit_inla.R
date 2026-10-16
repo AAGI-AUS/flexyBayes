@@ -90,7 +90,8 @@
 # default remains INLA's to resolve, and an explicit `num.threads` in `...`
 # always wins.
 .fb_inla_threads_if_cores_unknown <- function(
-    detected = parallel::detectCores(logical = TRUE)) {
+  detected = parallel::detectCores(logical = TRUE)
+) {
   detected <- suppressWarnings(as.integer(detected))
   if (length(detected) != 1L || is.na(detected) || detected < 1L) {
     return("1:1")
@@ -157,7 +158,9 @@
 # design_memory_exceeds_ceiling (R/fb_preflight.R).
 .inla_design_latent_effect_summary <- function(fb, data) {
   empty <- list(
-    total = NA_real_, binding_term = NA_character_, binding_n = NA_real_
+    total = NA_real_,
+    binding_term = NA_character_,
+    binding_n = NA_real_
   )
   terms <- fb$random_terms
   if (!length(terms) || !is.data.frame(data)) {
@@ -223,7 +226,8 @@
 # row. The refusal message then says "not yet measured".
 .inla_largest_verified <- function() {
   path <- system.file(
-    "validation", "benchmark_scaling.csv",
+    "validation",
+    "benchmark_scaling.csv",
     package = "flexyBayes"
   )
   if (!nzchar(path) || !file.exists(path)) {
@@ -278,8 +282,10 @@
 # not counted.
 .fb_states_uniform_bound <- function(fb) {
   prior <- fb$priors
-  if (!inherits(prior, "fb_prior") ||
-    !is.null(attr(prior, "fb_prior_default_basis"))) {
+  if (
+    !inherits(prior, "fb_prior") ||
+      !is.null(attr(prior, "fb_prior_default_basis"))
+  ) {
     return(FALSE)
   }
   any(vapply(
@@ -314,7 +320,9 @@
       } else {
         ""
       },
-      " (", largest$run_date, ")"
+      " (",
+      largest$run_date,
+      ")"
     )
   }
 
@@ -323,7 +331,8 @@
   } else {
     paste0(
       latent$binding_term,
-      " (", format(latent$binding_n, big.mark = ",", scientific = FALSE),
+      " (",
+      format(latent$binding_n, big.mark = ",", scientific = FALSE),
       " levels)"
     )
   }
@@ -346,8 +355,12 @@
         ""
       },
       ". The largest design this package has verified an INLA per-row ",
-      "fit to complete is ", largest_txt, ". The binding term (largest ",
-      "single random-effect contributor) is ", binding_txt, ". ",
+      "fit to complete is ",
+      largest_txt,
+      ". The binding term (largest ",
+      "single random-effect contributor) is ",
+      binding_txt,
+      ". ",
       "Remedies, in order of least to most disruptive: reduce the model ",
       "(fewer random-effect terms or coarser groupings); aggregate where ",
       "eligible (fb_plan() reports whether this design compresses); ",
@@ -961,16 +974,36 @@ emit_inla <- function(
           message = paste0(
             if (!is.null(term$at_var)) {
               paste0(
-                "The level(s) of `", term$at_var, "` that do not ",
-                "independently form a complete ", n_row, " x ", n_col,
-                " (", term$row_var, ", ", term$col_var, ") lattice: ",
-                paste(bad_at_levels, collapse = ", "), ". "
+                "The level(s) of `",
+                term$at_var,
+                "` that do not ",
+                "independently form a complete ",
+                n_row,
+                " x ",
+                n_col,
+                " (",
+                term$row_var,
+                ", ",
+                term$col_var,
+                ") lattice: ",
+                paste(bad_at_levels, collapse = ", "),
+                ". "
               )
             } else {
               paste0(
-                "The data carry ", nrow(data), " rows for the ", n_row,
-                " x ", n_col, " (", term$row_var, ", ", term$col_var,
-                ") array, which has ", n_nodes, " nodes. "
+                "The data carry ",
+                nrow(data),
+                " rows for the ",
+                n_row,
+                " x ",
+                n_col,
+                " (",
+                term$row_var,
+                ", ",
+                term$col_var,
+                ") array, which has ",
+                n_nodes,
+                " nodes. "
               )
             },
             .ar1_term_spelling(term),
@@ -1017,8 +1050,12 @@ emit_inla <- function(
         stop(.fb_refusal_condition(
           reason_code = "nested_index_name_collision",
           message = paste0(
-            "Fitting the field on level ", lev, " of `", term$by_var,
-            "` on INLA needs an index column named `", collide[[1L]],
+            "Fitting the field on level ",
+            lev,
+            " of `",
+            term$by_var,
+            "` on INLA needs an index column named `",
+            collide[[1L]],
             "`, and `data` already has one. Rename that column."
           )
         ))
@@ -1032,21 +1069,32 @@ emit_inla <- function(
         bad <- c(bad, lev)
       }
       data_inla[[idx[["row"]]]] <- ifelse(
-        at_lev, match(as.character(row_f), grid$rows), NA_integer_
+        at_lev,
+        match(as.character(row_f), grid$rows),
+        NA_integer_
       )
       data_inla[[idx[["col"]]]] <- ifelse(
-        at_lev, match(as.character(col_f), grid$cols), NA_integer_
+        at_lev,
+        match(as.character(col_f), grid$cols),
+        NA_integer_
       )
     }
     if (length(bad)) {
       stop(.fb_refusal_condition(
         reason_code = "ar1_spatial_requires_complete_grid",
         message = paste0(
-          "The plots of ", if (length(bad) > 1L) "levels " else "level ",
-          paste(bad, collapse = ", "), " of `",
-          term$by_var, "` do not form a complete (", term$row_var, ", ",
-          term$col_var, ") grid with one plot per cell. ",
-          .ar1_term_spelling(term), " fits a separable autoregressive ",
+          "The plots of ",
+          if (length(bad) > 1L) "levels " else "level ",
+          paste(bad, collapse = ", "),
+          " of `",
+          term$by_var,
+          "` do not form a complete (",
+          term$row_var,
+          ", ",
+          term$col_var,
+          ") grid with one plot per cell. ",
+          .ar1_term_spelling(term),
+          " fits a separable autoregressive ",
           "field on each level's own grid, so every combination of the two ",
           "factors within a level has to identify exactly one plot. Keep ",
           "the unobserved plots as design cells with the response set to ",
@@ -1084,21 +1132,31 @@ emit_inla <- function(
           stop(.fb_refusal_condition(
             reason_code = "nested_index_name_collision",
             message = paste0(
-              "Fitting `fa(", term$outer, ", ", term$k, "):", term$inner,
-              "` on INLA needs an index column named `", idx_name,
+              "Fitting `fa(",
+              term$outer,
+              ", ",
+              term$k,
+              "):",
+              term$inner,
+              "` on INLA needs an index column named `",
+              idx_name,
               "`, and `data` already has one. Rename that column."
             )
           ))
         }
         data_inla[[idx_name]] <- ifelse(
-          outer_f == levs[[e]], as.integer(inner_f), NA_integer_
+          outer_f == levs[[e]],
+          as.integer(inner_f),
+          NA_integer_
         )
       }
     }
     for (e in seq_along(levs)) {
       idx_name <- .fb_inla_fa_specific(term$outer, term$inner, levs[[e]])
       data_inla[[idx_name]] <- ifelse(
-        outer_f == levs[[e]], as.integer(inner_f), NA_integer_
+        outer_f == levs[[e]],
+        as.integer(inner_f),
+        NA_integer_
       )
     }
   }
@@ -1161,7 +1219,9 @@ emit_inla <- function(
         ))
       }
       data_inla[[idx_name]] <- ifelse(
-        outer_f == lev, as.integer(inner_f), NA_integer_
+        outer_f == lev,
+        as.integer(inner_f),
+        NA_integer_
       )
     }
   }
@@ -1967,7 +2027,8 @@ emit_inla <- function(
         paste0(
           "f(",
           .fb_inla_cor_slope_index(gtag, sv),
-          ", model = \"iid2d\", n = ", 2L * n_g,
+          ", model = \"iid2d\", n = ",
+          2L * n_g,
           .fb_inla_wishart_arg(.fb_inla_wishart_scale_slope(fb, term)),
           ")"
         ),
@@ -2068,9 +2129,13 @@ emit_inla <- function(
         rhs_terms <- c(
           rhs_terms,
           paste0(
-            "f(", idx[["row"]], ", model = \"ar1\", group = ", idx[["col"]],
+            "f(",
+            idx[["row"]],
+            ", model = \"ar1\", group = ",
+            idx[["col"]],
             ", control.group = list(model = \"",
-            if (isTRUE(term$col_ar1)) "ar1" else "iid", "\")",
+            if (isTRUE(term$col_ar1)) "ar1" else "iid",
+            "\")",
             if (nzchar(hyper_str)) paste0(", ", hyper_str) else "",
             ")"
           )
@@ -2134,12 +2199,22 @@ emit_inla <- function(
       for (j in seq_len(term$k)) {
         anchor_idx <- .fb_inla_fa_index(term$outer, term$inner, j, levs[[j]])
         note(anchor_idx, "iid", term$type, term$inner, hyper_ctrl[[term$inner]])
-        rhs_terms <- c(rhs_terms, paste0(
-          "f(", anchor_idx, ", model = \"iid\", values = seq_len(",
-          n_inner, ")", hyper_sfx, ")"
-        ))
+        rhs_terms <- c(
+          rhs_terms,
+          paste0(
+            "f(",
+            anchor_idx,
+            ", model = \"iid\", values = seq_len(",
+            n_inner,
+            ")",
+            hyper_sfx,
+            ")"
+          )
+        )
         for (e in seq(j + 1L, length(levs))) {
-          if (e > length(levs)) break
+          if (e > length(levs)) {
+            break
+          }
           note(
             .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
             "copy",
@@ -2148,10 +2223,18 @@ emit_inla <- function(
             load_entry,
             consult = load_key
           )
-          rhs_terms <- c(rhs_terms, paste0(
-            "f(", .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
-            ", copy = \"", anchor_idx, "\", fixed = FALSE", load_sfx, ")"
-          ))
+          rhs_terms <- c(
+            rhs_terms,
+            paste0(
+              "f(",
+              .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
+              ", copy = \"",
+              anchor_idx,
+              "\", fixed = FALSE",
+              load_sfx,
+              ")"
+            )
+          )
         }
       }
       for (e in seq_along(levs)) {
@@ -2162,11 +2245,18 @@ emit_inla <- function(
           term$inner,
           hyper_ctrl[[term$inner]]
         )
-        rhs_terms <- c(rhs_terms, paste0(
-          "f(", .fb_inla_fa_specific(term$outer, term$inner, levs[[e]]),
-          ", model = \"iid\", values = seq_len(", n_inner, ")",
-          hyper_sfx, ")"
-        ))
+        rhs_terms <- c(
+          rhs_terms,
+          paste0(
+            "f(",
+            .fb_inla_fa_specific(term$outer, term$inner, levs[[e]]),
+            ", model = \"iid\", values = seq_len(",
+            n_inner,
+            ")",
+            hyper_sfx,
+            ")"
+          )
+        )
       }
       next
     }
@@ -2194,8 +2284,11 @@ emit_inla <- function(
             term$inner,
             "` on INLA carries a joint Wishart prior over the whole ",
             k,
-            "-by-", k,
-            " covariance (prec1..prec", k, ", cor12..). There is no ",
+            "-by-",
+            k,
+            " covariance (prec1..prec",
+            k,
+            ", cor12..). There is no ",
             "standard-deviation slot to translate it into, and silently ",
             "dropping it would leave the fit on a prior nobody chose. Fit ",
             "with backend = \"brms\", which takes an SD prior on this ",
@@ -2219,7 +2312,10 @@ emit_inla <- function(
         paste0(
           "f(",
           .fb_inla_us_index(term$outer, term$inner),
-          ", model = \"iid", k, "d\", n = ", k * term$n_inner,
+          ", model = \"iid",
+          k,
+          "d\", n = ",
+          k * term$n_inner,
           .fb_inla_wishart_arg(rep(.fb_inla_response_var(fb), k)),
           ")"
         )
@@ -2247,7 +2343,9 @@ emit_inla <- function(
           paste0(
             "f(",
             .fb_inla_at_index(term$outer, term$inner, lev),
-            ", model = \"iid\", values = seq_len(", n_inner, ")",
+            ", model = \"iid\", values = seq_len(",
+            n_inner,
+            ")",
             if (nzchar(hyper_str)) paste0(", ", hyper_str) else "",
             ")"
           )
@@ -2483,18 +2581,23 @@ emit_inla <- function(
   num <- "([-+0-9.eE]+)"
   sd_tag <- function(family, args, on_response) {
     tag <- sprintf(
-      "%s-SD(%s)", family,
+      "%s-SD(%s)",
+      family,
       paste(vapply(args, .fb_signif_string, character(1L)), collapse = ", ")
     )
     if (is.null(response_scale)) {
       return(sprintf("<prior: %s>", tag))
     }
     back <- vapply(
-      on_response, function(v) .fb_signif_string(round(v, 12L)), character(1L)
+      on_response,
+      function(v) .fb_signif_string(round(v, 12L)),
+      character(1L)
     )
     sprintf(
       "<prior: %s on the standardised response = %s-SD(%s) on the response>",
-      tag, family, paste(back, collapse = ", ")
+      tag,
+      family,
+      paste(back, collapse = ", ")
     )
   }
   k <- response_scale %||% 1
@@ -2735,10 +2838,14 @@ emit_inla <- function(
       )
     ))
   }
-  list(hyper = list(prec = list(
-    initial = .FB_NUGGET_FREE_LOG_PREC,
-    fixed = TRUE
-  )))
+  list(
+    hyper = list(
+      prec = list(
+        initial = .FB_NUGGET_FREE_LOG_PREC,
+        fixed = TRUE
+      )
+    )
+  )
 }
 
 # Build the control.family list passed to INLA::inla(). When the user

@@ -42,8 +42,12 @@
 .cs_quiet <- function(expr) suppressWarnings(suppressMessages(expr))
 
 .cs_code <- function(...) {
-  .cs_quiet(flexybayes(..., backend = "inla", return_code = TRUE,
-                       verbose = FALSE))
+  .cs_quiet(flexybayes(
+    ...,
+    backend = "inla",
+    return_code = TRUE,
+    verbose = FALSE
+  ))
 }
 
 .cs_component <- function(fit, component) {
@@ -59,15 +63,17 @@ test_that("a fit is standardised on its covariates only when its response is not
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .cs_count_data("poisson")
 
-  count <- .cs_code(y ~ x, random = ~ g, data = d, family = "poisson")
+  count <- .cs_code(y ~ x, random = ~g, data = d, family = "poisson")
   expect_equal(count$covariate_standardisation$divisor[["x"]], stats::sd(d$x))
-  expect_equal(count$covariate_standardisation$coef_divisor[["x"]],
-               stats::sd(d$x))
+  expect_equal(
+    count$covariate_standardisation$coef_divisor[["x"]],
+    stats::sd(d$x)
+  )
   expect_null(count$response_standardisation)
 
   # A Gaussian identity-link fit is already one model in its response's
   # units, and standardising both would restate every prior twice.
-  gauss <- .cs_code(z ~ x, random = ~ g, data = d)
+  gauss <- .cs_code(z ~ x, random = ~g, data = d)
   expect_equal(gauss$response_standardisation$scale, stats::sd(d$z))
   expect_null(gauss$covariate_standardisation)
 })
@@ -81,20 +87,32 @@ test_that("a covariate a formula transforms is left exactly as recorded", {
   # log(x / s) is not log(x) divided by anything, so the coefficient could
   # not be mapped back and the column is protected instead.
   expect_null(
-    .cs_code(y ~ log(x), random = ~ g, data = d,
-             family = "poisson")$covariate_standardisation
+    .cs_code(
+      y ~ log(x),
+      random = ~g,
+      data = d,
+      family = "poisson"
+    )$covariate_standardisation
   )
   # The same column reached through a transform anywhere in the model
   # protects it, even where it also enters untransformed.
   expect_null(
-    .cs_code(y ~ x + log(x), random = ~ g, data = d,
-             family = "poisson")$covariate_standardisation
+    .cs_code(
+      y ~ x + log(x),
+      random = ~g,
+      data = d,
+      family = "poisson"
+    )$covariate_standardisation
   )
   # An offset is not a covariate.
   d$off <- log(d$x)
   expect_null(
-    .cs_code(y ~ offset(off), random = ~ g, data = d,
-             family = "poisson")$covariate_standardisation
+    .cs_code(
+      y ~ offset(off),
+      random = ~g,
+      data = d,
+      family = "poisson"
+    )$covariate_standardisation
   )
 })
 
@@ -104,8 +122,7 @@ test_that("an interaction's coefficient carries the product of its covariates' d
   d <- .cs_count_data("poisson")
   d$f <- factor(rep(c("a", "b"), length.out = nrow(d)))
 
-  numeric_pair <- .cs_code(y ~ x * z, random = ~ g, data = d,
-                           family = "poisson")
+  numeric_pair <- .cs_code(y ~ x * z, random = ~g, data = d, family = "poisson")
   cd <- numeric_pair$covariate_standardisation$coef_divisor
   expect_equal(cd[["x"]], stats::sd(d$x))
   expect_equal(cd[["z"]], stats::sd(d$z))
@@ -113,7 +130,7 @@ test_that("an interaction's coefficient carries the product of its covariates' d
 
   # A factor-by-numeric interaction: every indexed slope is in the
   # covariate's units, and the factor's own contrast is not.
-  mixed <- .cs_code(y ~ f * x, random = ~ g, data = d, family = "poisson")
+  mixed <- .cs_code(y ~ f * x, random = ~g, data = d, family = "poisson")
   cd <- mixed$covariate_standardisation$coef_divisor
   expect_equal(cd[["x"]], stats::sd(d$x))
   expect_equal(cd[["fb:x"]], stats::sd(d$x))
@@ -150,7 +167,12 @@ test_that("control.fixed is restated per coefficient, and a scalar expands", {
   # standardised ones no longer share a value, so it expands. The intercept
   # keeps its own entry untouched: the standardisation does not centre.
   scalar <- .fb_inla_covariate_standardise_control_fixed(
-    list(mean = 0, prec = 1 / 100, mean.intercept = 0, prec.intercept = 1 / 100),
+    list(
+      mean = 0,
+      prec = 1 / 100,
+      mean.intercept = 0,
+      prec.intercept = 1 / 100
+    ),
     cstd
   )
   expect_equal(scalar$prec$x, 1 / 1600)
@@ -185,12 +207,14 @@ test_that("an uncorrelated slope prior is restated on the standardised covariate
   # And the precision of that field multiplies by the square of the divisor,
   # which is what maps it back.
   expect_equal(
-    .fb_inla_covariate_hyper_factor("Precision for g_for_slope_x", cstd), 25
+    .fb_inla_covariate_hyper_factor("Precision for g_for_slope_x", cstd),
+    25
   )
   expect_equal(.fb_inla_covariate_hyper_factor("Precision for g", cstd), 1)
   expect_equal(
     .fb_inla_covariate_hyper_factor(
-      "Precision for the Gaussian observations", cstd
+      "Precision for the Gaussian observations",
+      cstd
     ),
     1
   )
@@ -208,7 +232,7 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
   s <- stats::sd(d$x)
   fit <- .cs_quiet(flexybayes(
     y ~ x,
-    random = ~ g,
+    random = ~g,
     data = d,
     family = "poisson",
     prior = fb_prior(sd(group = "g") ~ half_normal(scale = 2)),
@@ -223,9 +247,15 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
   dx <- d
   dx$x <- d$x / s
   raw <- INLA::inla(
-    y ~ 1 + x + f(g, model = "iid", hyper = list(
-      prec = list(prior = .inla_halfnormal_sd_expr(2))
-    )),
+    y ~ 1 +
+      x +
+      f(
+        g,
+        model = "iid",
+        hyper = list(
+          prec = list(prior = .inla_halfnormal_sd_expr(2))
+        )
+      ),
     data = dx,
     family = "poisson",
     control.fixed = list(
@@ -234,8 +264,12 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
       mean.intercept = 0,
       prec.intercept = 1 / 100
     ),
-    control.compute = list(config = TRUE, return.marginals = TRUE,
-                           dic = TRUE, waic = TRUE),
+    control.compute = list(
+      config = TRUE,
+      return.marginals = TRUE,
+      dic = TRUE,
+      waic = TRUE
+    ),
     # flexyBayes fits on one thread. More threads move the result.
     num.threads = "1:1"
   )
@@ -246,19 +280,34 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
   # range on these quantities was 2.0e-7. Each tolerance below sits well
   # above that and orders of magnitude below any mapping error, which would
   # move the coefficient by the covariate's standard deviation itself.
-  expect_equal(got$summary.fixed["x", "mean"],
-               raw$summary.fixed["x", "mean"] / s, tolerance = 1e-6)
-  expect_equal(got$summary.fixed["x", "sd"],
-               raw$summary.fixed["x", "sd"] / s, tolerance = 1e-6)
-  expect_equal(got$summary.fixed["(Intercept)", "mean"],
-               raw$summary.fixed["(Intercept)", "mean"], tolerance = 1e-6)
-  expect_equal(got$summary.random$g$mean, raw$summary.random$g$mean,
-               tolerance = 1e-6)
+  expect_equal(
+    got$summary.fixed["x", "mean"],
+    raw$summary.fixed["x", "mean"] / s,
+    tolerance = 1e-6
+  )
+  expect_equal(
+    got$summary.fixed["x", "sd"],
+    raw$summary.fixed["x", "sd"] / s,
+    tolerance = 1e-6
+  )
+  expect_equal(
+    got$summary.fixed["(Intercept)", "mean"],
+    raw$summary.fixed["(Intercept)", "mean"],
+    tolerance = 1e-6
+  )
+  expect_equal(
+    got$summary.random$g$mean,
+    raw$summary.random$g$mean,
+    tolerance = 1e-6
+  )
 
   # The linear predictor is the same number on both coordinate systems, so
   # the likelihood-based quantities are carried across untouched.
-  expect_equal(got$summary.fitted.values$mean,
-               raw$summary.fitted.values$mean, tolerance = 1e-6)
+  expect_equal(
+    got$summary.fitted.values$mean,
+    raw$summary.fitted.values$mean,
+    tolerance = 1e-6
+  )
   expect_lt(abs(got$mlik[1L, 1L] - raw$mlik[1L, 1L]), 1e-4)
   expect_lt(abs(got$dic$dic - raw$dic$dic), 1e-3)
   expect_lt(abs(got$waic$waic - raw$waic$waic), 1e-3)
@@ -286,15 +335,23 @@ test_that("a non-Gaussian coefficient does not move when its covariate is rescal
   # measured there (1.8e-2 on Poisson, 1.7e-2 on Bernoulli at x * 1000).
   for (family in c("poisson", "binomial")) {
     base <- .cs_count_data(family)
-    cells <- vapply(c(0.001, 1, 1000), function(cc) {
-      d <- base
-      d$x <- cc * d$x
-      fit <- .cs_quiet(flexybayes(
-        y ~ x, random = ~ g, data = d, family = family,
-        backend = "inla", verbose = FALSE
-      ))
-      stats::coef(fit)[["x"]] * cc
-    }, numeric(1L))
+    cells <- vapply(
+      c(0.001, 1, 1000),
+      function(cc) {
+        d <- base
+        d$x <- cc * d$x
+        fit <- .cs_quiet(flexybayes(
+          y ~ x,
+          random = ~g,
+          data = d,
+          family = family,
+          backend = "inla",
+          verbose = FALSE
+        ))
+        stats::coef(fit)[["x"]] * cc
+      },
+      numeric(1L)
+    )
     expect_lt(diff(range(cells)) / abs(mean(cells)), 1e-5, label = family)
   }
 })
@@ -309,17 +366,25 @@ test_that("an uncorrelated slope comes back in the covariate's own units", {
     d <- base
     d$x <- cc * d$x
     fit <- .cs_quiet(flexybayes(
-      y ~ x + (x || g), data = d, family = "poisson",
-      backend = "inla", verbose = FALSE
+      y ~ x + (x || g),
+      data = d,
+      family = "poisson",
+      backend = "inla",
+      verbose = FALSE
     ))
     # The slope field and its standard deviation are in response units per
     # covariate unit, so both carry the factor back out.
-    c(sd_slope = .cs_component(fit, "sd_x_g") * cc,
+    c(
+      sd_slope = .cs_component(fit, "sd_x_g") * cc,
       sd_int = .cs_component(fit, "sd_g"),
       coef_x = stats::coef(fit)[["x"]] * cc,
-      ranef_slope = stats::sd(fit$inla$summary.random[[
-        paste0("g_for_slope_x")
-      ]]$mean) * cc)
+      ranef_slope = stats::sd(
+        fit$inla$summary.random[[
+          paste0("g_for_slope_x")
+        ]]$mean
+      ) *
+        cc
+    )
   })
   cells <- do.call(rbind, cells)
   for (q in colnames(cells)) {
@@ -336,8 +401,12 @@ test_that("draws are taken on the original scale", {
   d <- .cs_count_data("poisson")
   d$x <- 1000 * d$x
   fit <- .cs_quiet(flexybayes(
-    y ~ x, random = ~ g, data = d, family = "poisson",
-    backend = "inla", verbose = FALSE
+    y ~ x,
+    random = ~g,
+    data = d,
+    family = "poisson",
+    backend = "inla",
+    verbose = FALSE
   ))
   sf <- fit$inla$summary.fixed
 
@@ -345,8 +414,10 @@ test_that("draws are taken on the original scale", {
   # draws would sit a thousandfold away from the summary they belong to.
   draws <- fb_as_draws_simple(fit, n_samples = 2000L)
   x_draws <- draws[["x:1"]]
-  expect_lt(abs(mean(x_draws) - sf["x", "mean"]),
-            5 * sf["x", "sd"] / sqrt(length(x_draws)))
+  expect_lt(
+    abs(mean(x_draws) - sf["x", "mean"]),
+    5 * sf["x", "sd"] / sqrt(length(x_draws))
+  )
   expect_equal(stats::sd(x_draws), sf["x", "sd"], tolerance = 0.1)
 
   v <- vcov(fit, n_samples = 2000L)
@@ -369,17 +440,28 @@ test_that("vpredict comes back in the covariate's own units", {
   # at x and 2.9 per cent at x * 1000, and stayed within 2.0 per cent of the
   # table value. 0.1 is about three times that spread, and a units error on
   # this path is a factor of a thousand.
-  cells <- vapply(c(1, 1000), function(cc) {
-    d <- .cs_count_data("poisson")
-    d$x <- cc * d$x
-    fit <- .cs_quiet(flexybayes(
-      y ~ x + (x || g), data = d, family = "poisson",
-      backend = "inla", verbose = FALSE
-    ))
-    vp <- .cs_quiet(vpredict(fit, r ~ sd_x_g, n_draws = 2000L))
-    expect_equal(vp$estimate, .cs_component(fit, "sd_x_g"),
-                 tolerance = 0.1, label = paste0("x * ", cc))
-    vp$estimate * cc
-  }, numeric(1L))
+  cells <- vapply(
+    c(1, 1000),
+    function(cc) {
+      d <- .cs_count_data("poisson")
+      d$x <- cc * d$x
+      fit <- .cs_quiet(flexybayes(
+        y ~ x + (x || g),
+        data = d,
+        family = "poisson",
+        backend = "inla",
+        verbose = FALSE
+      ))
+      vp <- .cs_quiet(vpredict(fit, r ~ sd_x_g, n_draws = 2000L))
+      expect_equal(
+        vp$estimate,
+        .cs_component(fit, "sd_x_g"),
+        tolerance = 0.1,
+        label = paste0("x * ", cc)
+      )
+      vp$estimate * cc
+    },
+    numeric(1L)
+  )
   expect_lt(diff(range(cells)) / abs(mean(cells)), 0.1)
 })

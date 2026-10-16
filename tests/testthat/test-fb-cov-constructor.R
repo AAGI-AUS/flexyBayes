@@ -40,7 +40,10 @@ test_that("fb_cov() returns a classed object with the documented attribute schem
   cov <- fb_cov(G, type = "dense")
 
   expect_s3_class(cov, "fb_cov")
-  expect_true(suppressWarnings(is_fb_cov(cov), classes = "flexybayes_deprecated"))
+  expect_true(suppressWarnings(
+    is_fb_cov(cov),
+    classes = "flexybayes_deprecated"
+  ))
   expect_true(is.list(cov))
   expect_equal(cov$type, "dense")
   expect_identical(cov$M, G)

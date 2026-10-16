@@ -98,8 +98,11 @@
     return(NULL)
   }
   resid_i <- grep("Gaussian observations", nm)
-  resid_theta <- if (length(resid_i)) theta[[resid_i[[1L]]]] else
+  resid_theta <- if (length(resid_i)) {
+    theta[[resid_i[[1L]]]]
+  } else {
     stats::median(theta)
+  }
 
   # A pinned component's log precision has run away upward. Start it two log
   # units above the residual's, which is a variance about an eighth of the

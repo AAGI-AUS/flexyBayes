@@ -87,13 +87,27 @@ suppressPackageStartupMessages(library(testthat))
 }
 
 .SAS_SLOTS <- c(
-  "fixed", "varcomp", "random", "missing", "converge",
-  "n_design", "n_observed", "na_action", "model", "engine", "call"
+  "fixed",
+  "varcomp",
+  "random",
+  "missing",
+  "converge",
+  "n_design",
+  "n_observed",
+  "na_action",
+  "model",
+  "engine",
+  "call"
 )
 
 .SAS_VARCOMP_COLS <- c(
-  "component", "estimate", "std.error", "conf.low", "conf.high",
-  "prior", "note"
+  "component",
+  "estimate",
+  "std.error",
+  "conf.low",
+  "conf.high",
+  "prior",
+  "note"
 )
 
 # The frequentist vocabulary the table must never grow. Each of these
@@ -291,7 +305,11 @@ test_that("INLA SD components equal the marginal transform, not 1/sqrt(mean)", {
   # the bounds may be transformed and the mean above may not.
   log_q <- INLA::inla.qmarginal(
     c(0.975, 0.025),
-    fit$inla$internal.marginals.hyperpar[[sub("^Precision", "Log precision", nm)]]
+    fit$inla$internal.marginals.hyperpar[[sub(
+      "^Precision",
+      "Log precision",
+      nm
+    )]]
   )
   row <- out$varcomp[out$varcomp$component == "sigma", ]
   expect_equal(row$conf.low, exp(-log_q[[1L]] / 2), tolerance = 1e-10)
@@ -324,8 +342,11 @@ test_that("a wide-support precision marginal still yields a table", {
   )
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
-    data = d, backend = "inla", aggregate = FALSE,
-    verbose = FALSE, mcmc_verbose = FALSE
+    data = d,
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes_inla")
 
@@ -352,13 +373,17 @@ test_that("a correlation hyperparameter is not put through the SD transform", {
   )
   set.seed(4L)
   g <- expand.grid(
-    row = factor(seq_len(8L)), col = factor(seq_len(6L)),
+    row = factor(seq_len(8L)),
+    col = factor(seq_len(6L)),
     KEEP.OUT.ATTRS = FALSE
   )
   g$y <- stats::rnorm(nrow(g))
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    verbose = FALSE
   ))
   s <- suppressMessages(utils::capture.output(print(out <- summary(fit))))
 
@@ -529,7 +554,9 @@ test_that("a correlation is never flagged as collapsed", {
     stringsAsFactors = FALSE
   )
   shell <- .sas_shell(
-    "flexybayes_inla", vc, c(sigma = 1.0, rho_row = 0.002)
+    "flexybayes_inla",
+    vc,
+    c(sigma = 1.0, rho_row = 0.002)
   )
   expect_identical(flexyBayes:::.fb_summary_varcomp(shell)$note, c("", ""))
 })
@@ -612,7 +639,8 @@ test_that("tidy() column names are unchanged by the new summary", {
   chol_field <- t(chol(
     1.5^2 * kronecker(ar1(n_row, 0.7), ar1(n_col, 0.5))
   ))
-  d$yield <- 20 + as.numeric(chol_field %*% stats::rnorm(n_row * n_col)) +
+  d$yield <- 20 +
+    as.numeric(chol_field %*% stats::rnorm(n_row * n_col)) +
     stats::rnorm(n_row * n_col, 0, 0.6)
   d
 }
@@ -639,7 +667,9 @@ test_that("summary() carries $spatial_field on a fit with an AR1 field", {
   # Two correlations, the field SD and the nugget SD.
   expect_identical(nrow(fld), 4L)
   expect_true(all(vapply(
-    fld[, c("median", "lower", "upper")], is.numeric, logical(1L)
+    fld[, c("median", "lower", "upper")],
+    is.numeric,
+    logical(1L)
   )))
   expect_true(all(fld$lower <= fld$upper))
 })
@@ -758,7 +788,10 @@ test_that("the dropped-row warning does not vouch for the fit either", {
   object <- list(
     inla = list(
       summary.hyperpar = data.frame(
-        mean = 1, sd = 1, `0.025quant` = 0.5, `0.975quant` = 1.5,
+        mean = 1,
+        sd = 1,
+        `0.025quant` = 0.5,
+        `0.975quant` = 1.5,
         row.names = "Precision for g",
         check.names = FALSE
       ),
@@ -797,7 +830,12 @@ test_that("the dropped-row warning does not vouch for the fit either", {
 # what "the posterior mean of the standard deviation" is.
 
 .FB_RANDOM_COLS_EXPECTED <- c(
-  "group", "level", "estimate", "std.error", "conf.low", "conf.high"
+  "group",
+  "level",
+  "estimate",
+  "std.error",
+  "conf.low",
+  "conf.high"
 )
 
 .sas_agg_data <- function(seed = 20260817L, n = 1000L) {
@@ -950,7 +988,9 @@ test_that("the aggregated summary names its representation and compression", {
   # The banner names the representation where a per-row fit names the
   # engine, and the compression line is on the header.
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-poisson]", printed, fixed = TRUE
+    "[flexyBayes / aggregated-poisson]",
+    printed,
+    fixed = TRUE
   )))
   expect_true(any(grepl("aggregation:.*->.*cells", printed)))
   expect_true(any(grepl("ratio.*:1", printed)))
@@ -1041,7 +1081,9 @@ test_that("an aggregated count fit carries the table too", {
   expect_true("sd_g" %in% s$varcomp$component)
   expect_false("sigma" %in% s$varcomp$component)
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-poisson]", printed, fixed = TRUE
+    "[flexyBayes / aggregated-poisson]",
+    printed,
+    fixed = TRUE
   )))
 })
 

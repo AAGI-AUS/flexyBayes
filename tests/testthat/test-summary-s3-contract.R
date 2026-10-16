@@ -22,8 +22,11 @@ fb_s3_fixture <- function() {
   # `rep` has three levels, so sd_rep is weakly identified.
   withr::local_options(flexyBayes.silence_weak_identification_warning = TRUE)
   flexybayes(
-    fixed = yield ~ gen, random = ~ rep + rep:block,
-    data = d, backend = "inla", verbose = FALSE,
+    fixed = yield ~ gen,
+    random = ~ rep + rep:block,
+    data = d,
+    backend = "inla",
+    verbose = FALSE,
     prior = .fb_test_john_alpha_prior(d)
   )
 }

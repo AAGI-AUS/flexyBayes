@@ -31,7 +31,8 @@
     reason_code = "weights_invalid",
     message = paste0(
       "`weights` must be a numeric vector of length nrow(data). It is ",
-      problem, "."
+      problem,
+      "."
     )
   ))
 }
@@ -44,8 +45,11 @@
   stop(.fb_refusal_condition(
     reason_code = "prior_not_fb_prior",
     message = paste0(
-      "`", arg, "` must be an fb_prior() object or NULL; it is a ",
-      class(prior)[[1L]], ". Write the prior as ",
+      "`",
+      arg,
+      "` must be an fb_prior() object or NULL; it is a ",
+      class(prior)[[1L]],
+      ". Write the prior as ",
       "fb_prior(sd(group = \"g\") ~ half_normal(scale = 1)), for example."
     ),
     supplied_class = class(prior)
@@ -90,8 +94,14 @@
   stop(.fb_refusal_condition(
     reason_code = "response_not_numeric",
     message = paste0(
-      "The response `", fb$response, "` is a ", class(yv)[[1L]], ", and ",
-      "family = \"", fb$family, "\" takes a numeric response. Recode it ",
+      "The response `",
+      fb$response,
+      "` is a ",
+      class(yv)[[1L]],
+      ", and ",
+      "family = \"",
+      fb$family,
+      "\" takes a numeric response. Recode it ",
       "to the numbers the family models."
     ),
     column = fb$response

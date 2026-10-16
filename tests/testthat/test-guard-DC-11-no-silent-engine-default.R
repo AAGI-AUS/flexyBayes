@@ -15,7 +15,9 @@
 .g11_data <- function() {
   set.seed(11)
   d <- expand.grid(
-    rowf = factor(1:6), colf = factor(1:4), env = factor(c("e1", "e2", "e3"))
+    rowf = factor(1:6),
+    colf = factor(1:4),
+    env = factor(c("e1", "e2", "e3"))
   )
   d$gen <- factor(sample(sprintf("v%d", 1:8), nrow(d), replace = TRUE))
   d$x <- stats::rnorm(nrow(d))
@@ -29,7 +31,11 @@
   poisson_aggregated = list(n ~ env, random = ~gen, family = "poisson"),
   nested = list(y ~ env, random = ~ gen + env:gen),
   multi_way = list(y ~ env, random = ~ gen + env:rowf:colf),
-  dsum_residual = list(y ~ env, random = ~gen, residual = ~ dsum(~ units | env)),
+  dsum_residual = list(
+    y ~ env,
+    random = ~gen,
+    residual = ~ dsum(~ units | env)
+  ),
   diag = list(y ~ env, random = ~ diag(env):gen),
   slope = list(y ~ x + (x || gen)),
   ar1_field = list(y ~ env, random = ~ gen + id(env):ar1(rowf):ar1(colf)),
@@ -47,7 +53,9 @@
   add <- function(prefix, hyper) {
     for (k in names(hyper)) {
       h <- hyper[[k]]
-      if (isTRUE(h$fixed)) next
+      if (isTRUE(h$fixed)) {
+        next
+      }
       out[[length(out) + 1L]] <<- data.frame(
         engine_slot = paste(prefix, k),
         precision = grepl("precision", h$name %||% "", fixed = TRUE),
@@ -77,7 +85,8 @@ test_that("DC-11 guard: every INLA hyperparameter is in the prior record, on the
   off <- character(0)
   for (nm in names(.g11_corpus)) {
     fit <- suppressWarnings(suppressMessages(do.call(
-      flexybayes, c(.g11_corpus[[nm]], list(data = d, backend = "inla", verbose = FALSE))
+      flexybayes,
+      c(.g11_corpus[[nm]], list(data = d, backend = "inla", verbose = FALSE))
     )))
     if (!identical(fit$inla$.args$num.threads, "1:1")) {
       off <- c(off, paste0(nm, ": threads not recorded as set"))
@@ -86,24 +95,40 @@ test_that("DC-11 guard: every INLA hyperparameter is in the prior record, on the
     # One slot per estimated hyperparameter, group correlations included.
     n_slots <- sum(slots$section %in% c("family", "random", "group"))
     if (n_slots != nrow(fit$inla$summary.hyperpar)) {
-      off <- c(off, sprintf(
-        "%s: %d hyperparameters estimated, %d in the prior record",
-        nm, nrow(fit$inla$summary.hyperpar), n_slots
-      ))
+      off <- c(
+        off,
+        sprintf(
+          "%s: %d hyperparameters estimated, %d in the prior record",
+          nm,
+          nrow(fit$inla$summary.hyperpar),
+          n_slots
+        )
+      )
     }
     h <- .g11_hypers(fit)
     for (i in seq_len(nrow(h))) {
       s <- slots[slots$engine_slot == h$engine_slot[i], , drop = FALSE]
       if (!nrow(s)) {
-        off <- c(off, paste0(nm, ": ", h$engine_slot[i], " not in the prior record"))
+        off <- c(
+          off,
+          paste0(nm, ": ", h$engine_slot[i], " not in the prior record")
+        )
         next
       }
       engine_sd <- h$precision[i] && identical(s$source[1L], "engine_default")
       if (engine_sd && !s$structure[1L] %in% .g11_engine_sd) {
-        off <- c(off, paste0(
-          nm, ": ", h$engine_slot[i], " (", s$structure[1L],
-          ") runs on INLA's default prior ", s$readback[1L]
-        ))
+        off <- c(
+          off,
+          paste0(
+            nm,
+            ": ",
+            h$engine_slot[i],
+            " (",
+            s$structure[1L],
+            ") runs on INLA's default prior ",
+            s$readback[1L]
+          )
+        )
       }
     }
   }
@@ -112,13 +137,20 @@ test_that("DC-11 guard: every INLA hyperparameter is in the prior record, on the
 
 test_that("DC-11 guard: the package's INLA draws set the sampler arguments", {
   root <- testthat::test_path("..", "..")
-  skip_if(!dir.exists(file.path(root, "R")), "package source tree not available")
+  skip_if(
+    !dir.exists(file.path(root, "R")),
+    "package source tree not available"
+  )
   off <- character(0)
   calls_seen <- c(hyperpar = 0L, posterior = 0L)
   for (f in list.files(file.path(root, "R"), "\\.R$", full.names = TRUE)) {
     walk <- function(x) {
       if (!is.call(x)) {
-        if (is.pairlist(x) || is.list(x)) for (a in as.list(x)) if (!missing(a)) walk(a)
+        if (is.pairlist(x) || is.list(x)) {
+          for (a in as.list(x)) {
+            if (!missing(a)) walk(a)
+          }
+        }
         return(invisible())
       }
       fn <- paste(deparse(x[[1L]]), collapse = "")
@@ -127,18 +159,28 @@ test_that("DC-11 guard: the package's INLA draws set the sampler arguments", {
       if (fn %in% c("INLA::inla.hyperpar.sample", "inla.hyperpar.sample")) {
         calls_seen[["hyperpar"]] <<- calls_seen[["hyperpar"]] + 1L
         if (!isTRUE(x[["improve.marginals"]])) {
-          off <<- c(off, paste0(basename(f), ": ", paste(deparse(x), collapse = "")))
+          off <<- c(
+            off,
+            paste0(basename(f), ": ", paste(deparse(x), collapse = ""))
+          )
         }
       }
       if (fn == ".fb_inla_posterior_sample" && !passes_dots) {
         calls_seen[["posterior"]] <<- calls_seen[["posterior"]] + 1L
         if (is.null(x[["num.threads"]])) {
-          off <<- c(off, paste0(basename(f), ": ", paste(deparse(x), collapse = "")))
+          off <<- c(
+            off,
+            paste0(basename(f), ": ", paste(deparse(x), collapse = ""))
+          )
         }
       }
-      for (a in as.list(x)) if (!missing(a)) walk(a)
+      for (a in as.list(x)) {
+        if (!missing(a)) walk(a)
+      }
     }
-    for (e in parse(f, keep.source = FALSE)) walk(e)
+    for (e in parse(f, keep.source = FALSE)) {
+      walk(e)
+    }
   }
   expect_true(all(calls_seen > 0L))
   expect_identical(off, character(0))

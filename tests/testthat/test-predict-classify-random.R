@@ -49,8 +49,14 @@
 }
 
 # One message per violated bound, character(0) when the table agrees.
-.cr_check <- function(tab, ref, by, point = 0.25, width = c(0.95, 1.30),
-                      rank = 0.99) {
+.cr_check <- function(
+  tab,
+  ref,
+  by,
+  point = 0.25,
+  width = c(0.95, 1.30),
+  rank = 0.99
+) {
   m <- merge(as.data.frame(tab), ref, by = by, suffixes = c("", ".asreml"))
   if (nrow(m) != nrow(ref)) {
     return(sprintf("%d of %d levels matched", nrow(m), nrow(ref)))
@@ -63,8 +69,10 @@
     msgs <- c(msgs, sprintf("point: max %.3f SE > %.2f", max(dz), point))
   }
   if (min(ratio) < width[[1L]] || max(ratio) > width[[2L]]) {
-    msgs <- c(msgs, sprintf("width: SD/SE in [%.3f, %.3f]",
-                            min(ratio), max(ratio)))
+    msgs <- c(
+      msgs,
+      sprintf("width: SD/SE in [%.3f, %.3f]", min(ratio), max(ratio))
+    )
   }
   if (rho < rank) {
     msgs <- c(msgs, sprintf("rank: Spearman %.4f < %.2f", rho, rank))
@@ -77,8 +85,12 @@
 }
 
 .cr_met <- function() {
-  .cr_fit("met", yield ~ county + county:rep, ~ gen + gen:county,
-          .cr_ref()$data$met)
+  .cr_fit(
+    "met",
+    yield ~ county + county:rep,
+    ~ gen + gen:county,
+    .cr_ref()$data$met
+  )
 }
 
 
@@ -173,8 +185,12 @@ test_that("a gen:county cell with no data is predicted as ASReml does", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   ref <- .cr_ref()
-  fit <- .cr_fit("met_gap", yield ~ county + county:rep, ~ gen + gen:county,
-                 ref$data$met_gap)
+  fit <- .cr_fit(
+    "met_gap",
+    yield ~ county + county:rep,
+    ~ gen + gen:county,
+    ref$data$met_gap
+  )
 
   expect_identical(
     .cr_check(predict(fit, classify = "gen"), ref$met_gap$gen, "gen"),
@@ -187,8 +203,10 @@ test_that("a gen:county cell with no data is predicted as ASReml does", {
   )
   # The empty cell is wider than G01's other cells, as on ASReml's side.
   g01 <- tab[tab$gen == "G01", ]
-  expect_gt(g01$std.error[g01$county == "C1"],
-            max(g01$std.error[g01$county != "C1"]))
+  expect_gt(
+    g01$std.error[g01$county == "C1"],
+    max(g01$std.error[g01$county != "C1"])
+  )
 })
 
 test_that("with the variances held at REML, the table reproduces ASReml", {
@@ -205,17 +223,32 @@ test_that("with the variances held at REML, the table reproduces ASReml", {
     sd(group = "gen") ~ .(pin(vc[["gen"]])),
     sd(group = "gen:county") ~ .(pin(vc[["gen:county"]]))
   )))
-  fit <- .cr_fit("met_pinned", yield ~ county + county:rep,
-                 ~ gen + gen:county, ref$data$met, prior = prior)
+  fit <- .cr_fit(
+    "met_pinned",
+    yield ~ county + county:rep,
+    ~ gen + gen:county,
+    ref$data$met,
+    prior = prior
+  )
 
   expect_identical(
-    .cr_check(predict(fit, classify = "gen"), ref$met$gen, "gen",
-              point = 0.02, width = c(0.99, 1.01)),
+    .cr_check(
+      predict(fit, classify = "gen"),
+      ref$met$gen,
+      "gen",
+      point = 0.02,
+      width = c(0.99, 1.01)
+    ),
     character(0)
   )
   expect_identical(
-    .cr_check(predict(fit, classify = "gen:county"), ref$met$gen_county,
-              c("gen", "county"), point = 0.02, width = c(0.99, 1.01)),
+    .cr_check(
+      predict(fit, classify = "gen:county"),
+      ref$met$gen_county,
+      c("gen", "county"),
+      point = 0.02,
+      width = c(0.99, 1.01)
+    ),
     character(0)
   )
 })
@@ -231,13 +264,23 @@ test_that("DEF-203: gen fixed, gen:county random includes gen:county", {
     sigma ~ .(pin(vc[["units!R"]])),
     sd(group = "gen:county") ~ .(pin(vc[["gen:county"]]))
   )))
-  fit <- .cr_fit("met_fixed_pinned", yield ~ gen + county + county:rep,
-                 ~gen:county, ref$data$met, prior = prior)
+  fit <- .cr_fit(
+    "met_fixed_pinned",
+    yield ~ gen + county + county:rep,
+    ~ gen:county,
+    ref$data$met,
+    prior = prior
+  )
   tab <- predict(fit, classify = "gen")
 
   expect_identical(
-    .cr_check(tab, ref$met_fixed$gen, "gen", point = 0.02,
-              width = c(0.99, 1.01)),
+    .cr_check(
+      tab,
+      ref$met_fixed$gen,
+      "gen",
+      point = 0.02,
+      width = c(0.99, 1.01)
+    ),
     character(0)
   )
   expect_identical(attr(tab, "random"), "gen:county")
@@ -247,8 +290,12 @@ test_that("gen fixed, gen:county random agrees with ASReml by default", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   ref <- .cr_ref()
-  fit <- .cr_fit("met_fixed", yield ~ gen + county + county:rep,
-                 ~gen:county, ref$data$met)
+  fit <- .cr_fit(
+    "met_fixed",
+    yield ~ gen + county + county:rep,
+    ~ gen:county,
+    ref$data$met
+  )
   expect_identical(
     .cr_check(predict(fit, classify = "gen"), ref$met_fixed$gen, "gen"),
     character(0)
@@ -264,8 +311,13 @@ test_that("a fixed classify with no random term keeps the emmeans table", {
 
   expect_null(attr(tab, "random"))
   expect_identical(
-    .cr_check(tab, ref$met$county, "county", point = 0.01,
-              width = c(0.95, 1.30)),
+    .cr_check(
+      tab,
+      ref$met$county,
+      "county",
+      point = 0.01,
+      width = c(0.95, 1.30)
+    ),
     character(0)
   )
 })
@@ -278,8 +330,11 @@ test_that("the banner names the random terms, the averaged and the ignored", {
   out <- utils::capture.output(print(predict(fit, classify = "gen")))
 
   expect_match(out[[1L]], "Predicted values: gen", fixed = TRUE)
-  expect_match(out[[2L]], "fixed part plus gen. Not an SED table.",
-               fixed = TRUE)
+  expect_match(
+    out[[2L]],
+    "fixed part plus gen. Not an SED table.",
+    fixed = TRUE
+  )
   expect_identical(out[[3L]], "Averaged over: rep")
   expect_identical(out[[4L]], "Ignored: block")
 })
@@ -300,23 +355,45 @@ test_that("RCB and an empty MET cell agree with ASReml on brms", {
   ref <- .cr_ref()
   args <- list(n_samples = 1000L, warmup = 1000L, chains = 2L, seed = 1L)
 
-  rcb <- do.call(.cr_fit, c(
-    list("rcb", yield ~ rep, ~gen, ref$data$rcb, backend = "brms"), args
-  ))
+  rcb <- do.call(
+    .cr_fit,
+    c(
+      list("rcb", yield ~ rep, ~gen, ref$data$rcb, backend = "brms"),
+      args
+    )
+  )
   expect_identical(
-    .cr_check(predict(rcb, classify = "gen"), ref$rcb$gen, "gen",
-              point = 0.35, width = c(0.93, 1.32)),
+    .cr_check(
+      predict(rcb, classify = "gen"),
+      ref$rcb$gen,
+      "gen",
+      point = 0.35,
+      width = c(0.93, 1.32)
+    ),
     character(0)
   )
 
-  gap <- do.call(.cr_fit, c(
-    list("met_gap", yield ~ county + county:rep, ~ gen + gen:county,
-         ref$data$met_gap, backend = "brms"),
-    args
-  ))
+  gap <- do.call(
+    .cr_fit,
+    c(
+      list(
+        "met_gap",
+        yield ~ county + county:rep,
+        ~ gen + gen:county,
+        ref$data$met_gap,
+        backend = "brms"
+      ),
+      args
+    )
+  )
   expect_identical(
-    .cr_check(predict(gap, classify = "gen:county"), ref$met_gap$gen_county,
-              c("gen", "county"), point = 0.50, width = c(0.93, 1.32)),
+    .cr_check(
+      predict(gap, classify = "gen:county"),
+      ref$met_gap$gen_county,
+      c("gen", "county"),
+      point = 0.50,
+      width = c(0.93, 1.32)
+    ),
     character(0)
   )
 })

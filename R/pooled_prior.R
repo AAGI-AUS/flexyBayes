@@ -28,7 +28,8 @@
       message = paste0(
         "`pooled()` needs a `scale` prior for the pooling SD, for example ",
         "pooled(scale = half_normal(scale = 0.5)). Got: ",
-        .fb_prior_deparse(expr), "."
+        .fb_prior_deparse(expr),
+        "."
       )
     ))
   }
@@ -37,9 +38,13 @@
     stop(.fb_refusal_condition(
       reason_code = "prior_distribution_unknown",
       message = paste0(
-        "The pooling SD in ", .fb_prior_deparse(expr), " is given a `",
-        inner$family, "()` prior. Supported: ",
-        paste(.fb_pooled_scale_families(), collapse = ", "), "."
+        "The pooling SD in ",
+        .fb_prior_deparse(expr),
+        " is given a `",
+        inner$family,
+        "()` prior. Supported: ",
+        paste(.fb_pooled_scale_families(), collapse = ", "),
+        "."
       )
     ))
   }
@@ -55,7 +60,9 @@
     stop(.fb_refusal_condition(
       reason_code = "prior_target_argument_missing",
       message = paste0(
-        "`", .fb_prior_deparse(formula), "` pools a set of SDs without ",
+        "`",
+        .fb_prior_deparse(formula),
+        "` pools a set of SDs without ",
         "naming the factor whose levels share the distribution. Write ",
         "sd(group = \"<f>:<g>\", by = \"<f>\") for diag(<f>):<g> or ",
         "sigma(by = \"<f>\") for dsum(~ units | <f>)."
@@ -66,7 +73,9 @@
     stop(.fb_refusal_condition(
       reason_code = "prior_target_unsupported",
       message = paste0(
-        "`by =` in `", .fb_prior_deparse(formula), "` names the factor ",
+        "`by =` in `",
+        .fb_prior_deparse(formula),
+        "` names the factor ",
         "whose levels pooled() pools over, and the distribution is not ",
         "pooled(). Write pooled(scale = ...) on the right, or drop `by =`."
       )
@@ -109,8 +118,11 @@
           target_label = .format_prior_target(s$target),
           kind = "per-level variance term",
           available = paste0(
-            "group = \"", spelled, "\", by = \"",
-            vapply(diag_terms, function(t) t$outer, character(1L)), "\""
+            "group = \"",
+            spelled,
+            "\", by = \"",
+            vapply(diag_terms, function(t) t$outer, character(1L)),
+            "\""
           )[nzchar(spelled)],
           engine = "brms"
         )
@@ -150,8 +162,10 @@
         reason_code = "prior_argument_duplicated",
         message = paste0(
           "The residual SDs carry two priors: ",
-          .format_prior_target(s$target), " ~ pooled() and sigma ~ ",
-          .format_prior_distribution(plain[[1L]]$spec), ". Keep one."
+          .format_prior_target(s$target),
+          " ~ pooled() and sigma ~ ",
+          .format_prior_distribution(plain[[1L]]$spec),
+          ". Keep one."
         )
       ))
     }
@@ -181,7 +195,9 @@
   }
   by <- unique(vapply(specs, function(s) s$target$by, character(1L)))
   paste0(
-    reason, " Prior: per-", tolower(paste(by, collapse = "/")),
+    reason,
+    " Prior: per-",
+    tolower(paste(by, collapse = "/")),
     " SDs partially pooled, fitted on brms only."
   )
 }
@@ -197,8 +213,11 @@
     specs,
     function(s) {
       paste0(
-        "`", .format_prior_target(s$target), " ~ ",
-        .format_prior_distribution(s$spec), "`"
+        "`",
+        .format_prior_target(s$target),
+        " ~ ",
+        .format_prior_distribution(s$spec),
+        "`"
       )
     },
     character(1L)
@@ -258,7 +277,8 @@
       reason_code = "brms_cannot_represent_term",
       message = paste0(
         "flexyBayes could not find brms's per-level SD vector for group `",
-        group, "` in the Stan program brms ",
+        group,
+        "` in the Stan program brms ",
         as.character(utils::packageVersion("brms")),
         " writes, so the pooled prior has no parameter to attach to."
       ),
@@ -284,27 +304,57 @@
 # The brms lowering of the pooled blocks. `specs` are the prior rows already
 # built. The result carries the rows to add, the stanvars, and the Stan
 # statements the read-back looks for.
-.fb_brms_pooled_lowering <- function(blocks, specs, fb, formula, data, data2,
-                                     family) {
+.fb_brms_pooled_lowering <- function(
+  blocks,
+  specs,
+  fb,
+  formula,
+  data,
+  data2,
+  family
+) {
   if (!length(blocks)) {
     return(NULL)
   }
   location <- .fb_pooled_location(fb, data)
   rows <- list()
-  add_row <- function(string, class, group = NA_character_,
-                      dpar = NA_character_, lb = NA_real_, ub = NA_real_,
-                      input) {
+  add_row <- function(
+    string,
+    class,
+    group = NA_character_,
+    dpar = NA_character_,
+    lb = NA_real_,
+    ub = NA_real_,
+    input
+  ) {
     rows[[length(rows) + 1L]] <<- list(
-      string = string, class = class, coef = NA_character_, group = group,
-      dpar = dpar, lb = lb, ub = ub, input = input
+      string = string,
+      class = class,
+      coef = NA_character_,
+      group = group,
+      dpar = dpar,
+      lb = lb,
+      ub = ub,
+      input = input
     )
   }
   for (b in Filter(function(b) identical(b$kind, "sigma"), blocks)) {
     dens <- .brms_vc_density(b$scale)
-    add_row("normal(pool_location, 2)", "Intercept", dpar = "sigma",
-            input = b$input_id)
-    add_row(dens$string, "sd", group = b$by, dpar = "sigma",
-            lb = dens$lb, ub = dens$ub, input = b$input_id)
+    add_row(
+      "normal(pool_location, 2)",
+      "Intercept",
+      dpar = "sigma",
+      input = b$input_id
+    )
+    add_row(
+      dens$string,
+      "sd",
+      group = b$by,
+      dpar = "sigma",
+      lb = dens$lb,
+      ub = dens$ub,
+      input = b$input_id
+    )
   }
 
   sd_blocks <- Filter(function(b) identical(b$kind, "sd"), blocks)
@@ -316,7 +366,10 @@
     # row, and an empty group row does not override it. The class row is
     # made flat, and each other group of the mean keeps brms's default.
     avail <- as.data.frame(brms::default_prior(
-      formula, data = data, data2 = data2, family = family
+      formula,
+      data = data,
+      data2 = data2,
+      family = family
     ))
     for (col in c("coef", "group", "dpar")) {
       avail[[col]] <- as.character(avail[[col]] %||% "")
@@ -327,8 +380,15 @@
     stated <- vapply(
       specs,
       function(s) {
-        if (identical(s$class, "sd") && is.na(s$coef %||% NA_character_) &&
-              is.na(s$dpar %||% NA_character_)) s$group else NA_character_
+        if (
+          identical(s$class, "sd") &&
+            is.na(s$coef %||% NA_character_) &&
+            is.na(s$dpar %||% NA_character_)
+        ) {
+          s$group
+        } else {
+          NA_character_
+        }
       },
       character(1L)
     )
@@ -339,8 +399,13 @@
     )
     add_row("", "sd", input = sd_blocks[[1L]]$input_id)
     for (g in fill) {
-      add_row(class_default, "sd", group = g, lb = 0,
-              input = paste0("structure:sd_", g))
+      add_row(
+        class_default,
+        "sd",
+        group = g,
+        lb = 0,
+        input = paste0("structure:sd_", g)
+      )
     }
     for (b in sd_blocks) {
       k <- .fb_brms_sd_index(formula, data, data2, family, b$brms_group)
@@ -356,15 +421,21 @@
       )
       lines <- c(
         hierarchy = sprintf(
-          "target += lognormal_lpdf(sd_%d | %s, %s);", k, mu, tau
+          "target += lognormal_lpdf(sd_%d | %s, %s);",
+          k,
+          mu,
+          tau
         ),
         location = sprintf("target += normal_lpdf(%s | pool_location, 2);", mu),
         scale = paste0("target += ", .fb_stan_lpdf(dens$string, tau), ";")
       )
       model_code <- c(model_code, lines)
       statements[[length(statements) + 1L]] <- list(
-        block = b, sd_name = paste0("sd_", k), lines = lines,
-        pooling_sd = tau, location = mu
+        block = b,
+        sd_name = paste0("sd_", k),
+        lines = lines,
+        pooling_sd = tau,
+        location = mu
       )
     }
   }
@@ -372,10 +443,14 @@
   stanvars <- brms::stanvar(x = location, name = "pool_location")
   if (length(par_code)) {
     stanvars <- stanvars +
-      brms::stanvar(scode = paste(par_code, collapse = "\n  "),
-                    block = "parameters") +
-      brms::stanvar(scode = paste(unname(model_code), collapse = "\n  "),
-                    block = "model")
+      brms::stanvar(
+        scode = paste(par_code, collapse = "\n  "),
+        block = "parameters"
+      ) +
+      brms::stanvar(
+        scode = paste(unname(model_code), collapse = "\n  "),
+        block = "model"
+      )
   }
   list(
     specs = rows,
@@ -403,8 +478,13 @@
         slot_id = paste0("stan:", st$block$brms_group, ":", nm),
         engine = "brms",
         section = "sd",
-        engine_slot = if (identical(nm, "hierarchy")) st$sd_name else
-          if (identical(nm, "location")) st$location else st$pooling_sd,
+        engine_slot = if (identical(nm, "hierarchy")) {
+          st$sd_name
+        } else if (identical(nm, "location")) {
+          st$location
+        } else {
+          st$pooling_sd
+        },
         target_key = st$block$group,
         input_id = st$block$input_id,
         structure = "pooled",

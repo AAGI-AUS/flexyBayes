@@ -224,8 +224,11 @@ test_that("fb() carries correlated random slopes (x | g) to the brms formula", {
   expect_identical(fb_ir$random_terms[[1]]$type, "simple_slope_cor")
   expect_identical(fb_ir$random_terms[[1]]$var, "g1")
   expect_identical(fb_ir$random_terms[[1]]$slope_var, "x")
-  txt <- gsub("\\s+", " ", paste(deparse(.fb_to_brms_formula(fb_ir)),
-                                 collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.fb_to_brms_formula(fb_ir)), collapse = " ")
+  )
   expect_match(txt, "(x | g1)", fixed = TRUE)
 })
 
@@ -409,7 +412,6 @@ test_that("fb(review_code = TRUE, backend = 'inla') raises structured refusal", 
 #      covered by test-as-draws-generics.R ("both engines answer    #
 #      with the same parameter tokens")                             #
 # ---------------------------------------------------------------- #
-
 
 # ---------------------------------------------------------------- #
 # (14) Invalid backend value raises match.arg error                #

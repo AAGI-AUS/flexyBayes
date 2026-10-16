@@ -44,8 +44,12 @@
 }
 
 # The condition a public call raises, or NULL when it does not refuse.
-.rw_refusal <- function(..., backend, known_matrices = list(),
-                        return_code = TRUE) {
+.rw_refusal <- function(
+  ...,
+  backend,
+  known_matrices = list(),
+  return_code = TRUE
+) {
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_auto_fallback_note = TRUE
@@ -66,8 +70,11 @@
 # Phrases no refusal uses any more: each described flexyBayes's own gap as a
 # limitation of an engine.
 .rw_retired <- c(
-  "no active engine", "no active backend", "cannot represent",
-  "neither active engine", "INLA cannot"
+  "no active engine",
+  "no active backend",
+  "cannot represent",
+  "neither active engine",
+  "INLA cannot"
 )
 
 .rw_expect_plain <- function(msg, label) {
@@ -95,8 +102,11 @@ test_that("a multi-trait covariance refusal points at brms instead of denying it
     )
     expect_s3_class(err, "flexybayes_refusal_interaction_not_representable")
     msg <- conditionMessage(err)
-    expect_match(msg, "flexyBayes has no lowering for a multi-trait",
-      fixed = TRUE)
+    expect_match(
+      msg,
+      "flexyBayes has no lowering for a multi-trait",
+      fixed = TRUE
+    )
     expect_match(msg, "(0 + trait | gr(gen, cov = K))", fixed = TRUE)
     .rw_expect_plain(msg, engine)
   }
@@ -107,14 +117,22 @@ test_that("corh() refuses by name on both engines and names the equivalent it fi
   skip_if_not_installed("brms")
   d <- .rw_data()
   for (engine in c("inla", "brms")) {
-    err <- .rw_refusal(y ~ env, random = ~ corh(env):gen, data = d,
-      backend = engine)
+    err <- .rw_refusal(
+      y ~ env,
+      random = ~ corh(env):gen,
+      data = d,
+      backend = engine
+    )
     expect_s3_class(
-      err, "flexybayes_refusal_corh_no_equicorrelation_representation"
+      err,
+      "flexybayes_refusal_corh_no_equicorrelation_representation"
     )
     msg <- conditionMessage(err)
-    expect_match(msg, "flexyBayes has no lowering for it on either engine",
-      fixed = TRUE)
+    expect_match(
+      msg,
+      "flexyBayes has no lowering for it on either engine",
+      fixed = TRUE
+    )
     expect_match(msg, "random = ~ gen + env:gen", fixed = TRUE)
     # INLA used to answer with a gate refusal that pointed at brms, which
     # then refused the same model.
@@ -128,7 +146,8 @@ test_that("cor() refuses without a claim about INLA's models", {
   d <- .rw_data()
   err <- .rw_refusal(y ~ 1, random = ~ cor(env), data = d, backend = "inla")
   expect_s3_class(
-    err, "flexybayes_refusal_corh_no_equicorrelation_representation"
+    err,
+    "flexybayes_refusal_corh_no_equicorrelation_representation"
   )
   msg <- conditionMessage(err)
   expect_match(msg, "flexyBayes has no lowering for it", fixed = TRUE)
@@ -141,19 +160,25 @@ test_that("a factor-analytic refusal says the brms gap is flexyBayes's", {
   skip_if_not_installed("brms")
   d <- .rw_data()
   for (engine in c("inla", "brms")) {
-    err <- .rw_refusal(y ~ env, random = ~ fa(env, 1):gen, data = d,
-      backend = engine)
+    err <- .rw_refusal(
+      y ~ env,
+      random = ~ fa(env, 1):gen,
+      data = d,
+      backend = engine
+    )
     expect_s3_class(err, "flexybayes_refusal_factor_analytic_not_repeatable")
     msg <- conditionMessage(err)
-    expect_match(msg, "flexyBayes has no factor-analytic lowering for brms",
-      fixed = TRUE)
+    expect_match(
+      msg,
+      "flexyBayes has no factor-analytic lowering for brms",
+      fixed = TRUE
+    )
     expect_false(grepl("brms has no", msg, fixed = TRUE))
     expect_false(grepl("0.10.0.9000", msg, fixed = TRUE))
     expect_match(msg, "diag(env):gen", fixed = TRUE)
     .rw_expect_plain(msg, engine)
   }
-  bare <- .rw_refusal(y ~ 1, random = ~ fa(env, 1), data = d,
-    backend = "inla")
+  bare <- .rw_refusal(y ~ 1, random = ~ fa(env, 1), data = d, backend = "inla")
   expect_s3_class(bare, "flexybayes_refusal_fa_not_representable")
   # fa(f, k):g is refused too, so the bare refusal no longer points at it.
   expect_false(grepl("INLA emits", conditionMessage(bare), fixed = TRUE))
@@ -165,8 +190,11 @@ test_that("ar2() says flexyBayes writes first-order terms only", {
   err <- .rw_refusal(y ~ 1, random = ~ ar2(row), data = g, backend = "inla")
   expect_s3_class(err, "flexybayes_refusal_ar2_not_representable")
   msg <- conditionMessage(err)
-  expect_match(msg, "flexyBayes writes first-order autoregressive terms only",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "flexyBayes writes first-order autoregressive terms only",
+    fixed = TRUE
+  )
   expect_match(msg, "INLA's own ar model takes higher orders", fixed = TRUE)
   .rw_expect_plain(msg, "ar2()")
 })
@@ -174,8 +202,7 @@ test_that("ar2() says flexyBayes writes first-order terms only", {
 test_that("the residual AR1 refusal describes flexyBayes's field, not INLA", {
   skip_if_not_installed("INLA")
   g <- .rw_grid()
-  err <- .rw_refusal(y ~ 1, residual = ~ ar1(row), data = g,
-    backend = "inla")
+  err <- .rw_refusal(y ~ 1, residual = ~ ar1(row), data = g, backend = "inla")
   expect_s3_class(err, "flexybayes_refusal_ar1_residual_not_representable")
   msg <- conditionMessage(err)
   expect_match(msg, "flexyBayes fits this process", fixed = TRUE)
@@ -190,16 +217,21 @@ test_that("a low-rank smooth refusal points at a smooth that fits", {
   d <- data.frame(x = stats::runif(40L), y = stats::rnorm(40L))
   err <- .rw_refusal(
     y ~ 1,
-    random = ~ s(x, representation = list(scheme = "low_rank_smooth",
-      rank = 4L)),
+    random = ~ s(
+      x,
+      representation = list(scheme = "low_rank_smooth", rank = 4L)
+    ),
     data = d,
     backend = "inla",
     return_code = FALSE
   )
   expect_identical(err$reason_code, "low_rank_smooth_unsupported")
   msg <- conditionMessage(err)
-  expect_match(msg, "write the smooth as spl(x), which fits on INLA",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "write the smooth as spl(x), which fits on INLA",
+    fixed = TRUE
+  )
   # The exact s() smooth it used to point at is refused on both engines.
   expect_false(grepl("fit the exact smooth", msg, fixed = TRUE))
   .rw_expect_plain(msg, "low-rank smooth")
@@ -211,7 +243,10 @@ test_that("a factor slope refusal states what fits on INLA", {
   skip_if_not_installed("INLA")
   d <- .rw_data()
   err <- .rw_refusal(y ~ env + (env | gen), data = d, backend = "inla")
-  expect_s3_class(err, "flexybayes_refusal_brms_factor_random_slope_unsupported")
+  expect_s3_class(
+    err,
+    "flexybayes_refusal_brms_factor_random_slope_unsupported"
+  )
   msg <- conditionMessage(err)
   expect_match(msg, "On INLA, diag(env):gen fits and", fixed = TRUE)
   expect_false(grepl("f() machinery", msg, fixed = TRUE))
@@ -231,8 +266,12 @@ test_that("an mgcv smooth on brms says brms itself fits s()", {
 test_that("an AR1 field on brms is flexyBayes's gap", {
   skip_if_not_installed("brms")
   g <- .rw_grid()
-  err <- .rw_refusal(y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "brms")
+  err <- .rw_refusal(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "brms"
+  )
   expect_s3_class(err, "flexybayes_refusal_stan_cannot_represent_ar1_field")
   msg <- conditionMessage(err)
   expect_match(msg, "It has no brms lowering for the field", fixed = TRUE)
@@ -246,21 +285,41 @@ test_that("a blocks carrier is refused on each route in flexyBayes's words", {
   blocks <- list(diag(3), diag(3))
   spell <- ~ vm(gen, cov = fb_cov(B, type = "blocks"))
 
-  brms_err <- .rw_refusal(y ~ env, random = spell, data = d,
-    known_matrices = list(B = blocks), backend = "brms")
-  expect_s3_class(brms_err, "flexybayes_refusal_stan_cannot_represent_structured_cov")
+  brms_err <- .rw_refusal(
+    y ~ env,
+    random = spell,
+    data = d,
+    known_matrices = list(B = blocks),
+    backend = "brms"
+  )
+  expect_s3_class(
+    brms_err,
+    "flexybayes_refusal_stan_cannot_represent_structured_cov"
+  )
   brms_msg <- conditionMessage(brms_err)
-  expect_match(brms_msg, "flexyBayes cannot fit this model on brms", fixed = TRUE)
+  expect_match(
+    brms_msg,
+    "flexyBayes cannot fit this model on brms",
+    fixed = TRUE
+  )
   # INLA refuses a blocks carrier too, so the message no longer sends the
   # user there.
   expect_false(grepl("backend = \"inla\"", brms_msg, fixed = TRUE))
   .rw_expect_plain(brms_msg, "brms")
 
-  inla_err <- .rw_refusal(y ~ env, random = spell, data = d,
-    known_matrices = list(B = blocks), backend = "inla")
+  inla_err <- .rw_refusal(
+    y ~ env,
+    random = spell,
+    data = d,
+    known_matrices = list(B = blocks),
+    backend = "inla"
+  )
   expect_s3_class(inla_err, "flexybayes_refusal_inla_gate_refused")
-  expect_match(conditionMessage(inla_err),
-    "flexyBayes's INLA route would fit each block", fixed = TRUE)
+  expect_match(
+    conditionMessage(inla_err),
+    "flexyBayes's INLA route would fit each block",
+    fixed = TRUE
+  )
 
   # auto: neither route fits it. The one-time routing note and the refusal
   # both say so without a claim about the engines.
@@ -273,9 +332,14 @@ test_that("a blocks carrier is refused on each route in flexyBayes's words", {
     ),
     withCallingHandlers(
       tryCatch(
-        flexybayes(y ~ env, random = spell, data = d,
-          known_matrices = list(B = blocks), backend = "auto",
-          verbose = FALSE),
+        flexybayes(
+          y ~ env,
+          random = spell,
+          data = d,
+          known_matrices = list(B = blocks),
+          backend = "auto",
+          verbose = FALSE
+        ),
         error = function(e) e
       ),
       message = function(m) {
@@ -286,8 +350,11 @@ test_that("a blocks carrier is refused on each route in flexyBayes's words", {
   )
   expect_s3_class(auto_err, "flexybayes_refusal_auto_no_active_route")
   auto_msg <- conditionMessage(auto_err)
-  expect_match(auto_msg, "flexyBayes cannot fit this model on INLA or on brms",
-    fixed = TRUE)
+  expect_match(
+    auto_msg,
+    "flexyBayes cannot fit this model on INLA or on brms",
+    fixed = TRUE
+  )
   .rw_expect_plain(auto_msg, "auto")
   note <- msgs[grepl("backend = \"auto\"", msgs, fixed = TRUE)]
   expect_length(note, 1L)
@@ -300,12 +367,20 @@ test_that("a missing count response on brms names the families flexyBayes checke
   d <- .rw_data()
   d$cnt <- stats::rpois(nrow(d), 3)
   d$cnt[[1L]] <- NA
-  err <- .rw_refusal(cnt ~ env, random = ~gen, data = d, family = "poisson",
-    backend = "brms")
+  err <- .rw_refusal(
+    cnt ~ env,
+    random = ~gen,
+    data = d,
+    family = "poisson",
+    backend = "brms"
+  )
   expect_s3_class(err, "flexybayes_refusal_brms_cannot_augment_nongaussian")
   msg <- conditionMessage(err)
-  expect_match(msg, "gaussian and lognormal families, the two checked",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "gaussian and lognormal families, the two checked",
+    fixed = TRUE
+  )
   # brms's mi() takes a gamma response as well (test-engine-claims.R).
   expect_false(grepl("admitted only for", msg, fixed = TRUE))
 })
@@ -313,15 +388,22 @@ test_that("a missing count response on brms names the families flexyBayes checke
 test_that("an untranslated brms prior target no longer cites a refusal that is gone", {
   skip_if_not_installed("brms")
   d <- .rw_data()
-  err <- .rw_refusal(y ~ x + (x | gen), data = d, backend = "brms",
-    prior = fb_prior(cor(group = "gen") ~ lkj(2)))
+  err <- .rw_refusal(
+    y ~ x + (x | gen),
+    data = d,
+    backend = "brms",
+    prior = fb_prior(cor(group = "gen") ~ lkj(2))
+  )
   expect_s3_class(err, "flexybayes_refusal_prior_not_translatable_for_backend")
   msg <- conditionMessage(err)
   expect_match(msg, "brms keeps its own LKJ prior with eta = 1", fixed = TRUE)
   # Correlated random slopes fit on brms now.
   expect_false(grepl("refused at ingest", msg, fixed = TRUE))
-  expect_match(msg, "flexyBayes translates these priors for backend",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "flexyBayes translates these priors for backend",
+    fixed = TRUE
+  )
 })
 
 # --- the INLA gate ------------------------------------------------------- #
@@ -329,12 +411,20 @@ test_that("an untranslated brms prior target no longer cites a refusal that is g
 test_that("a prior INLA is not given says flexyBayes does not translate it", {
   skip_if_not_installed("INLA")
   d <- .rw_data()
-  err <- .rw_refusal(y ~ x, random = ~gen, data = d, backend = "inla",
-    prior = fb_prior(b("x") ~ student_t(3, 0, 1)))
+  err <- .rw_refusal(
+    y ~ x,
+    random = ~gen,
+    data = d,
+    backend = "inla",
+    prior = fb_prior(b("x") ~ student_t(3, 0, 1))
+  )
   expect_s3_class(err, "flexybayes_refusal_prior_not_translatable_for_backend")
   msg <- conditionMessage(err)
-  expect_match(msg, "flexyBayes does not translate 1 of the supplied prior",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "flexyBayes does not translate 1 of the supplied prior",
+    fixed = TRUE
+  )
   expect_false(grepl("cannot carry", msg, fixed = TRUE))
   expect_false(grepl("0.9.2", msg, fixed = TRUE))
 })
@@ -343,10 +433,18 @@ test_that("the gate's hurdle-gamma refusal reads INLA's own likelihood list", {
   skip_if_not_installed("INLA")
   d <- .rw_data()
   set.seed(24L)
-  d$hg <- ifelse(stats::rbinom(nrow(d), 1L, 0.7) == 1L,
-    stats::rgamma(nrow(d), shape = 2, rate = 0.5), 0)
-  err <- .rw_refusal(hg ~ env, random = ~gen, data = d,
-    family = "hurdle_gamma", backend = "inla")
+  d$hg <- ifelse(
+    stats::rbinom(nrow(d), 1L, 0.7) == 1L,
+    stats::rgamma(nrow(d), shape = 2, rate = 0.5),
+    0
+  )
+  err <- .rw_refusal(
+    hg ~ env,
+    random = ~gen,
+    data = d,
+    family = "hurdle_gamma",
+    backend = "inla"
+  )
   expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
   msg <- conditionMessage(err)
   expect_match(msg, "flexyBayes cannot fit this model on INLA", fixed = TRUE)
@@ -360,12 +458,20 @@ test_that("the gate's link refusal describes flexyBayes's INLA route", {
   skip_if_not_installed("INLA")
   d <- .rw_data()
   d$bin <- stats::rbinom(nrow(d), 1L, 0.5)
-  err <- .rw_refusal(bin ~ env, random = ~gen, data = d,
-    family = stats::binomial(link = "probit"), backend = "inla")
+  err <- .rw_refusal(
+    bin ~ env,
+    random = ~gen,
+    data = d,
+    family = stats::binomial(link = "probit"),
+    backend = "inla"
+  )
   expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
   msg <- conditionMessage(err)
-  expect_match(msg, "flexyBayes's INLA route passes the family's default link",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "flexyBayes's INLA route passes the family's default link",
+    fixed = TRUE
+  )
   # INLA itself takes a probit link (test-engine-claims.R).
   expect_false(grepl("INLA takes the family's default link", msg, fixed = TRUE))
 })
@@ -378,21 +484,41 @@ test_that("the gate does not point at brms for a model brms refuses too", {
     expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
     msg <- conditionMessage(err)
     label <- deparse(spell)
-    expect_match(msg, "flexyBayes has no INLA lowering for this term",
-      fixed = TRUE, label = label)
-    expect_match(msg, "flexyBayes cannot fit it on brms either", fixed = TRUE,
-      label = label)
-    expect_false(grepl("Fit it with backend = \"brms\"", msg, fixed = TRUE),
-      label = label)
-    expect_false(grepl("flexyBayes gap, not an INLA one", msg, fixed = TRUE),
-      label = label)
+    expect_match(
+      msg,
+      "flexyBayes has no INLA lowering for this term",
+      fixed = TRUE,
+      label = label
+    )
+    expect_match(
+      msg,
+      "flexyBayes cannot fit it on brms either",
+      fixed = TRUE,
+      label = label
+    )
+    expect_false(
+      grepl("Fit it with backend = \"brms\"", msg, fixed = TRUE),
+      label = label
+    )
+    expect_false(
+      grepl("flexyBayes gap, not an INLA one", msg, fixed = TRUE),
+      label = label
+    )
     .rw_expect_plain(msg, label)
   }
-  residual <- .rw_refusal(y ~ env, random = ~gen,
-    residual = ~ at(env, "1"):units, data = d, backend = "inla")
+  residual <- .rw_refusal(
+    y ~ env,
+    random = ~gen,
+    residual = ~ at(env, "1"):units,
+    data = d,
+    backend = "inla"
+  )
   expect_s3_class(residual, "flexybayes_refusal_inla_gate_refused")
-  expect_match(conditionMessage(residual),
-    "flexyBayes has no INLA lowering for this residual term", fixed = TRUE)
+  expect_match(
+    conditionMessage(residual),
+    "flexyBayes has no INLA lowering for this residual term",
+    fixed = TRUE
+  )
 })
 
 test_that("the gate's us() refusals make no claim about INLA's models", {
@@ -403,8 +529,7 @@ test_that("the gate's us() refusals make no claim about INLA's models", {
     env = factor(rep(letters[1:6], each = 10L)),
     gen = factor(rep(seq_len(10L), times = 6L))
   )
-  err <- .rw_refusal(y ~ 1, random = ~ us(env):gen, data = d,
-    backend = "inla")
+  err <- .rw_refusal(y ~ 1, random = ~ us(env):gen, data = d, backend = "inla")
   expect_s3_class(err, "flexybayes_refusal_correlated_covariance_requires_brms")
   msg <- conditionMessage(err)
   # INLA's iidkd carries more than five levels; the cap is flexyBayes's.
@@ -427,12 +552,22 @@ test_that("an aggregated sectioned residual is refused as flexyBayes's gap", {
     env = factor(seq_len(3L))
   )
   d$y <- stats::rnorm(nrow(d), 10, 2)
-  err <- .rw_refusal(y ~ env, random = ~gen, residual = ~ at(env):units,
-    data = d, backend = "inla", aggregate = TRUE, return_code = FALSE)
+  err <- .rw_refusal(
+    y ~ env,
+    random = ~gen,
+    residual = ~ at(env):units,
+    data = d,
+    backend = "inla",
+    aggregate = TRUE,
+    return_code = FALSE
+  )
   expect_s3_class(err, "flexybayes_aggregate_refusal")
   msg <- conditionMessage(err)
-  expect_match(msg, "flexyBayes's aggregated route has no sectioned residual",
-    fixed = TRUE)
+  expect_match(
+    msg,
+    "flexyBayes's aggregated route has no sectioned residual",
+    fixed = TRUE
+  )
   expect_false(grepl("multi-likelihood stack", msg, fixed = TRUE))
 })
 
@@ -443,8 +578,13 @@ test_that("the default-prior notice is two sentences with the scale and the off 
   withr::with_options(
     list(flexyBayes.silence_default_prior_note = FALSE),
     withCallingHandlers(
-      invisible(flexybayes(y ~ env, random = ~gen, data = d, plan = TRUE,
-        verbose = FALSE)),
+      invisible(flexybayes(
+        y ~ env,
+        random = ~gen,
+        data = d,
+        plan = TRUE,
+        verbose = FALSE
+      )),
       message = function(m) {
         msgs[[length(msgs) + 1L]] <<- conditionMessage(m)
         invokeRestart("muffleMessage")
@@ -454,15 +594,24 @@ test_that("the default-prior notice is two sentences with the scale and the off 
   note <- msgs[grepl("half_normal(scale = ", msgs, fixed = TRUE)]
   expect_length(note, 1L)
   # The scale is 5 sd(y) on an identity link.
-  expect_match(note, paste0("half_normal(scale = ",
-    flexyBayes:::.fb_signif_string(5 * stats::sd(d$y)), ")"), fixed = TRUE)
+  expect_match(
+    note,
+    paste0(
+      "half_normal(scale = ",
+      flexyBayes:::.fb_signif_string(5 * stats::sd(d$y)),
+      ")"
+    ),
+    fixed = TRUE
+  )
   expect_match(note, "?fb_prior", fixed = TRUE)
-  expect_match(note, "options(flexyBayes.silence_default_prior_note = TRUE)",
-    fixed = TRUE)
+  expect_match(
+    note,
+    "options(flexyBayes.silence_default_prior_note = TRUE)",
+    fixed = TRUE
+  )
   # Two sentences: two full stops that end a sentence. The notice used to
   # be a six-line paragraph.
   body <- sub("^flexyBayes: ", "", trimws(note))
   expect_identical(lengths(regmatches(body, gregexpr("\\.( |$)", body))), 2L)
   expect_lte(nchar(note), 320L)
 })
-

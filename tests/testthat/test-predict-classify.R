@@ -26,8 +26,11 @@ suppressPackageStartupMessages(library(testthat))
     blk = factor(rep(letters[1:5], length.out = n))
   )
   b <- stats::rnorm(5L, sd = 0.6)[as.integer(d$blk)]
-  d$yield <- 4 + c(0, 0.8, -0.5)[as.integer(d$variety)] +
-    0.3 * (d$env == "E2") + b + stats::rnorm(n, sd = 0.4)
+  d$yield <- 4 +
+    c(0, 0.8, -0.5)[as.integer(d$variety)] +
+    0.3 * (d$env == "E2") +
+    b +
+    stats::rnorm(n, sd = 0.4)
   d
 }
 
@@ -99,7 +102,10 @@ test_that("predict() without classify is unchanged on INLA", {
   trms <- stats::delete.response(stats::terms(stats::formula(fit)))
   bhat <- stats::coef(fit)
   x_mat <- flexyBayes:::.fb_fixef_model_matrix(
-    trms, fit$data, names(bhat), fit$data
+    trms,
+    fit$data,
+    names(bhat),
+    fit$data
   )
   expect_equal(pred, as.numeric(x_mat %*% bhat))
 
@@ -256,8 +262,7 @@ test_that("level widens the interval and is honoured on both engines", {
     wide <- stats::predict(fits[[nm]], classify = "variety", level = 0.99)
     narrow <- stats::predict(fits[[nm]], classify = "variety", level = 0.80)
     expect_true(
-      all(wide$conf.high - wide$conf.low >
-        narrow$conf.high - narrow$conf.low),
+      all(wide$conf.high - wide$conf.low > narrow$conf.high - narrow$conf.low),
       label = nm
     )
     # The point estimate does not move with the level.

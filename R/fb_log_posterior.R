@@ -154,7 +154,9 @@ fb_log_posterior.flexybayes_inla <- function(fit, ...) {
   stop(.fb_refusal_condition(
     reason_code = "log_density_producer_unavailable",
     message = paste0(
-      "No C4 log-density producer is available for ", backend, ".\n",
+      "No C4 log-density producer is available for ",
+      backend,
+      ".\n",
       detail
     ),
     family_class = "fb_c4_unavailable",

@@ -100,15 +100,27 @@ test_that("fb_fixed_design() gives the columns, their terms and ASReml's order",
 
 test_that("draw names of a two-part fit lose the part prefix brms writes", {
   nm <- c(
-    "b_a_Intercept", "b_a_regionR2", "b_b_x01", "b_b_a_soil", "sdb_b_x01",
-    "hs_global_b", "sd_cluster__a_Intercept", "r_cluster__a[C01,Intercept]",
+    "b_a_Intercept",
+    "b_a_regionR2",
+    "b_b_x01",
+    "b_b_a_soil",
+    "sdb_b_x01",
+    "hs_global_b",
+    "sd_cluster__a_Intercept",
+    "r_cluster__a[C01,Intercept]",
     "sigma"
   )
   expect_identical(
     .fb_nl_canonical_names(nm, c(.FB_NL_PROTECTED_PART, .FB_NL_BLOCK_PART)),
     c(
-      "b_Intercept", "b_regionR2", "b_x01", "b_a_soil", "sdb_x01",
-      "hs_global", "sd_cluster__Intercept", "r_cluster[C01,Intercept]",
+      "b_Intercept",
+      "b_regionR2",
+      "b_x01",
+      "b_a_soil",
+      "sdb_x01",
+      "hs_global",
+      "sd_cluster__Intercept",
+      "r_cluster[C01,Intercept]",
       "sigma"
     )
   )
@@ -130,8 +142,14 @@ test_that("the reading functions return what the fit was fitted with", {
   skip_if_not_installed("INLA")
   fbext_quiet()
   d <- fbext_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, weights = d$w,
-                    backend = "inla", verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    weights = d$w,
+    backend = "inla",
+    verbose = FALSE
+  )
   terms <- fb_model_terms(fit)
   expect_identical(terms, fit$extras$fb_terms %||% fit$fb)
   expect_identical(terms$response, "y")
@@ -147,14 +165,24 @@ test_that("the reading functions return what the fit was fitted with", {
   expect_length(draws, 3L)
   # On the scale of the data: the draws of the linear predictor sit around
   # the response, not around zero.
-  predictor <- vapply(draws, function(z) {
-    mean(z$latent[grepl("^Predictor:", rownames(z$latent)), 1L])
-  }, numeric(1L))
+  predictor <- vapply(
+    draws,
+    function(z) {
+      mean(z$latent[grepl("^Predictor:", rownames(z$latent)), 1L])
+    },
+    numeric(1L)
+  )
   expect_lt(max(abs(predictor - mean(d$y))), 1)
   expect_error(fb_inla_posterior_sample(list(), 1L), "fit on INLA")
 
-  plain <- flexybayes(y ~ x, random = ~site, data = d, known_variance = d$v,
-                      backend = "inla", verbose = FALSE)
+  plain <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    known_variance = d$v,
+    backend = "inla",
+    verbose = FALSE
+  )
   expect_null(fb_model_weights(plain))
   known <- fb_known_variance(plain)
   expect_equal(known$values, d$v)
@@ -169,8 +197,13 @@ test_that("fb_check_refit() refuses a fit recorded from a formula it did not fit
   skip_if_not_installed("brms")
   fbext_quiet()
   d <- fbext_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   expect_identical(fb_check_refit(fit), fit)
   fit$extras$call_info$fixed <- brms::bf(y ~ x + (1 | site), sigma ~ x)
   err <- expect_error(

@@ -3,11 +3,19 @@
 
 test_that("DEF-200: covariate standardisation reads a:b:cc without partial matching", {
   set.seed(3)
-  d <- expand.grid(a = factor(1:3), b = factor(1:2), cc = factor(1:2), rep = 1:4)
+  d <- expand.grid(
+    a = factor(1:3),
+    b = factor(1:2),
+    cc = factor(1:2),
+    rep = 1:4
+  )
   d$x <- stats::rnorm(nrow(d))
   d$y <- stats::rpois(nrow(d), 3)
   fb <- .fb_from_asreml_impl(
-    fixed = y ~ x, random = ~ a:b:cc, data = d, family = "poisson"
+    fixed = y ~ x,
+    random = ~ a:b:cc,
+    data = d,
+    family = "poisson"
   )
   withr::local_options(warnPartialMatchDollar = TRUE)
   expect_no_warning(protected <- .fb_inla_covariate_protected(fb))

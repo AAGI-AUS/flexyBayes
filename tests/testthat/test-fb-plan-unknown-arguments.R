@@ -3,7 +3,11 @@
 
 .pua_data <- function() {
   set.seed(1)
-  data.frame(y = stats::rpois(60, 3), x = stats::rnorm(60), g = factor(rep(1:6, 10)))
+  data.frame(
+    y = stats::rpois(60, 3),
+    x = stats::rnorm(60),
+    g = factor(rep(1:6, 10))
+  )
 }
 
 test_that("DEF-196: a misspelt argument is refused by name", {
@@ -24,8 +28,23 @@ test_that("DEF-196: every unknown name is listed, and an unnamed extra is refuse
   )
   expect_identical(err$arguments, c("fixed", "seed"))
   expect_error(
-    fb_plan(y ~ x + (1 | g), d, NULL, NULL, "auto", NULL, list(), "gaussian",
-      NULL, NULL, "auto", NULL, NULL, "auto", "extra"),
+    fb_plan(
+      y ~ x + (1 | g),
+      d,
+      NULL,
+      NULL,
+      "auto",
+      NULL,
+      list(),
+      "gaussian",
+      NULL,
+      NULL,
+      "auto",
+      NULL,
+      NULL,
+      "auto",
+      "extra"
+    ),
     class = "flexybayes_refusal_plan_argument_unknown"
   )
 })

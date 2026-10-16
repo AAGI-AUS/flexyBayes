@@ -28,29 +28,51 @@
   list(
     gaussian_default = list(y ~ f, random = ~g, data = quote(d)),
     gaussian_prior_vc_sd = list(
-      y ~ f, random = ~g, data = quote(d), prior_vc_sd = 2
+      y ~ f,
+      random = ~g,
+      data = quote(d),
+      prior_vc_sd = 2
     ),
     gaussian_stated_prior = list(
-      y ~ f, random = ~g, data = quote(d),
+      y ~ f,
+      random = ~g,
+      data = quote(d),
       prior = fb_prior(
         sigma ~ uniform(lower = 0, upper = 20),
         sd(group = "g") ~ uniform(lower = 0, upper = 20)
       )
     ),
     gaussian_weights_inla = list(
-      y ~ f, random = ~g, data = quote(d), weights = d$w, backend = "inla"
+      y ~ f,
+      random = ~g,
+      data = quote(d),
+      weights = d$w,
+      backend = "inla"
     ),
     gaussian_known_variance = list(
-      y ~ f, random = ~g, data = quote(d), known_variance = d$v
+      y ~ f,
+      random = ~g,
+      data = quote(d),
+      known_variance = d$v
     ),
     gaussian_omit = list(
-      y ~ f, random = ~g, data = quote(d_na), na_action = "omit"
+      y ~ f,
+      random = ~g,
+      data = quote(d_na),
+      na_action = "omit"
     ),
     poisson_aggregated = list(
-      n ~ f, random = ~g, data = quote(d), family = "poisson"
+      n ~ f,
+      random = ~g,
+      data = quote(d),
+      family = "poisson"
     ),
     poisson_per_row = list(
-      n ~ f, random = ~g, data = quote(d), family = "poisson", aggregate = FALSE
+      n ~ f,
+      random = ~g,
+      data = quote(d),
+      family = "poisson",
+      aggregate = FALSE
     )
   )
 }
@@ -83,11 +105,19 @@
     same <- length(a[[nm]]) == length(b[[nm]]) &&
       isTRUE(all.equal(a[[nm]], b[[nm]], tolerance = 1e-4))
     if (!same) {
-      out <- c(out, paste0(
-        label, ": ", nm, " estimates differ (",
-        paste(signif(a[[nm]], 7L), collapse = ", "), " against ",
-        paste(signif(b[[nm]], 7L), collapse = ", "), ")"
-      ))
+      out <- c(
+        out,
+        paste0(
+          label,
+          ": ",
+          nm,
+          " estimates differ (",
+          paste(signif(a[[nm]], 7L), collapse = ", "),
+          " against ",
+          paste(signif(b[[nm]], 7L), collapse = ", "),
+          ")"
+        )
+      )
     }
   }
   out
@@ -132,9 +162,17 @@ test_that("DC-16 guard: proceed() and update() repeat a brms fit", {
   )
   d <- .g16_data()
   args <- list(
-    y ~ f, random = ~g, data = d, known_variance = d$v, backend = "brms",
-    chains = 1L, n_samples = 200L, warmup = 200L, seed = 16L,
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = d,
+    known_variance = d$v,
+    backend = "brms",
+    chains = 1L,
+    n_samples = 200L,
+    warmup = 200L,
+    seed = 16L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )
   fit <- suppressWarnings(suppressMessages(do.call(flexybayes, args)))
   review <- suppressWarnings(suppressMessages(

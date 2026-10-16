@@ -46,10 +46,14 @@ test_that("sim_gwas_pheno() QTL markers carry stronger marginal signal than null
   Zstd <- scale(sim$markers)
   Zstd[!is.finite(Zstd)] <- 0
   # Marginal single-marker association: |t| from y ~ marker.
-  abs_t <- vapply(seq_len(ncol(Zstd)), function(j) {
-    f <- stats::lm(sim$y ~ Zstd[, j])
-    abs(summary(f)$coefficients[2L, 3L])
-  }, numeric(1))
+  abs_t <- vapply(
+    seq_len(ncol(Zstd)),
+    function(j) {
+      f <- stats::lm(sim$y ~ Zstd[, j])
+      abs(summary(f)$coefficients[2L, 3L])
+    },
+    numeric(1)
+  )
   qtl_t <- abs_t[sim$qtl_idx]
   null_t <- abs_t[-sim$qtl_idx]
   # Every authored QTL beats the 95th percentile of the null markers.

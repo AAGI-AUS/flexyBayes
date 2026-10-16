@@ -94,8 +94,10 @@
       return(da)
     }
   }
-  if (inherits(fit$draws, "draws_array") &&
-        isTRUE(posterior::nchains(fit$draws) >= 2L)) {
+  if (
+    inherits(fit$draws, "draws_array") &&
+      isTRUE(posterior::nchains(fit$draws) >= 2L)
+  ) {
     return(fit$draws)
   }
   NULL
@@ -110,7 +112,9 @@
   da <- .fb_draws_array_or_null(fit)
   if (is.null(da)) {
     return(list(
-      applicable = FALSE, min_ess_bulk = NA_real_, max_rhat = NA_real_
+      applicable = FALSE,
+      min_ess_bulk = NA_real_,
+      max_rhat = NA_real_
     ))
   }
   s <- posterior::summarise_draws(

@@ -138,13 +138,20 @@
     # ar1() on the group with a fourth parameter it does not have.
     ar1_spatial_at = if (isTRUE(term$residual)) {
       paste0(
-        "dsum(~ ar1(", term$row_var, "):ar1(", term$col_var, ") | ",
-        term$by_var, ") residual, no nugget (3 parameters per level)"
+        "dsum(~ ar1(",
+        term$row_var,
+        "):ar1(",
+        term$col_var,
+        ") | ",
+        term$by_var,
+        ") residual, no nugget (3 parameters per level)"
       )
     } else {
       paste0(
-        .ar1_term_spelling(term), " field per level (",
-        if (isTRUE(term$col_ar1)) 3L else 2L, " parameters each) + nugget"
+        .ar1_term_spelling(term),
+        " field per level (",
+        if (isTRUE(term$col_ar1)) 3L else 2L,
+        " parameters each) + nugget"
       )
     },
     ar1_spatial = if (isTRUE(term$residual)) {
@@ -375,12 +382,16 @@
   }
   sectioned <- .fb_sectioned_residual_prior(ps)
   slots <- ps$slots
-  inla_sectioned <- "sigma" %in% names(recorded) &&
+  inla_sectioned <- "sigma" %in%
+    names(recorded) &&
     is.data.frame(slots) &&
     all(c("structure", "target_key", "readback_agrees") %in% names(slots)) &&
-    any(slots$structure %in% "sectioned_residual" &
-          slots$target_key %in% "sigma" &
-          slots$readback_agrees %in% TRUE)
+    any(
+      slots$structure %in%
+        "sectioned_residual" &
+        slots$target_key %in% "sigma" &
+        slots$readback_agrees %in% TRUE
+    )
 
   # Ahead of the declaration on purpose. A component whose structure gives
   # the engine no slot for the declared prior did not get it, whatever the
@@ -671,11 +682,15 @@
 # @keywords internal
 .fb_component_domain <- function(components) {
   out <- rep("unknown", length(components))
-  out[startsWith(components, "sd_") |
-    components == "sigma" |
-    startsWith(components, "sigma_")] <- "positive"
-  out[startsWith(components, "cor_") |
-    startsWith(components, "rho_")] <- "unit_interval"
+  out[
+    startsWith(components, "sd_") |
+      components == "sigma" |
+      startsWith(components, "sigma_")
+  ] <- "positive"
+  out[
+    startsWith(components, "cor_") |
+      startsWith(components, "rho_")
+  ] <- "unit_interval"
   # fa<j>_<factor><level>, a loading, which carries its own sign.
   out[grepl("^fa[0-9]+_", components)] <- "signed"
   out
@@ -1836,7 +1851,10 @@
   integ <- object$extras$inla_integration
   if (!is.null(integ)) {
     cat(
-      "  Inference: ", integ$label, ". ", integ$n_hyper,
+      "  Inference: ",
+      integ$label,
+      ". ",
+      integ$n_hyper,
       " variance parameters, above the 15 INLA integrates over.\n",
       sep = ""
     )
@@ -1845,7 +1863,9 @@
   if (!is.null(pooled)) {
     sds <- pooled$pooling_sd
     cat(
-      "  Prior    : ", pooled$label, "; pooling SD (posterior median): ",
+      "  Prior    : ",
+      pooled$label,
+      "; pooling SD (posterior median): ",
       paste(names(sds), format(signif(sds, 3L)), collapse = ", "),
       ".\n",
       sep = ""
@@ -2079,7 +2099,8 @@ print.summary.flexybayes <- function(x, digits = 4L, ...) {
   aliased <- fit$extras$fixed_alias$dropped$column
   if (length(aliased) > 0L) {
     cat(
-      length(aliased), " aliased columns fixed at zero (fixed_alias = ",
+      length(aliased),
+      " aliased columns fixed at zero (fixed_alias = ",
       "\"drop\"); their std.error is NA.\n",
       sep = ""
     )

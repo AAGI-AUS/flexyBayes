@@ -5,8 +5,11 @@
 # the session already had is left running.
 
 .fic_supervisor_fifos <- function() {
-  sum(grepl("supervisor_std", showConnections(all = TRUE)[, "description"],
-            fixed = TRUE))
+  sum(grepl(
+    "supervisor_std",
+    showConnections(all = TRUE)[, "description"],
+    fixed = TRUE
+  ))
 }
 
 .fic_skip <- function() {
@@ -22,8 +25,11 @@ test_that("an isolated call leaves no connection open", {
   .fic_skip()
   processx::supervisor_kill()
   n_before <- nrow(showConnections(all = TRUE))
-  value <- .fb_isolated_call(function() 1 + 1, engine = "inla",
-                             entry_point = "flexybayes()")
+  value <- .fb_isolated_call(
+    function() 1 + 1,
+    engine = "inla",
+    entry_point = "flexybayes()"
+  )
   expect_identical(value, 2)
   expect_identical(nrow(showConnections(all = TRUE)), n_before)
   expect_identical(.fic_supervisor_fifos(), 0L)
@@ -43,8 +49,11 @@ test_that("a child that fails leaves no connection open", {
   processx::supervisor_kill()
   n_before <- nrow(showConnections(all = TRUE))
   expect_error(
-    .fb_isolated_call(function() stop("planted"), engine = "inla",
-                      entry_point = "flexybayes()"),
+    .fb_isolated_call(
+      function() stop("planted"),
+      engine = "inla",
+      entry_point = "flexybayes()"
+    ),
     "planted"
   )
   expect_identical(nrow(showConnections(all = TRUE)), n_before)
@@ -54,12 +63,14 @@ test_that("a supervisor the session already had is left running", {
   .fic_skip()
   processx::supervisor_kill()
   own <- processx::process$new("sleep", "30", supervise = TRUE)
-  on.exit({
-    own$kill()
-    processx::supervisor_kill()
-  }, add = TRUE)
+  on.exit(
+    {
+      own$kill()
+      processx::supervisor_kill()
+    },
+    add = TRUE
+  )
   expect_identical(.fic_supervisor_fifos(), 2L)
-  .fb_isolated_call(function() 1, engine = "inla",
-                    entry_point = "flexybayes()")
+  .fb_isolated_call(function() 1, engine = "inla", entry_point = "flexybayes()")
   expect_identical(.fic_supervisor_fifos(), 2L)
 })

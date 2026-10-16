@@ -280,9 +280,15 @@
       )
     } else if (rtype %in% c("smooth_mgcv", "smooth", "s", "t2", "spline")) {
       reason_codes <- c(reason_codes, "smooth_term_not_aggregatable")
-    } else if (rtype %in% c(
-      "simple_slope_uncor", "simple_slope_cor", "slope", "random_slope"
-    )) {
+    } else if (
+      rtype %in%
+        c(
+          "simple_slope_uncor",
+          "simple_slope_cor",
+          "slope",
+          "random_slope"
+        )
+    ) {
       reason_codes <- c(reason_codes, "random_slope_not_aggregatable")
     } else {
       # Structured-covariance terms (vm, ped, at, us, fa, ar1, ...):
@@ -447,9 +453,7 @@
       " not. The per-row route fits this model."
     ))
   }
-  if (
-    "aggregated_interaction_column_not_representable" %in% reason_codes
-  ) {
+  if ("aggregated_interaction_column_not_representable" %in% reason_codes) {
     return(paste0(
       " The aggregated emit expands the fixed effects to a model matrix",
       " and names its columns in the INLA formula, and INLA cannot",
@@ -640,7 +644,9 @@ print.fb_aggregation_plan <- function(x, ...) {
   cat(
     "  ",
     .fb_aggregation_verdict_line(
-      N = x$N, K = x$K_est, rows_per_cell = rows_per_cell
+      N = x$N,
+      K = x$K_est,
+      rows_per_cell = rows_per_cell
     ),
     "\n",
     sep = ""

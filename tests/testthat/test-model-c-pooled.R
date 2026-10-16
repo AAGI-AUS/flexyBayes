@@ -78,22 +78,32 @@
     brms::set_prior("", class = "sd"),
     brms::set_prior("student_t(3, 0, 2.5)", class = "sd", group = "TRIAL"),
     brms::set_prior("student_t(3, 0, 2.5)", class = "sd", group = "TRIAL:REP"),
-    brms::set_prior("normal(0, 1)", class = "sd", group = "TRIAL",
-                    dpar = "sigma"),
-    brms::set_prior("normal(pool_location, 2)", class = "Intercept",
-                    dpar = "sigma")
+    brms::set_prior(
+      "normal(0, 1)",
+      class = "sd",
+      group = "TRIAL",
+      dpar = "sigma"
+    ),
+    brms::set_prior(
+      "normal(pool_location, 2)",
+      class = "Intercept",
+      dpar = "sigma"
+    )
   )
   sv <- brms::stanvar(x = log(stats::sd(d$y)), name = "pool_location") +
     brms::stanvar(
       scode = "real pool_mean_VARIETY;\n  real<lower=0> pool_sd_VARIETY;",
       block = "parameters"
     ) +
-    brms::stanvar(scode = paste(
-      "target += lognormal_lpdf(sd_3 | pool_mean_VARIETY, pool_sd_VARIETY);",
-      "target += normal_lpdf(pool_mean_VARIETY | pool_location, 2);",
-      "target += normal_lpdf(pool_sd_VARIETY | 0, 1);",
-      sep = "\n  "
-    ), block = "model")
+    brms::stanvar(
+      scode = paste(
+        "target += lognormal_lpdf(sd_3 | pool_mean_VARIETY, pool_sd_VARIETY);",
+        "target += normal_lpdf(pool_mean_VARIETY | pool_location, 2);",
+        "target += normal_lpdf(pool_sd_VARIETY | 0, 1);",
+        sep = "\n  "
+      ),
+      block = "model"
+    )
   list(formula = f, prior = pr, stanvars = sv)
 }
 
@@ -101,16 +111,25 @@
 .mcp_sd_draws <- function(brmsfit, trials) {
   dr <- as.data.frame(posterior::as_draws_df(brmsfit))
   b0 <- dr[["b_sigma_Intercept"]]
-  gxe <- vapply(trials, function(l) {
-    dr[[paste0("sd_VARIETY__TRIAL", l)]]
-  }, numeric(nrow(dr)))
-  res <- vapply(trials, function(l) {
-    exp(b0 + dr[[paste0("r_TRIAL__sigma[", l, ",Intercept]")]])
-  }, numeric(nrow(dr)))
+  gxe <- vapply(
+    trials,
+    function(l) {
+      dr[[paste0("sd_VARIETY__TRIAL", l)]]
+    },
+    numeric(nrow(dr))
+  )
+  res <- vapply(
+    trials,
+    function(l) {
+      exp(b0 + dr[[paste0("r_TRIAL__sigma[", l, ",Intercept]")]])
+    },
+    numeric(nrow(dr))
+  )
   colnames(gxe) <- paste0("gxe_", trials)
   colnames(res) <- paste0("res_", trials)
   cbind(
-    gxe, res,
+    gxe,
+    res,
     pool_gxe = dr[["pool_sd_VARIETY"]],
     pool_res = dr[["sd_TRIAL__sigma_Intercept"]],
     mean_gxe = dr[["pool_mean_VARIETY"]],
@@ -138,8 +157,11 @@ test_that("fb_prior() reads pooled() with by = on sd() and on sigma", {
     printed,
     fixed = TRUE
   )))
-  expect_true(any(grepl("sigma(by = \"TRIAL\") ~ pooled(", printed,
-                        fixed = TRUE)))
+  expect_true(any(grepl(
+    "sigma(by = \"TRIAL\") ~ pooled(",
+    printed,
+    fixed = TRUE
+  )))
 })
 
 test_that("pooled() without its scale prior is refused, naming the missing half", {
@@ -157,13 +179,17 @@ test_that("pooled() needs by =, and by = needs pooled()", {
     class = "flexybayes_refusal_prior_target_argument_missing"
   )
   expect_error(
-    fb_prior(sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
-      half_normal(scale = 0.5)),
+    fb_prior(
+      sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
+        half_normal(scale = 0.5)
+    ),
     class = "flexybayes_refusal_prior_target_unsupported"
   )
   expect_error(
-    fb_prior(sigma(by = "TRIAL") ~
-      pooled(scale = pooled(scale = half_normal(scale = 1)))),
+    fb_prior(
+      sigma(by = "TRIAL") ~
+        pooled(scale = pooled(scale = half_normal(scale = 1)))
+    ),
     class = "flexybayes_refusal_prior_distribution_unknown"
   )
 })
@@ -173,8 +199,7 @@ test_that("the INLA gate refuses pooled() by name and names the brms route", {
   gated <- lgm_gate(.mcp_terms(ref$data, .mcp_prior()))
   expect_true(is_lgm_refusal(gated))
   expect_identical(gated$primary_rule, "pooled_prior_requires_brms")
-  expect_match(gated$failures[[1L]]$reason, "backend = \"brms\"",
-               fixed = TRUE)
+  expect_match(gated$failures[[1L]]$reason, "backend = \"brms\"", fixed = TRUE)
 })
 
 test_that("backend = \"inla\" refuses a pooled prior with a typed refusal", {
@@ -202,8 +227,11 @@ test_that("fb_plan() routes a pooled prior to brms under auto and says so", {
   expect_identical(p$gate_primary_rule, "pooled_prior_requires_brms")
   expect_identical(p$pooled, "per-trial SDs partially pooled")
   printed <- utils::capture.output(print(p))
-  expect_true(any(grepl("per-trial SDs partially pooled", printed,
-                        fixed = TRUE)))
+  expect_true(any(grepl(
+    "per-trial SDs partially pooled",
+    printed,
+    fixed = TRUE
+  )))
   expect_false(any(grepl("as ASReml fits it", printed, fixed = TRUE)))
 })
 
@@ -211,16 +239,24 @@ test_that("a pooled prior on a term the model does not have is refused", {
   skip_if_not_installed("brms")
   ref <- .mcp_reference()
   expect_error(
-    .mcp_fit(ref$data, fb_prior(
-      sd(group = "TRIAL:VARIETY", by = "REP") ~
-        pooled(scale = half_normal(scale = 0.5))
-    ), return_code = TRUE),
+    .mcp_fit(
+      ref$data,
+      fb_prior(
+        sd(group = "TRIAL:VARIETY", by = "REP") ~
+          pooled(scale = half_normal(scale = 0.5))
+      ),
+      return_code = TRUE
+    ),
     class = "flexybayes_refusal_prior_target_not_in_model"
   )
   expect_error(
-    .mcp_fit(ref$data, fb_prior(
-      sigma(by = "REP") ~ pooled(scale = half_normal(scale = 0.5))
-    ), return_code = TRUE),
+    .mcp_fit(
+      ref$data,
+      fb_prior(
+        sigma(by = "REP") ~ pooled(scale = half_normal(scale = 0.5))
+      ),
+      return_code = TRUE
+    ),
     class = "flexybayes_refusal_prior_target_not_in_model"
   )
 })
@@ -238,8 +274,10 @@ test_that("a pooled residual is written sigma ~ 1 + (1 | TRIAL) on brms", {
       pooled(scale = half_normal(scale = 0.5))
   )
   f <- .fb_to_brms_formula(.mcp_terms(ref$data, gxe_only))
-  expect_identical(paste(deparse(f$pforms$sigma), collapse = ""),
-                   "sigma ~ 0 + TRIAL")
+  expect_identical(
+    paste(deparse(f$pforms$sigma), collapse = ""),
+    "sigma ~ 0 + TRIAL"
+  )
 })
 
 test_that("the package writes the Stan program of the hand-written B1 call", {
@@ -250,7 +288,10 @@ test_that("the package writes the Stan program of the hand-written B1 call", {
   code <- .mcp_fit(d, .mcp_b1_prior(), return_code = TRUE)
   hand <- .mcp_b1_hand(d)
   hand_code <- brms::make_stancode(
-    hand$formula, data = d, prior = hand$prior, stanvars = hand$stanvars
+    hand$formula,
+    data = d,
+    prior = hand$prior,
+    stanvars = hand$stanvars
   )
   expect_identical(
     strsplit(code, "\n")[[1L]],
@@ -283,14 +324,22 @@ test_that("the pooled prior lands on a per-level SD vector brms declares", {
   ref <- .mcp_reference()
   d <- ref$data
   code <- .mcp_fit(d, .mcp_prior(), return_code = TRUE)
-  line <- grep("lognormal_lpdf(sd_", strsplit(code, "\n")[[1L]],
-               fixed = TRUE, value = TRUE)
+  line <- grep(
+    "lognormal_lpdf(sd_",
+    strsplit(code, "\n")[[1L]],
+    fixed = TRUE,
+    value = TRUE
+  )
   expect_length(line, 1L)
   sd_name <- sub("^.*lognormal_lpdf\\((sd_[0-9]+) .*$", "\\1", line)
   expect_true(.fb_brms_stancode_declares(code, sd_name))
   hand <- .mcp_b1_hand(d)
-  sdata <- brms::make_standata(hand$formula, data = d, prior = hand$prior,
-                               stanvars = hand$stanvars)
+  sdata <- brms::make_standata(
+    hand$formula,
+    data = d,
+    prior = hand$prior,
+    stanvars = hand$stanvars
+  )
   k <- sub("^sd_", "", sd_name)
   expect_identical(as.integer(sdata[[paste0("M_", k)]]), 12L)
   expect_identical(as.integer(sdata[[paste0("N_", k)]]), 30L)
@@ -322,9 +371,17 @@ test_that("the package reproduces the B1 posterior to Monte Carlo error", {
   .mcp_cache$fit <- fit
   hand <- .mcp_b1_hand(d)
   b1 <- .muffle_ess_warnings(brms::brm(
-    hand$formula, data = d, prior = hand$prior, stanvars = hand$stanvars,
-    chains = 2, iter = 2000, warmup = 1000, seed = 20261009L,
-    control = list(adapt_delta = 0.95), refresh = 0, silent = 2
+    hand$formula,
+    data = d,
+    prior = hand$prior,
+    stanvars = hand$stanvars,
+    chains = 2,
+    iter = 2000,
+    warmup = 1000,
+    seed = 20261009L,
+    control = list(adapt_delta = 0.95),
+    refresh = 0,
+    silent = 2
   ))
   a <- .mcp_sd_draws(fit$brms, trials)
   b <- .mcp_sd_draws(b1, trials)
@@ -332,8 +389,10 @@ test_that("the package reproduces the B1 posterior to Monte Carlo error", {
     apply(m, 2L, function(x) posterior::mcse_mean(x))
   }
   z <- (colMeans(a) - colMeans(b)) / sqrt(mcse(a)^2 + mcse(b)^2)
-  expect_true(all(abs(z) < 4), info = paste(names(z)[abs(z) >= 4],
-                                            collapse = ", "))
+  expect_true(
+    all(abs(z) < 4),
+    info = paste(names(z)[abs(z) >= 4], collapse = ", ")
+  )
 })
 
 test_that("every reader of a pooled fit says the SDs are partially pooled", {
@@ -351,19 +410,27 @@ test_that("every reader of a pooled fit says the SDs are partially pooled", {
   )
   for (nm in names(readers)) {
     expect_true(any(grepl(label, readers[[nm]], fixed = TRUE)), info = nm)
-    expect_false(any(grepl("as ASReml fits it", readers[[nm]], fixed = TRUE)),
-                 info = nm)
+    expect_false(
+      any(grepl("as ASReml fits it", readers[[nm]], fixed = TRUE)),
+      info = nm
+    )
   }
   # The prior column names the pooled specification and the pooling SD's
   # own prior.
   vc <- summary(fit)$varcomp
   prior_of <- stats::setNames(vc$prior, vc$component)
-  expect_identical(prior_of[["sd_VARIETY__TRIALT01"]],
-                   "pooled(scale=half_normal(scale=1))")
-  expect_identical(prior_of[["sigma_T06"]],
-                   "pooled(scale=half_normal(scale=1))")
-  expect_identical(prior_of[["sd_TRIAL__sigma_Intercept"]],
-                   "half_normal(scale=1)")
+  expect_identical(
+    prior_of[["sd_VARIETY__TRIALT01"]],
+    "pooled(scale=half_normal(scale=1))"
+  )
+  expect_identical(
+    prior_of[["sigma_T06"]],
+    "pooled(scale=half_normal(scale=1))"
+  )
+  expect_identical(
+    prior_of[["sd_TRIAL__sigma_Intercept"]],
+    "half_normal(scale=1)"
+  )
   expect_identical(prior_of[["sd_TRIAL"]], "student_t(df=3, scale=2.5)")
   # The per-trial residual SDs are read from the pooled lowering.
   tab <- .brms_residual_by_level_table(fit)
@@ -390,8 +457,14 @@ test_that("auto fits a pooled model on brms and its decision says so", {
     fixed = y ~ VARIETY,
     random = ~ TRIAL + TRIAL:REP + diag(TRIAL):VARIETY,
     residual = ~ dsum(~ units | TRIAL),
-    data = d, prior = .mcp_prior(), chains = 1, warmup = 200,
-    n_samples = 200, seed = 1L, verbose = FALSE, mcmc_verbose = FALSE
+    data = d,
+    prior = .mcp_prior(),
+    chains = 1,
+    warmup = 200,
+    n_samples = 200,
+    seed = 1L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
   expect_s3_class(fit, "flexybayes_brms")
   bd <- backend_decision(fit)
@@ -412,8 +485,12 @@ test_that("auto fits a pooled model on brms and its decision says so", {
   fit <- withCallingHandlers(
     .mcp_fit(sim$data, .mcp_prior(), seed = seed),
     warning = function(w) {
-      if (grepl("mc-stan\\.org/misc/warnings|Examine the pairs\\(\\) plot",
-                conditionMessage(w))) {
+      if (
+        grepl(
+          "mc-stan\\.org/misc/warnings|Examine the pairs\\(\\) plot",
+          conditionMessage(w)
+        )
+      ) {
         invokeRestart("muffleWarning")
       }
     }
@@ -453,8 +530,11 @@ test_that("pooled intervals cover the simulated truth at the 90% rate", {
   for (seed in 20261008L + 0:19) {
     row <- .mcp_recovery_one(seed)
     if (nzchar(out_dir)) {
-      utils::write.csv(row, file.path(out_dir, paste0("recovery_", seed, ".csv")),
-                       row.names = FALSE)
+      utils::write.csv(
+        row,
+        file.path(out_dir, paste0("recovery_", seed, ".csv")),
+        row.names = FALSE
+      )
     }
     rows[[length(rows) + 1L]] <- row
   }

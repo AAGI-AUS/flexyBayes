@@ -228,6 +228,3 @@ test_that("predict() returns one value per row on an INLA fit written in bar gra
     )
   }
 })
-
-
-

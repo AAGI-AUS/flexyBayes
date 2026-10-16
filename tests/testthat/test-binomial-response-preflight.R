@@ -151,7 +151,8 @@ test_that("flexybayes_stream()'s own trials = route is unaffected", {
     )),
     error = function(e) e
   )
-  expect_false(inherits(fit, "error"),
+  expect_false(
+    inherits(fit, "error"),
     label = if (inherits(fit, "error")) conditionMessage(fit) else "stream fit"
   )
 })

@@ -48,9 +48,12 @@
   )
   list(
     all.hyper = list(
-      family = list(list(hyperid = "INLA.Data1", hyper = list(
-        theta1 = one_hyper()
-      ))),
+      family = list(list(
+        hyperid = "INLA.Data1",
+        hyper = list(
+          theta1 = one_hyper()
+        )
+      )),
       random = list(list(hyperid = "g", hyper = list(theta = one_hyper()))),
       fixed = list()
     ),
@@ -81,7 +84,9 @@
     h = factor(rep(c("A", "B", "C", "D"), length.out = n)),
     x = stats::rnorm(n)
   )
-  d$y <- 2 + 0.5 * d$x + stats::rnorm(8L, sd = 1)[as.integer(d$g)] +
+  d$y <- 2 +
+    0.5 * d$x +
+    stats::rnorm(8L, sd = 1)[as.integer(d$g)] +
     stats::rnorm(n, sd = 0.7)
   d$cnt <- stats::rpois(n, exp(1 + stats::rnorm(8L, sd = 0.5)[as.integer(d$g)]))
   d
@@ -313,12 +318,22 @@ test_that("every INLA fit an entry point returns has been through the audit", {
   bounded_count <- fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 3))
 
   per_row <- flexybayes(
-    y ~ x, random = ~g, data = d, backend = "inla", prior = bounded,
+    y ~ x,
+    random = ~g,
+    data = d,
+    backend = "inla",
+    prior = bounded,
     verbose = FALSE
   )
   alias <- suppressWarnings(
-    fb(y ~ x, random = ~g, data = d, backend = "inla", prior = bounded,
-       verbose = FALSE),
+    fb(
+      y ~ x,
+      random = ~g,
+      data = d,
+      backend = "inla",
+      prior = bounded,
+      verbose = FALSE
+    ),
     classes = "flexybayes_deprecated"
   )
   pinned <- suppressWarnings(
@@ -326,12 +341,22 @@ test_that("every INLA fit an entry point returns has been through the audit", {
     classes = "flexybayes_deprecated"
   )
   aggregated <- flexybayes(
-    cnt ~ h, random = ~g, data = d, family = "poisson", backend = "inla",
-    aggregate = TRUE, prior = bounded_count, verbose = FALSE
+    cnt ~ h,
+    random = ~g,
+    data = d,
+    family = "poisson",
+    backend = "inla",
+    aggregate = TRUE,
+    prior = bounded_count,
+    verbose = FALSE
   )
   streamed <- flexybayes_stream(
-    fixed = cnt ~ h, random = ~g, source = d, family = "poisson",
-    prior = bounded_count, verbose = FALSE
+    fixed = cnt ~ h,
+    random = ~g,
+    source = d,
+    family = "poisson",
+    prior = bounded_count,
+    verbose = FALSE
   )
   # y carries no h effect, so the added sd_h is weakly identified.
   refit <- withr::with_options(
@@ -341,13 +366,21 @@ test_that("every INLA fit an entry point returns has been through the audit", {
   d_fold <- d
   d_fold$y[seq(1L, nrow(d), by = 4L)] <- NA
   fold <- fb_refit(
-    per_row, data = d_fold, fixed = y ~ x, backend = "inla",
-    na_action = "augment", verbose = FALSE
+    per_row,
+    data = d_fold,
+    fixed = y ~ x,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   )
 
   fits <- list(
-    flexybayes = per_row, fb = alias, fb_inla = pinned,
-    aggregated = aggregated, stream = streamed, update = refit,
+    flexybayes = per_row,
+    fb = alias,
+    fb_inla = pinned,
+    aggregated = aggregated,
+    stream = streamed,
+    update = refit,
     fold_refit = fold
   )
   for (nm in names(fits)) {

@@ -550,8 +550,10 @@ residuals.flexybayes_inla <- function(object, ...) {
   fit_vals <- fitted(object)
   f <- formula(object)
   y <- if (length(f) == 3L) {
-    tryCatch(as.numeric(eval(f[[2L]], envir = object$data)),
-             error = function(e) NULL)
+    tryCatch(
+      as.numeric(eval(f[[2L]], envir = object$data)),
+      error = function(e) NULL
+    )
   } else {
     NULL
   }
@@ -587,8 +589,9 @@ logLik.flexybayes_inla <- function(object, ...) {
     "log-likelihood (model evidence, see summary()), not the conditional ",
     "log-likelihood logLik() denotes. Returning NA."
   )
-  np <- tryCatch(nrow(object$inla$summary.fixed),
-                 error = function(e) NA_integer_)
+  np <- tryCatch(nrow(object$inla$summary.fixed), error = function(e) {
+    NA_integer_
+  })
   n_obs <- tryCatch(nrow(object$data), error = function(e) NA_integer_)
   val <- NA_real_
   attr(val, "df") <- np
@@ -717,7 +720,8 @@ predict.flexybayes_inla <- function(
   ...
 ) {
   type <- match.arg(type)
-  re_na <- is.atomic(re_formula) && length(re_formula) == 1L &&
+  re_na <- is.atomic(re_formula) &&
+    length(re_formula) == 1L &&
     is.na(re_formula)
   if (!re_na) {
     .fb_refuse_method_argument(

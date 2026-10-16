@@ -61,9 +61,11 @@ test_that("an uncorrelated random slope fits on INLA and matches lme4 REML", {
   # version reported sd_g_for_slope_x here.
   expect_false(any(grepl("_for_slope_", names(got), fixed = TRUE)))
   expect_true("sd_x_g" %in% names(got))
-  expect_equal(unname(sort(sds)),
-               unname(sort(c(ref_int, ref_slp))),
-               tolerance = 0.25)
+  expect_equal(
+    unname(sort(sds)),
+    unname(sort(c(ref_int, ref_slp))),
+    tolerance = 0.25
+  )
 })
 
 test_that("a factor-by-numeric fixed interaction fits on INLA and matches lm", {
@@ -102,12 +104,21 @@ test_that("a factor-by-numeric fixed interaction fits on INLA and matches lm", {
 
 test_that("the retired artefact machinery is gone, not merely bypassed", {
   # A gate that no longer fires but still exists invites its own return.
-  expect_false(exists(".check_inla_verification_simple_slope_uncor",
-                      envir = asNamespace("flexyBayes"), inherits = FALSE))
-  expect_false(exists(".lgm_check_factor_numeric_interaction_inla_verified",
-                      envir = asNamespace("flexyBayes"), inherits = FALSE))
-  expect_false(exists(".fb_dev_verification_artefacts_enabled",
-                      envir = asNamespace("flexyBayes"), inherits = FALSE))
+  expect_false(exists(
+    ".check_inla_verification_simple_slope_uncor",
+    envir = asNamespace("flexyBayes"),
+    inherits = FALSE
+  ))
+  expect_false(exists(
+    ".lgm_check_factor_numeric_interaction_inla_verified",
+    envir = asNamespace("flexyBayes"),
+    inherits = FALSE
+  ))
+  expect_false(exists(
+    ".fb_dev_verification_artefacts_enabled",
+    envir = asNamespace("flexyBayes"),
+    inherits = FALSE
+  ))
   expect_identical(
     system.file("extdata", "inla-verification", package = "flexyBayes"),
     ""

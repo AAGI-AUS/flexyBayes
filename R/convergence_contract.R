@@ -9,7 +9,6 @@
 # `isTRUE(NA)` is FALSE, so a fit with no numerical confirm would read as
 # failed.
 
-
 # --- evidence items -------------------------------------------------- #
 
 # Each check returns "pass", "fail" or "absent" and a reason when it fails.
@@ -45,14 +44,17 @@
   if (isTRUE(pass)) {
     return(.fb_conv_item("pass"))
   }
-  .fb_conv_item("fail", paste0(
-    "the numerical confirmation failed",
-    if (length(reasons) > 0L) {
-      paste0(": ", paste(reasons, collapse = "; "))
-    } else {
-      ""
-    }
-  ))
+  .fb_conv_item(
+    "fail",
+    paste0(
+      "the numerical confirmation failed",
+      if (length(reasons) > 0L) {
+        paste0(": ", paste(reasons, collapse = "; "))
+      } else {
+        ""
+      }
+    )
+  )
 }
 
 
@@ -76,9 +78,13 @@
 
   missing_required <- intersect(names(states)[states == "absent"], required)
   if (length(missing_required) > 0L) {
-    return(list(ok = NA, reasons = paste0(
-      "no evidence for: ", paste(missing_required, collapse = ", ")
-    )))
+    return(list(
+      ok = NA,
+      reasons = paste0(
+        "no evidence for: ",
+        paste(missing_required, collapse = ", ")
+      )
+    ))
   }
 
   if (all(states == "absent")) {
@@ -136,18 +142,25 @@
   # none and a fit is not unverified merely for taking that route.
   v <- .fb_conv_combine(items, required = "mode_status")
   c(
-    list(engine = "inla"), v,
-    list(evidence = list(
-      mode_status = if (is.null(ms)) NA_real_ else as.numeric(ms),
-      mlik = .fb_conv_reported_mlik(fit, mlik),
-      numerical_confirm = if (is.null(nc$pass)) NA else nc$pass,
-      max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_,
-      # The sampler items, carried as absent so the evidence list has one
-      # shape on both engines and a consumer can read a field without
-      # first asking which engine answered.
-      min_ess_tail = NA_real_, min_ebfmi = NA_real_,
-      n_max_treedepth = NA_integer_, max_treedepth = NA_real_
-    ))
+    list(engine = "inla"),
+    v,
+    list(
+      evidence = list(
+        mode_status = if (is.null(ms)) NA_real_ else as.numeric(ms),
+        mlik = .fb_conv_reported_mlik(fit, mlik),
+        numerical_confirm = if (is.null(nc$pass)) NA else nc$pass,
+        max_rhat = NA_real_,
+        min_ess_bulk = NA_real_,
+        n_divergent = NA_integer_,
+        # The sampler items, carried as absent so the evidence list has one
+        # shape on both engines and a consumer can read a field without
+        # first asking which engine answered.
+        min_ess_tail = NA_real_,
+        min_ebfmi = NA_real_,
+        n_max_treedepth = NA_integer_,
+        max_treedepth = NA_real_
+      )
+    )
   )
 }
 
@@ -224,35 +237,44 @@
     out$max_rhat <- max(rhat)
     if (out$max_rhat > .FB_CONV_RHAT_MAX) {
       ok <- FALSE
-      reasons <- c(reasons, sprintf(
-        "max R-hat %.4f on `%s` exceeds %.2f",
-        out$max_rhat,
-        .fb_diag_label(rhat, which.max(rhat)),
-        .FB_CONV_RHAT_MAX
-      ))
+      reasons <- c(
+        reasons,
+        sprintf(
+          "max R-hat %.4f on `%s` exceeds %.2f",
+          out$max_rhat,
+          .fb_diag_label(rhat, which.max(rhat)),
+          .FB_CONV_RHAT_MAX
+        )
+      )
     }
   }
   if (length(ess) > 0L) {
     out$min_ess_bulk <- min(ess)
     if (out$min_ess_bulk < .FB_CONV_ESS_MIN) {
       ok <- FALSE
-      reasons <- c(reasons, sprintf(
-        "min bulk ESS %.0f on `%s` is below %d",
-        out$min_ess_bulk,
-        .fb_diag_label(ess, which.min(ess)),
-        as.integer(.FB_CONV_ESS_MIN)
-      ))
+      reasons <- c(
+        reasons,
+        sprintf(
+          "min bulk ESS %.0f on `%s` is below %d",
+          out$min_ess_bulk,
+          .fb_diag_label(ess, which.min(ess)),
+          as.integer(.FB_CONV_ESS_MIN)
+        )
+      )
     }
   }
   if (!is.null(ndiv) && is.finite(ndiv)) {
     out$n_divergent <- as.integer(ndiv)
     if (out$n_divergent > 0L) {
       ok <- FALSE
-      reasons <- c(reasons, sprintf(
-        "%d divergent transition%s",
-        out$n_divergent,
-        if (out$n_divergent == 1L) "" else "s"
-      ))
+      reasons <- c(
+        reasons,
+        sprintf(
+          "%d divergent transition%s",
+          out$n_divergent,
+          if (out$n_divergent == 1L) "" else "s"
+        )
+      )
     }
   }
   out$ok <- ok
@@ -425,7 +447,9 @@
     ok = ok,
     reasons = as.character(reasons),
     evidence = list(
-      mode_status = NA_real_, mlik = NA_real_, numerical_confirm = NA,
+      mode_status = NA_real_,
+      mlik = NA_real_,
+      numerical_confirm = NA,
       max_rhat = d$max_rhat,
       min_ess_bulk = d$min_ess_bulk,
       n_divergent = if (is.finite(d$n_divergent)) {
@@ -475,10 +499,16 @@
     ok = NA,
     reasons = "this fit records no convergence diagnostics",
     evidence = list(
-      mode_status = NA_real_, mlik = NA_real_, numerical_confirm = NA,
-      max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_,
-      min_ess_tail = NA_real_, min_ebfmi = NA_real_,
-      n_max_treedepth = NA_integer_, max_treedepth = NA_real_
+      mode_status = NA_real_,
+      mlik = NA_real_,
+      numerical_confirm = NA,
+      max_rhat = NA_real_,
+      min_ess_bulk = NA_real_,
+      n_divergent = NA_integer_,
+      min_ess_tail = NA_real_,
+      min_ebfmi = NA_real_,
+      n_max_treedepth = NA_integer_,
+      max_treedepth = NA_real_
     )
   )
 }

@@ -52,8 +52,10 @@ test_that("prior_summary() default method refuses unknown classes", {
     gen = factor(rep(paste0("g", 1:12), times = 8L)),
     rep = factor(rep(rep(c("r1", "r2"), each = 12L), times = 4L))
   )
-  d$yield <- 10 + rnorm(4L, 0, 1)[as.integer(d$env)] +
-    rnorm(12L, 0, 1.5)[as.integer(d$gen)] + rnorm(s1, 0, 1)
+  d$yield <- 10 +
+    rnorm(4L, 0, 1)[as.integer(d$env)] +
+    rnorm(12L, 0, 1.5)[as.integer(d$gen)] +
+    rnorm(s1, 0, 1)
   d
 }
 
@@ -62,8 +64,11 @@ test_that("a user prior on a diag() term is reported on every per-level row", {
   skip_if_not_installed("INLA")
   d <- .po_data()
   fit <- suppressWarnings(flexybayes(
-    fixed = yield ~ env, random = ~ diag(env):gen, data = d,
-    backend = "inla", prior = fb_prior(sd(gen) ~ uniform(lower = 0, upper = 40)),
+    fixed = yield ~ env,
+    random = ~ diag(env):gen,
+    data = d,
+    backend = "inla",
+    prior = fb_prior(sd(gen) ~ uniform(lower = 0, upper = 40)),
     verbose = FALSE
   ))
   v <- summary(fit)$varcomp
@@ -78,8 +83,11 @@ test_that("the package default is reported on every per-level row too", {
   skip_if_not_installed("INLA")
   d <- .po_data()
   fit <- suppressWarnings(flexybayes(
-    fixed = yield ~ env, random = ~ diag(env):gen, data = d,
-    backend = "inla", verbose = FALSE
+    fixed = yield ~ env,
+    random = ~ diag(env):gen,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   v <- summary(fit)$varcomp
   rows <- v[startsWith(v$component, "sd_gen__"), ]

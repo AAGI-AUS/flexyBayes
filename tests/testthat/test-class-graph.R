@@ -15,7 +15,10 @@ mk_class_graph_data <- function(n_group = 12L, n_rep = 4L) {
   g <- factor(rep(seq_len(n_group), each = n_rep))
   x <- stats::rnorm(n_group * n_rep)
   u <- stats::rnorm(n_group, sd = 0.8)
-  y <- 1.5 + 0.7 * x + u[as.integer(g)] + stats::rnorm(n_group * n_rep, sd = 0.5)
+  y <- 1.5 +
+    0.7 * x +
+    u[as.integer(g)] +
+    stats::rnorm(n_group * n_rep, sd = 0.5)
   data.frame(y = y, x = x, g = g)
 }
 
@@ -216,11 +219,23 @@ test_that("update.flexybayes accepts a complete argument record", {
   # formal defaults for those came back on another engine, in another
   # representation.
   cl <- list(
-    fixed = y ~ x, random = ~g, residual = NULL, data_name = "d",
-    family = "gaussian", link = "identity", known_matrices = NULL,
-    weights = NULL, n_samples = 100L, warmup = 100L, chains = 1L,
-    prior_fixed_sd = NULL, prior_vc_sd = NULL, na_action = "augment",
-    backend = "auto", aggregate = "auto", verbose = FALSE
+    fixed = y ~ x,
+    random = ~g,
+    residual = NULL,
+    data_name = "d",
+    family = "gaussian",
+    link = "identity",
+    known_matrices = NULL,
+    weights = NULL,
+    n_samples = 100L,
+    warmup = 100L,
+    chains = 1L,
+    prior_fixed_sd = NULL,
+    prior_vc_sd = NULL,
+    na_action = "augment",
+    backend = "auto",
+    aggregate = "auto",
+    verbose = FALSE
   )
   shell <- structure(
     list(

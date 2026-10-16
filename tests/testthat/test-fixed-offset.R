@@ -32,7 +32,9 @@ test_that("both grammars record the offsets on the model description", {
   skip_if_not_installed("lme4")
   d <- .off_sleepstudy()
   ir_a <- fb_from_asreml(
-    fixed = Reaction ~ Days + offset(Days), random = ~ Subject, data = d
+    fixed = Reaction ~ Days + offset(Days),
+    random = ~Subject,
+    data = d
   )
   ir_b <- fb_from_brms(Reaction ~ Days + offset(Days) + (1 | Subject), data = d)
   expect_identical(ir_a$offsets, "offset(Days)")
@@ -50,7 +52,7 @@ test_that("several offsets are recorded in formula order and add", {
   d <- .off_sleepstudy()
   ir <- fb_from_asreml(
     fixed = Reaction ~ offset(Days) + Days + offset(log(Days + 1)),
-    random = ~ Subject,
+    random = ~Subject,
     data = d
   )
   expect_identical(ir$offsets, c("offset(Days)", "offset(log(Days + 1))"))
@@ -67,7 +69,7 @@ test_that("a column named offset is a covariate, not an offset", {
   skip_if_not_installed("lme4")
   d <- .off_sleepstudy()
   d$offset <- d$Days
-  fb <- fb_from_asreml(fixed = Reaction ~ offset, random = ~ Subject, data = d)
+  fb <- fb_from_asreml(fixed = Reaction ~ offset, random = ~Subject, data = d)
   expect_identical(fb$fixed_terms[[1L]]$var, "offset")
   expect_identical(fb$fixed_terms[[1L]]$type, "continuous")
   expect_length(fb$offsets, 0L)
@@ -140,7 +142,9 @@ test_that("a design cell completed under augment needs its offset", {
   d$z <- seq_len(9) / 10
   d <- d[-5, ]
   fb <- fb_from_asreml(
-    y ~ offset(z), random = ~ ar1(row):ar1(col), data = d
+    y ~ offset(z),
+    random = ~ ar1(row):ar1(col),
+    data = d
   )
   expect_true("z" %in% .fb_model_vars(fb))
   err <- tryCatch(
@@ -162,13 +166,15 @@ test_that("the brms formula carries each offset verbatim", {
     E = stats::runif(24, 1, 5)
   )
   ir <- fb_from_asreml(
-    y ~ x + offset(log(E)) + offset(x), random = ~ g, data = d
+    y ~ x + offset(log(E)) + offset(x),
+    random = ~g,
+    data = d
   )
   expect_identical(
     deparse(.fb_to_brms_formula(ir)),
     "y ~ x + offset(log(E)) + offset(x) + (1 | g)"
   )
-  ir0 <- fb_from_asreml(y ~ 0 + offset(x), random = ~ g, data = d)
+  ir0 <- fb_from_asreml(y ~ 0 + offset(x), random = ~g, data = d)
   expect_identical(
     deparse(.fb_to_brms_formula(ir0)),
     "y ~ offset(x) - 1 + (1 | g)"
@@ -189,7 +195,7 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
   d <- .off_sleepstudy()
   fit <- flexybayes(
     Reaction ~ Days + offset(Days),
-    random = ~ Subject,
+    random = ~Subject,
     data = d,
     backend = "brms",
     chains = 2L,
@@ -215,15 +221,18 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
   # The fitted values include the offset: posterior means of the intercept,
   # the slope and each subject's deviation, plus Days, by hand.
   re <- brms::ranef(fit$brms)$Subject[, "Estimate", "Intercept"]
-  hand <- coef(fit)[["(Intercept)"]] + coef(fit)[["Days"]] * d$Days +
-    re[as.character(d$Subject)] + d$Days
+  hand <- coef(fit)[["(Intercept)"]] +
+    coef(fit)[["Days"]] * d$Days +
+    re[as.character(d$Subject)] +
+    d$Days
   expect_equal(unname(fitted(fit)), unname(hand), tolerance = 1e-8)
 
   # A population-level prediction on new data is linear in the draws, so its
   # posterior mean is the posterior-mean coefficients applied to newdata plus
   # the offset evaluated there.
   nd <- data.frame(Days = c(0, 3.5, 9), Subject = d$Subject[1:3])
-  hand_nd <- coef(fit)[["(Intercept)"]] + coef(fit)[["Days"]] * nd$Days +
+  hand_nd <- coef(fit)[["(Intercept)"]] +
+    coef(fit)[["Days"]] * nd$Days +
     nd$Days
   expect_equal(
     unname(predict(fit, newdata = nd, re_formula = NA)),
@@ -258,7 +267,7 @@ test_that("a per-row Gaussian INLA fit with an offset matches lme4", {
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sleepstudy()
-  fit <- .off_inla(Reaction ~ Days + offset(Days), random = ~ Subject, data = d)
+  fit <- .off_inla(Reaction ~ Days + offset(Days), random = ~Subject, data = d)
   ref <- lme4::fixef(
     lme4::lmer(Reaction ~ Days + offset(Days) + (1 | Subject), data = d)
   )
@@ -273,7 +282,7 @@ test_that("a per-row Gaussian INLA fit with an offset matches lme4", {
   # per-row marginals, differ by 4.3e-3 to 4.5e-3 at INLA's default thread
   # setting and by 5.6e-5 on one thread. The fitted-value tolerance is 0.05;
   # the offset it has to carry reaches 9.
-  plain <- .off_inla(Reaction ~ Days, random = ~ Subject, data = d)
+  plain <- .off_inla(Reaction ~ Days, random = ~Subject, data = d)
   expect_lt(abs(coef(plain)[["Days"]] - coef(fit)[["Days"]] - 1), 1e-6)
   expect_lt(max(abs(fitted(fit) - fitted(plain))), 0.05)
   expect_lt(
@@ -285,7 +294,8 @@ test_that("a per-row Gaussian INLA fit with an offset matches lme4", {
   # deviation and the offset, in that draw (measured to 5.7e-14).
   draw <- .fb_inla_posterior_sample(fit, 2L, num.threads = "1:1")[[1L]]$latent
   rn <- rownames(draw)
-  eta <- draw["(Intercept):1", 1L] + draw["Days:1", 1L] * d$Days +
+  eta <- draw["(Intercept):1", 1L] +
+    draw["Days:1", 1L] * d$Days +
     draw[grep("^Subject:", rn), 1L][as.integer(d$Subject)]
   expect_lt(
     max(abs(draw[grep("^Predictor:", rn), 1L] - eta - d$Days)),
@@ -319,13 +329,18 @@ test_that("a Poisson INLA fit with offset(log(E)) matches glmer", {
     data = d
   ))
   fit <- .off_inla(
-    y ~ x + offset(log(E)), random = ~ g, family = "poisson", data = d
+    y ~ x + offset(log(E)),
+    random = ~g,
+    family = "poisson",
+    data = d
   )
   expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 2e-3)
   expect_lt(abs(coef(fit)[["x"]] - ref[["x"]]), 1e-5)
   # The stored linear predictor carries log(E) (measured to 1.4e-4).
-  eta <- coef(fit)[["(Intercept)"]] + coef(fit)[["x"]] * x +
-    fit$inla$summary.random$g$mean[as.integer(g)] + log(E)
+  eta <- coef(fit)[["(Intercept)"]] +
+    coef(fit)[["x"]] * x +
+    fit$inla$summary.random$g$mean[as.integer(g)] +
+    log(E)
   expect_lt(max(abs(fit$inla$summary.linear.predictor$mean - eta)), 1e-3)
 })
 
@@ -344,7 +359,11 @@ test_that("a Bernoulli INLA fit with an offset matches glmer", {
   o <- stats::rnorm(n, 0, 0.8)
   u <- stats::rnorm(30, 0, 0.5)
   d <- data.frame(
-    y = stats::rbinom(n, 1, stats::plogis(-0.3 + 0.7 * x + o + u[as.integer(g)])),
+    y = stats::rbinom(
+      n,
+      1,
+      stats::plogis(-0.3 + 0.7 * x + o + u[as.integer(g)])
+    ),
     x = x,
     g = g,
     o = o
@@ -354,7 +373,12 @@ test_that("a Bernoulli INLA fit with an offset matches glmer", {
     family = stats::binomial,
     data = d
   ))
-  fit <- .off_inla(y ~ x + offset(o), random = ~ g, family = "binomial", data = d)
+  fit <- .off_inla(
+    y ~ x + offset(o),
+    random = ~g,
+    family = "binomial",
+    data = d
+  )
   expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 0.02)
   expect_lt(abs(coef(fit)[["x"]] - ref[["x"]]), 0.02)
 })
@@ -373,9 +397,17 @@ test_that("an offset on a sectioned residual shifts the fit exactly", {
   d$half <- factor(ifelse(d$Days >= 5, "late", "early"))
   res <- ~ dsum(~ units | half)
   with_off <- .off_inla(
-    Reaction ~ Days + offset(Days), random = ~ Subject, residual = res, data = d
+    Reaction ~ Days + offset(Days),
+    random = ~Subject,
+    residual = res,
+    data = d
   )
-  plain <- .off_inla(Reaction ~ Days, random = ~ Subject, residual = res, data = d)
+  plain <- .off_inla(
+    Reaction ~ Days,
+    random = ~Subject,
+    residual = res,
+    data = d
+  )
   expect_lt(abs(coef(plain)[["Days"]] - coef(with_off)[["Days"]] - 1), 1e-3)
   expect_lt(
     abs(coef(plain)[["(Intercept)"]] - coef(with_off)[["(Intercept)"]]),
@@ -416,10 +448,10 @@ test_that("the scale an offset model is fitted on is read from y - o", {
   d <- .off_large(1000)
   w <- d$y - d$o
 
-  ir <- fb_from_asreml(y ~ x + offset(o), random = ~ g, data = d)
+  ir <- fb_from_asreml(y ~ x + offset(o), random = ~g, data = d)
   expect_equal(ir$data_summary$response_sd, stats::sd(w), tolerance = 1e-12)
 
-  fit <- .off_inla(y ~ x + offset(o), random = ~ g, data = d)
+  fit <- .off_inla(y ~ x + offset(o), random = ~g, data = d)
   spec <- fit$extras$response_standardisation
   expect_equal(spec$centre, mean(w), tolerance = 1e-12)
   expect_equal(spec$scale, stats::sd(w), tolerance = 1e-12)
@@ -437,8 +469,10 @@ test_that("the scale an offset model is fitted on is read from y - o", {
   expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 1e-4)
   expect_lt(abs(coef(fit)[["x"]] - ref[["x"]]), 1e-3)
   expect_lt(
-    abs(vc$estimate[vc$component == "sd_g"] -
-      attr(lme4::VarCorr(ref_fit)$g, "stddev")[[1L]]),
+    abs(
+      vc$estimate[vc$component == "sd_g"] -
+        attr(lme4::VarCorr(ref_fit)$g, "stddev")[[1L]]
+    ),
     0.3
   )
   expect_lt(
@@ -478,14 +512,15 @@ test_that("an offset model is invariant to rescaling the response and offset", {
     d <- base
     d$yk <- d$y * k
     d$ok <- d$o * k
-    fit <- .off_inla(yk ~ x + offset(ok), random = ~ g, data = d)
+    fit <- .off_inla(yk ~ x + offset(ok), random = ~g, data = d)
     vc <- summary(fit)$varcomp
     list(
       coef = unname(coef(fit)) / k,
       sd = c(
         vc$estimate[vc$component == "sd_g"],
         vc$estimate[vc$component == "sigma"]
-      ) / k,
+      ) /
+        k,
       fitted = fitted(fit) / k
     )
   }
@@ -513,14 +548,21 @@ test_that("an offset model is invariant to rescaling the response and offset", {
   fe <- c(f1 = 0, f2 = 0.5, f3 = -0.3, f4 = 0.8)
   u <- stats::rnorm(12, 0, 0.4)
   d$z <- stats::rnorm(n, 0, 2)
-  d$y <- 3 + fe[as.character(d$f)] + u[as.integer(d$g)] + d$z +
+  d$y <- 3 +
+    fe[as.character(d$f)] +
+    u[as.integer(d$g)] +
+    d$z +
     stats::rnorm(n, 0, 0.7)
   d$E <- stats::runif(n, 1, 10)
   d$count <- stats::rpois(
     n,
     d$E * exp(0.2 + fe[as.character(d$f)] + u[as.integer(d$g)])
   )
-  d$bin <- stats::rbinom(n, 1, stats::plogis(-0.2 + fe[as.character(d$f)] + d$z / 2))
+  d$bin <- stats::rbinom(
+    n,
+    1,
+    stats::plogis(-0.2 + fe[as.character(d$f)] + d$z / 2)
+  )
   d
 }
 
@@ -529,16 +571,37 @@ test_that("an offset model is invariant to rescaling the response and offset", {
   suppressMessages(switch(
     route,
     per_row = flexybayes(
-      fixed, random = ~ g, data = d, family = family, prior = prior,
-      backend = "inla", aggregate = FALSE, verbose = FALSE, ...
+      fixed,
+      random = ~g,
+      data = d,
+      family = family,
+      prior = prior,
+      backend = "inla",
+      aggregate = FALSE,
+      verbose = FALSE,
+      ...
     ),
     aggregated = flexybayes(
-      fixed, random = ~ g, data = d, family = family, prior = prior,
-      backend = "inla", aggregate = TRUE, verbose = FALSE, ...
+      fixed,
+      random = ~g,
+      data = d,
+      family = family,
+      prior = prior,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE,
+      ...
     ),
     stream = flexybayes_stream(
-      fixed, random = ~ g, source = d, family = family, prior = prior,
-      backend = "inla", chunk_rows = 100, verbose = FALSE, ...
+      fixed,
+      random = ~g,
+      source = d,
+      family = family,
+      prior = prior,
+      backend = "inla",
+      chunk_rows = 100,
+      verbose = FALSE,
+      ...
     )
   ))
 }
@@ -565,7 +628,7 @@ test_that("aggregated and streamed Gaussian fits with an offset refuse by name",
   d <- .off_cells()
 
   plan <- .fb_aggregation_plan(
-    fb_from_asreml(y ~ f + offset(z), random = ~ g, data = d),
+    fb_from_asreml(y ~ f + offset(z), random = ~g, data = d),
     .fb_dataset(d)
   )
   expect_true(plan$eligible)
@@ -596,8 +659,12 @@ test_that("a Poisson offset reaches the aggregated route as exposure", {
   d <- .off_cells()
 
   plan <- .fb_aggregation_plan(
-    fb_from_asreml(count ~ f + offset(log(E)), random = ~ g, data = d,
-                   family = "poisson"),
+    fb_from_asreml(
+      count ~ f + offset(log(E)),
+      random = ~g,
+      data = d,
+      family = "poisson"
+    ),
     .fb_dataset(d)
   )
   expect_true(plan$eligible)
@@ -606,7 +673,10 @@ test_that("a Poisson offset reaches the aggregated route as exposure", {
   per_row <- .off_route("per_row", count ~ f + offset(log(E)), "poisson", d)
   check <- function(fit) {
     b <- .off_fixed(fit)
-    expect_lt(max(abs(b[names(.off_fixed(per_row))] - .off_fixed(per_row))), 1e-7)
+    expect_lt(
+      max(abs(b[names(.off_fixed(per_row))] - .off_fixed(per_row))),
+      1e-7
+    )
     h <- .off_hyper(fit)
     expect_equal(
       unname(h[names(.off_hyper(per_row))]),
@@ -619,10 +689,12 @@ test_that("a Poisson offset reaches the aggregated route as exposure", {
   check(.off_route("stream", count ~ f + offset(log(E)), "poisson", d))
   check(.off_route("stream", count ~ f, "poisson", d, exposure = "E"))
 
-  X <- stats::model.matrix(~ f, d)
+  X <- stats::model.matrix(~f, d)
   expect_lt(
-    max(abs(agg$glm$linear.predictors -
-      (as.numeric(X %*% coef(agg)[colnames(X)]) + log(d$E)))),
+    max(abs(
+      agg$glm$linear.predictors -
+        (as.numeric(X %*% coef(agg)[colnames(X)]) + log(d$E))
+    )),
     1e-10
   )
 })
@@ -633,8 +705,12 @@ test_that("a binomial offset refuses the aggregated routes by name", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_cells()
   plan <- .fb_aggregation_plan(
-    fb_from_asreml(bin ~ f + offset(z / 2), random = ~ g, data = d,
-                   family = "binomial"),
+    fb_from_asreml(
+      bin ~ f + offset(z / 2),
+      random = ~g,
+      data = d,
+      family = "binomial"
+    ),
     .fb_dataset(d)
   )
   expect_false(plan$eligible)
@@ -661,8 +737,12 @@ test_that("a binomial offset refuses the aggregated routes by name", {
 
   # aggregate = "auto" takes the per-row route, which carries the offset.
   auto <- suppressMessages(flexybayes(
-    bin ~ f + offset(z / 2), random = ~ g, data = d, family = "binomial",
-    backend = "inla", verbose = FALSE
+    bin ~ f + offset(z / 2),
+    random = ~g,
+    data = d,
+    family = "binomial",
+    backend = "inla",
+    verbose = FALSE
   ))
   expect_identical(auto$exactness, "exact")
 })
@@ -679,8 +759,12 @@ test_that("a binomial offset refuses the aggregated routes by name", {
   fe <- c(f1 = 0, f2 = 0.5, f3 = -0.3, f4 = 0.8)
   d$x <- stats::rnorm(n)
   d$z <- stats::rnorm(n, 0, 2)
-  d$y <- 3 + fe[as.character(d$f)] + 0.4 * d$x +
-    stats::rnorm(12, 0, 0.4)[as.integer(d$g)] + d$z + stats::rnorm(n, 0, 0.7)
+  d$y <- 3 +
+    fe[as.character(d$f)] +
+    0.4 * d$x +
+    stats::rnorm(12, 0, 0.4)[as.integer(d$g)] +
+    d$z +
+    stats::rnorm(n, 0, 0.7)
   d
 }
 
@@ -693,7 +777,7 @@ test_that("predict() on INLA carries the offset where it predicts", {
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_pred_data()
-  fit <- .off_inla(y ~ f + x + offset(z), random = ~ g, data = d)
+  fit <- .off_inla(y ~ f + x + offset(z), random = ~g, data = d)
   b <- coef(fit)
 
   X <- stats::model.matrix(~ f + x, d)
@@ -709,8 +793,10 @@ test_that("predict() on INLA carries the offset where it predicts", {
   )
   Xn <- stats::model.matrix(~ f + x, nd)
   expect_lt(
-    max(abs(predict(fit, newdata = nd) -
-      (as.numeric(Xn %*% b[colnames(Xn)]) + nd$z))),
+    max(abs(
+      predict(fit, newdata = nd) -
+        (as.numeric(Xn %*% b[colnames(Xn)]) + nd$z)
+    )),
     1e-10
   )
   err <- .off_expect_refusal(
@@ -724,8 +810,10 @@ test_that("predict() on INLA carries the offset where it predicts", {
   # sits at its mean: b0 + b_f + b_x mean(x) + mean(z) by hand. Without the
   # offset every mean would be 0.064 lower.
   cl <- predict(fit, classify = "f")
-  hand <- b[["(Intercept)"]] + c(0, b[["ff2"]], b[["ff3"]], b[["ff4"]]) +
-    b[["x"]] * mean(d$x) + mean(d$z)
+  hand <- b[["(Intercept)"]] +
+    c(0, b[["ff2"]], b[["ff3"]], b[["ff4"]]) +
+    b[["x"]] * mean(d$x) +
+    mean(d$z)
   expect_lt(max(abs(cl$estimate - hand)), 1e-10)
 })
 
@@ -736,7 +824,9 @@ test_that("predict() on brms refuses new data that lack an offset column", {
   skip_if_not_installed("lme4")
   d <- .off_sleepstudy()
   ir <- fb_from_asreml(
-    Reaction ~ Days + offset(log(Days + 1)), random = ~ Subject, data = d
+    Reaction ~ Days + offset(log(Days + 1)),
+    random = ~Subject,
+    data = d
   )
   stub <- structure(
     list(brms = list(), extras = list(fb_terms = ir)),
@@ -754,8 +844,8 @@ test_that("the fingerprint and the printed surfaces record it", {
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_pred_data()
-  fit <- .off_inla(y ~ f + x + offset(z), random = ~ g, data = d)
-  plain <- .off_inla(y ~ f + x, random = ~ g, data = d)
+  fit <- .off_inla(y ~ f + x + offset(z), random = ~g, data = d)
+  plain <- .off_inla(y ~ f + x, random = ~g, data = d)
 
   expect_identical(fit$extras$fingerprint$offset, "offset(z)")
   expect_identical(plain$extras$fingerprint$offset, "<none>")
@@ -763,13 +853,15 @@ test_that("the fingerprint and the printed surfaces record it", {
   ps <- prior_summary(fit)
   expect_identical(ps$offsets, "offset(z)")
   expect_true(any(grepl(
-    "Offset: offset(z)", utils::capture.output(print(ps)), fixed = TRUE
+    "Offset: offset(z)",
+    utils::capture.output(print(ps)),
+    fixed = TRUE
   )))
 
   expect_identical(summary(fit)$offset, "offset(z)")
   expect_false("offset" %in% names(summary(plain)))
 
-  plan <- fb_plan(y ~ f + offset(z), random = ~ g, data = d)
+  plan <- fb_plan(y ~ f + offset(z), random = ~g, data = d)
   expect_identical(plan$offsets, "offset(z)")
   expect_identical(
     plan$aggregation$offset_route,
@@ -815,11 +907,14 @@ test_that("brms and INLA agree on an offset model under one stated prior", {
     )
   }
   inla_fit <- .off_inla(
-    Reaction ~ Days + offset(Days), random = ~ Subject, data = d, prior = prior
+    Reaction ~ Days + offset(Days),
+    random = ~Subject,
+    data = d,
+    prior = prior
   )
   brms_fit <- suppressMessages(flexybayes(
     Reaction ~ Days + offset(Days),
-    random = ~ Subject,
+    random = ~Subject,
     data = d,
     prior = prior,
     backend = "brms",

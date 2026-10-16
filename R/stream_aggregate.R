@@ -358,7 +358,9 @@ flexybayes_stream <- function(
     return(.fb_stream_source_delim(source, chunk_rows))
   }
   .fb_refuse_stream_source(paste0(
-    "`source` is a ", class(source)[[1L]], "."
+    "`source` is a ",
+    class(source)[[1L]],
+    "."
   ))
 }
 
@@ -390,7 +392,9 @@ flexybayes_stream <- function(
     stop(.fb_refusal_condition(
       reason_code = "row_count_exceeds_integer",
       message = paste0(
-        context, " reports ", format(n_rows, scientific = FALSE),
+        context,
+        " reports ",
+        format(n_rows, scientific = FALSE),
         " rows, past R's integer limit of ",
         format(.Machine$integer.max, scientific = FALSE),
         ". A count that large silently becomes NA when recorded, so the ",
@@ -732,7 +736,11 @@ flexybayes_stream <- function(
   family <- fb$family
   offsets <- fb$offsets %||% character(0)
   read_cols <- unique(c(
-    response, key_cols, trials, exposure, .fb_offset_vars(offsets)
+    response,
+    key_cols,
+    trials,
+    exposure,
+    .fb_offset_vars(offsets)
   ))
 
   acc <- NULL
@@ -805,10 +813,18 @@ flexybayes_stream <- function(
     stop(.fb_refusal_condition(
       reason_code = "response_not_finite",
       message = paste0(
-        "The response `", response, "` has ", length(bad),
+        "The response `",
+        response,
+        "` has ",
+        length(bad),
         " value(s) that are not finite in the rows read so far (",
-        paste0("row ", rows_before + shown, ": ", as.character(y[shown]),
-          collapse = ", "),
+        paste0(
+          "row ",
+          rows_before + shown,
+          ": ",
+          as.character(y[shown]),
+          collapse = ", "
+        ),
         if (length(bad) > length(shown)) ", ..." else "",
         "). NaN and infinite values are not missing observations. Correct ",
         "them in the source, or set them to NA and fit the per-row route, ",
@@ -822,8 +838,12 @@ flexybayes_stream <- function(
     stop(.fb_refusal_condition(
       reason_code = "aggregation_response_incomplete",
       message = paste0(
-        "flexybayes_stream() refused: the response `", response, "` has ",
-        "missing values (first at row ", rows_before + miss[[1L]], "), and ",
+        "flexybayes_stream() refused: the response `",
+        response,
+        "` has ",
+        "missing values (first at row ",
+        rows_before + miss[[1L]],
+        "), and ",
         "the streamed route compresses rows into per-cell sufficient ",
         "statistics that are not defined for a missing response. Fit the ",
         "per-row route, which carries a missing response as a latent ",
@@ -1137,9 +1157,15 @@ flexybayes_stream <- function(
     }
     reason <- if (rtype %in% c("smooth", "s", "t2", "smooth_mgcv", "spline")) {
       "smooth_term_not_aggregatable"
-    } else if (rtype %in% c(
-      "simple_slope_uncor", "simple_slope_cor", "slope", "random_slope"
-    )) {
+    } else if (
+      rtype %in%
+        c(
+          "simple_slope_uncor",
+          "simple_slope_cor",
+          "slope",
+          "random_slope"
+        )
+    ) {
       "random_slope_not_aggregatable"
     } else {
       "structured_random_not_aggregatable"

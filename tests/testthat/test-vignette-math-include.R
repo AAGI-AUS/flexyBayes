@@ -37,16 +37,18 @@ test_that("every vignette page and .orig source references the include", {
     full.names = TRUE
   )
   expect_gt(length(pages), 0L)
-  missing <- pages[!vapply(
-    pages,
-    function(p) {
-      any(grepl(
-        "in_header: _mathjax-scale.html",
-        readLines(p, warn = FALSE),
-        fixed = TRUE
-      ))
-    },
-    logical(1L)
-  )]
+  missing <- pages[
+    !vapply(
+      pages,
+      function(p) {
+        any(grepl(
+          "in_header: _mathjax-scale.html",
+          readLines(p, warn = FALSE),
+          fixed = TRUE
+        ))
+      },
+      logical(1L)
+    )
+  ]
   expect_identical(basename(missing), character(0))
 })

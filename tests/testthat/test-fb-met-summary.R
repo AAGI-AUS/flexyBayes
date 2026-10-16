@@ -13,9 +13,15 @@
 
 test_that("fb_met_summary() refuses unconditionally on a well-formed flexybayes fit", {
   fake <- structure(
-    list(extras = list(parse_info = list(random = list(
-      list(type = "fa_gxe", inner = "gen", outer = "env", k = 2L)
-    )))),
+    list(
+      extras = list(
+        parse_info = list(
+          random = list(
+            list(type = "fa_gxe", inner = "gen", outer = "env", k = 2L)
+          )
+        )
+      )
+    ),
     class = c("flexybayes", "list")
   )
   err <- tryCatch(fb_met_summary(fake), error = function(e) e)
@@ -48,7 +54,10 @@ test_that("fb_met_summary() refuses identically on an INLA-shaped and a brms-sha
   # `flexybayes` parent, confirms an inla/brms fit does not accidentally
   # reach a different, class-specific method.
   for (cls in c("flexybayes_inla", "flexybayes_brms")) {
-    fit <- structure(list(extras = list()), class = c(cls, "flexybayes", "list"))
+    fit <- structure(
+      list(extras = list()),
+      class = c(cls, "flexybayes", "list")
+    )
     err <- tryCatch(fb_met_summary(fit), error = function(e) e)
     expect_identical(err$reason_code, "met_summary_not_available", label = cls)
   }

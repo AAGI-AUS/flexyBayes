@@ -42,7 +42,9 @@ test_that("a plug-in partition is listed by fb_refusals() under its package", {
   tab <- fb_refusals()
   expect_true("package" %in% names(tab))
   expect_identical(
-    tab$package[tab$reason_code %in% c("fakea_widget_missing", "fakea_gadget_unfit")],
+    tab$package[
+      tab$reason_code %in% c("fakea_widget_missing", "fakea_gadget_unfit")
+    ],
     c("fakePluginA", "fakePluginA")
   )
   expect_identical(
@@ -169,9 +171,15 @@ test_that("a code already in the core partition is refused", {
 test_that("a code already in another plug-in partition is refused", {
   .drop_partition_on_exit("fakePluginA")
   .drop_partition_on_exit("fakePluginB")
-  fb_register_refusals(.fake_refusals("fake_shared_code"), package = "fakePluginA")
+  fb_register_refusals(
+    .fake_refusals("fake_shared_code"),
+    package = "fakePluginA"
+  )
   expect_error(
-    fb_register_refusals(.fake_refusals("fake_shared_code"), package = "fakePluginB"),
+    fb_register_refusals(
+      .fake_refusals("fake_shared_code"),
+      package = "fakePluginB"
+    ),
     "fakePluginA"
   )
   expect_identical(
@@ -182,9 +190,15 @@ test_that("a code already in another plug-in partition is refused", {
 
 test_that("a package re-registering its own code is accepted only unchanged", {
   .drop_partition_on_exit("fakePluginA")
-  fb_register_refusals(.fake_refusals("fakea_widget_missing"), package = "fakePluginA")
+  fb_register_refusals(
+    .fake_refusals("fakea_widget_missing"),
+    package = "fakePluginA"
+  )
   expect_no_error(
-    fb_register_refusals(.fake_refusals("fakea_widget_missing"), package = "fakePluginA")
+    fb_register_refusals(
+      .fake_refusals("fakea_widget_missing"),
+      package = "fakePluginA"
+    )
   )
   expect_error(
     fb_register_refusals(
@@ -213,7 +227,10 @@ test_that("a code given twice in one table is refused", {
 test_that("the core partition cannot be modified", {
   n_core <- length(ls(flexyBayes:::.refusal_registry))
   expect_error(
-    fb_register_refusals(.fake_refusals("fake_into_core"), package = "flexyBayes"),
+    fb_register_refusals(
+      .fake_refusals("fake_into_core"),
+      package = "flexyBayes"
+    ),
     "flexyBayes"
   )
   expect_error(
@@ -230,7 +247,10 @@ test_that("the core partition cannot be modified", {
 
 test_that("a plug-in entry cannot be overwritten in place", {
   .drop_partition_on_exit("fakePluginA")
-  fb_register_refusals(.fake_refusals("fakea_widget_missing"), package = "fakePluginA")
+  fb_register_refusals(
+    .fake_refusals("fakea_widget_missing"),
+    package = "fakePluginA"
+  )
   partition <- get(
     "fakePluginA",
     envir = flexyBayes:::.refusal_plugin_registry
@@ -252,7 +272,10 @@ test_that("fb_register_refusals() validates the table", {
   )
   bad <- .fake_refusals("fakea_x")
   bad$description <- NA_character_
-  expect_error(fb_register_refusals(bad, package = "fakePluginA"), "description")
+  expect_error(
+    fb_register_refusals(bad, package = "fakePluginA"),
+    "description"
+  )
   expect_error(
     fb_register_refusals(.fake_refusals("Not A Code"), package = "fakePluginA"),
     "reason_code"
@@ -263,4 +286,3 @@ test_that("fb_register_refusals() validates the table", {
   )
   expect_false("fakea_x" %in% fb_refusals()$reason_code)
 })
-

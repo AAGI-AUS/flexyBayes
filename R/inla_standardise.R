@@ -147,7 +147,9 @@
   }
   stop(
     "flexyBayes internal error: no standardisation rule for the INLA prior ",
-    "\"", family, "\". A stated prior that cannot be restated on the ",
+    "\"",
+    family,
+    "\". A stated prior that cannot be restated on the ",
     "standardised scale would change the model the fit runs.",
     call. = FALSE
   )
@@ -207,7 +209,11 @@
 # Columns of an INLA summary table that move with the quantity, and the one
 # that scales with its magnitude. `kld` and `ID` are left alone.
 .FB_INLA_LOCATION_COLS <- c(
-  "mean", "0.025quant", "0.5quant", "0.975quant", "mode"
+  "mean",
+  "0.025quant",
+  "0.5quant",
+  "0.975quant",
+  "mode"
 )
 
 .fb_inla_map_table <- function(tab, a, b) {
@@ -268,17 +274,23 @@
 
   fixed_a <- function(nm) if (identical(nm, "(Intercept)")) m else 0
   fit$summary.fixed <- .fb_inla_map_rows(
-    fit$summary.fixed, fixed_a, function(nm) s
+    fit$summary.fixed,
+    fixed_a,
+    function(nm) s
   )
   for (nm in names(fit$marginals.fixed)) {
     fit$marginals.fixed[[nm]] <- .fb_inla_map_marginal(
-      fit$marginals.fixed[[nm]], fixed_a(nm), s
+      fit$marginals.fixed[[nm]],
+      fixed_a(nm),
+      s
     )
   }
 
   for (nm in names(fit$summary.random)) {
     fit$summary.random[[nm]] <- .fb_inla_map_table(
-      fit$summary.random[[nm]], 0, s
+      fit$summary.random[[nm]],
+      0,
+      s
     )
     if (!is.null(fit$marginals.random[[nm]])) {
       fit$marginals.random[[nm]] <- lapply(
@@ -292,11 +304,15 @@
 
   hyper_b <- function(nm) .fb_inla_hyper_factor(nm, spec)
   fit$summary.hyperpar <- .fb_inla_map_rows(
-    fit$summary.hyperpar, function(nm) 0, hyper_b
+    fit$summary.hyperpar,
+    function(nm) 0,
+    hyper_b
   )
   for (nm in names(fit$marginals.hyperpar)) {
     fit$marginals.hyperpar[[nm]] <- .fb_inla_map_marginal(
-      fit$marginals.hyperpar[[nm]], 0, hyper_b(nm)
+      fit$marginals.hyperpar[[nm]],
+      0,
+      hyper_b(nm)
     )
   }
   # The internal hyperparameters are log precisions, which shift.
@@ -304,11 +320,15 @@
     if (startsWith(nm, "Log precision for ")) -2 * log_s else 0
   }
   fit$internal.summary.hyperpar <- .fb_inla_map_rows(
-    fit$internal.summary.hyperpar, internal_a, function(nm) 1
+    fit$internal.summary.hyperpar,
+    internal_a,
+    function(nm) 1
   )
   for (nm in names(fit$internal.marginals.hyperpar)) {
     fit$internal.marginals.hyperpar[[nm]] <- .fb_inla_map_marginal(
-      fit$internal.marginals.hyperpar[[nm]], internal_a(nm), 1
+      fit$internal.marginals.hyperpar[[nm]],
+      internal_a(nm),
+      1
     )
   }
 
@@ -335,13 +355,17 @@
   }
   if (is.list(fit$dic)) {
     n_dic <- sum(is.finite(fit$dic$local.dic))
-    for (nm in intersect(c("dic", "mean.deviance", "deviance.mean"),
-                         names(fit$dic))) {
+    for (nm in intersect(
+      c("dic", "mean.deviance", "deviance.mean"),
+      names(fit$dic)
+    )) {
       fit$dic[[nm]] <- fit$dic[[nm]] + 2 * n_dic * log_s
     }
     if (!is.null(fit$dic$family.dic) && !is.null(fit$dic$family)) {
       n_by_family <- tapply(
-        is.finite(fit$dic$local.dic), fit$dic$family, sum
+        is.finite(fit$dic$local.dic),
+        fit$dic$family,
+        sum
       )
       fit$dic$family.dic <- fit$dic$family.dic +
         2 * as.numeric(n_by_family[seq_along(fit$dic$family.dic)]) * log_s
@@ -429,7 +453,9 @@
         a[prefixes == p] <- spec$centre
       } else if (!p %in% c(fixed, random)) {
         stop(
-          "flexyBayes internal error: the INLA draw row \"", p, "\" has no ",
+          "flexyBayes internal error: the INLA draw row \"",
+          p,
+          "\" has no ",
           "rule for mapping back from the standardised scale.",
           call. = FALSE
         )
@@ -489,11 +515,14 @@
   ct <- cs$contents
   offset <- sum(ct$length) - cs$n
   field <- ct$start > offset
-  rows <- unlist(Map(
-    function(tag, len) paste0(tag, ":", seq_len(len)),
-    ct$tag[field],
-    ct$length[field]
-  ), use.names = FALSE)
+  rows <- unlist(
+    Map(
+      function(tag, len) paste0(tag, ":", seq_len(len)),
+      ct$tag[field],
+      ct$length[field]
+    ),
+    use.names = FALSE
+  )
 
   internal <- rownames(inla_fit$internal.summary.hyperpar)
   hyper_names <- rownames(inla_fit$summary.hyperpar)[

@@ -49,9 +49,14 @@ test_that("a malformed thread option stops with its value named", {
     g = factor(rep(sprintf("g%02d", 1:10), length.out = n)),
     h = factor(rep(c("A", "B", "C"), length.out = n))
   )
-  d$y <- 1 + c(0, 0.4, -0.3)[as.integer(d$h)] + stats::rnorm(10L, sd = 0.8)[as.integer(d$g)] +
+  d$y <- 1 +
+    c(0, 0.4, -0.3)[as.integer(d$h)] +
+    stats::rnorm(10L, sd = 0.8)[as.integer(d$g)] +
     stats::rnorm(n, sd = 0.6)
-  d$cnt <- stats::rpois(n, exp(0.5 + stats::rnorm(10L, sd = 0.4)[as.integer(d$g)]))
+  d$cnt <- stats::rpois(
+    n,
+    exp(0.5 + stats::rnorm(10L, sd = 0.4)[as.integer(d$g)])
+  )
   d
 }
 
@@ -62,12 +67,33 @@ test_that("a malformed thread option stops with its value named", {
   fixed <- stats::as.formula(paste(response, "~ h"))
   suppressMessages(suppressWarnings(switch(
     route,
-    per_row = flexybayes(fixed, random = ~g, data = d, family = family,
-      backend = "inla", aggregate = FALSE, verbose = FALSE),
-    aggregated = flexybayes(fixed, random = ~g, data = d, family = family,
-      backend = "inla", aggregate = TRUE, verbose = FALSE),
-    stream = flexybayes_stream(fixed, random = ~g, source = d, family = family,
-      backend = "inla", chunk_rows = 50000, verbose = FALSE)
+    per_row = flexybayes(
+      fixed,
+      random = ~g,
+      data = d,
+      family = family,
+      backend = "inla",
+      aggregate = FALSE,
+      verbose = FALSE
+    ),
+    aggregated = flexybayes(
+      fixed,
+      random = ~g,
+      data = d,
+      family = family,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
+    ),
+    stream = flexybayes_stream(
+      fixed,
+      random = ~g,
+      source = d,
+      family = family,
+      backend = "inla",
+      chunk_rows = 50000,
+      verbose = FALSE
+    )
   )))
 }
 
@@ -83,12 +109,15 @@ test_that("every INLA route runs at the package plan, whatever INLA's own option
   withr::defer(INLA::inla.setOption(num.threads = old))
   d <- .th_data()
   for (route in list(
-    c("gaussian", "per_row"), c("poisson", "per_row"),
-    c("poisson", "aggregated"), c("poisson", "stream")
+    c("gaussian", "per_row"),
+    c("poisson", "per_row"),
+    c("poisson", "aggregated"),
+    c("poisson", "stream")
   )) {
     fit <- .th_fit(d, route[1L], route[2L])
     expect_identical(
-      fit$extras$reproducibility$threads$num_threads, "1:1",
+      fit$extras$reproducibility$threads$num_threads,
+      "1:1",
       label = paste(route, collapse = " ")
     )
   }
@@ -96,4 +125,3 @@ test_that("every INLA route runs at the package plan, whatever INLA's own option
   expect_identical(.th_fit(d)$extras$reproducibility$threads$num_threads, "2:1")
   expect_identical(INLA::inla.getOption("num.threads"), "4:1")
 })
-

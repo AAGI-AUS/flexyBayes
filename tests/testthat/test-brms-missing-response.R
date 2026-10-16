@@ -47,10 +47,17 @@ test_that("brms samples a missing Gaussian response instead of dropping it", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian")
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "brms", na_action = "augment",
-    n_samples = 200, warmup = 200, chains = 2,
-    verbose = FALSE, mcmc_verbose = FALSE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "brms",
+    na_action = "augment",
+    n_samples = 200,
+    warmup = 200,
+    chains = 2,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
   # The whole point: every row reaches the engine, including the six whose
   # response is missing. Before the fix this was 42.
@@ -67,10 +74,17 @@ test_that("the sampled missing responses reach summary(fit)$missing", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian")
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "brms", na_action = "augment",
-    n_samples = 200, warmup = 200, chains = 2,
-    verbose = FALSE, mcmc_verbose = FALSE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "brms",
+    na_action = "augment",
+    n_samples = 200,
+    warmup = 200,
+    chains = 2,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
 
   captured <- utils::capture.output(print(s <- summary(fit)))
@@ -100,10 +114,17 @@ test_that("a complete brms fit reports a typed zero-row missing table", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian", n_missing = 0L)
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "brms", na_action = "augment",
-    n_samples = 200, warmup = 200, chains = 2,
-    verbose = FALSE, mcmc_verbose = FALSE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "brms",
+    na_action = "augment",
+    n_samples = 200,
+    warmup = 200,
+    chains = 2,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
   mv <- stats::coef(fit, what = "missing")
   expect_s3_class(mv, "data.frame")
@@ -116,8 +137,13 @@ test_that("the emitted brms formula marks the response as partially missing", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian")
   code <- suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "brms", na_action = "augment", return_code = TRUE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "brms",
+    na_action = "augment",
+    return_code = TRUE
   ))
   txt <- paste(as.character(code), collapse = "\n")
   # brms generates a Yl parameter vector for the missing responses.
@@ -130,8 +156,13 @@ test_that("a complete response does not get the mi() treatment", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian", n_missing = 0L)
   code <- suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "brms", na_action = "augment", return_code = TRUE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "brms",
+    na_action = "augment",
+    return_code = TRUE
   ))
   txt <- paste(as.character(code), collapse = "\n")
   expect_false(grepl("Ymi|Jmi", txt))
@@ -143,9 +174,14 @@ test_that("a missing non-Gaussian response is refused, not deleted", {
   for (fam in c("poisson", "binomial")) {
     expect_error(
       suppressMessages(flexybayes(
-        fixed = y ~ 1, random = ~ blk, residual = ~ units,
-        data = .brms_miss_data(fam), family = fam,
-        backend = "brms", na_action = "augment", return_code = TRUE
+        fixed = y ~ 1,
+        random = ~blk,
+        residual = ~units,
+        data = .brms_miss_data(fam),
+        family = fam,
+        backend = "brms",
+        na_action = "augment",
+        return_code = TRUE
       )),
       class = "flexybayes_brms_cannot_augment_nongaussian",
       label = fam
@@ -166,17 +202,24 @@ test_that("a missing lognormal response is sampled and matches deletion", {
   d <- .brms_miss_lognormal_data()
   fit_one <- function(na_action) {
     suppressMessages(flexybayes(
-      y ~ 1 + (1 | blk), data = d, family = brms::lognormal(),
+      y ~ 1 + (1 | blk),
+      data = d,
+      family = brms::lognormal(),
       # brms centres its default intercept prior on the response median, and
       # at zero once mi() is in the formula. Stating the prior keeps the two
       # fits apart in their rows only.
       prior = fb_prior(b("(Intercept)") ~ normal(1, 2.5)),
-      backend = "brms", na_action = na_action,
-      n_samples = 1000, warmup = 1000, chains = 2, seed = 1001L,
+      backend = "brms",
+      na_action = na_action,
+      n_samples = 1000,
+      warmup = 1000,
+      chains = 2,
+      seed = 1001L,
       # Stan's default of 0.8 left occasional divergent transitions on this
       # design, in both representations.
       control = list(adapt_delta = 0.95),
-      verbose = FALSE, mcmc_verbose = FALSE
+      verbose = FALSE,
+      mcmc_verbose = FALSE
     ))
   }
   fit_aug <- expect_no_warning(fit_one("augment"))
@@ -202,16 +245,24 @@ test_that("a missing lognormal response is sampled and matches deletion", {
   expect_identical(s_aug$variable, s_omit$variable)
   # Four Monte Carlo units each: the spread of that summary over eight seeds
   # of each representation at these settings, combined across the two fits.
-  tol_mean <- c(b_Intercept = 0.0575, sd_blk__Intercept = 0.0455,
-    sigma = 0.00583)
-  tol_sd <- c(b_Intercept = 0.0435, sd_blk__Intercept = 0.0560,
-    sigma = 0.00488)
+  tol_mean <- c(
+    b_Intercept = 0.0575,
+    sd_blk__Intercept = 0.0455,
+    sigma = 0.00583
+  )
+  tol_sd <- c(b_Intercept = 0.0435, sd_blk__Intercept = 0.0560, sigma = 0.00488)
   for (i in seq_along(s_aug$variable)) {
     p <- s_aug$variable[[i]]
-    expect_lte(abs(s_aug$mean[[i]] - s_omit$mean[[i]]), tol_mean[[p]],
-      label = paste("posterior mean difference,", p))
-    expect_lte(abs(s_aug$sd[[i]] - s_omit$sd[[i]]), tol_sd[[p]],
-      label = paste("posterior sd difference,", p))
+    expect_lte(
+      abs(s_aug$mean[[i]] - s_omit$mean[[i]]),
+      tol_mean[[p]],
+      label = paste("posterior mean difference,", p)
+    )
+    expect_lte(
+      abs(s_aug$sd[[i]] - s_omit$sd[[i]]),
+      tol_sd[[p]],
+      label = paste("posterior sd difference,", p)
+    )
   }
 })
 
@@ -226,8 +277,12 @@ test_that("a missing Student-t response is refused by name on brms", {
   d <- .brms_miss_lognormal_data()
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1 + (1 | blk), data = d, family = brms::student(),
-      backend = "brms", na_action = "augment", return_code = TRUE
+      y ~ 1 + (1 | blk),
+      data = d,
+      family = brms::student(),
+      backend = "brms",
+      na_action = "augment",
+      return_code = TRUE
     )),
     class = "flexybayes_refusal_unsupported_family"
   )
@@ -243,8 +298,13 @@ test_that("na_action = 'omit' still deletes on brms, for any family", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("poisson")
   expect_no_error(suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    family = "poisson", backend = "brms", na_action = "omit",
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    family = "poisson",
+    backend = "brms",
+    na_action = "omit",
     return_code = TRUE
   )))
 })
@@ -256,9 +316,14 @@ test_that("INLA carries a missing response for every family", {
   for (fam in c("gaussian", "poisson", "binomial")) {
     expect_no_error(
       suppressMessages(suppressWarnings(flexybayes(
-        fixed = y ~ 1, random = ~ blk, residual = ~ units,
-        data = .brms_miss_data(fam), family = fam,
-        backend = "inla", na_action = "augment", verbose = FALSE
+        fixed = y ~ 1,
+        random = ~blk,
+        residual = ~units,
+        data = .brms_miss_data(fam),
+        family = fam,
+        backend = "inla",
+        na_action = "augment",
+        verbose = FALSE
       ))),
       message = fam
     )

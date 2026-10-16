@@ -19,15 +19,20 @@
 # `fb$random_terms`. A new branch there is a new index type.
 .ris_emitter_types <- function(fun) {
   is_type_ref <- function(x) {
-    is.call(x) && identical(x[[1L]], as.name("$")) &&
+    is.call(x) &&
+      identical(x[[1L]], as.name("$")) &&
       identical(x[[2L]], as.name("term")) &&
       identical(x[[3L]], as.name("type"))
   }
   found <- character(0)
   collect <- function(x) {
     head <- x[[1L]]
-    if (identical(head, as.name("identical")) && length(x) == 3L &&
-          is_type_ref(x[[2L]]) && is.character(x[[3L]])) {
+    if (
+      identical(head, as.name("identical")) &&
+        length(x) == 3L &&
+        is_type_ref(x[[2L]]) &&
+        is.character(x[[3L]])
+    ) {
       found <<- c(found, x[[3L]])
     }
     if (identical(head, as.name("%in%")) && is_type_ref(x[[2L]])) {
@@ -42,8 +47,10 @@
     }
   }
   find_loop <- function(x) {
-    if (identical(x[[1L]], as.name("for")) &&
-          identical(x[[3L]], quote(fb$random_terms))) {
+    if (
+      identical(x[[1L]], as.name("for")) &&
+        identical(x[[3L]], quote(fb$random_terms))
+    ) {
       collect(x[[4L]])
       return(invisible(NULL))
     }
@@ -65,7 +72,9 @@
     if (identical(x[[1L]], as.name("f"))) {
       args <- as.list(x)[-1L]
       nms <- names(args)
-      if (is.null(nms)) nms <- rep("", length(args))
+      if (is.null(nms)) {
+        nms <- rep("", length(args))
+      }
       first <- args[[which(!nzchar(nms))[1L]]]
       out$tables <<- c(out$tables, as.character(first))
       for (k in intersect(c("group", "replicate"), nms)) {
@@ -113,8 +122,12 @@
 
   asr <- function(random, data, known_matrices = list()) {
     list(
-      fb = fb_from_asreml(y ~ 1, random = random, data = data,
-                          known_matrices = known_matrices),
+      fb = fb_from_asreml(
+        y ~ 1,
+        random = random,
+        data = data,
+        known_matrices = known_matrices
+      ),
       data = data,
       known_matrices = known_matrices
     )
@@ -131,19 +144,34 @@
     spline = asr(~ spl(z), met),
     nested = asr(~ rep:gen, met),
     combo = asr(~ rep:env:gen, met),
-    uncor_slope = list(fb = fb_from_brms(y ~ x + (x || gen), data = met),
-                       data = met, known_matrices = list()),
-    cor_slope = list(fb = fb_from_brms(y ~ x + (x | gen), data = met),
-                     data = met, known_matrices = list()),
+    uncor_slope = list(
+      fb = fb_from_brms(y ~ x + (x || gen), data = met),
+      data = met,
+      known_matrices = list()
+    ),
+    cor_slope = list(
+      fb = fb_from_brms(y ~ x + (x | gen), data = met),
+      data = met,
+      known_matrices = list()
+    ),
     at_simple = asr(~ diag(env):gen, met),
     us_gxe = asr(~ us(env):gen, met),
     fa_gxe = asr(~ fa(env, 1):gen, met),
-    vm = asr(~ vm(geno, cov = fb_cov(Qk, type = "precision")), gen_tab,
-             list(Qk = solve(kin))),
-    ped = asr(~ ped(geno, Ak, use_sparse_precision = TRUE), gen_tab,
-              list(Ak = solve(kin))),
-    vm_blocks = asr(~ vm(geno, cov = fb_cov(Bk, type = "blocks")), gen_tab,
-                    list(Bk = blocks)),
+    vm = asr(
+      ~ vm(geno, cov = fb_cov(Qk, type = "precision")),
+      gen_tab,
+      list(Qk = solve(kin))
+    ),
+    ped = asr(
+      ~ ped(geno, Ak, use_sparse_precision = TRUE),
+      gen_tab,
+      list(Ak = solve(kin))
+    ),
+    vm_blocks = asr(
+      ~ vm(geno, cov = fb_cov(Bk, type = "blocks")),
+      gen_tab,
+      list(Bk = blocks)
+    ),
     ar1 = asr(~ ar1(t), series[series$plot == "P1", ]),
     ar1_grouped = asr(~ ar1(t):plot, series),
     ar1_spatial = asr(~ ar1(row):ar1(col), grid[grid$trial == "TA", ]),
@@ -205,8 +233,11 @@ test_that("every index the emitter writes has exactly one specification", {
         s <- specs[[idx]]
         expect_true(nzchar(s$label), info = paste(nm, idx))
         expect_false(is.null(s$levels), info = paste(nm, idx))
-        expect_identical(length(s$levels), length(s$rows),
-                         info = paste(nm, idx))
+        expect_identical(
+          length(s$levels),
+          length(s$rows),
+          info = paste(nm, idx)
+        )
         expect_true(max(s$rows) <= s$n_field, info = paste(nm, idx))
         expect_false(any(grepl("^[0-9]+$", s$levels)), info = paste(nm, idx))
       } else {
@@ -216,9 +247,13 @@ test_that("every index the emitter writes has exactly one specification", {
       }
     }
     # And no specification for an index the emitter does not write.
-    expect_true(all(names(specs) %in% emitted$tables),
-                info = paste(nm, paste(setdiff(names(specs), emitted$tables),
-                                       collapse = ", ")))
+    expect_true(
+      all(names(specs) %in% emitted$tables),
+      info = paste(
+        nm,
+        paste(setdiff(names(specs), emitted$tables), collapse = ", ")
+      )
+    )
     # A group = or replicate = index has no table; the specification of the
     # table that carries it must say so.
     carried <- unlist(lapply(specs, function(s) s$carries))
@@ -258,7 +293,9 @@ test_that("the levels a specification reports are the data's, in index order", {
   grid <- fixtures$ar1_replicated$data
   s <- .fb_inla_index_specs(fixtures$ar1_replicated$fb, data = grid)
   cells <- expand.grid(
-    row = levels(grid$row), col = levels(grid$col), trial = levels(grid$trial),
+    row = levels(grid$row),
+    col = levels(grid$col),
+    trial = levels(grid$trial),
     stringsAsFactors = FALSE
   )
   expect_identical(s$row_id$label, "id(trial):ar1(row):ar1(col)")
@@ -276,8 +313,13 @@ test_that("the levels a specification reports are the data's, in index order", {
 # so the accessor's use of a specification is checked without a fit. The
 # row count is taken from the data, not from the specification.
 
-.ris_mock_fit <- function(fb, data, tables, known_matrices = list(),
-                          attach_terms = TRUE) {
+.ris_mock_fit <- function(
+  fb,
+  data,
+  tables,
+  known_matrices = list(),
+  attach_terms = TRUE
+) {
   structure(
     list(
       inla = list(summary.random = tables),
@@ -402,7 +444,10 @@ test_that("every specification relabels a table carrying its index values and no
       tab$ID <- s$ids
       expect_no_warning(
         r <- .fb_random_inla(.ris_mock_fit(
-          fx$fb, fx$data, stats::setNames(list(tab), idx), fx$known_matrices
+          fx$fb,
+          fx$data,
+          stats::setNames(list(tab), idx),
+          fx$known_matrices
         ))
       )
       expect_identical(r[[s$label]]$level, s$levels, info = info)
@@ -413,7 +458,9 @@ test_that("every specification relabels a table carrying its index values and no
       expect_false(identical(permuted$ID, tab$ID), info = info)
       expect_warning(
         r <- .fb_random_inla(.ris_mock_fit(
-          fx$fb, fx$data, stats::setNames(list(permuted), idx),
+          fx$fb,
+          fx$data,
+          stats::setNames(list(permuted), idx),
           fx$known_matrices
         )),
         s$label,

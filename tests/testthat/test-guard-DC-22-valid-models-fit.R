@@ -14,12 +14,21 @@
 
 .g22_data <- function() {
   set.seed(22)
-  d <- expand.grid(a = factor(1:3), b = factor(1:2), cc = factor(1:2), rep = 1:5)
+  d <- expand.grid(
+    a = factor(1:3),
+    b = factor(1:2),
+    cc = factor(1:2),
+    rep = 1:5
+  )
   d$g <- factor(rep(1:6, length.out = nrow(d)))
   d$x <- stats::rnorm(nrow(d))
   d$t <- stats::runif(nrow(d), 1, 3)
-  d$y <- exp(1 + 0.3 * d$x + stats::rnorm(6L, 0, 0.3)[d$g] +
-    stats::rnorm(nrow(d), 0, 0.2))
+  d$y <- exp(
+    1 +
+      0.3 * d$x +
+      stats::rnorm(6L, 0, 0.3)[d$g] +
+      stats::rnorm(nrow(d), 0, 0.2)
+  )
   d$n <- stats::rpois(nrow(d), d$t * 2)
   d$k <- stats::rbinom(nrow(d), 1L, 0.4)
   d
@@ -30,11 +39,19 @@
   list(
     stats_binomial = list(
       fb = list(k ~ x, random = ~g, family = stats::binomial()),
-      peer = quote(lme4::glmer(k ~ x + (1 | g), data = d, family = stats::binomial()))
+      peer = quote(lme4::glmer(
+        k ~ x + (1 | g),
+        data = d,
+        family = stats::binomial()
+      ))
     ),
     stats_poisson = list(
       fb = list(n ~ x, random = ~g, family = stats::poisson()),
-      peer = quote(lme4::glmer(n ~ x + (1 | g), data = d, family = stats::poisson()))
+      peer = quote(lme4::glmer(
+        n ~ x + (1 | g),
+        data = d,
+        family = stats::poisson()
+      ))
     ),
     transformed_response = list(
       fb = list(log(y) ~ x, random = ~g),
@@ -42,7 +59,8 @@
     ),
     three_way_stated_prior = list(
       fb = list(
-        log(y) ~ x, random = ~ a:b:cc,
+        log(y) ~ x,
+        random = ~ a:b:cc,
         prior = fb_prior(sd(group = "a:b:cc") ~ half_normal(scale = 1))
       ),
       peer = quote(lme4::lmer(log(y) ~ x + (1 | a:b:cc), data = d))
@@ -54,7 +72,9 @@
     offset = list(
       fb = list(n ~ x + offset(log(t)), random = ~g, family = "poisson"),
       peer = quote(lme4::glmer(
-        n ~ x + offset(log(t)) + (1 | g), data = d, family = stats::poisson()
+        n ~ x + offset(log(t)) + (1 | g),
+        data = d,
+        family = stats::poisson()
       ))
     ),
     polynomial = list(
@@ -106,7 +126,8 @@ test_that("DC-22 guard: every model the peers fit, flexybayes() fits on INLA", {
     expect_false(inherits(peer, "error"), label = paste(nm, "peer fit"))
     fit <- tryCatch(
       suppressWarnings(suppressMessages(do.call(
-        flexybayes, c(corpus[[nm]]$fb, list(data = d, backend = "inla", verbose = FALSE))
+        flexybayes,
+        c(corpus[[nm]]$fb, list(data = d, backend = "inla", verbose = FALSE))
       ))),
       error = function(e) e
     )

@@ -72,25 +72,35 @@ fb_fixed_design <- function(formula, data, train_rows = NULL) {
     }
     vars <- strsplit(labels[[a]], ":", fixed = TRUE)[[1L]]
     parts <- strsplit(colnames(X)[columns], ":", fixed = TRUE)
-    key <- vapply(seq_along(vars), function(k) {
-      levels <- design$xlev[[vars[[k]]]]
-      vapply(parts, function(p) {
-        if (length(p) != length(vars)) {
-          return(NA_integer_)
-        }
-        if (is.null(levels)) {
-          return(if (identical(p[[k]], vars[[k]])) 0L else NA_integer_)
-        }
-        match(p[[k]], paste0(vars[[k]], levels))
-      }, integer(1L))
-    }, integer(length(columns)))
+    key <- vapply(
+      seq_along(vars),
+      function(k) {
+        levels <- design$xlev[[vars[[k]]]]
+        vapply(
+          parts,
+          function(p) {
+            if (length(p) != length(vars)) {
+              return(NA_integer_)
+            }
+            if (is.null(levels)) {
+              return(if (identical(p[[k]], vars[[k]])) 0L else NA_integer_)
+            }
+            match(p[[k]], paste0(vars[[k]], levels))
+          },
+          integer(1L)
+        )
+      },
+      integer(length(columns))
+    )
     key <- matrix(key, nrow = length(columns))
     if (anyNA(key)) {
       out <- c(out, columns)
       next
     }
-    out <- c(out, columns[do.call(order, lapply(seq_len(ncol(key)),
-                                              function(k) -key[, k]))])
+    out <- c(
+      out,
+      columns[do.call(order, lapply(seq_len(ncol(key)), function(k) -key[, k]))]
+    )
   }
   out
 }

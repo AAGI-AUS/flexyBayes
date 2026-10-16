@@ -8,7 +8,6 @@
 # loadings are not zero, so the anchors are chosen from the data, not
 # taken from factor-level order.
 
-
 # .fb_fa_levels(): the levels of f in the order the emit enters factors:
 # the k anchors first, then the other levels in factor order.
 .fb_fa_levels <- function(term, levs) {
@@ -83,7 +82,9 @@
 
 # .fb_fa_g(): G = Lambda diag(sd_factor^2) Lambda' + diag(psi^2).
 .fb_fa_g <- function(mat_l, vec_sf, vec_psi) {
-  mat_l %*% diag(vec_sf^2, nrow = length(vec_sf)) %*% t(mat_l) +
+  mat_l %*%
+    diag(vec_sf^2, nrow = length(vec_sf)) %*%
+    t(mat_l) +
     diag(vec_psi^2, nrow = length(vec_psi))
 }
 
@@ -143,8 +144,13 @@
   mat_r <- apply(arr_r, c(2L, 3L), stats::median)
   dimnames(mat_g) <- list(levs, levs)
   dimnames(mat_r) <- list(levs, levs)
-  list(G = mat_g, cor = mat_r, anchors = levs_fa[seq_len(k)], k = k,
-       n_draws = nrow(dr))
+  list(
+    G = mat_g,
+    cor = mat_r,
+    anchors = levs_fa[seq_len(k)],
+    k = k,
+    n_draws = nrow(dr)
+  )
 }
 
 
@@ -171,8 +177,10 @@
     logical(1L)
   )
   if (!all(same)) {
-    stop("The fits do not cover the same levels in the same order.",
-         call. = FALSE)
+    stop(
+      "The fits do not cover the same levels in the same order.",
+      call. = FALSE
+    )
   }
   mat_g <- vapply(fits, function(x) diag(x$G), numeric(length(levs)))
   mat_g <- matrix(mat_g, nrow = length(levs), dimnames = list(levs, NULL))
@@ -228,8 +236,12 @@
   mat_l <- matrix(0, length(levs), k, dimnames = list(levs, NULL))
   vec_sf <- numeric(k)
   for (j1 in seq_len(k)) {
-    vec_sf[[j1]] <- sd_of(.fb_inla_fa_index(term$outer, term$inner, j1,
-                                            levs_fa[[j1]]))
+    vec_sf[[j1]] <- sd_of(.fb_inla_fa_index(
+      term$outer,
+      term$inner,
+      j1,
+      levs_fa[[j1]]
+    ))
     mat_l[levs_fa[[j1]], j1] <- 1
     for (lev in levs_fa[-seq_len(j1)]) {
       idx <- .fb_inla_fa_index(term$outer, term$inner, j1, lev)

@@ -175,7 +175,11 @@
   extra = NULL
 ) {
   rows <- list(.fb_manifest_input_frame(
-    character(0), character(0), character(0), character(0), character(0)
+    character(0),
+    character(0),
+    character(0),
+    character(0),
+    character(0)
   ))
   prior <- fb[["priors"]]
 
@@ -231,13 +235,16 @@
     }
   }
   for (nm in names(fixed_default_sd)) {
-    inputs <- rbind(inputs, .fb_manifest_input_frame(
-      target = "b",
-      target_key = nm,
-      distribution = "normal",
-      parameters = sprintf("mean=0, sd=%.12g", fixed_default_sd[[nm]]),
-      source = "covariate_scaled_default"
-    ))
+    inputs <- rbind(
+      inputs,
+      .fb_manifest_input_frame(
+        target = "b",
+        target_key = nm,
+        distribution = "normal",
+        parameters = sprintf("mean=0, sd=%.12g", fixed_default_sd[[nm]]),
+        source = "covariate_scaled_default"
+      )
+    )
   }
 
   inputs$input_id <- make.unique(inputs$input_id, sep = "#")
@@ -283,7 +290,11 @@
   )
   if (identical(section, "fixed") && length(values) == 2L) {
     return(paste0(
-      "normal(mean = ", values[[1L]], ", precision = ", values[[2L]], ")"
+      "normal(mean = ",
+      values[[1L]],
+      ", precision = ",
+      values[[2L]],
+      ")"
     ))
   }
   paste0(
@@ -515,8 +526,10 @@
       )
       prefix <- c(group = "Group", link = "Link", mix = "Mix")
       for (nm in names(extra)) {
-        used <- any(startsWith(theta_names, prefix[[nm]]) &
-          (section == "family" | endsWith(theta_names, paste0(" for ", tag))))
+        used <- any(
+          startsWith(theta_names, prefix[[nm]]) &
+            (section == "family" | endsWith(theta_names, paste0(" for ", tag)))
+        )
         if (length(extra[[nm]]) && used) {
           rows <- c(rows, .fb_manifest_readback_rows(nm, tag, extra[[nm]]))
         }
@@ -538,8 +551,12 @@
     )
   }
   template <- data.frame(
-    section = character(0), tag = character(0), theta = character(0),
-    short_name = character(0), prior = character(0), param = character(0),
+    section = character(0),
+    tag = character(0),
+    theta = character(0),
+    short_name = character(0),
+    prior = character(0),
+    param = character(0),
     stringsAsFactors = FALSE
   )
   out <- do.call(rbind, c(list(template), rows))
@@ -681,13 +698,16 @@
     drop = FALSE
   ]
   if (nrow(wishart)) {
-    inputs <- rbind(inputs, .fb_manifest_input_frame(
-      target = "wishart",
-      target_key = wishart$tag,
-      distribution = wishart$model,
-      parameters = wishart$emitted_param,
-      source = "structure_default"
-    ))
+    inputs <- rbind(
+      inputs,
+      .fb_manifest_input_frame(
+        target = "wishart",
+        target_key = wishart$tag,
+        distribution = wishart$model,
+        parameters = wishart$emitted_param,
+        source = "structure_default"
+      )
+    )
   }
 
   # Every read-back row, matched to what was sent ---------------------------
@@ -700,7 +720,8 @@
       emitted$section == row$section & emitted$tag == row$tag
     )
     i <- if (length(candidates)) candidates[[1L]] else NA_integer_
-    sent <- !is.na(i) && !isTRUE(emitted$pinned[[i]]) &&
+    sent <- !is.na(i) &&
+      !isTRUE(emitted$pinned[[i]]) &&
       (!is.na(emitted$emitted_prior[[i]]) || !is.na(emitted$emitted_param[[i]]))
     # The hyperparameter a slot's prior lands on: the likelihood's residual
     # keyword, a fixed effect's own prior, or a latent term's first theta.
@@ -714,19 +735,27 @@
     if (sent && carries_prior) {
       matched[[i]] <- TRUE
       slot_rows[[length(slot_rows) + 1L]] <- .fb_manifest_slot_out(
-        section = row$section, tag = row$tag, theta = row$theta,
+        section = row$section,
+        tag = row$tag,
+        theta = row$theta,
         target_key = emitted$target_key[[i]],
         input_id = .fb_manifest_input_for_key(
-          row$section, emitted$target_key[[i]], inputs
+          row$section,
+          emitted$target_key[[i]],
+          inputs
         ),
         structure = emitted$structure[[i]],
         emitted = .fb_manifest_prior_text(
-          emitted$emitted_prior[[i]], emitted$emitted_param[[i]], row$section
+          emitted$emitted_prior[[i]],
+          emitted$emitted_param[[i]],
+          row$section
         ),
         readback = readback_text,
         agrees = .fb_manifest_same_prior(
-          emitted$emitted_prior[[i]], emitted$emitted_param[[i]],
-          row$prior, row$param
+          emitted$emitted_prior[[i]],
+          emitted$emitted_param[[i]],
+          row$prior,
+          row$param
         ),
         source = "package",
         engine = "inla"
@@ -747,23 +776,32 @@
     } else {
       .fb_manifest_inla_default(row$section, model, row$theta)
     }
-    is_default <- !is.null(default) && .fb_manifest_same_prior(
-      default$prior, .fb_manifest_param_string(default$param),
-      row$prior, row$param
-    )
+    is_default <- !is.null(default) &&
+      .fb_manifest_same_prior(
+        default$prior,
+        .fb_manifest_param_string(default$param),
+        row$prior,
+        row$param
+      )
     slot_rows[[length(slot_rows) + 1L]] <- .fb_manifest_slot_out(
-      section = row$section, tag = row$tag, theta = row$theta,
-      target_key = NA_character_, input_id = NA_character_,
+      section = row$section,
+      tag = row$tag,
+      theta = row$theta,
+      target_key = NA_character_,
+      input_id = NA_character_,
       structure = if (is.na(i)) NA_character_ else emitted$structure[[i]],
-      emitted = NA_character_, readback = readback_text,
-      agrees = NA, source = if (is_default) "engine_default" else "unexpected",
+      emitted = NA_character_,
+      readback = readback_text,
+      agrees = NA,
+      source = if (is_default) "engine_default" else "unexpected",
       engine = "inla"
     )
   }
 
   # A prior the package sent that INLA does not report ----------------------
   lost <- which(
-    !matched & (!is.na(emitted$emitted_prior) | !is.na(emitted$emitted_param)) &
+    !matched &
+      (!is.na(emitted$emitted_prior) | !is.na(emitted$emitted_param)) &
       !emitted$pinned
   )
   for (i in lost) {
@@ -773,7 +811,9 @@
       theta = NA_character_,
       target_key = emitted$target_key[[i]],
       input_id = .fb_manifest_input_for_key(
-        emitted$section[[i]], emitted$target_key[[i]], inputs
+        emitted$section[[i]],
+        emitted$target_key[[i]],
+        inputs
       ),
       structure = emitted$structure[[i]],
       emitted = .fb_manifest_prior_text(
@@ -781,7 +821,9 @@
         emitted$emitted_param[[i]],
         emitted$section[[i]]
       ),
-      readback = NA_character_, agrees = FALSE, source = "package",
+      readback = NA_character_,
+      agrees = FALSE,
+      source = "package",
       engine = "inla"
     )
   }
@@ -791,8 +833,11 @@
   reasons <- c(
     "scalar:prior_vc_sd" = "prior_vc_sd_superseded_by_prior"
   )
-  if ("sigma:sigma" %in% inputs$input_id &&
-    !any(family_slots$target_key %in% "sigma")) {
+  if (
+    "sigma:sigma" %in%
+      inputs$input_id &&
+      !any(family_slots$target_key %in% "sigma")
+  ) {
     reasons[["sigma:sigma"]] <- "prior_family_has_no_residual_scale"
   }
   for (k in seq_len(nrow(reads))) {
@@ -908,8 +953,11 @@
   evidence,
   readback_complete
 ) {
-  consumed <- slots[slots$source == "package" & !is.na(slots$input_id), ,
-    drop = FALSE]
+  consumed <- slots[
+    slots$source == "package" & !is.na(slots$input_id),
+    ,
+    drop = FALSE
+  ]
   n <- vapply(
     inputs$input_id,
     function(id) sum(consumed$input_id == id),
@@ -1071,8 +1119,10 @@
         NA_character_
       },
       readback_agrees = found[[i]] &&
-        identical(trimws(as.character(emitted$prior[[i]])),
-                  trimws(as.character(readback$prior[[hit[[1L]]]]))),
+        identical(
+          trimws(as.character(emitted$prior[[i]])),
+          trimws(as.character(readback$prior[[hit[[1L]]]]))
+        ),
       source = "package",
       stringsAsFactors = FALSE
     )
@@ -1116,7 +1166,8 @@
     "scalar:prior_vc_sd" = "prior_vc_sd_superseded_by_prior"
   )
   if (
-    "sigma:sigma" %in% inputs$input_id &&
+    "sigma:sigma" %in%
+      inputs$input_id &&
       !.brms_family_has_sigma(fb[["family"]])
   ) {
     reasons[["sigma:sigma"]] <- "prior_family_has_no_residual_scale"

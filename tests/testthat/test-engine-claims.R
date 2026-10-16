@@ -85,12 +85,13 @@ test_that("INLA's exchangeable group model fits one variance and one shared corr
   d <- expand.grid(gen = seq_len(n_gen), env = seq_len(n_env), rep = 1:2)
   d$y <- u[cbind(d$gen, d$env)] + stats::rnorm(nrow(d), sd = 0.5)
   fit <- .ec_inla_quiet(INLA::inla(
-    y ~ 1 + f(
-      gen,
-      model = "iid",
-      group = env,
-      control.group = list(model = "exchangeable")
-    ),
+    y ~ 1 +
+      f(
+        gen,
+        model = "iid",
+        group = env,
+        control.group = list(model = "exchangeable")
+      ),
     data = d
   ))
   expect_false(inherits(fit, "error"))
@@ -108,7 +109,8 @@ test_that("INLA builds a trait-by-genotype covariance from a known-covariance fi
   skip_if_not_installed("INLA")
   set.seed(4L)
   n_gen <- 30L
-  a <- crossprod(matrix(stats::rnorm(n_gen * n_gen), n_gen)) / n_gen +
+  a <- crossprod(matrix(stats::rnorm(n_gen * n_gen), n_gen)) /
+    n_gen +
     diag(n_gen)
   q <- solve(a)
   sig <- matrix(c(1, 0.7, 0.7, 1.5), 2L)
@@ -120,7 +122,8 @@ test_that("INLA builds a trait-by-genotype covariance from a known-covariance fi
   d$ic <- ifelse(d$trait == 2L, d$gen, NA)
   d$ib <- ifelse(d$trait == 2L, d$gen, NA)
   fit <- .ec_inla_quiet(INLA::inla(
-    y ~ 1 + t2 +
+    y ~ 1 +
+      t2 +
       f(ia, model = "generic0", Cmatrix = q, values = seq_len(n_gen)) +
       f(ic, copy = "ia", hyper = list(beta = list(fixed = FALSE))) +
       f(ib, model = "generic0", Cmatrix = q, values = seq_len(n_gen)),
@@ -276,8 +279,11 @@ test_that("brms puts an LKJ prior with eta 1 on group-level correlations by defa
     y = stats::rnorm(60L)
   )
   correlated <- .ec_stancode(y ~ 1 + (0 + f | g), data = d)
-  expect_true(any(grepl("lkj_corr_cholesky_lpdf(L_1 | 1)", correlated,
-    fixed = TRUE)))
+  expect_true(any(grepl(
+    "lkj_corr_cholesky_lpdf(L_1 | 1)",
+    correlated,
+    fixed = TRUE
+  )))
   uncorrelated <- .ec_stancode(y ~ 1 + (0 + f || g), data = d)
   expect_false(any(grepl("lkj_corr_cholesky", uncorrelated, fixed = TRUE)))
 })
@@ -310,9 +316,15 @@ test_that("brms's weights() multiplies each observation's log-likelihood", {
   skip_on_cran()
   skip_if_not_installed("brms")
   set.seed(13L)
-  d <- data.frame(y = stats::rnorm(40L), x = stats::rnorm(40L),
-    w = stats::runif(40L))
+  d <- data.frame(
+    y = stats::rnorm(40L),
+    x = stats::rnorm(40L),
+    w = stats::runif(40L)
+  )
   code <- .ec_stancode(y | weights(w) ~ x, data = d)
-  expect_true(any(grepl("target += weights[n] * (normal_lpdf(", code,
-    fixed = TRUE)))
+  expect_true(any(grepl(
+    "target += weights[n] * (normal_lpdf(",
+    code,
+    fixed = TRUE
+  )))
 })

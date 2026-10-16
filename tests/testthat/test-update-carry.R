@@ -39,10 +39,25 @@ suppressPackageStartupMessages(library(testthat))
 # The nineteen fields a re-fit needs, in the order the per-row emits write
 # them. The last three are tested in test-update-engine-carry.R.
 .UC_CALL_FIELDS <- c(
-  "fixed", "random", "residual", "data_name", "family", "link",
-  "known_matrices", "weights", "n_samples", "warmup", "chains", "seed",
-  "control", "prior_fixed_sd", "prior_vc_sd", "na_action", "backend",
-  "aggregate", "verbose"
+  "fixed",
+  "random",
+  "residual",
+  "data_name",
+  "family",
+  "link",
+  "known_matrices",
+  "weights",
+  "n_samples",
+  "warmup",
+  "chains",
+  "seed",
+  "control",
+  "prior_fixed_sd",
+  "prior_vc_sd",
+  "na_action",
+  "backend",
+  "aggregate",
+  "verbose"
 )
 
 
@@ -61,7 +76,10 @@ test_that("a default Gaussian call is fitted per row, with the full record", {
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_data(), verbose = FALSE,
+    y ~ f,
+    random = ~g,
+    data = .uc_data(),
+    verbose = FALSE,
     mcmc_verbose = FALSE
   ))
   expect_false(inherits(fit, "flexybayes_aggregated"))
@@ -74,7 +92,11 @@ test_that("update() re-fits a default Gaussian fit", {
   .uc_silence()
   d <- .uc_data()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = d, verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = d,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
 
   # y carries no h effect, so the added sd_h is weakly identified.
@@ -110,8 +132,14 @@ test_that("an omit fit re-fits as omit", {
   d$h <- factor(rep(paste0("H", 1:4), length.out = nrow(d)))
 
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = d, backend = "inla", aggregate = FALSE,
-    na_action = "omit", verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = d,
+    backend = "inla",
+    aggregate = FALSE,
+    na_action = "omit",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(fit$extras$call_info$na_action, "omit")
   expect_identical(fit$extras$na_action$na_action, "omit")
@@ -139,8 +167,14 @@ test_that("an augment fit re-fits as augment", {
   d$h <- factor(rep(paste0("H", 1:4), length.out = nrow(d)))
 
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = d, backend = "inla", aggregate = FALSE,
-    na_action = "augment", verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = d,
+    backend = "inla",
+    aggregate = FALSE,
+    na_action = "augment",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   # y carries no h effect, so the added sd_h is weakly identified.
   refit <- withr::with_options(
@@ -162,8 +196,13 @@ test_that("a record with no recorded policy refuses by name", {
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_data(), backend = "inla",
-    aggregate = FALSE, verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = .uc_data(),
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   fit$extras$call_info$na_action <- NULL
 
@@ -212,8 +251,12 @@ test_that("a default Poisson call auto-routes to the aggregated emit", {
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_count_data(), family = "poisson",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = .uc_count_data(),
+    family = "poisson",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes_aggregated")
 })
@@ -223,8 +266,12 @@ test_that("the aggregated count record carries the same fields", {
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_count_data(), family = "poisson",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = .uc_count_data(),
+    family = "poisson",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(names(fit$extras$call_info), .UC_CALL_FIELDS)
 })
@@ -234,8 +281,12 @@ test_that("update() re-fits a default aggregated Poisson fit", {
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_count_data(), family = "poisson",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = .uc_count_data(),
+    family = "poisson",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
 
   # y carries no h effect, so the added sd_h is weakly identified.
@@ -258,8 +309,12 @@ test_that("a short count record still refuses by name", {
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_count_data(), family = "poisson",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ f,
+    random = ~g,
+    data = .uc_count_data(),
+    family = "poisson",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   fit$extras$call_info$known_matrices <- NULL
 
@@ -282,7 +337,10 @@ test_that("update() refuses the unnamed stats::update() replacement-formula idio
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
+    y ~ f,
+    data = .uc_data(),
+    backend = "inla",
+    verbose = FALSE
   ))
   orig_fixed <- fit$extras$call_info$fixed
 
@@ -291,7 +349,8 @@ test_that("update() refuses the unnamed stats::update() replacement-formula idio
     condition = function(e) e
   )
   expect_s3_class(
-    err, "flexybayes_refusal_update_unnamed_argument_not_supported"
+    err,
+    "flexybayes_refusal_update_unnamed_argument_not_supported"
   )
   expect_s3_class(err, "flexybayes_refusal")
   expect_match(conditionMessage(err), "update(fit, . ~ . + z)", fixed = TRUE)
@@ -307,14 +366,18 @@ test_that("update() with a mix of one unnamed and one named argument still refus
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
+    y ~ f,
+    data = .uc_data(),
+    backend = "inla",
+    verbose = FALSE
   ))
   err <- tryCatch(
     stats::update(fit, . ~ . + g, verbose = FALSE),
     condition = function(e) e
   )
   expect_s3_class(
-    err, "flexybayes_refusal_update_unnamed_argument_not_supported"
+    err,
+    "flexybayes_refusal_update_unnamed_argument_not_supported"
   )
 })
 
@@ -323,7 +386,10 @@ test_that("update() with only named arguments is unaffected by the unnamed-argum
   skip_on_cran()
   .uc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
+    y ~ f,
+    data = .uc_data(),
+    backend = "inla",
+    verbose = FALSE
   ))
   # In this fixture `hB + hD` equals `fb`, so `f + h` needs fixed_alias.
   refit <- suppressMessages(

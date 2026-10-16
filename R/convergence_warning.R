@@ -48,13 +48,16 @@
 
   parts <- character(0)
   if (n_over > 0L) {
-    parts <- c(parts, sprintf(
-      "%d parameter%s with Rhat >= %.2f (max %.2f)",
-      n_over,
-      if (n_over == 1L) "" else "s",
-      rhat_threshold,
-      max_rhat
-    ))
+    parts <- c(
+      parts,
+      sprintf(
+        "%d parameter%s with Rhat >= %.2f (max %.2f)",
+        n_over,
+        if (n_over == 1L) "" else "s",
+        rhat_threshold,
+        max_rhat
+      )
+    )
   }
   if (low_ess) {
     parts <- c(parts, sprintf("min effective sample size %.0f", min_ess))

@@ -280,7 +280,12 @@ prior_summary.default <- function(object, ...) {
     ttype <- t$type %||% ""
     if (identical(ttype, "us_gxe")) {
       why <- paste0(
-        "`us(", t$outer, "):", t$inner, "` is one iid", t$n_outer,
+        "`us(",
+        t$outer,
+        "):",
+        t$inner,
+        "` is one iid",
+        t$n_outer,
         "d field on INLA, and its hyperparameters are a joint Wishart ",
         "over the whole covariance, there is no standard-deviation slot ",
         "to carry the declared prior, so INLA's Wishart governs this term"
@@ -292,11 +297,18 @@ prior_summary.default <- function(object, ...) {
     }
     if (identical(ttype, "simple_slope_cor")) {
       why <- paste0(
-        "`(", t$slope_var, " | ", t$var, ")` is one iid2d field on INLA, ",
+        "`(",
+        t$slope_var,
+        " | ",
+        t$var,
+        ")` is one iid2d field on INLA, ",
         "and its hyperparameters are a joint Wishart over the 2-by-2 ",
         "covariance of the intercept and the slope, there is no ",
         "standard-deviation slot to carry the declared prior, so INLA's ",
-        "Wishart governs this term. `(", t$slope_var, " || ", t$var,
+        "Wishart governs this term. `(",
+        t$slope_var,
+        " || ",
+        t$var,
         ")` has two independent precisions, which do take one"
       )
       out[[paste0("sd_", t$var)]] <- why
@@ -377,10 +389,11 @@ prior_summary.default <- function(object, ...) {
   # and no prior, and on an identity link the package's default bounds and
   # scales are read from the response minus the offset.
   out$offsets <- fb_terms$offsets %||% character(0)
-  out$offset_scale_note <- length(out$offsets) > 0L && identical(
-    .fb_default_link_class(fb_terms$family, fb_terms$link),
-    "identity"
-  )
+  out$offset_scale_note <- length(out$offsets) > 0L &&
+    identical(
+      .fb_default_link_class(fb_terms$family, fb_terms$link),
+      "identity"
+    )
 
   # Which scalar prior arguments the caller wrote, and therefore which of
   # them this fit actually carries. Before 0.9.2 the printed summary
@@ -543,8 +556,11 @@ prior_summary.default <- function(object, ...) {
           format(signif(x$fixed_default_multiplier %||% NA_real_, 6)),
           ", u = sd(y) on an identity link and 1 otherwise:\n",
           paste0(
-            "        ", names(scaled), " ~ normal(0, ",
-            format(signif(scaled, 6)), ")",
+            "        ",
+            names(scaled),
+            " ~ normal(0, ",
+            format(signif(scaled, 6)),
+            ")",
             collapse = "\n"
           ),
           "\n      "
@@ -554,7 +570,9 @@ prior_summary.default <- function(object, ...) {
       },
       if (length(named)) {
         paste0(
-          "every ", other, "fixed effect except ",
+          "every ",
+          other,
+          "fixed effect except ",
           paste(paste0("`", named, "`"), collapse = ", "),
           "\n      (given a prior by the fb_prior() row below) carries "
         )
@@ -592,8 +610,11 @@ prior_summary.default <- function(object, ...) {
   for (nm in names(priors)) {
     group <- sub("^sd_", "", nm)
     divisor <- if (group %in% names(covariate_sd)) {
-      paste0("  (bound divided by the covariate SD, ",
-             format(signif(covariate_sd[[group]], 6)), ")")
+      paste0(
+        "  (bound divided by the covariate SD, ",
+        format(signif(covariate_sd[[group]], 6)),
+        ")"
+      )
     } else {
       ""
     }
@@ -699,8 +720,14 @@ print.prior_summary_flexybayes <- function(x, ...) {
           sep = ""
         )
         if (!is.null(x$default_scale)) {
-          cat("    Scale s        = ", format(x$default_scale), " (",
-              .fb_default_scale_units(x$default_basis), ")\n", sep = "")
+          cat(
+            "    Scale s        = ",
+            format(x$default_scale),
+            " (",
+            .fb_default_scale_units(x$default_basis),
+            ")\n",
+            sep = ""
+          )
         }
         if (!is.null(x$default_basis)) {
           cat("    Scale basis    = ", x$default_basis, "\n", sep = "")
@@ -710,8 +737,11 @@ print.prior_summary_flexybayes <- function(x, ...) {
       }
       if (!is.null(x$pooled)) {
         cat(
-          "  Pooling: ", x$pooled$label, " (",
-          paste(x$pooled$targets, collapse = "; "), ")\n",
+          "  Pooling: ",
+          x$pooled$label,
+          " (",
+          paste(x$pooled$targets, collapse = "; "),
+          ")\n",
           sep = ""
         )
       }
@@ -737,7 +767,9 @@ print.prior_summary_flexybayes <- function(x, ...) {
 
   if (length(x$offsets)) {
     cat(
-      "\n  Offset: ", paste(x$offsets, collapse = " + "), "\n",
+      "\n  Offset: ",
+      paste(x$offsets, collapse = " + "),
+      "\n",
       "    a fixed coefficient of one, with no prior",
       if (isTRUE(x$offset_scale_note)) {
         paste0(
@@ -804,15 +836,21 @@ print.prior_summary_flexybayes <- function(x, ...) {
           "    the fit runs on the standardised response, ",
           "so a bound or scale\n",
           "    on a standard deviation is the stated one divided by the\n",
-          "    response scale ", format(signif(x$response_scale, 6)), "\n",
+          "    response scale ",
+          format(signif(x$response_scale, 6)),
+          "\n",
           sep = ""
         )
       }
       for (i in seq_len(nrow(sent))) {
         cat(
-          "    ", sent$slot_id[[i]], "  ",
+          "    ",
+          sent$slot_id[[i]],
+          "  ",
           .prior_summary_show_prior(sent$emitted[[i]], x$response_scale),
-          "  [", sent$input_id[[i]], "]  ",
+          "  [",
+          sent$input_id[[i]],
+          "]  ",
           if (isTRUE(sent$readback_agrees[[i]])) {
             "read back as sent"
           } else {
@@ -826,7 +864,8 @@ print.prior_summary_flexybayes <- function(x, ...) {
     n_engine <- sum(x$slots$source %in% c("engine_default", "engine_expansion"))
     if (n_engine > 0L) {
       cat(
-        "    ", n_engine,
+        "    ",
+        n_engine,
         if (n_engine == 1L) " further slot carries" else " further slots carry",
         " the engine's own prior (listed in `$slots`)\n",
         sep = ""
@@ -835,7 +874,8 @@ print.prior_summary_flexybayes <- function(x, ...) {
     n_unexpected <- sum(x$slots$source == "unexpected")
     if (n_unexpected > 0L) {
       cat(
-        "    ", n_unexpected,
+        "    ",
+        n_unexpected,
         if (n_unexpected == 1L) " slot carries" else " slots carry",
         " a prior that is neither what was sent nor the engine's default",
         " (listed in `$slots`)\n",

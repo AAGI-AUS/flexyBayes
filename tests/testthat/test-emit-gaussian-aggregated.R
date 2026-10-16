@@ -445,7 +445,6 @@ test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard
 # [removed] "INLA per-row + aggregated agree on beta within 1e-3 (stress,
 # strict)", removed with the 5e-3 check above, for the same reason.
 
-
 # ---------------------------------------------------------------- #
 # Aggregation_meta slot shape                                       #
 # ---------------------------------------------------------------- #

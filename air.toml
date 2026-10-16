@@ -5,3 +5,6 @@
 line-width = 80
 indent-style = "space"
 indent-width = 2
+# Byte-stable: their MD5 sums are recorded in inst/extdata/asreml_parity.rds
+# and checked by test-asreml-parity.R.
+exclude = ["data-raw/asreml_parity.R", "tests/testthat/helper-asreml-parity-data.R"]

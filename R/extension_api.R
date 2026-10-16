@@ -1,6 +1,5 @@
 # extension_api.R: what a package that extends flexyBayes may read from a fit.
 
-
 #' Reading a fit, for packages that extend flexyBayes
 #'
 #' A package built on flexyBayes reads a fitted model through these
@@ -141,8 +140,9 @@ fb_engine_settings <- function(engine) {
   if (inherits(engine, "fb_engine")) {
     return(engine$opts %||% list())
   }
-  if (!is.list(engine) || is.null(names(engine)) ||
-        any(!nzchar(names(engine)))) {
+  if (
+    !is.list(engine) || is.null(names(engine)) || any(!nzchar(names(engine)))
+  ) {
     stop(
       "`engine` must be NULL or a named list of brms sampler settings.",
       call. = FALSE

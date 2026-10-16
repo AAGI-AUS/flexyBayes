@@ -79,13 +79,26 @@ test_that("a blocks carrier refuses on INLA by name, for vm() and ped(), with on
           ),
           flexybayes_refusal = identity
         )
-        label <- paste(nm, length(blocks), "block(s), return_code =", return_code)
+        label <- paste(
+          nm,
+          length(blocks),
+          "block(s), return_code =",
+          return_code
+        )
         expect_s3_class(err, "flexybayes_lgm_random_term_type_inla")
         expect_identical(err$reason_code, "inla_gate_refused", label = label)
-        expect_match(conditionMessage(err), "blocks carrier is refused on INLA",
-                     fixed = TRUE, label = label)
-        expect_match(conditionMessage(err), "type = \"precision\"",
-                     fixed = TRUE, label = label)
+        expect_match(
+          conditionMessage(err),
+          "blocks carrier is refused on INLA",
+          fixed = TRUE,
+          label = label
+        )
+        expect_match(
+          conditionMessage(err),
+          "type = \"precision\"",
+          fixed = TRUE,
+          label = label
+        )
       }
     }
   }
@@ -122,7 +135,13 @@ test_that("the precision carrier the refusal names fits the covariance with one 
     # Q_named and solve(A) are the same matrix, and INLA repeats on one
     # thread to within 3e-6 of the value.
     full <- fits$full$extras$variance_comps
-    expect_lte(max(abs(c(vc$q2.5, vc$q97.5) - c(full$q2.5, full$q97.5)) /
-                     abs(c(full$q2.5, full$q97.5))), 1e-5, label = nm)
+    expect_lte(
+      max(
+        abs(c(vc$q2.5, vc$q97.5) - c(full$q2.5, full$q97.5)) /
+          abs(c(full$q2.5, full$q97.5))
+      ),
+      1e-5,
+      label = nm
+    )
   }
 })

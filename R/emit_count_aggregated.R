@@ -403,7 +403,9 @@ emit_count_aggregated <- function(
   row_scale = NULL
 ) {
   posterior_summary <- .agg_count_inla_summarise(
-    engine_out, fb_aggregated, ri_plan
+    engine_out,
+    fb_aggregated,
+    ri_plan
   )
 
   eta_row <- .agg_reconstruct_fitted_row(
@@ -423,7 +425,12 @@ emit_count_aggregated <- function(
   # mean of the inverse-linked cell predictor, random effects included.
   # `eta_row` is the fixed part alone, so its inverse link is not one.
   fitted_row <- .agg_count_row_fitted(
-    fb, fb_aggregated, data, engine_out$inla, off_row, row_scale
+    fb,
+    fb_aggregated,
+    data,
+    engine_out$inla,
+    off_row,
+    row_scale
   )
   y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
@@ -631,7 +638,9 @@ emit_count_aggregated <- function(
   cell <- match(row_key, cell_key)
   if (anyNA(cell)) {
     stop(
-      "flexyBayes internal error: ", sum(is.na(cell)), " row(s) of the data ",
+      "flexyBayes internal error: ",
+      sum(is.na(cell)),
+      " row(s) of the data ",
       "match no cell of the aggregated fit, so their fitted values cannot ",
       "be read.",
       call. = FALSE

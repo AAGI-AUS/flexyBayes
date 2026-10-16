@@ -71,13 +71,17 @@
 
 # Packages reached with `pkg::` or `pkg:::`.
 .g19_namespaces_used <- function(calls) {
-  pk <- vapply(calls, function(cl) {
-    f <- cl[[1L]]
-    if (is.symbol(f) && as.character(f) %in% c("::", ":::")) {
-      return(as.character(cl[[2L]]))
-    }
-    ""
-  }, character(1L))
+  pk <- vapply(
+    calls,
+    function(cl) {
+      f <- cl[[1L]]
+      if (is.symbol(f) && as.character(f) %in% c("::", ":::")) {
+        return(as.character(cl[[2L]]))
+      }
+      ""
+    },
+    character(1L)
+  )
   unique(pk[nzchar(pk)])
 }
 
@@ -97,10 +101,15 @@
       if (is.character(arg)) out <- c(out, arg)
     } else if (fn == "for") {
       body_calls <- .g19_calls(cl[[4L]])
-      loops <- any(vapply(body_calls, function(b) {
-        identical(.g19_fun_name(b), "skip_if_not_installed") &&
-          length(b) >= 2L && identical(b[[2L]], cl[[2L]])
-      }, logical(1L)))
+      loops <- any(vapply(
+        body_calls,
+        function(b) {
+          identical(.g19_fun_name(b), "skip_if_not_installed") &&
+            length(b) >= 2L &&
+            identical(b[[2L]], cl[[2L]])
+        },
+        logical(1L)
+      ))
       if (loops) {
         out <- c(out, unlist(Filter(is.character, as.list(cl[[3L]]))))
       }
@@ -114,8 +123,10 @@
 .g19_helpers <- function(exprs, helpers = list()) {
   for (e in exprs) {
     if (
-      is.call(e) && .g19_fun_name(e) %in% c("<-", "=") &&
-        is.symbol(e[[2L]]) && is.call(e[[3L]]) &&
+      is.call(e) &&
+        .g19_fun_name(e) %in% c("<-", "=") &&
+        is.symbol(e[[2L]]) &&
+        is.call(e[[3L]]) &&
         identical(e[[3L]][[1L]], quote(`function`))
     ) {
       pk <- .g19_packages_checked(.g19_calls(e[[3L]][[3L]]), helpers)
@@ -159,8 +170,20 @@
 
 # R's recommended packages, present in every standard R installation.
 .g19_recommended <- c(
-  "boot", "class", "cluster", "codetools", "foreign", "KernSmooth",
-  "lattice", "MASS", "Matrix", "mgcv", "nlme", "nnet", "rpart", "spatial",
+  "boot",
+  "class",
+  "cluster",
+  "codetools",
+  "foreign",
+  "KernSmooth",
+  "lattice",
+  "MASS",
+  "Matrix",
+  "mgcv",
+  "nlme",
+  "nnet",
+  "rpart",
+  "spatial",
   "survival"
 )
 
@@ -212,16 +235,23 @@ test_that("DC-19 guard: a block that reaches a suggested package skips without i
       blocks <- blocks + 1L
       calls <- .g19_calls(e[[3L]])
       used <- intersect(.g19_namespaces_used(calls), optional)
-      if (!length(used)) next
+      if (!length(used)) {
+        next
+      }
       checked <- .g19_implied(c(
         .g19_packages_checked(calls, helpers),
         file_checked
       ))
       missing_skip <- setdiff(used, checked)
       if (length(missing_skip)) {
-        hits <- c(hits, paste0(
-          .g19_label(f, e), ": ", paste(missing_skip, collapse = ", ")
-        ))
+        hits <- c(
+          hits,
+          paste0(
+            .g19_label(f, e),
+            ": ",
+            paste(missing_skip, collapse = ", ")
+          )
+        )
       }
     }
   }
@@ -235,25 +265,43 @@ test_that("DC-19 guard: no test sets an option it does not restore", {
     for (e in .g19_parse(f)) {
       calls <- .g19_calls(e)
       # `old <- options(...)` keeps what it replaced, to restore it.
-      kept <- unlist(lapply(calls, function(cl) {
-        if (
-          .g19_fun_name(cl) %in% c("<-", "=") &&
-            is.call(cl[[3L]]) && identical(.g19_fun_name(cl[[3L]]), "options")
-        ) {
-          list(cl[[3L]])
-        }
-      }), recursive = FALSE)
-      restored <- unlist(lapply(calls, function(cl) {
-        if (identical(.g19_fun_name(cl), "on.exit")) .g19_calls(cl)
-      }), recursive = FALSE)
+      kept <- unlist(
+        lapply(calls, function(cl) {
+          if (
+            .g19_fun_name(cl) %in%
+              c("<-", "=") &&
+              is.call(cl[[3L]]) &&
+              identical(.g19_fun_name(cl[[3L]]), "options")
+          ) {
+            list(cl[[3L]])
+          }
+        }),
+        recursive = FALSE
+      )
+      restored <- unlist(
+        lapply(calls, function(cl) {
+          if (identical(.g19_fun_name(cl), "on.exit")) .g19_calls(cl)
+        }),
+        recursive = FALSE
+      )
       for (cl in calls) {
-        if (!identical(.g19_fun_name(cl), "options")) next
-        if (!length(names(cl)) || !any(nzchar(names(cl)[-1L]))) next
-        if (any(vapply(c(kept, restored), identical, logical(1L), cl))) next
-        hits <- c(hits, paste0(
-          .g19_label(f, e), ": ",
-          paste(deparse(cl, width.cutoff = 200L), collapse = "")
-        ))
+        if (!identical(.g19_fun_name(cl), "options")) {
+          next
+        }
+        if (!length(names(cl)) || !any(nzchar(names(cl)[-1L]))) {
+          next
+        }
+        if (any(vapply(c(kept, restored), identical, logical(1L), cl))) {
+          next
+        }
+        hits <- c(
+          hits,
+          paste0(
+            .g19_label(f, e),
+            ": ",
+            paste(deparse(cl, width.cutoff = 200L), collapse = "")
+          )
+        )
       }
     }
   }
@@ -262,9 +310,20 @@ test_that("DC-19 guard: no test sets an option it does not restore", {
 
 test_that("DC-19 guard: no test writes into the installed library", {
   writers <- c(
-    "saveRDS", "save", "writeLines", "write", "write.csv", "write.table",
-    "fwrite", "cat", "file.create", "dir.create", "file.copy", "sink",
-    "png", "pdf"
+    "saveRDS",
+    "save",
+    "writeLines",
+    "write",
+    "write.csv",
+    "write.table",
+    "fwrite",
+    "cat",
+    "file.create",
+    "dir.create",
+    "file.copy",
+    "sink",
+    "png",
+    "pdf"
   )
   hits <- character(0)
   for (f in .g19_test_files()) {
@@ -273,38 +332,57 @@ test_that("DC-19 guard: no test writes into the installed library", {
       # Names bound to a system.file() path in the same block.
       lib_vars <- unlist(lapply(calls, function(cl) {
         if (
-          .g19_fun_name(cl) %in% c("<-", "=") && is.symbol(cl[[2L]]) &&
-            any(vapply(.g19_calls(cl[[3L]]), function(x) {
-              identical(.g19_fun_name(x), "system.file")
-            }, logical(1L)))
+          .g19_fun_name(cl) %in%
+            c("<-", "=") &&
+            is.symbol(cl[[2L]]) &&
+            any(vapply(
+              .g19_calls(cl[[3L]]),
+              function(x) {
+                identical(.g19_fun_name(x), "system.file")
+              },
+              logical(1L)
+            ))
         ) {
           as.character(cl[[2L]])
         }
       }))
       for (cl in calls) {
-        if (!.g19_fun_name(cl) %in% writers) next
+        if (!.g19_fun_name(cl) %in% writers) {
+          next
+        }
         args <- as.list(cl)[-1L]
         # file.copy() may read from the library. Only its destination counts.
         if (identical(.g19_fun_name(cl), "file.copy")) {
           args <- if (!is.null(cl[["to"]])) list(cl[["to"]]) else args[2L]
         }
-        reads_lib <- any(vapply(args, function(a) {
-          if (is.symbol(a)) {
-            return(as.character(a) %in% lib_vars)
-          }
-          is.call(a) && (
-            identical(.g19_fun_name(a), "system.file") ||
-              any(vapply(.g19_calls(a), function(x) {
-                identical(.g19_fun_name(x), "system.file")
-              }, logical(1L))) ||
-              any(all.names(a) %in% lib_vars)
-          )
-        }, logical(1L)))
+        reads_lib <- any(vapply(
+          args,
+          function(a) {
+            if (is.symbol(a)) {
+              return(as.character(a) %in% lib_vars)
+            }
+            is.call(a) &&
+              (identical(.g19_fun_name(a), "system.file") ||
+                any(vapply(
+                  .g19_calls(a),
+                  function(x) {
+                    identical(.g19_fun_name(x), "system.file")
+                  },
+                  logical(1L)
+                )) ||
+                any(all.names(a) %in% lib_vars))
+          },
+          logical(1L)
+        ))
         if (reads_lib) {
-          hits <- c(hits, paste0(
-            .g19_label(f, e), ": ",
-            paste(deparse(cl, width.cutoff = 200L), collapse = "")
-          ))
+          hits <- c(
+            hits,
+            paste0(
+              .g19_label(f, e),
+              ": ",
+              paste(deparse(cl, width.cutoff = 200L), collapse = "")
+            )
+          )
         }
       }
     }

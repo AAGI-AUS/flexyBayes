@@ -48,7 +48,9 @@ test_that("no source file carries an absolute home-directory path", {
   pattern <- paste0("/", "Users", "/[A-Za-z0-9._-]+/")
 
   hits <- unlist(lapply(files, function(f) {
-    lines <- tryCatch(readLines(f, warn = FALSE), error = function(e) character(0))
+    lines <- tryCatch(readLines(f, warn = FALSE), error = function(e) {
+      character(0)
+    })
     idx <- grep(pattern, lines)
     if (!length(idx)) {
       return(NULL)

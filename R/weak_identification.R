@@ -154,8 +154,13 @@
     canonical <- unname(mapper[sub("^Log precision", "Precision", nm)])
     cdf <- .fb_inla_prior_sd_cdf(rows$prior[[i]], rows$param[[i]])
     m <- marginals[[nm]]
-    if (!paired || length(canonical) != 1L || is.na(canonical) ||
-          is.null(cdf) || is.null(m)) {
+    if (
+      !paired ||
+        length(canonical) != 1L ||
+        is.na(canonical) ||
+        is.null(cdf) ||
+        is.null(m)
+    ) {
       next
     }
     factor <- .fb_support_sd_factor(
@@ -203,10 +208,8 @@
   ratio <- read(interval_ratio)
   startsWith(components, "sd_") &
     components != "sd_spatial" &
-    (
-      (!is.na(share) & share >= .FB_WEAK_IDENTIFICATION_SHARE) |
-        (!is.na(ratio) & ratio >= .FB_WEAK_IDENTIFICATION_RATIO)
-    )
+    ((!is.na(share) & share >= .FB_WEAK_IDENTIFICATION_SHARE) |
+      (!is.na(ratio) & ratio >= .FB_WEAK_IDENTIFICATION_RATIO))
 }
 
 # @noRd
@@ -250,7 +253,8 @@
 # @keywords internal
 .fb_warn_weak_identification <- function(object) {
   silent <- getOption(
-    "flexyBayes.silence_weak_identification_warning", FALSE
+    "flexyBayes.silence_weak_identification_warning",
+    FALSE
   )
   if (isTRUE(silent)) {
     return(invisible(NULL))

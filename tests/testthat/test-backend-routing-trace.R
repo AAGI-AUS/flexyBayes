@@ -256,7 +256,7 @@ test_that(".has_interaction_random_term() detects nested / combo terms", {
     b = factor(rep(1:2, 12))
   )
   fb_multi <- fb_from_asreml(y ~ 1, random = ~ g + g:e + e:b, data = d)
-  fb_simple <- fb_from_asreml(y ~ 1, random = ~ g, data = d)
+  fb_simple <- fb_from_asreml(y ~ 1, random = ~g, data = d)
   expect_true(flexyBayes:::.has_interaction_random_term(fb_multi))
   expect_false(flexyBayes:::.has_interaction_random_term(fb_simple))
 })
@@ -284,7 +284,7 @@ test_that("auto routes a structurally-refused multi-stratum design to brms", {
 test_that("auto reroutes a generic structural refusal to brms", {
   skip_if_not_installed("brms")
   d <- data.frame(y = rnorm(24), g = factor(rep(1:4, 6)))
-  fb_simple <- fb_from_asreml(y ~ 1, random = ~ g, data = d)
+  fb_simple <- fb_from_asreml(y ~ 1, random = ~g, data = d)
   out <- flexyBayes:::.resolve_routing(
     user_request = "auto",
     gate_outcome = "refuse_structural",

@@ -33,7 +33,12 @@
   d_na$y[c(3L, 50L)] <- NA
   list(
     list(label = "y", fixed = y ~ x, data = d, modelled = d$y),
-    list(label = "I(10 * y)", fixed = I(10 * y) ~ x, data = d, modelled = 10 * d$y),
+    list(
+      label = "I(10 * y)",
+      fixed = I(10 * y) ~ x,
+      data = d,
+      modelled = 10 * d$y
+    ),
     list(label = "log(y)", fixed = log(y) ~ x, data = d, modelled = log(d$y)),
     list(
       label = "log(y) with an offset",
@@ -88,7 +93,12 @@ test_that("the default residual scale on brms is five SDs of the modelled respon
         return_code = TRUE
       )),
       warning = function(w) {
-        if (identical(conditionMessage(w), "Rows containing NAs were excluded from the model.")) {
+        if (
+          identical(
+            conditionMessage(w),
+            "Rows containing NAs were excluded from the model."
+          )
+        ) {
           invokeRestart("muffleWarning")
         }
       }

@@ -44,7 +44,9 @@ test_that("two removed cells come back with a missing response", {
     12L
   )
   # The observed rows are unchanged and come first.
-  expect_identical(out[seq_len(10L), , drop = FALSE], holed,
+  expect_identical(
+    out[seq_len(10L), , drop = FALSE],
+    holed,
     ignore_attr = "row.names"
   )
   # The reinstated cells are the two that were removed.
@@ -117,8 +119,10 @@ test_that("unused_level fills the varying factor and names the column", {
 
   expect_warning(
     out <- fb_complete_grid(
-      holed, ~ row * col,
-      response = "yield", unused_level = "UNSOWN"
+      holed,
+      ~ row * col,
+      response = "yield",
+      unused_level = "UNSOWN"
     ),
     "geno"
   )
@@ -144,8 +148,10 @@ test_that("a varying numeric column refuses whatever unused_level says", {
 
   err <- tryCatch(
     fb_complete_grid(
-      holed, ~ row * col,
-      response = "yield", unused_level = "UNSOWN"
+      holed,
+      ~ row * col,
+      response = "yield",
+      unused_level = "UNSOWN"
     ),
     condition = function(e) e
   )
@@ -161,13 +167,13 @@ test_that("a varying numeric column refuses whatever unused_level says", {
 
 test_that("the arguments are checked by name", {
   g <- .fcg_grid()
-  expect_error(fb_complete_grid(as.matrix(1:4), ~ row * col, "yield"),
+  expect_error(
+    fb_complete_grid(as.matrix(1:4), ~ row * col, "yield"),
     "must be a data frame"
   )
-  expect_error(fb_complete_grid(g, "row * col", "yield"),
-    "one-sided formula"
-  )
-  expect_error(fb_complete_grid(g, yield ~ row * col, "yield"),
+  expect_error(fb_complete_grid(g, "row * col", "yield"), "one-sided formula")
+  expect_error(
+    fb_complete_grid(g, yield ~ row * col, "yield"),
     "one-sided formula"
   )
   expect_error(fb_complete_grid(g, ~ row * col), "single string")
@@ -190,16 +196,22 @@ test_that("the helper and na_action = 'augment' complete the same grid", {
 
   by_hand <- fb_complete_grid(holed, ~ row * col, response = "yield")
   ir <- flexyBayes:::new_fb_terms(
-    response = "yield", family = "gaussian", link = "identity",
+    response = "yield",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col"
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
     )),
     residual_terms = list(list(type = "units")),
     source = "asreml"
   )
   automatic <- flexyBayes:::.fb_complete_design_grid(
-    ir, holed, c("row", "col")
+    ir,
+    holed,
+    c("row", "col")
   )
 
   expect_identical(automatic$added, 2L)

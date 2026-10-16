@@ -595,8 +595,12 @@ register_canonical_mapper <- function(backend, mapper) {
   out <- lapply(t$by_levels, function(lev) {
     rows <- t$level_grids[[lev]]$rows
     cols <- t$level_grids[[lev]]$cols
-    cells <- expand.grid(rows, cols, KEEP.OUT.ATTRS = FALSE,
-                         stringsAsFactors = FALSE)
+    cells <- expand.grid(
+      rows,
+      cols,
+      KEEP.OUT.ATTRS = FALSE,
+      stringsAsFactors = FALSE
+    )
     levs <- paste(lev, cells[[1L]], cells[[2L]], sep = ":")
     idx <- .fb_inla_field_at_index(t, lev)
     .fb_inla_index_spec(
@@ -716,8 +720,10 @@ register_canonical_mapper <- function(backend, mapper) {
 .fb_ar1_rho_renamed <- function(fb) {
   out <- character(0)
   for (t in c(fb$random_terms %||% list(), fb$residual_terms %||% list())) {
-    if (!(t$type %||% "") %in% c("ar1", "ar1_spatial", "ar1_spatial_at") ||
-        isTRUE(t$col_ar1)) {
+    if (
+      !(t$type %||% "") %in% c("ar1", "ar1_spatial", "ar1_spatial_at") ||
+        isTRUE(t$col_ar1)
+    ) {
       next
     }
     sfx <- if (identical(t$type, "ar1_spatial_at")) {
@@ -845,12 +851,26 @@ register_canonical_mapper <- function(backend, mapper) {
     if (identical(tt, "fa_gxe")) {
       levs <- .fb_fa_levels(t, t$outer_levels %||% character(0))
       for (j in seq_len(t$k %||% 0L)) {
-        anchor <- make.names(paste0(t$inner, "_fa", j, "_", t$outer, "_",
-                                    levs[[j]]))
+        anchor <- make.names(paste0(
+          t$inner,
+          "_fa",
+          j,
+          "_",
+          t$outer,
+          "_",
+          levs[[j]]
+        ))
         us_prec[[paste0("Precision for ", anchor)]] <- paste0("sd_fa", j)
         for (e in seq_along(levs)) {
-          idx <- make.names(paste0(t$inner, "_fa", j, "_", t$outer, "_",
-                                   levs[[e]]))
+          idx <- make.names(paste0(
+            t$inner,
+            "_fa",
+            j,
+            "_",
+            t$outer,
+            "_",
+            levs[[e]]
+          ))
           fa_load[[paste0("Beta for ", idx)]] <-
             paste0("fa", j, "_", t$outer, levs[[e]])
         }
@@ -871,10 +891,20 @@ register_canonical_mapper <- function(backend, mapper) {
       }
       for (a in seq_along(levs)) {
         for (b in seq_along(levs)) {
-          if (b <= a) next
+          if (b <= a) {
+            next
+          }
           us_cor[[paste0("Rho", a, ":", b, " for ", idx)]] <-
-            paste0("cor_", t$inner, "__", t$outer, levs[[a]],
-                   "__", t$outer, levs[[b]])
+            paste0(
+              "cor_",
+              t$inner,
+              "__",
+              t$outer,
+              levs[[a]],
+              "__",
+              t$outer,
+              levs[[b]]
+            )
         }
       }
       next
@@ -978,8 +1008,10 @@ register_canonical_mapper <- function(backend, mapper) {
     # rest "...[2]", "...[3]". Map them to sigma_<level>, the same
     # vocabulary the brms path already uses for dsum(), so the two engines
     # report the sectioned residual under one set of names.
-    if (length(resid_levels) > 1L &&
-          startsWith(nm, "Precision for the Gaussian observations")) {
+    if (
+      length(resid_levels) > 1L &&
+        startsWith(nm, "Precision for the Gaussian observations")
+    ) {
       suffix <- sub("^Precision for the Gaussian observations", "", nm)
       j <- if (nzchar(suffix)) {
         as.integer(gsub("[^0-9]", "", suffix))

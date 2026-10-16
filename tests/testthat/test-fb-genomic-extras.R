@@ -27,14 +27,20 @@ test_that(".fb_genomic_summary() computes GEBVs and reliability from draws", {
   # A precise genotype (small posterior SD) and a noisy one to separate
   # reliability.
   sds <- c(0.1, rep(0.7, n_geno - 2L), 1.4)
-  gebv_draws <- vapply(seq_len(n_geno), function(k) {
-    stats::rnorm(n_draws, true_bv[k], sds[k])
-  }, numeric(n_draws))
+  gebv_draws <- vapply(
+    seq_len(n_geno),
+    function(k) {
+      stats::rnorm(n_draws, true_bv[k], sds[k])
+    },
+    numeric(n_draws)
+  )
   var_g <- stats::rgamma(n_draws, shape = 200, rate = 200 / 2)
   var_e <- stats::rgamma(n_draws, shape = 200, rate = 200 / 2)
 
   s <- flexyBayes:::.fb_genomic_summary(
-    var_g, var_e, gebv_draws = gebv_draws,
+    var_g,
+    var_e,
+    gebv_draws = gebv_draws,
     labels = paste0("line", seq_len(n_geno))
   )
   expect_equal(s$n_genotypes, n_geno)
@@ -52,17 +58,24 @@ test_that(".fb_genomic_summary() summarises marker effects with retention probab
   n_markers <- 6L
   # Three real effects, three near-zero, with spike-and-slab-like draws.
   centres <- c(1.2, -0.9, 0.6, 0, 0, 0)
-  marker_draws <- vapply(seq_len(n_markers), function(k) {
-    if (centres[k] == 0) {
-      ifelse(stats::runif(n_draws) < 0.9, 0, stats::rnorm(n_draws, 0, 0.3))
-    } else {
-      stats::rnorm(n_draws, centres[k], 0.2)
-    }
-  }, numeric(n_draws))
+  marker_draws <- vapply(
+    seq_len(n_markers),
+    function(k) {
+      if (centres[k] == 0) {
+        ifelse(stats::runif(n_draws) < 0.9, 0, stats::rnorm(n_draws, 0, 0.3))
+      } else {
+        stats::rnorm(n_draws, centres[k], 0.2)
+      }
+    },
+    numeric(n_draws)
+  )
   var_g <- rep(1, n_draws)
   var_e <- rep(1, n_draws)
   s <- flexyBayes:::.fb_genomic_summary(
-    var_g, var_e, marker_draws = marker_draws, inclusion_eps = 1e-6
+    var_g,
+    var_e,
+    marker_draws = marker_draws,
+    inclusion_eps = 1e-6
   )
   expect_equal(s$n_markers, n_markers)
   expect_equal(s$marker_effects$mean, centres, tolerance = 0.1)
@@ -97,7 +110,8 @@ test_that(".fb_genomic_summary() rejects malformed inputs", {
   )
   expect_error(
     flexyBayes:::.fb_genomic_summary(
-      c(1, 2), c(1, 2),
+      c(1, 2),
+      c(1, 2),
       gebv_draws = matrix(0, 3L, 2L)
     ),
     "one row per posterior draw"

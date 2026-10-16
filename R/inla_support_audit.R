@@ -159,7 +159,6 @@
   standardisation = NULL,
   covariate = NULL
 ) {
-
   # Priors INLA received, in the order of its hyperparameters -------------
 
   rows <- .fb_manifest_inla_readback(inla_fit)[["rows"]]

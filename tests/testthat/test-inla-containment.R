@@ -87,20 +87,37 @@ test_that("an explicit INLA request for either structure raises the typed code",
   d$env <- factor(rep(c("a", "b", "c"), length.out = nrow(d)))
 
   calls <- list(
-    function() flexybayes(y ~ x + (x | g), data = d, backend = "inla",
-                          return_code = TRUE, verbose = FALSE),
-    function() flexybayes(y ~ x, random = ~ us(env):g, data = d,
-                          backend = "inla", return_code = TRUE,
-                          verbose = FALSE),
-    function() suppressWarnings(
-      fb_inla(y ~ x + (x | g), data = d, return_code = TRUE, verbose = FALSE),
-      classes = "flexybayes_deprecated"
-    )
+    function() {
+      flexybayes(
+        y ~ x + (x | g),
+        data = d,
+        backend = "inla",
+        return_code = TRUE,
+        verbose = FALSE
+      )
+    },
+    function() {
+      flexybayes(
+        y ~ x,
+        random = ~ us(env):g,
+        data = d,
+        backend = "inla",
+        return_code = TRUE,
+        verbose = FALSE
+      )
+    },
+    function() {
+      suppressWarnings(
+        fb_inla(y ~ x + (x | g), data = d, return_code = TRUE, verbose = FALSE),
+        classes = "flexybayes_deprecated"
+      )
+    }
   )
   for (call in calls) {
     err <- tryCatch(suppressMessages(call()), error = function(e) e)
     expect_s3_class(
-      err, "flexybayes_refusal_correlated_covariance_requires_brms"
+      err,
+      "flexybayes_refusal_correlated_covariance_requires_brms"
     )
     expect_identical(err$reason_code, "correlated_covariance_requires_brms")
     expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
@@ -115,21 +132,31 @@ test_that("auto routes both structures to brms before anything is fitted", {
 
   p_slope <- fb_plan(y ~ x + (x | g), data = d, backend = "auto")
   expect_identical(p_slope$backend_chosen, "brms")
-  expect_identical(p_slope$gate_primary_rule,
-                   "correlated_covariance_requires_brms")
+  expect_identical(
+    p_slope$gate_primary_rule,
+    "correlated_covariance_requires_brms"
+  )
 
   p_us <- suppressMessages(flexybayes(
-    y ~ x, random = ~ us(env):g, data = d, backend = "auto", plan = TRUE
+    y ~ x,
+    random = ~ us(env):g,
+    data = d,
+    backend = "auto",
+    plan = TRUE
   ))
   expect_identical(p_us$backend_chosen, "brms")
-  expect_identical(p_us$gate_primary_rule,
-                   "correlated_covariance_requires_brms")
+  expect_identical(
+    p_us$gate_primary_rule,
+    "correlated_covariance_requires_brms"
+  )
 
   # An explicit INLA plan reports the same rule and does not claim a fit.
   p_inla <- fb_plan(y ~ x + (x | g), data = d, backend = "inla")
   expect_false(p_inla$will_fit)
-  expect_identical(p_inla$gate_primary_rule,
-                   "correlated_covariance_requires_brms")
+  expect_identical(
+    p_inla$gate_primary_rule,
+    "correlated_covariance_requires_brms"
+  )
 })
 
 
@@ -171,9 +198,11 @@ test_that("auto routes both structures to brms before anything is fitted", {
     trt = factor(seq_len(5L)),
     blk = factor(seq_len(20L))
   )
-  d$y <- multiplier * (10 + as.numeric(d$trt) * 0.5 +
-                         stats::rnorm(nrow(d), 0, 0.3) +
-                         stats::rnorm(20L, 0, 0.4)[as.integer(d$blk)])
+  d$y <- multiplier *
+    (10 +
+      as.numeric(d$trt) * 0.5 +
+      stats::rnorm(nrow(d), 0, 0.3) +
+      stats::rnorm(20L, 0, 0.4)[as.integer(d$blk)])
   d
 }
 
@@ -204,15 +233,21 @@ test_that("the gate admits a Gaussian model at any response scale", {
     "fb_terms"
   )
   expect_s3_class(
-    lgm_gate(fb_from_asreml(fixed = Reaction ~ Days, random = ~ Subject,
-                            data = d)),
+    lgm_gate(fb_from_asreml(
+      fixed = Reaction ~ Days,
+      random = ~Subject,
+      data = d
+    )),
     "fb_terms"
   )
   # A transformed response is gated as evaluated, and ten times a large one
   # is admitted too.
   expect_s3_class(
-    lgm_gate(fb_from_asreml(fixed = I(10 * Reaction) ~ Days,
-                            random = ~ Subject, data = d)),
+    lgm_gate(fb_from_asreml(
+      fixed = I(10 * Reaction) ~ Days,
+      random = ~Subject,
+      data = d
+    )),
     "fb_terms"
   )
 })
@@ -228,30 +263,37 @@ test_that("a large-scale response fits on INLA through backend, pin and auto", {
   d_ref$Reaction <- d_ref$Reaction / .ct_multiplier
 
   reference <- suppressWarnings(flexybayes(
-    Reaction ~ Days + (1 | Subject), data = d_ref, backend = "inla",
+    Reaction ~ Days + (1 | Subject),
+    data = d_ref,
+    backend = "inla",
     verbose = FALSE
   ))
 
   explicit <- suppressWarnings(flexybayes(
-    Reaction ~ Days + (1 | Subject), data = d_big, backend = "inla",
+    Reaction ~ Days + (1 | Subject),
+    data = d_big,
+    backend = "inla",
     verbose = FALSE
   ))
   .ct_expect_same_model(explicit, reference)
 
   pinned <- suppressWarnings(fb_inla(
-    Reaction ~ Days + (1 | Subject), data = d_big, verbose = FALSE
+    Reaction ~ Days + (1 | Subject),
+    data = d_big,
+    verbose = FALSE
   ))
   .ct_expect_same_model(pinned, reference)
 
   # Under "auto" the plan names INLA and the gate accepts, where the refusal
   # used to route this model to brms before anything was fitted.
-  p <- fb_plan(Reaction ~ Days + (1 | Subject), data = d_big,
-               backend = "auto")
+  p <- fb_plan(Reaction ~ Days + (1 | Subject), data = d_big, backend = "auto")
   expect_identical(p$backend_chosen, "inla")
   expect_identical(p$gate_outcome, "accept")
   expect_true(p$will_fit)
   auto <- suppressWarnings(flexybayes(
-    Reaction ~ Days + (1 | Subject), data = d_big, backend = "auto",
+    Reaction ~ Days + (1 | Subject),
+    data = d_big,
+    backend = "auto",
     verbose = FALSE
   ))
   .ct_expect_same_model(auto, reference)
@@ -269,15 +311,23 @@ test_that("a large-scale Gaussian response refuses by name on the aggregated and
 
   expect_error(
     suppressWarnings(flexybayes(
-      fixed = y ~ trt, random = ~ blk, data = d_big,
-      backend = "inla", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~blk,
+      data = d_big,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
   )
   expect_error(
     flexybayes_stream(
-      y ~ trt, random = ~ blk, source = d_big, backend = "inla",
-      chunk_rows = 150L, verbose = FALSE
+      y ~ trt,
+      random = ~blk,
+      source = d_big,
+      backend = "inla",
+      chunk_rows = 150L,
+      verbose = FALSE
     ),
     class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
   )

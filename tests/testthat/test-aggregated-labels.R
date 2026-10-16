@@ -54,12 +54,16 @@ test_that("print and summary on a live aggregated fit carry the family", {
 
   print_out <- utils::capture.output(print(fit))
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-binomial]", print_out, fixed = TRUE
+    "[flexyBayes / aggregated-binomial]",
+    print_out,
+    fixed = TRUE
   )))
 
   summary_out <- utils::capture.output(summary(fit))
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-binomial]", summary_out, fixed = TRUE
+    "[flexyBayes / aggregated-binomial]",
+    summary_out,
+    fixed = TRUE
   )))
 })
 
@@ -87,16 +91,20 @@ test_that("a Poisson aggregated fit prints aggregated-poisson", {
   )
   # The engine is installed, so a fit error here is a regression, not a
   # reason to skip.
-  expect_false(inherits(fit, "error"),
-               label = if (inherits(fit, "error")) {
-                 conditionMessage(fit)
-               } else {
-                 "aggregated Poisson fit"
-               })
+  expect_false(
+    inherits(fit, "error"),
+    label = if (inherits(fit, "error")) {
+      conditionMessage(fit)
+    } else {
+      "aggregated Poisson fit"
+    }
+  )
   skip_if(inherits(fit, "error"))
   print_out <- utils::capture.output(print(fit))
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-poisson]", print_out, fixed = TRUE
+    "[flexyBayes / aggregated-poisson]",
+    print_out,
+    fixed = TRUE
   )))
 })
 
@@ -130,13 +138,19 @@ test_that("print on a flexybayes_stream() fit names the backend and the aggregat
 
   print_out <- utils::capture.output(print(fit))
   expect_true(any(grepl(
-    "backend:    inla (path = aggregated_count )", print_out, fixed = TRUE
+    "backend:    inla (path = aggregated_count )",
+    print_out,
+    fixed = TRUE
   )))
   expect_true(any(grepl(
-    "Engine:         INLA Laplace", print_out, fixed = TRUE
+    "Engine:         INLA Laplace",
+    print_out,
+    fixed = TRUE
   )))
   expect_true(any(grepl(
-    "Representation: aggregated_exact", print_out, fixed = TRUE
+    "Representation: aggregated_exact",
+    print_out,
+    fixed = TRUE
   )))
   expect_false(any(grepl("(unknown engine)", print_out, fixed = TRUE)))
 })

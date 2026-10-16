@@ -13,10 +13,17 @@
     trt = factor(rep(c("a", "b", "c"), 24)),
     x = stats::rnorm(72)
   )
-  d$y <- 1 + c(0, 0.5, -0.3)[d$trt] + 0.4 * d$x +
-    stats::rnorm(6)[d$site] + stats::rnorm(72)
+  d$y <- 1 +
+    c(0, 0.5, -0.3)[d$trt] +
+    0.4 * d$x +
+    stats::rnorm(6)[d$site] +
+    stats::rnorm(72)
   suppressWarnings(suppressMessages(flexybayes(
-    y ~ trt + x, random = ~site, data = d, backend = "inla", verbose = FALSE
+    y ~ trt + x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   )))
 }
 
@@ -48,10 +55,14 @@ test_that("DC-05 guard: every accessor of an INLA fit repeats under one seed", {
   ))
   generics <- unique(sub("\\.flexybayes(_inla)?$", "", methods_inla))
   accessors <- grep("^fb_", getNamespaceExports("flexyBayes"), value = TRUE)
-  takes_fit <- vapply(accessors, function(nm) {
-    first <- names(formals(getExportedValue("flexyBayes", nm)))[1L]
-    isTRUE(first %in% c("object", "fit", "x"))
-  }, logical(1L))
+  takes_fit <- vapply(
+    accessors,
+    function(nm) {
+      first <- names(formals(getExportedValue("flexyBayes", nm)))[1L]
+      isTRUE(first %in% c("object", "fit", "x"))
+    },
+    logical(1L)
+  )
   calls <- setdiff(c(generics, accessors[takes_fit]), .g05_skip)
 
   ran <- character(0)
@@ -77,7 +88,8 @@ test_that("DC-05 guard: every accessor of an INLA fit repeats under one seed", {
     all(.g05_must_run %in% ran),
     label = paste0(
       "drawing routes reached (missing: ",
-      paste(setdiff(.g05_must_run, ran), collapse = ", "), ")"
+      paste(setdiff(.g05_must_run, ran), collapse = ", "),
+      ")"
     )
   )
 })

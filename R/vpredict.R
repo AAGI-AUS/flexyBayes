@@ -26,18 +26,24 @@
   if (!length(hit)) {
     return("")
   }
-  saved <- any(names(hit) %in% as.character(
-    object$extras$variance_comps$component
-  ))
+  saved <- any(
+    names(hit) %in%
+      as.character(
+        object$extras$variance_comps$component
+      )
+  )
   paste0(
     " A one-factor AR1 field names its correlation after the factor: use ",
-    paste0("`", hit, "` for `", names(hit), "`", collapse = ", "), ".",
+    paste0("`", hit, "` for `", names(hit), "`", collapse = ", "),
+    ".",
     if (saved) {
       paste0(
         " This fit was saved before 0.18.0: summary() shows `",
         paste(names(hit), collapse = "`, `"),
         "` from its stored table, and its draws carry the same correlation ",
-        "as `", paste(hit, collapse = "`, `"), "`. Refit to make them agree."
+        "as `",
+        paste(hit, collapse = "`, `"),
+        "`. Refit to make them agree."
       )
     }
   )
@@ -202,7 +208,9 @@ vpredict.flexybayes <- function(
         reason_code = "vpredict_no_functional",
         message = paste0(
           "Each functional is a two-sided formula, `name ~ expression`. ",
-          "Argument ", i, " is not one."
+          "Argument ",
+          i,
+          " is not one."
         )
       ))
     }
@@ -214,7 +222,9 @@ vpredict.flexybayes <- function(
       stop(.fb_refusal_condition(
         reason_code = "vpredict_component_not_in_posterior",
         message = paste0(
-          "`", label, "` names ",
+          "`",
+          label,
+          "` names ",
           if (length(unknown) > 1L) "components " else "a component ",
           paste0("`", unknown, "`", collapse = ", "),
           ", which this fit does not carry. It carries: ",
@@ -231,7 +241,9 @@ vpredict.flexybayes <- function(
       stop(.fb_refusal_condition(
         reason_code = "vpredict_functional_not_one_value_per_draw",
         message = paste0(
-          "`", label, "` must evaluate to one number per posterior draw. ",
+          "`",
+          label,
+          "` must evaluate to one number per posterior draw. ",
           "It returned ",
           if (!is.numeric(val)) {
             "a non-numeric value"

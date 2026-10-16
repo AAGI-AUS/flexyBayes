@@ -88,14 +88,28 @@ test_that("every name in the vocabulary is recognised by the walker", {
   d <- .rt_data()
   d$t <- factor(rep(seq_len(6L), length.out = nrow(d)))
   calls <- list(
-    ar1 = quote(ar1(t)), ar2 = quote(ar2(t)), at = quote(at(env)),
-    cor = quote(cor(env)), corh = quote(corh(env)), diag = quote(diag(env)),
-    dsum = quote(dsum(~units | env)), fa = quote(fa(env, 2)),
-    id = quote(id(gen)), ide = quote(ide(gen)), idh = quote(idh(env)),
-    lin = quote(lin(x)), ped = quote(ped(gen)), pol = quote(pol(x)),
-    s = quote(s(x)), spl = quote(spl(x)), str = quote(str(~gen, ~us(2))),
-    t2 = quote(t2(x, y)), te = quote(te(x, y)), ti = quote(ti(x, y)),
-    us = quote(us(env)), vm = quote(vm(gen))
+    ar1 = quote(ar1(t)),
+    ar2 = quote(ar2(t)),
+    at = quote(at(env)),
+    cor = quote(cor(env)),
+    corh = quote(corh(env)),
+    diag = quote(diag(env)),
+    dsum = quote(dsum(~ units | env)),
+    fa = quote(fa(env, 2)),
+    id = quote(id(gen)),
+    ide = quote(ide(gen)),
+    idh = quote(idh(env)),
+    lin = quote(lin(x)),
+    ped = quote(ped(gen)),
+    pol = quote(pol(x)),
+    s = quote(s(x)),
+    spl = quote(spl(x)),
+    str = quote(str(~gen, ~ us(2))),
+    t2 = quote(t2(x, y)),
+    te = quote(te(x, y)),
+    ti = quote(ti(x, y)),
+    us = quote(us(env)),
+    vm = quote(vm(gen))
   )
   expect_setequal(names(calls), flexyBayes:::.asreml_function_vocabulary())
   for (nm in names(calls)) {
@@ -120,13 +134,14 @@ test_that("cor() is refused with the equicorrelation reason", {
   d <- .rt_data()
   bad <- .rt_emit(y ~ 1, random = ~ cor(env), data = d)
   expect_s3_class(
-    bad, "flexybayes_refusal_corh_no_equicorrelation_representation"
+    bad,
+    "flexybayes_refusal_corh_no_equicorrelation_representation"
   )
 })
 
 test_that("str() is refused and names what to write instead", {
   d <- .rt_data()
-  bad <- .rt_emit(y ~ 1, random = ~ str(~gen, ~us(2):id(gen)), data = d)
+  bad <- .rt_emit(y ~ 1, random = ~ str(~gen, ~ us(2):id(gen)), data = d)
   expect_s3_class(bad, "flexybayes_refusal_str_not_representable")
   expect_match(conditionMessage(bad), "us(f):g", fixed = TRUE)
 })
@@ -145,8 +160,7 @@ test_that("a factor-analytic covariance is refused on both engines", {
   d <- .rt_data()
 
   for (be in c("inla", "brms")) {
-    bad <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
-                    backend = be)
+    bad <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d, backend = be)
     expect_s3_class(bad, "flexybayes_refusal_factor_analytic_not_repeatable")
     # It names what to write instead, on both engines.
     expect_match(conditionMessage(bad), "diag(env):gen", fixed = TRUE)
@@ -154,8 +168,7 @@ test_that("a factor-analytic covariance is refused on both engines", {
 
   # The bare spelling has no grouping factor for the covariance to apply to.
   # It keeps its own refusal, and still names the way to write it.
-  bare <- .rt_emit(y ~ env, random = ~ fa(env, 1), data = d,
-                   backend = "inla")
+  bare <- .rt_emit(y ~ env, random = ~ fa(env, 1), data = d, backend = "inla")
   expect_s3_class(bare, "flexybayes_refusal_fa_not_representable")
   expect_match(conditionMessage(bare), "us(env):<group>", fixed = TRUE)
 
@@ -172,7 +185,9 @@ test_that("an unmatched structured interaction is refused by name", {
   k <- diag(6)
   dimnames(k) <- list(as.character(seq_len(6L)), as.character(seq_len(6L)))
   bad <- .rt_emit(
-    y ~ env, random = ~ us(trait):vm(gen), data = d,
+    y ~ env,
+    random = ~ us(trait):vm(gen),
+    data = d,
     known_matrices = list(K = k)
   )
   expect_s3_class(bad, "flexybayes_refusal_interaction_not_representable")
@@ -194,19 +209,26 @@ test_that("a term brms cannot lower is refused by name, not dropped", {
 test_that("the 1-D residual AR1 spelling refuses and the random side fits", {
   skip_if_not_installed("INLA")
   g <- .rt_grid()
-  bad <- .rt_emit(y ~ 1, residual = ~ ar1(row), data = g,
-                  backend = "inla")
+  bad <- .rt_emit(y ~ 1, residual = ~ ar1(row), data = g, backend = "inla")
   expect_s3_class(bad, "flexybayes_refusal_ar1_residual_not_representable")
-  ok <- .rt_emit(y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-                 backend = "inla")
+  ok <- .rt_emit(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla"
+  )
   expect_false(inherits(ok, "error"))
 })
 
 test_that("the random-side field is refused on brms", {
   skip_if_not_installed("brms")
   g <- .rt_grid()
-  bad <- .rt_emit(y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-                  backend = "brms")
+  bad <- .rt_emit(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "brms"
+  )
   expect_s3_class(bad, "flexybayes_refusal_stan_cannot_represent_ar1_field")
 })
 
@@ -216,10 +238,13 @@ test_that("Subject:Days with numeric Days names (Days || Subject)", {
   skip_if_not_installed("lme4")
   data(sleepstudy, package = "lme4")
   bad <- .rt_emit(
-    Reaction ~ Days, random = ~ Subject + Subject:Days, data = sleepstudy
+    Reaction ~ Days,
+    random = ~ Subject + Subject:Days,
+    data = sleepstudy
   )
   expect_s3_class(
-    bad, "flexybayes_refusal_numeric_variable_in_random_interaction"
+    bad,
+    "flexybayes_refusal_numeric_variable_in_random_interaction"
   )
   msg <- conditionMessage(bad)
   expect_match(msg, "(Days || Subject)", fixed = TRUE)
@@ -235,12 +260,10 @@ test_that("a factor-by-factor nested term still fits", {
   # experiment brms is the faithful backend for.
   skip_if_not_installed("brms")
   d <- .rt_data()
-  ok <- .rt_emit(y ~ env, random = ~ gen + gen:env, data = d,
-                 backend = "brms")
+  ok <- .rt_emit(y ~ env, random = ~ gen + gen:env, data = d, backend = "brms")
   expect_false(inherits(ok, "error"))
   # And a three-way combination of factors likewise.
-  ok3 <- .rt_emit(y ~ env, random = ~ gen:env:rep, data = d,
-                  backend = "brms")
+  ok3 <- .rt_emit(y ~ env, random = ~ gen:env:rep, data = d, backend = "brms")
   expect_false(inherits(ok3, "error"))
 })
 
@@ -248,6 +271,7 @@ test_that("a numeric inside a three-way random combination refuses too", {
   d <- .rt_data()
   bad <- .rt_emit(y ~ 1, random = ~ gen:env:x, data = d)
   expect_s3_class(
-    bad, "flexybayes_refusal_numeric_variable_in_random_interaction"
+    bad,
+    "flexybayes_refusal_numeric_variable_in_random_interaction"
   )
 })

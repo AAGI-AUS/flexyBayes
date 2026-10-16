@@ -24,28 +24,59 @@
   )
   u_site <- stats::rnorm(6)
   u_st <- stats::rnorm(18, sd = 0.5)
-  d$y <- 1 + c(0, 0.5, -0.3)[d$trt] + 0.4 * d$x + u_site[d$site] +
-    u_st[(as.integer(d$site) - 1L) * 3L + as.integer(d$trt)] + stats::rnorm(72, sd = 0.5)
-  d$cnt <- stats::rpois(72, exp(0.5 + 0.3 * as.integer(d$trt) + 0.3 * u_site[d$site]))
+  d$y <- 1 +
+    c(0, 0.5, -0.3)[d$trt] +
+    0.4 * d$x +
+    u_site[d$site] +
+    u_st[(as.integer(d$site) - 1L) * 3L + as.integer(d$trt)] +
+    stats::rnorm(72, sd = 0.5)
+  d$cnt <- stats::rpois(
+    72,
+    exp(0.5 + 0.3 * as.integer(d$trt) + 0.3 * u_site[d$site])
+  )
   d
 }
 
 .g15_fits <- function(d) {
   fit_one <- function(...) {
-    suppressWarnings(suppressMessages(flexybayes(..., data = d, backend = "inla", verbose = FALSE)))
+    suppressWarnings(suppressMessages(flexybayes(
+      ...,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )))
   }
   list(
     gaussian_site = fit_one(y ~ trt + x, random = ~site),
     gaussian_interaction = fit_one(y ~ trt + x, random = ~ site + site:trt),
     gaussian_diag = fit_one(y ~ trt + x, random = ~ diag(trt):site),
-    poisson_aggregated = fit_one(cnt ~ trt, random = ~site, family = "poisson", aggregate = TRUE),
-    poisson_per_row = fit_one(cnt ~ trt, random = ~site, family = "poisson", aggregate = FALSE)
+    poisson_aggregated = fit_one(
+      cnt ~ trt,
+      random = ~site,
+      family = "poisson",
+      aggregate = TRUE
+    ),
+    poisson_per_row = fit_one(
+      cnt ~ trt,
+      random = ~site,
+      family = "poisson",
+      aggregate = FALSE
+    )
   )
 }
 
 .G15_FAMILIES <- c(
-  "gaussian", "poisson", "binomial", "gamma", "beta", "lognormal",
-  "student", "negbinomial", "nbinomial", "weibull", "exponential"
+  "gaussian",
+  "poisson",
+  "binomial",
+  "gamma",
+  "beta",
+  "lognormal",
+  "student",
+  "negbinomial",
+  "nbinomial",
+  "weibull",
+  "exponential"
 )
 
 # Words a group or component name may be built from: the data's column names,
@@ -54,8 +85,24 @@
 .g15_vocabulary <- function(d) {
   facs <- d[vapply(d, is.factor, logical(1L))]
   lev <- unlist(lapply(facs, levels), use.names = FALSE)
-  coef_names <- unlist(lapply(names(facs), function(v) paste0(v, levels(facs[[v]]))), use.names = FALSE)
-  c(names(d), lev, coef_names, "diag", "us", "idh", "at", "units", "sigma", "sd", "cor", "Intercept")
+  coef_names <- unlist(
+    lapply(names(facs), function(v) paste0(v, levels(facs[[v]]))),
+    use.names = FALSE
+  )
+  c(
+    names(d),
+    lev,
+    coef_names,
+    "diag",
+    "us",
+    "idh",
+    "at",
+    "units",
+    "sigma",
+    "sd",
+    "cor",
+    "Intercept"
+  )
 }
 
 .g15_unknown_tokens <- function(label, vocab) {
@@ -75,7 +122,10 @@ test_that("DC-15 guard: print, summary and ranef name what the fit ran", {
   fits <- .g15_fits(d)
   vocab <- .g15_vocabulary(d)
   level_vocab <- unique(c(
-    unlist(lapply(d[vapply(d, is.factor, logical(1L))], levels), use.names = FALSE),
+    unlist(
+      lapply(d[vapply(d, is.factor, logical(1L))], levels),
+      use.names = FALSE
+    ),
     as.vector(outer(levels(d$site), levels(d$trt), paste, sep = ":")),
     as.vector(outer(levels(d$trt), levels(d$site), paste, sep = ":"))
   ))
@@ -86,19 +136,34 @@ test_that("DC-15 guard: print, summary and ranef name what the fit ran", {
     printed <- utils::capture.output(print(fit))
 
     # Components the print names are components the object has.
-    named <- unique(sub("^\\$", "", regmatches(
-      printed, regexpr("^\\s*\\$[A-Za-z_.][A-Za-z0-9_.]*", printed)
-    )))
+    named <- unique(sub(
+      "^\\$",
+      "",
+      regmatches(
+        printed,
+        regexpr("^\\s*\\$[A-Za-z_.][A-Za-z0-9_.]*", printed)
+      )
+    ))
     named <- trimws(sub("^\\s*\\$", "", named))
-    expect_identical(setdiff(named, names(fit)), character(0),
+    expect_identical(
+      setdiff(named, names(fit)),
+      character(0),
       label = paste0(nm, ": components print() names that the fit lacks")
     )
 
     # The print names the fit's family and no other.
     fam <- stats::family(fit)$family
-    words <- tolower(unlist(strsplit(paste(printed, collapse = " "), "[^A-Za-z]+")))
-    expect_true(fam %in% words, label = paste0(nm, ": print() names the family ", fam))
-    expect_identical(intersect(setdiff(.G15_FAMILIES, fam), words), character(0),
+    words <- tolower(unlist(strsplit(
+      paste(printed, collapse = " "),
+      "[^A-Za-z]+"
+    )))
+    expect_true(
+      fam %in% words,
+      label = paste0(nm, ": print() names the family ", fam)
+    )
+    expect_identical(
+      intersect(setdiff(.G15_FAMILIES, fam), words),
+      character(0),
       label = paste0(nm, ": other family names in print()")
     )
 
@@ -106,11 +171,20 @@ test_that("DC-15 guard: print, summary and ranef name what the fit ran", {
     r <- ranef(fit)
     expect_gt(length(r), 0L)
     for (g in names(r)) {
-      expect_identical(.g15_unknown_tokens(g, vocab), character(0),
-        label = paste0(nm, ": ranef() group '", g, "' names something the data lacks")
+      expect_identical(
+        .g15_unknown_tokens(g, vocab),
+        character(0),
+        label = paste0(
+          nm,
+          ": ranef() group '",
+          g,
+          "' names something the data lacks"
+        )
       )
       lv <- as.character(r[[g]]$level)
-      expect_identical(setdiff(lv, level_vocab), character(0),
+      expect_identical(
+        setdiff(lv, level_vocab),
+        character(0),
         label = paste0(nm, ": ranef() levels of '", g, "' the data lacks")
       )
     }
@@ -120,18 +194,33 @@ test_that("DC-15 guard: print, summary and ranef name what the fit ran", {
     s <- summary(fit)
     vc <- s$varcomp
     for (comp in vc$component) {
-      expect_identical(.g15_unknown_tokens(comp, vocab), character(0),
-        label = paste0(nm, ": varcomp component '", comp, "' names something the data lacks")
+      expect_identical(
+        .g15_unknown_tokens(comp, vocab),
+        character(0),
+        label = paste0(
+          nm,
+          ": varcomp component '",
+          comp,
+          "' names something the data lacks"
+        )
       )
     }
     slots <- prior_summary(fit)$slots
     if (is.data.frame(slots) && nrow(slots) && "prior" %in% names(vc)) {
-      sent <- slots$target_key[slots$section == "random" & slots$source == "package"]
+      sent <- slots$target_key[
+        slots$section == "random" & slots$source == "package"
+      ]
       for (k in stats::na.omit(sent)) {
         row <- vc[vc$component == paste0("sd_", k), , drop = FALSE]
         if (nrow(row)) {
-          expect_false(grepl("engine", row$prior[1], ignore.case = TRUE),
-            label = paste0(nm, ": varcomp calls the package prior on sd_", k, " an engine default")
+          expect_false(
+            grepl("engine", row$prior[1], ignore.case = TRUE),
+            label = paste0(
+              nm,
+              ": varcomp calls the package prior on sd_",
+              k,
+              " an engine default"
+            )
           )
         }
       }

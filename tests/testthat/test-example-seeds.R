@@ -37,7 +37,9 @@
     block <- character(0)
     while (j <= length(lines) && startsWith(lines[[j]], "#'")) {
       body <- sub("^#'\\s*", "", lines[[j]])
-      if (grepl("^@[a-zA-Z]", body)) break
+      if (grepl("^@[a-zA-Z]", body)) {
+        break
+      }
       block <- c(block, body)
       j <- j + 1L
     }
@@ -50,7 +52,11 @@ test_that("each example block that draws random numbers seeds itself first", {
   if (is.na(root)) {
     testthat::skip("source tree not reachable (installed-package test run)")
   }
-  files <- list.files(file.path(root, "R"), pattern = "\\.R$", full.names = TRUE)
+  files <- list.files(
+    file.path(root, "R"),
+    pattern = "\\.R$",
+    full.names = TRUE
+  )
   rng <- .es_rng_pattern()
 
   offenders <- character(0)
@@ -59,7 +65,9 @@ test_that("each example block that draws random numbers seeds itself first", {
     for (blk in .es_example_blocks(lines)) {
       text <- paste(blk$body, collapse = "\n")
       draw <- regexpr(rng, text, perl = TRUE)
-      if (draw[[1]] == -1L) next
+      if (draw[[1]] == -1L) {
+        next
+      }
       seed <- regexpr("\\bset\\.seed\\s*\\(", text, perl = TRUE)
       seeded_first <- seed[[1]] != -1L && seed[[1]] < draw[[1]]
       if (!seeded_first) {

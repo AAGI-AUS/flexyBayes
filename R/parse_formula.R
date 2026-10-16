@@ -131,8 +131,11 @@
       stop(.fb_refusal_condition(
         reason_code = "newdata_offset_missing",
         message = paste0(
-          "The model carries `", lbl, "`, and `newdata` has no column ",
-          paste0("`", absent, "`", collapse = ", "), ". A prediction from ",
+          "The model carries `",
+          lbl,
+          "`, and `newdata` has no column ",
+          paste0("`", absent, "`", collapse = ", "),
+          ". A prediction from ",
           "an offset model needs the offset on every new row; it is not ",
           "taken to be zero. Add the column to `newdata`."
         ),
@@ -174,7 +177,11 @@
       stop(.fb_refusal_condition(
         reason_code = "fixed_offset_invalid",
         message = paste0(
-          "The fixed formula carries `", lbl, "`, and ", problem, ". An ",
+          "The fixed formula carries `",
+          lbl,
+          "`, and ",
+          problem,
+          ". An ",
           "offset enters the linear predictor on every row with a fixed ",
           "coefficient of one, so it has to be a finite number on each row ",
           "of the data."
@@ -203,8 +210,9 @@
 # response has to be resolved in one place instead of guarded in several.
 .fb_response_values <- function(fb, data) {
   resp <- fb$response
-  if (is.null(resp) || !is.character(resp) || length(resp) != 1L ||
-        !nzchar(resp)) {
+  if (
+    is.null(resp) || !is.character(resp) || length(resp) != 1L || !nzchar(resp)
+  ) {
     return(NULL)
   }
   if (resp %in% names(data)) {
@@ -905,13 +913,18 @@
       ))
     }
     return(list(list(
-      type = .FB_GXE_PAIR_TYPE[["fa"]], outer = l$var, k = l$k, inner = r$var
+      type = .FB_GXE_PAIR_TYPE[["fa"]],
+      outer = l$var,
+      k = l$k,
+      inner = r$var
     )))
   }
   # US GxE:     us(env) : id(geno)
   if (lt == "us" && rt %in% c("id", "ide", "simple")) {
     return(list(list(
-      type = .FB_GXE_PAIR_TYPE[["us"]], outer = l$var, inner = r$var
+      type = .FB_GXE_PAIR_TYPE[["us"]],
+      outer = l$var,
+      inner = r$var
     )))
   }
   # CORH GxE:   corh(env) : id(geno), heterogeneous variances, ONE shared
@@ -1058,13 +1071,22 @@
     stop(.fb_refusal_condition(
       reason_code = "at_level_not_in_data",
       message = paste0(
-        written, " names ", paste(bad, collapse = ", "),
-        ", which is not a level of `", var, "`. Name the levels as ",
-        "literal values, or as positions in levels(", var, "); `", var,
-        "` has ", length(all_levels),
+        written,
+        " names ",
+        paste(bad, collapse = ", "),
+        ", which is not a level of `",
+        var,
+        "`. Name the levels as ",
+        "literal values, or as positions in levels(",
+        var,
+        "); `",
+        var,
+        "` has ",
+        length(all_levels),
         if (length(all_levels) > 1L) " levels: " else " level: ",
         paste(utils::head(all_levels, 10L), collapse = ", "),
-        if (length(all_levels) > 10L) ", ..." else "", "."
+        if (length(all_levels) > 10L) ", ..." else "",
+        "."
       )
     ))
   }
@@ -1214,7 +1236,9 @@
           stop(.fb_refusal_condition(
             reason_code = "nested_variable_not_in_data",
             message = paste0(
-              "The field term names `", v, "`, which is not a column of ",
+              "The field term names `",
+              v,
+              "`, which is not a column of ",
               "`data`."
             )
           ))
@@ -1227,7 +1251,9 @@
         term$level,
         levels(factor(data[[term$by_var]])),
         paste0(
-          ":ar1(", term$row_var, "):",
+          ":ar1(",
+          term$row_var,
+          "):",
           if (isTRUE(term$col_ar1)) {
             paste0("ar1(", term$col_var, ")")
           } else {

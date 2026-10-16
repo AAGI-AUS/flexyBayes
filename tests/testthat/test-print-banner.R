@@ -40,7 +40,8 @@ suppressPackageStartupMessages(library(testthat))
 .pb_holed_grid <- function() {
   set.seed(20260817L)
   g <- expand.grid(
-    row = factor(seq_len(4L)), col = factor(seq_len(3L)),
+    row = factor(seq_len(4L)),
+    col = factor(seq_len(3L)),
     KEEP.OUT.ATTRS = FALSE
   )
   g$y <- stats::rnorm(nrow(g))
@@ -108,7 +109,9 @@ test_that("the banner is one line, exactly, above the table", {
   # The interval is named for what it is, in the heading right above.
   expect_match(out[[heading[[1L]]]], "credible interval", fixed = TRUE)
   expect_match(
-    paste(out, collapse = "\n"), "posterior mean", fixed = TRUE
+    paste(out, collapse = "\n"),
+    "posterior mean",
+    fixed = TRUE
   )
 })
 
@@ -275,8 +278,11 @@ test_that("on complete data the two counts agree", {
   g <- .pb_holed_grid()
   g$y[is.na(g$y)] <- 0
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    verbose = FALSE
   ))
   expect_identical(stats::nobs(fit), stats::nobs(fit, type = "observed"))
 })
@@ -292,8 +298,13 @@ test_that("on complete data the two counts agree", {
     d <- data.frame(g = factor(rep(letters[1:5], 12L)))
     d$y <- stats::rnorm(60L) + as.integer(d$g) * 0.2
     .pb_cache$iid <- suppressMessages(flexybayes(
-      y ~ 1, random = ~g, data = d, backend = "inla", aggregate = FALSE,
-      verbose = FALSE, mcmc_verbose = FALSE
+      y ~ 1,
+      random = ~g,
+      data = d,
+      backend = "inla",
+      aggregate = FALSE,
+      verbose = FALSE,
+      mcmc_verbose = FALSE
     ))
   }
   .pb_cache$iid
@@ -326,7 +337,8 @@ test_that("the printed INLA formula names its priors instead of coding", {
 
   # A field print still shows its own formula, blob-free.
   field_txt <- paste(
-    utils::capture.output(print(.pb_field_fit())), collapse = "\n"
+    utils::capture.output(print(.pb_field_fit())),
+    collapse = "\n"
   )
   expect_match(field_txt, "f(row_id", fixed = TRUE)
   expect_false(grepl("-1.0e10", field_txt, fixed = TRUE))
@@ -352,7 +364,8 @@ test_that("a compressed prior block is tagged by what it encodes", {
     fixed = TRUE
   )
   expect_match(
-    compress(bounded), "<prior: uniform-SD(0.25, 5.596)>",
+    compress(bounded),
+    "<prior: uniform-SD(0.25, 5.596)>",
     fixed = TRUE
   )
 
@@ -363,7 +376,8 @@ test_that("a compressed prior block is tagged by what it encodes", {
     fixed = TRUE
   )
   expect_match(
-    compress(halfnorm), "<prior: half-normal-SD(1.235)>",
+    compress(halfnorm),
+    "<prior: half-normal-SD(1.235)>",
     fixed = TRUE
   )
 
@@ -401,9 +415,12 @@ test_that("the prior cell rounds for display and not in the object", {
   # The stored cell is the resolved prior verbatim, the basis the
   # projection identity is checked on, and carries more digits than the
   # printed one.
-  expect_true(any(nchar(cells) > nchar(
-    flexyBayes:::.fb_round_prior_cell(cells)
-  )))
+  expect_true(any(
+    nchar(cells) >
+      nchar(
+        flexyBayes:::.fb_round_prior_cell(cells)
+      )
+  ))
   expect_false(any(grepl("[0-9]{8}", flexyBayes:::.fb_round_prior_cell(cells))))
   # And the printed table shows the short form.
   for (short in flexyBayes:::.fb_round_prior_cell(cells)) {

@@ -77,7 +77,11 @@ test_that("print.fb_aggregation_plan() states the numbers even when NOT eligible
   expect_identical(plan$reason_codes, "compression_unproductive")
 
   out <- capture.output(print(plan))
-  expect_true(any(grepl("N = 100; K = 80; rows/cell = 1.25", out, fixed = TRUE)))
+  expect_true(any(grepl(
+    "N = 100; K = 80; rows/cell = 1.25",
+    out,
+    fixed = TRUE
+  )))
   expect_true(any(grepl("threshold: rows/cell >= 2.0", out, fixed = TRUE)))
   expect_true(any(grepl("will NOT pay", out, fixed = TRUE)))
 })
@@ -173,7 +177,11 @@ test_that("the plan and the gate agree under backend = 'auto'", {
 
   # The representation table enumerates random AND residual terms, not
   # only the three fixed terms (the second observed symptom).
-  ids <- vapply(p_fb_plan$representation_plan, function(rp) rp$term_id, character(1L))
+  ids <- vapply(
+    p_fb_plan$representation_plan,
+    function(rp) rp$term_id,
+    character(1L)
+  )
   expect_true(any(grepl("^\\(", ids))) # at least one random-term row, "(... | ...)"
   expect_true(any(grepl("dsum(~ units | env)", ids, fixed = TRUE)))
 })
@@ -345,7 +353,9 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
   for (spec in .plan_parity_roster) {
     d <- spec$data()
     args <- list(spec$formula, data = d, backend = "auto")
-    if (!is.null(spec$family)) args$family <- spec$family
+    if (!is.null(spec$family)) {
+      args$family <- spec$family
+    }
     p <- do.call(fb_plan, args)
     expect_identical(
       p$backend_chosen,
@@ -364,7 +374,9 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
       chains = 1L,
       verbose = FALSE
     )
-    if (!is.null(spec$family)) fit_args$family <- spec$family
+    if (!is.null(spec$family)) {
+      fit_args$family <- spec$family
+    }
     fit <- .muffle_ess_warnings(suppressMessages(
       do.call(flexybayes, fit_args)
     ))

@@ -36,7 +36,9 @@ test_that("every registry row names a test file that exists", {
   }
   reg <- .fb_translation_registry()
   anchors <- unique(reg$anchor)
-  missing <- anchors[!file.exists(file.path(root, "tests", "testthat", anchors))]
+  missing <- anchors[
+    !file.exists(file.path(root, "tests", "testthat", anchors))
+  ]
   expect_equal(missing, character(0))
 })
 

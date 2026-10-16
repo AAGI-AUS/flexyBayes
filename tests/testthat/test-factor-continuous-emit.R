@@ -296,4 +296,3 @@ test_that("lgm_gate accepts factor_numeric_interaction structurally", {
   r7 <- flexyBayes:::.lgm_check_fixed_term_inla_support(fb)
   expect_true(r7$pass)
 })
-

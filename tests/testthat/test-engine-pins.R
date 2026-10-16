@@ -124,4 +124,3 @@ test_that("a redundant self-pin (fb_brms(backend = 'brms')) is accepted", {
     )
   )
 })
-

@@ -17,7 +17,6 @@
 # fixed part plus those random effects, averaged over the hyper-table
 # cells. That route is in the second half of this file.
 
-
 # ---------------------------------------------------------------- #
 # Reading the classify argument                                     #
 # ---------------------------------------------------------------- #
@@ -50,7 +49,9 @@
     stop(
       "predict(): `classify` must be a character value (\"Variety\", ",
       "\"Variety:env\") or a one-sided formula (~ Variety), not an object ",
-      "of class <", paste(class(classify), collapse = ", "), ">.",
+      "of class <",
+      paste(class(classify), collapse = ", "),
+      ">.",
       call. = FALSE
     )
   }
@@ -213,7 +214,9 @@
   f <- intersect(missing_vars, unlist(term_vars[holds]))[[1L]]
   other <- setdiff(term_vars[holds][[1L]], c(vars, grid_vars))
   reason <- paste0(
-    "every random term containing ", f, " also contains ",
+    "every random term containing ",
+    f,
+    " also contains ",
     paste(other, collapse = ", "),
     ", which is not in classify or the fixed part, so ASReml's default ",
     "rules leave the term out. Use classify = \"",
@@ -257,8 +260,11 @@
 # @noRd
 # @keywords internal
 .fb_check_level <- function(level) {
-  ok <- is.numeric(level) && length(level) == 1L && !is.na(level) &&
-    level > 0 && level < 1
+  ok <- is.numeric(level) &&
+    length(level) == 1L &&
+    !is.na(level) &&
+    level > 0 &&
+    level < 1
   if (!ok) {
     stop(
       "predict(): `level` is the credible level as a proportion, strictly ",
@@ -288,8 +294,19 @@
 # predict.asreml() arguments that change the default rules or ask for
 # output this table does not carry.
 .FB_CLASSIFY_ASREML_ARGS <- c(
-  "levels", "present", "ignore", "use", "except", "only", "associate",
-  "average", "vcov", "sed", "parallel", "aliased", "design.points"
+  "levels",
+  "present",
+  "ignore",
+  "use",
+  "except",
+  "only",
+  "associate",
+  "average",
+  "vcov",
+  "sed",
+  "parallel",
+  "aliased",
+  "design.points"
 )
 
 # Random-term types whose effects are one value per level combination,
@@ -318,8 +335,15 @@
 # @noRd
 # @keywords internal
 .fb_classify_term_vars <- function(term) {
-  fields <- c("var", "outer", "inner", "vars", "slope_var", "row_var",
-              "col_var")
+  fields <- c(
+    "var",
+    "outer",
+    "inner",
+    "vars",
+    "slope_var",
+    "row_var",
+    "col_var"
+  )
   vals <- unlist(term[intersect(fields, names(term))], use.names = FALSE)
   unique(as.character(vals[nzchar(vals)]))
 }
@@ -366,7 +390,9 @@
   unknown <- setdiff(plan$vars, names(data))
   if (length(unknown) > 0L) {
     stop(
-      "predict(): `classify` names ", unknown[[1L]], ", which is not a ",
+      "predict(): `classify` names ",
+      unknown[[1L]],
+      ", which is not a ",
       "variable of the fitted model.",
       call. = FALSE
     )
@@ -452,14 +478,21 @@
   reason <- NULL
   if (length(bad) > 0L) {
     reason <- paste0(
-      "the random term ", .fb_term_human_string(plan$random[[bad[[1L]]]]),
+      "the random term ",
+      .fb_term_human_string(plan$random[[bad[[1L]]]]),
       " does not have one effect per level combination"
     )
-  } else if (!identical(ir$family %||% "gaussian", "gaussian") ||
-    !identical(ir$link %||% "identity", "identity")) {
+  } else if (
+    !identical(ir$family %||% "gaussian", "gaussian") ||
+      !identical(ir$link %||% "identity", "identity")
+  ) {
     reason <- paste0(
       "classify with random terms supports only the identity link, and ",
-      "this ", ir$family, " model uses a ", ir$link, " link"
+      "this ",
+      ir$family,
+      " model uses a ",
+      ir$link,
+      " link"
     )
   } else if (length(ir$offsets %||% character(0)) > 0L) {
     reason <- "classify with random terms does not support an offset"
@@ -512,11 +545,14 @@
   offset <- sum(ct$length) - cs$n
   field <- ct$start > offset
   start <- stats::setNames(ct$start[field] - offset, ct$tag[field])
-  rows <- unlist(Map(
-    function(tag, len) paste0(tag, ":", seq_len(len)),
-    ct$tag[field],
-    ct$length[field]
-  ), use.names = FALSE)
+  rows <- unlist(
+    Map(
+      function(tag, len) paste0(tag, ":", seq_len(len)),
+      ct$tag[field],
+      ct$length[field]
+    ),
+    use.names = FALSE
+  )
   map <- .fb_inla_draw_map(object, rows)
 
   # Fixed effects: the latent field names them by the legalised label, and
@@ -548,7 +584,8 @@
     if (is.null(tab) || is.na(start[tag])) {
       stop(
         "flexyBayes internal error: no INLA field for the random term `",
-        label, "`.",
+        label,
+        "`.",
         call. = FALSE
       )
     }
@@ -567,12 +604,13 @@
     keys <- .fb_classify_cell_keys(cells, term_vars)
     hit <- match(keys, labs)
     seen <- !is.na(hit)
-    lat <- lat + Matrix::sparseMatrix(
-      i = which(seen),
-      j = start[[tag]] - 1L + pos[hit[seen]],
-      x = 1,
-      dims = c(nrow(cells), cs$n)
-    )
+    lat <- lat +
+      Matrix::sparseMatrix(
+        i = which(seen),
+        j = start[[tag]] - 1L + pos[hit[seen]],
+        x = 1,
+        dims = c(nrow(cells), cs$n)
+      )
     # A level combination the data never held has no node in the field;
     # its effect is a fresh draw from the term's normal distribution.
     if (!all(seen)) {
@@ -608,7 +646,8 @@
   if (anyNA(new_hyper)) {
     stop(
       "flexyBayes internal error: no INLA precision for the random term `",
-      names(new_levels)[is.na(new_hyper)][[1L]], "`.",
+      names(new_levels)[is.na(new_hyper)][[1L]],
+      "`.",
       call. = FALSE
     )
   }
@@ -691,7 +730,11 @@
     std.error = apply(draws, 2L, stats::sd),
     conf.low = apply(draws, 2L, stats::quantile, probs = alpha, names = FALSE),
     conf.high = apply(
-      draws, 2L, stats::quantile, probs = 1 - alpha, names = FALSE
+      draws,
+      2L,
+      stats::quantile,
+      probs = 1 - alpha,
+      names = FALSE
     )
   )
 }

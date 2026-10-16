@@ -168,7 +168,12 @@ test_that("the registry key inventory is stable (snapshot)", {
   expect_snapshot({
     for (d in dump) {
       cat(
-        d$registry, ": locked=", d$locked, " n_keys=", d$n_keys, "\n",
+        d$registry,
+        ": locked=",
+        d$locked,
+        " n_keys=",
+        d$n_keys,
+        "\n",
         sep = ""
       )
       cat(paste0("  ", d$keys), sep = "\n")

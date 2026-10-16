@@ -23,7 +23,13 @@ skip_if_no_inla <- function() skip_if_not_installed("INLA")
   d$loc_f <- factor(sprintf("L%d", (as.integer(d$TRIAL) + 1L) %/% 2L))
   d$design_f <- factor(ifelse(as.integer(d$TRIAL) %% 2L == 0L, "split", "rcb"))
   d$state_f <- factor(ifelse(as.integer(d$TRIAL) <= n_trial / 2L, "A", "B"))
-  d$mainplot_f <- factor(paste(d$TRIAL, d$REP, d$VARIETY, d$NAPPLIED, sep = "_"))
+  d$mainplot_f <- factor(paste(
+    d$TRIAL,
+    d$REP,
+    d$VARIETY,
+    d$NAPPLIED,
+    sep = "_"
+  ))
   d$tv_f <- factor(paste(d$TRIAL, d$VARIETY, sep = "_"))
   d$y <- stats::rnorm(nrow(d), 3 + as.integer(d$TRIAL) / 2)
   d$w <- rep(seq(0.5, 1.5, length.out = n_trial), each = 24L)

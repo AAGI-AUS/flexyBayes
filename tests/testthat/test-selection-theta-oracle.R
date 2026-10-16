@@ -32,7 +32,6 @@
 # is a separate structure with its own gate.
 # =============================================================================
 
-
 fb_theta_fixture <- function() {
   skip_on_cran()
   skip_if_not_installed("INLA")
@@ -50,8 +49,11 @@ fb_theta_fixture <- function() {
   # The last test below records it.
   withr::local_options(flexyBayes.silence_weak_identification_warning = TRUE)
   fit <- flexybayes(
-    fixed = yield ~ gen, random = ~ rep + rep:block,
-    data = d, backend = "inla", verbose = FALSE,
+    fixed = yield ~ gen,
+    random = ~ rep + rep:block,
+    data = d,
+    backend = "inla",
+    verbose = FALSE,
     prior = .fb_test_john_alpha_prior(d)
   )
   reml <- lme4::lmer(yield ~ gen + (1 | rep) + (1 | rb), data = d, REML = TRUE)
@@ -71,7 +73,9 @@ fb_theta_fixture <- function() {
     stringsAsFactors = FALSE
   )
   cmp$reml_sd <- vapply(
-    cmp$component, function(k) lv$sdcor[lv$grp == grp[[k]]], numeric(1L)
+    cmp$component,
+    function(k) lv$sdcor[lv$grp == grp[[k]]],
+    numeric(1L)
   )
   cmp$post_cv <- cmp$fb_sd_se / cmp$fb_sd
   cmp$rel_gap <- abs(cmp$fb_sd - cmp$reml_sd) / cmp$reml_sd
@@ -150,7 +154,8 @@ test_that("oracle 3c: lme4 reproduces the banked ASReml components", {
   f <- fb_theta_fixture()
 
   path <- system.file(
-    "validation/asreml-4.2/02_nested_stratum.rds", package = "flexyBayes"
+    "validation/asreml-4.2/02_nested_stratum.rds",
+    package = "flexyBayes"
   )
   skip_if(identical(path, ""), "banked ASReml fixture is not installed")
   rec <- readRDS(path)
@@ -166,7 +171,9 @@ test_that("oracle 3c: lme4 reproduces the banked ASReml components", {
 
   lv <- as.data.frame(lme4::VarCorr(f$reml))
   reml_sd <- vapply(
-    names(key), function(k) lv$sdcor[lv$grp == key[[k]]], numeric(1L)
+    names(key),
+    function(k) lv$sdcor[lv$grp == key[[k]]],
+    numeric(1L)
   )
 
   # Two REML implementations on the same likelihood should agree to far more
@@ -179,7 +186,8 @@ test_that("oracle 3c: lme4 reproduces the banked ASReml components", {
 test_that("oracle 3c falsifier: a wrong component mapping fails", {
   f <- fb_theta_fixture()
   path <- system.file(
-    "validation/asreml-4.2/02_nested_stratum.rds", package = "flexyBayes"
+    "validation/asreml-4.2/02_nested_stratum.rds",
+    package = "flexyBayes"
   )
   skip_if(identical(path, ""), "banked ASReml fixture is not installed")
   asr_sd <- sqrt(readRDS(path)$raw$asreml_varcomp)
@@ -188,11 +196,13 @@ test_that("oracle 3c falsifier: a wrong component mapping fails", {
   # Swap rep and rep:block. If the comparison cannot see a transposed mapping
   # it is comparing multisets of numbers, not components.
   swapped <- c(
-    lv$sdcor[lv$grp == "rb"], lv$sdcor[lv$grp == "rep"],
+    lv$sdcor[lv$grp == "rb"],
+    lv$sdcor[lv$grp == "rep"],
     lv$sdcor[lv$grp == "Residual"]
   )
   expect_false(isTRUE(all.equal(
-    swapped, unname(asr_sd[c("rep", "rep:block", "units!R")]),
+    swapped,
+    unname(asr_sd[c("rep", "rep:block", "units!R")]),
     tolerance = 1e-4
   )))
 })
@@ -212,5 +222,7 @@ test_that("the weakly identified component is recorded, not asserted away", {
   # recorded here so that a future change in any direction is visible.
   expect_gt(rep_row$post_cv, 1)
   expect_gt(rep_row$rel_gap, rep_row$post_cv)
-  expect_true(rep_row$reml_sd >= rep_row$fb_lo && rep_row$reml_sd <= rep_row$fb_hi)
+  expect_true(
+    rep_row$reml_sd >= rep_row$fb_lo && rep_row$reml_sd <= rep_row$fb_hi
+  )
 })

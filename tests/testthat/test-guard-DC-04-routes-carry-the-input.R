@@ -29,8 +29,12 @@
 # argument of that name receives it all the same: dropping it is the defect.
 .g04_routes <- function() {
   list(
-    per_row = function(a) do.call(flexybayes, c(a, list(backend = "inla", aggregate = FALSE))),
-    aggregated = function(a) do.call(flexybayes, c(a, list(backend = "inla", aggregate = TRUE))),
+    per_row = function(a) {
+      do.call(flexybayes, c(a, list(backend = "inla", aggregate = FALSE)))
+    },
+    aggregated = function(a) {
+      do.call(flexybayes, c(a, list(backend = "inla", aggregate = TRUE)))
+    },
     stream = function(a) {
       a$source <- a$data
       a$data <- NULL
@@ -50,7 +54,11 @@
 # What a fit received and returned, in comparable form.
 .g04_profile <- function(fit) {
   sl <- prior_summary(fit)$slots
-  sl <- sl[sl$section != "fixed", c("slot_id", "readback", "source"), drop = FALSE]
+  sl <- sl[
+    sl$section != "fixed",
+    c("slot_id", "readback", "source"),
+    drop = FALSE
+  ]
   sl <- sl[order(sl$slot_id), , drop = FALSE]
   rownames(sl) <- NULL
   s <- summary(fit)
@@ -80,11 +88,39 @@ test_that("DC-04 guard: every route of the fitting verb carries the whole input"
   stated <- fb_prior(sd(group = "site") ~ half_normal(scale = 2))
 
   inputs <- list(
-    count_default_prior = list(fixed = cnt ~ trt, random = ~site, data = d, family = "poisson"),
-    count_stated_prior = list(fixed = cnt ~ trt, random = ~site, data = d, family = "poisson", prior = stated),
-    count_missing_response = list(fixed = cnt ~ trt, random = ~site, data = d_na, family = "poisson"),
-    gaussian_stated_prior = list(fixed = y ~ trt, random = ~site, data = d, family = "gaussian", prior = stated),
-    gaussian_weights = list(fixed = y ~ trt, random = ~site, data = d, family = "gaussian", weights = d$w)
+    count_default_prior = list(
+      fixed = cnt ~ trt,
+      random = ~site,
+      data = d,
+      family = "poisson"
+    ),
+    count_stated_prior = list(
+      fixed = cnt ~ trt,
+      random = ~site,
+      data = d,
+      family = "poisson",
+      prior = stated
+    ),
+    count_missing_response = list(
+      fixed = cnt ~ trt,
+      random = ~site,
+      data = d_na,
+      family = "poisson"
+    ),
+    gaussian_stated_prior = list(
+      fixed = y ~ trt,
+      random = ~site,
+      data = d,
+      family = "gaussian",
+      prior = stated
+    ),
+    gaussian_weights = list(
+      fixed = y ~ trt,
+      random = ~site,
+      data = d,
+      family = "gaussian",
+      weights = d$w
+    )
   )
   routes <- .g04_routes()
 
@@ -92,26 +128,55 @@ test_that("DC-04 guard: every route of the fitting verb carries the whole input"
     fits <- lapply(routes, .g04_run, a = inputs[[input_nm]])
     refused <- vapply(fits, inherits, logical(1L), what = "flexybayes_refusal")
     errored <- vapply(fits, inherits, logical(1L), what = "error") & !refused
-    expect_identical(names(fits)[errored], character(0),
-      label = paste0(input_nm, ": routes that stopped without a refusal (",
-        paste(vapply(fits[errored], conditionMessage, ""), collapse = " | "), ")")
+    expect_identical(
+      names(fits)[errored],
+      character(0),
+      label = paste0(
+        input_nm,
+        ": routes that stopped without a refusal (",
+        paste(vapply(fits[errored], conditionMessage, ""), collapse = " | "),
+        ")"
+      )
     )
     fitted <- names(fits)[!refused & !errored]
     # Every input fits on at least the per-row route, so a comparison is made.
-    expect_true("per_row" %in% fitted, label = paste0(input_nm, ": the per-row route fits"))
-    if (length(fitted) < 2L) next
+    expect_true(
+      "per_row" %in% fitted,
+      label = paste0(input_nm, ": the per-row route fits")
+    )
+    if (length(fitted) < 2L) {
+      next
+    }
 
     ref <- .g04_profile(fits[[fitted[1L]]])
     for (route_nm in fitted[-1L]) {
       got <- .g04_profile(fits[[route_nm]])
       where <- paste0(input_nm, ", ", route_nm, " against ", fitted[1L])
-      expect_identical(got$priors, ref$priors, label = paste0(where, ": the prior in every engine slot"))
-      expect_identical(got$n_observed, ref$n_observed, label = paste0(where, ": observed responses"))
-      expect_identical(names(got$fixed), names(ref$fixed), label = paste0(where, ": fixed-effect names"))
-      expect_equal(unname(got$fixed), unname(ref$fixed), tolerance = 0.01,
+      expect_identical(
+        got$priors,
+        ref$priors,
+        label = paste0(where, ": the prior in every engine slot")
+      )
+      expect_identical(
+        got$n_observed,
+        ref$n_observed,
+        label = paste0(where, ": observed responses")
+      )
+      expect_identical(
+        names(got$fixed),
+        names(ref$fixed),
+        label = paste0(where, ": fixed-effect names")
+      )
+      expect_equal(
+        unname(got$fixed),
+        unname(ref$fixed),
+        tolerance = 0.01,
         label = paste0(where, ": fixed-effect estimates")
       )
-      expect_equal(unname(got$varcomp), unname(ref$varcomp), tolerance = 0.02,
+      expect_equal(
+        unname(got$varcomp),
+        unname(ref$varcomp),
+        tolerance = 0.02,
         label = paste0(where, ": variance-component estimates")
       )
     }

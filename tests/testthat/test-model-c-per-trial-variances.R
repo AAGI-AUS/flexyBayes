@@ -58,12 +58,20 @@
 .mc_medians <- function(fit, trials) {
   dr <- as.data.frame(fb_variance_draws(fit, n = 4000L, seed = 1L))
   list(
-    gxe = vapply(trials, function(l) {
-      stats::median(dr[[paste0("sd_VARIETY__TRIAL", l)]]^2)
-    }, numeric(1)),
-    res = vapply(trials, function(l) {
-      stats::median(dr[[paste0("sigma_", l)]]^2)
-    }, numeric(1))
+    gxe = vapply(
+      trials,
+      function(l) {
+        stats::median(dr[[paste0("sd_VARIETY__TRIAL", l)]]^2)
+      },
+      numeric(1)
+    ),
+    res = vapply(
+      trials,
+      function(l) {
+        stats::median(dr[[paste0("sigma_", l)]]^2)
+      },
+      numeric(1)
+    )
   )
 }
 
@@ -73,8 +81,9 @@
   ident_r <- a$res_se / a$res_var < 0.5
   dev_g <- abs(med$gxe - a$gxe_var) / a$gxe_se
   dev_r <- abs(med$res - a$res_var) / a$res_se
-  ratio_dev <- abs(med$gxe / (med$gxe + med$res) -
-    a$gxe_var / (a$gxe_var + a$res_var))
+  ratio_dev <- abs(
+    med$gxe / (med$gxe + med$res) - a$gxe_var / (a$gxe_var + a$res_var)
+  )
   both <- ident_g & ident_r
   off <- function(what, bad) {
     if (length(bad)) paste0(what, " off: ", paste(bad, collapse = ", "))
@@ -83,7 +92,8 @@
     off("genotype-by-trial variance", names(dev_g)[ident_g & dev_g > 0.5]),
     off("residual variance", names(dev_r)[ident_r & dev_r > 0.5]),
     off("variance ratio", names(ratio_dev)[both & ratio_dev > 0.05])
-  ) %||% character(0)
+  ) %||%
+    character(0)
 }
 
 
@@ -176,9 +186,14 @@ test_that("DEF-208: the print of a dsum() fit on INLA names its family once", {
 test_that("DEF-209: the soft-limit warning does not claim a ccd switch", {
   re <- replicate(10, list(type = "simple", var = "g"), simplify = FALSE)
   fb <- new_fb_terms(
-    response = "y", family = "gaussian", fixed_terms = list(),
-    random_terms = re, residual_terms = list(list(type = "units")),
-    addition_terms = list(), priors = list(legacy = TRUE), source = "asreml"
+    response = "y",
+    family = "gaussian",
+    fixed_terms = list(),
+    random_terms = re,
+    residual_terms = list(list(type = "units")),
+    addition_terms = list(),
+    priors = list(legacy = TRUE),
+    source = "asreml"
   )
   r <- .lgm_check_hyperparam_budget(fb)
   expect_match(r$warning, "exceeds soft limit", fixed = TRUE)
@@ -224,18 +239,32 @@ test_that("model C on brms agrees with ASReml", {
     fixed = y ~ VARIETY,
     random = ~ TRIAL + TRIAL:REP + diag(TRIAL):VARIETY,
     residual = ~ dsum(~ units | TRIAL),
-    data = ref$data, backend = "brms", chains = 2, warmup = 1000,
-    n_samples = 1000, seed = 20261008L, control = list(adapt_delta = 0.95),
-    verbose = FALSE, mcmc_verbose = FALSE
+    data = ref$data,
+    backend = "brms",
+    chains = 2,
+    warmup = 1000,
+    n_samples = 1000,
+    seed = 20261008L,
+    control = list(adapt_delta = 0.95),
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   dr <- posterior::as_draws_df(fit$brms)
   med <- list(
-    gxe = vapply(lev, function(l) {
-      stats::median(dr[[paste0("sd_VARIETY__TRIAL", l)]]^2)
-    }, numeric(1)),
-    res = vapply(lev, function(l) {
-      stats::median(exp(2 * dr[[paste0("b_sigma_TRIAL", l)]]))
-    }, numeric(1))
+    gxe = vapply(
+      lev,
+      function(l) {
+        stats::median(dr[[paste0("sd_VARIETY__TRIAL", l)]]^2)
+      },
+      numeric(1)
+    ),
+    res = vapply(
+      lev,
+      function(l) {
+        stats::median(exp(2 * dr[[paste0("b_sigma_TRIAL", l)]]))
+      },
+      numeric(1)
+    )
   )
   expect_identical(.mc_against_asreml(med, ref$asreml), character(0))
 })

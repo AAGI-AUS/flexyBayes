@@ -4,14 +4,20 @@
 
 fbkl_trials <- function(seed = 7L, n = 40L, n_cluster = 12L) {
   .fb_with_seed(seed, {
-    cluster <- factor(sprintf("c%02d", rep(seq_len(n_cluster),
-                                             length.out = n)))
-    x <- matrix(stats::rnorm(n * 6L), n, 6L,
-                dimnames = list(NULL, paste0("x", 1:6)))
+    cluster <- factor(sprintf("c%02d", rep(seq_len(n_cluster), length.out = n)))
+    x <- matrix(
+      stats::rnorm(n * 6L),
+      n,
+      6L,
+      dimnames = list(NULL, paste0("x", 1:6))
+    )
     a <- matrix(stats::rnorm(n * n, 0, 0.05), n, n)
     k <- diag(stats::runif(n, 0.05, 0.3)) + tcrossprod(a)
     l <- stats::rnorm(n_cluster, 0, 0.6)[as.integer(cluster)]
-    m <- 2 + 0.8 * x[, 1L] + l + stats::rnorm(n, 0, 0.4) +
+    m <- 2 +
+      0.8 * x[, 1L] +
+      l +
+      stats::rnorm(n, 0, 0.4) +
       drop(t(chol(k)) %*% stats::rnorm(n))
     list(d = data.frame(m = m, cluster = cluster, x), k = k)
   })
@@ -62,9 +68,14 @@ test_that("a plot the design grid adds carries no known variance", {
     out[-7L, ]
   })
   local_mocked_bindings(.dispatch_backend = function(fb, data, ...) data)
-  handed <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-                       known_variance = g$v, backend = "inla",
-                       verbose = FALSE)
+  handed <- flexybayes(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    known_variance = g$v,
+    backend = "inla",
+    verbose = FALSE
+  )
   added <- is.na(handed$y)
   expect_identical(sum(added), 1L)
   expect_identical(handed$flexybayes_known_variance[added], 0)
@@ -74,4 +85,3 @@ test_that("a plot the design grid adds carries no known variance", {
     g$v[match(key, paste(g$row, g$col))]
   )
 })
-

@@ -111,20 +111,36 @@ test_that(".fb_refuse_family_response_domain() refuses beta at either boundary o
   fb <- list(family = "beta", response = "y")
   err_zero <- tryCatch(
     flexyBayes:::.fb_refuse_family_response_domain(
-      fb, data.frame(y = c(0.2, 0.5, 0))
+      fb,
+      data.frame(y = c(0.2, 0.5, 0))
     ),
     error = function(e) e
   )
   err_one <- tryCatch(
     flexyBayes:::.fb_refuse_family_response_domain(
-      fb, data.frame(y = c(0.2, 0.5, 1))
+      fb,
+      data.frame(y = c(0.2, 0.5, 1))
     ),
     error = function(e) e
   )
-  expect_s3_class(err_zero, "flexybayes_refusal_family_response_domain_violation")
-  expect_s3_class(err_one, "flexybayes_refusal_family_response_domain_violation")
-  expect_match(conditionMessage(err_zero), "strictly between 0 and 1", fixed = TRUE)
-  expect_match(conditionMessage(err_one), "strictly between 0 and 1", fixed = TRUE)
+  expect_s3_class(
+    err_zero,
+    "flexybayes_refusal_family_response_domain_violation"
+  )
+  expect_s3_class(
+    err_one,
+    "flexybayes_refusal_family_response_domain_violation"
+  )
+  expect_match(
+    conditionMessage(err_zero),
+    "strictly between 0 and 1",
+    fixed = TRUE
+  )
+  expect_match(
+    conditionMessage(err_one),
+    "strictly between 0 and 1",
+    fixed = TRUE
+  )
 })
 
 test_that(".fb_refuse_family_response_domain() finds the violation, ignoring NA rows in between", {
@@ -172,7 +188,10 @@ test_that("flexybayes() refuses a domain-violating response before the engine ru
         )),
         error = function(e) e
       )
-      expect_s3_class(err, "flexybayes_refusal_family_response_domain_violation")
+      expect_s3_class(
+        err,
+        "flexybayes_refusal_family_response_domain_violation"
+      )
     }
   }
 })

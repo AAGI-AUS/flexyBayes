@@ -7,7 +7,11 @@
   path <- system.file("extdata", "at_ar1_reference.rds", package = "flexyBayes")
   if (!nzchar(path)) {
     path <- testthat::test_path(
-      "..", "..", "inst", "extdata", "at_ar1_reference.rds"
+      "..",
+      "..",
+      "inst",
+      "extdata",
+      "at_ar1_reference.rds"
     )
   }
   readRDS(path)
@@ -86,10 +90,16 @@ test_that("DEF-202: summary, the field panel and the draws agree on the names", 
   d$rowf <- factor(d$row)
   d$colf <- factor(d$col)
   fits <- list(
-    row_first = .vn_fit(yield ~ rep, random = ~ gen + ar1(rowf):ar1(colf),
-                        data = d),
-    col_first = .vn_fit(yield ~ rep, random = ~ gen + ar1(colf):ar1(rowf),
-                        data = d)
+    row_first = .vn_fit(
+      yield ~ rep,
+      random = ~ gen + ar1(rowf):ar1(colf),
+      data = d
+    ),
+    col_first = .vn_fit(
+      yield ~ rep,
+      random = ~ gen + ar1(colf):ar1(rowf),
+      data = d
+    )
   )
   med <- lapply(fits, function(f) {
     attr(f$extras$variance_comps, "posterior_median")
@@ -114,10 +124,16 @@ test_that("DEF-202: summary, the field panel and the draws agree on the names", 
   # The rows of this trial are far more correlated than its columns
   # (0.99 against 0.81 on the row-first fit), so a swap would move the
   # medians by about 0.2.
-  expect_equal(med$row_first[["rho_rowf"]], med$col_first[["rho_rowf"]],
-               tolerance = 0.02)
-  expect_equal(med$row_first[["rho_colf"]], med$col_first[["rho_colf"]],
-               tolerance = 0.02)
+  expect_equal(
+    med$row_first[["rho_rowf"]],
+    med$col_first[["rho_rowf"]],
+    tolerance = 0.02
+  )
+  expect_equal(
+    med$row_first[["rho_colf"]],
+    med$col_first[["rho_colf"]],
+    tolerance = 0.02
+  )
 })
 
 .vn_one_factor_fit <- function() {
@@ -156,13 +172,21 @@ test_that("DEF-225: the old name on a new one-factor fit refuses and names the n
 })
 
 test_that("DEF-225: the names a field is given are rho_<factor> for one factor, rho_row/rho_col for two", {
-  one <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1_spatial", row_var = "t",
-                                             col_var = "g", col_ar1 = FALSE))
+  one <- flexyBayes:::.fb_ar1_rho_names(list(
+    type = "ar1_spatial",
+    row_var = "t",
+    col_var = "g",
+    col_ar1 = FALSE
+  ))
   expect_identical(one[["row"]], "rho_t")
   res <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1", var = "t"))
   expect_identical(res[["row"]], "rho_t")
-  two <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1_spatial", row_var = "row",
-                                             col_var = "col", col_ar1 = TRUE))
+  two <- flexyBayes:::.fb_ar1_rho_names(list(
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = TRUE
+  ))
   expect_identical(unname(two), c("rho_row", "rho_col"))
 })
 
@@ -181,23 +205,36 @@ test_that("DEF-225: a fit saved before 0.18.0 is told to refit when it asks for 
 })
 
 test_that("DEF-225: a one-factor field per trial, or per id(trial), is named by its factor", {
-  at <- list(random_terms = list(list(
-    type = "ar1_spatial_at", row_var = "x", col_var = "col", col_ar1 = FALSE,
-    by_var = "trial", by_levels = c("A", "B")
-  )))
+  at <- list(
+    random_terms = list(list(
+      type = "ar1_spatial_at",
+      row_var = "x",
+      col_var = "col",
+      col_ar1 = FALSE,
+      by_var = "trial",
+      by_levels = c("A", "B")
+    ))
+  )
   expect_identical(
     flexyBayes:::.fb_ar1_rho_renamed(at),
     c(rho_row__trialA = "rho_x__trialA", rho_row__trialB = "rho_x__trialB")
   )
-  id <- list(random_terms = list(list(
-    type = "ar1_spatial", row_var = "x", col_var = "col", col_ar1 = FALSE,
-    at_var = "trial"
-  )))
-  expect_identical(
-    flexyBayes:::.fb_ar1_rho_renamed(id), c(rho_row = "rho_x")
+  id <- list(
+    random_terms = list(list(
+      type = "ar1_spatial",
+      row_var = "x",
+      col_var = "col",
+      col_ar1 = FALSE,
+      at_var = "trial"
+    ))
   )
   expect_identical(
-    flexyBayes:::.fb_ar1_rho_names(id$random_terms[[1L]])[["row"]], "rho_x"
+    flexyBayes:::.fb_ar1_rho_renamed(id),
+    c(rho_row = "rho_x")
+  )
+  expect_identical(
+    flexyBayes:::.fb_ar1_rho_names(id$random_terms[[1L]])[["row"]],
+    "rho_x"
   )
 })
 

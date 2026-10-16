@@ -14,8 +14,13 @@
 # the correlations, which is why the structure moved to brms instead of
 # being tuned on INLA.
 
-.us_fixture <- function(seed = 41L, n_gen = 60L, n_rep = 5L,
-                        sd_by_env = c(0.8, 1.2, 0.5), sd_resid = 0.35) {
+.us_fixture <- function(
+  seed = 41L,
+  n_gen = 60L,
+  n_rep = 5L,
+  sd_by_env = c(0.8, 1.2, 0.5),
+  sd_resid = 0.35
+) {
   set.seed(seed)
   n_env <- length(sd_by_env)
   # Exchangeable-ish correlation of the right size, with the 3-environment
@@ -34,7 +39,8 @@
     env = factor(seq_len(n_env)),
     rep = seq_len(n_rep)
   )
-  tab$y <- 5 + mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
+  tab$y <- 5 +
+    mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
     rnorm(nrow(tab), 0, sd_resid)
   tab
 }
@@ -63,8 +69,11 @@ test_that("the retained INLA emit carries one iidKd field", {
     data = tab,
     family = "gaussian"
   )
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   expect_match(txt, "f(gen_by_env_id, model = \"iid3d\"", fixed = TRUE)
 })
 
@@ -73,8 +82,11 @@ test_that("us() beyond five levels is refused on INLA and names fa() as well", {
   # iidkd beyond k = 5 is a different parameterisation. The order check still
   # fires beside the correlated-covariance rule, so the refusal also points
   # at the reduced-rank structure.
-  tab <- .us_fixture(n_gen = 12L, n_rep = 2L,
-                     sd_by_env = c(0.8, 1.2, 0.5, 0.9, 1.1, 0.7))
+  tab <- .us_fixture(
+    n_gen = 12L,
+    n_rep = 2L,
+    sd_by_env = c(0.8, 1.2, 0.5, 0.9, 1.1, 0.7)
+  )
   fb <- fb_from_asreml(
     fixed = y ~ env,
     random = ~ us(env):gen,

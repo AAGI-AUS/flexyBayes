@@ -162,7 +162,10 @@ test_that("the heterogeneous residual that used to drive this now fits", {
   # capability now, so a reader of subtest (e) can see why it moved.
   d <- mk_lgm_data()
   fb <- fb_from_asreml(
-    yield ~ env, random = ~geno, residual = ~ at(env):units, data = d
+    yield ~ env,
+    random = ~geno,
+    residual = ~ at(env):units,
+    data = d
   )
   expect_true("lgm_compatible" %in% lgm_gate(fb)$capabilities)
 })

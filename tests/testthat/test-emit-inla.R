@@ -121,7 +121,9 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     fixed_terms = list(list(type = "continuous", var = "x")),
     random_terms = list(),
     residual_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col"
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
     )),
     source = "asreml"
   )
@@ -229,8 +231,15 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
   )
   expect_named(
     res,
-    c("formula", "family", "hyper", "control_family", "control_fixed",
-      "response_standardisation", "covariate_standardisation")
+    c(
+      "formula",
+      "family",
+      "hyper",
+      "control_family",
+      "control_fixed",
+      "response_standardisation",
+      "covariate_standardisation"
+    )
   )
   expect_s3_class(res$formula, "formula")
   expect_identical(res$family, "gaussian")

@@ -39,8 +39,12 @@ suppressPackageStartupMessages(library(testthat))
     x = stats::runif(n)
   )
   b_block <- stats::rnorm(6L, sd = 1.0)[as.integer(d$Block)]
-  d$y <- 10 + 1.5 * (d$Trt == "b") - 0.7 * (d$Trt == "c") +
-    0.5 * d$x + b_block + stats::rnorm(n, sd = 0.8)
+  d$y <- 10 +
+    1.5 * (d$Trt == "b") -
+    0.7 * (d$Trt == "c") +
+    0.5 * d$x +
+    b_block +
+    stats::rnorm(n, sd = 0.8)
   d
 }
 
@@ -84,8 +88,12 @@ test_that("an identity update() on a per-row INLA fit keeps its prior", {
   skip_on_cran()
   .upc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = .upc_data(),
+    backend = "inla",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   # The premise: this fixture fires the auto-default, which is the prior
   # the re-fit has to reproduce.
@@ -93,7 +101,9 @@ test_that("an identity update() on a per-row INLA fit keeps its prior", {
   expect_identical(prior_summary(fit)$default_origin, "auto")
 
   refit <- suppressMessages(stats::update(
-    fit, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(refit)$kind, "fb_prior")
   expect_identical(prior_summary(refit)$default_origin, "auto")
@@ -132,8 +142,12 @@ test_that("an identity update() on an aggregated fit keeps its prior", {
   b_block <- stats::rnorm(6L, sd = 0.4)[as.integer(d$Block)]
   d$y <- stats::rpois(nrow(d), exp(1 + 0.3 * (d$Trt == "b") + b_block))
   fit <- suppressMessages(flexybayes(
-    y ~ Trt, random = ~Block, data = d, family = "poisson",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt,
+    random = ~Block,
+    data = d,
+    family = "poisson",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   # The premise, asserted instead of assumed: this is the aggregated
   # representation, which returns the same unified summary object as
@@ -142,7 +156,9 @@ test_that("an identity update() on an aggregated fit keeps its prior", {
   expect_identical(prior_summary(fit)$default_origin, "auto")
 
   refit <- suppressMessages(stats::update(
-    fit, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_s3_class(refit, "flexybayes_aggregated")
   expect_identical(prior_summary(refit)$kind, "fb_prior")
@@ -184,9 +200,16 @@ test_that("an identity update() on a brms fit keeps its prior", {
   # file is measuring, and they would otherwise be the suite's only
   # warnings.
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    y ~ Trt, random = ~Block, data = d, backend = "brms",
-    n_samples = 500L, warmup = 500L, chains = 2L, seed = 4321L,
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt,
+    random = ~Block,
+    data = d,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
+    chains = 2L,
+    seed = 4321L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
   expect_identical(prior_summary(fit)$default_origin, "auto")
 
@@ -194,7 +217,10 @@ test_that("an identity update() on a brms fit keeps its prior", {
   # brms fit re-routes to the auto backend. The engine is named here so
   # this test measures the prior carry and not the routing.
   refit <- suppressMessages(suppressWarnings(stats::update(
-    fit, backend = "brms", verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    backend = "brms",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
   expect_s3_class(refit, "flexybayes_brms")
   expect_identical(prior_summary(refit)$kind, "fb_prior")
@@ -230,13 +256,20 @@ test_that("a user fb_prior() is the prior the re-fit runs under", {
     sd(group = "Block") ~ uniform(lower = 0, upper = 20)
   )
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
-    prior = priors, verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = .upc_data(),
+    backend = "inla",
+    prior = priors,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(fit)$default_origin, "user")
 
   refit <- suppressMessages(stats::update(
-    fit, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(refit)$kind, "fb_prior")
   expect_identical(prior_summary(refit)$default_origin, "user")
@@ -257,13 +290,20 @@ test_that("an explicit prior_vc_sd in update() overrides the recorded prior", {
   skip_on_cran()
   .upc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = .upc_data(),
+    backend = "inla",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(fit)$default_origin, "auto")
 
   refit <- suppressMessages(stats::update(
-    fit, prior_vc_sd = 3, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    prior_vc_sd = 3,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   # The scalar spelling asks for the legacy bridge. Re-issuing the
   # recorded prior alongside it would let the record win over the number
@@ -279,20 +319,28 @@ test_that("an explicit prior in update() overrides the recorded prior", {
   skip_on_cran()
   .upc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = .upc_data(),
+    backend = "inla",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   new_prior <- fb_prior(
     sigma ~ uniform(lower = 0, upper = 12),
     sd(group = "Block") ~ uniform(lower = 0, upper = 12)
   )
   refit <- suppressMessages(stats::update(
-    fit, prior = new_prior, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    prior = new_prior,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(refit)$default_origin, "user")
   expect_equal(refit$extras$fb_terms$priors, new_prior)
   expect_true(all(grepl(
-    "upper=12", .upc_prior_cells(.upc_summary(refit)),
+    "upper=12",
+    .upc_prior_cells(.upc_summary(refit)),
     fixed = TRUE
   )))
 })
@@ -307,13 +355,20 @@ test_that("a legacy-scalar fit re-fits on its recorded scalars", {
   skip_on_cran()
   .upc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
-    prior_vc_sd = 2, verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = .upc_data(),
+    backend = "inla",
+    prior_vc_sd = 2,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(fit)$kind, "legacy_scalar")
 
   refit <- suppressMessages(stats::update(
-    fit, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   ps <- prior_summary(refit)
   expect_identical(ps$kind, "legacy_scalar")
@@ -325,8 +380,12 @@ test_that("a fit carrying no prior record re-fits as it did before", {
   skip_on_cran()
   .upc_silence()
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = .upc_data(),
+    backend = "inla",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   # A pre-IR object: the record the repair reads is absent, and
   # the re-fit falls back to the recorded scalars instead of refusing.
@@ -336,7 +395,9 @@ test_that("a fit carrying no prior record re-fits as it did before", {
   expect_identical(prior_summary(fit)$kind, "no_prior_recorded")
 
   refit <- suppressMessages(stats::update(
-    fit, verbose = FALSE, mcmc_verbose = FALSE
+    fit,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_s3_class(refit, "flexybayes")
   expect_identical(prior_summary(refit)$kind, "legacy_scalar")
@@ -371,8 +432,13 @@ test_that("adding a term under the auto-default priors every component", {
   d <- .upc_data_two_groups()
 
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = d, backend = "inla",
-    aggregate = FALSE, verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = d,
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   ps <- prior_summary(fit)
   expect_identical(ps$kind, "fb_prior")
@@ -403,9 +469,14 @@ test_that("adding a term under a user prior leaves it to the engine", {
     sd(group = "Block") ~ uniform(0, 10)
   )
   fit <- suppressMessages(flexybayes(
-    y ~ Trt + x, random = ~Block, data = d, backend = "inla",
-    aggregate = FALSE, prior = user_prior,
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt + x,
+    random = ~Block,
+    data = d,
+    backend = "inla",
+    aggregate = FALSE,
+    prior = user_prior,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   expect_identical(prior_summary(fit)$default_origin, "user")
 

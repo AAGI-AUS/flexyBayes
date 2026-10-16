@@ -288,7 +288,10 @@
 # block-diagonal or low-rank vm() carrier, and a low_rank_smooth
 # approximation have no lossless brms / Stan translation.
 .BRMS_VM_DENSEABLE_CARRIERS <- c(
-  "dense", "chol", "precision", "pedigree_sparse_precision"
+  "dense",
+  "chol",
+  "precision",
+  "pedigree_sparse_precision"
 )
 
 # The residual-term types .fb_to_brms_formula() actually lowers:

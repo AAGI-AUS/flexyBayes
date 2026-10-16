@@ -283,9 +283,13 @@ test_that("the plan says a combined MET model fits, because it does", {
   skip_if_not_installed("brms")
   d <- .test_plan_met_data()
   p <- flexybayes(
-    fixed = yield ~ env, random = ~ gen + gen:env,
-    residual = ~ dsum(~ units | env), data = d,
-    backend = "auto", plan = TRUE, verbose = FALSE
+    fixed = yield ~ env,
+    random = ~ gen + gen:env,
+    residual = ~ dsum(~ units | env),
+    data = d,
+    backend = "auto",
+    plan = TRUE,
+    verbose = FALSE
   )
 
   expect_true(p$will_fit)
@@ -301,13 +305,17 @@ test_that("the plan says a combined MET model fits, because it does", {
 test_that("a genuine dead end still says no, and says which one", {
   d <- .test_plan_data_simple()
   p <- fb_plan(
-    y ~ x + (1 | g), data = d, backend = "auto",
+    y ~ x + (1 | g),
+    data = d,
+    backend = "auto",
     memory_ceiling_gb = 1e-9
   )
   expect_false(p$will_fit)
   expect_identical(p$will_fit_reason, "preflight refused")
   expect_true(any(grepl(
-    "preflight refused", utils::capture.output(print(p)), fixed = TRUE
+    "preflight refused",
+    utils::capture.output(print(p)),
+    fixed = TRUE
   )))
 })
 
@@ -315,9 +323,13 @@ test_that("the plan's representation table carries the residual structure", {
   skip_if_not_installed("brms")
   d <- .test_plan_met_data()
   p <- flexybayes(
-    fixed = yield ~ env, random = ~ gen + gen:env,
-    residual = ~ dsum(~ units | env), data = d,
-    backend = "auto", plan = TRUE, verbose = FALSE
+    fixed = yield ~ env,
+    random = ~ gen + gen:env,
+    residual = ~ dsum(~ units | env),
+    data = d,
+    backend = "auto",
+    plan = TRUE,
+    verbose = FALSE
   )
 
   classes <- vapply(
@@ -335,8 +347,12 @@ test_that("the plan's representation table carries the residual structure", {
 
   # A homogeneous residual adds nothing.
   q <- flexybayes(
-    fixed = yield ~ env, random = ~ gen, data = d,
-    backend = "auto", plan = TRUE, verbose = FALSE
+    fixed = yield ~ env,
+    random = ~gen,
+    data = d,
+    backend = "auto",
+    plan = TRUE,
+    verbose = FALSE
   )
   q_classes <- vapply(
     q$representation_plan,

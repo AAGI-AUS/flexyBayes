@@ -17,10 +17,20 @@ test_that("fb_structured_cov() always messages and returns empty, even with a fa
   # does not special-case it, confirms the message-and-empty path is
   # unconditional, not just the "no fa term at all" case below.
   fit <- list(
-    extras = list(parse_info = list(random = list(
-      list(type = "fa_gxe", outer = "env", inner = "geno", k = 2L,
-           n_outer = 3L, n_inner = 10L)
-    )))
+    extras = list(
+      parse_info = list(
+        random = list(
+          list(
+            type = "fa_gxe",
+            outer = "env",
+            inner = "geno",
+            k = 2L,
+            n_outer = 3L,
+            n_inner = 10L
+          )
+        )
+      )
+    )
   )
   class(fit) <- "flexybayes"
   expect_message(out <- fb_structured_cov(fit), "no factor-analytic")

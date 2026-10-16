@@ -69,7 +69,10 @@
 # narrow: a changelog line such as "0.8.3, added glance()" is history and
 # must keep working.
 .VC_CURRENCY_MARKERS <- paste(
-  "current", "development line", "development release", "supported version",
+  "current",
+  "development line",
+  "development release",
+  "supported version",
   sep = "|"
 )
 
@@ -136,13 +139,20 @@ test_that("no superseded version is described as the current one", {
     skip_if_not(file.exists(path), paste(surface, "is not in this tree"))
     lines <- readLines(path, warn = FALSE)
     marked <- lines[grepl(.VC_CURRENCY_MARKERS, lines, ignore.case = TRUE)]
-    offenders <- marked[vapply(marked, .vc_stale_on, logical(1), current = current)]
+    offenders <- marked[vapply(
+      marked,
+      .vc_stale_on,
+      logical(1),
+      current = current
+    )]
     expect_identical(
       offenders,
       character(0),
       label = paste0(
-        surface, " describes a superseded version as current (",
-        paste(trimws(offenders), collapse = " / "), ")"
+        surface,
+        " describes a superseded version as current (",
+        paste(trimws(offenders), collapse = " / "),
+        ")"
       )
     )
   }
@@ -207,8 +217,13 @@ test_that("CITATION.cff's date-released is the release's date", {
   tag <- paste0("refs/tags/v", .vc_release_line())
   tagged <- suppressWarnings(system2(
     git,
-    c("-C", shQuote(root), "for-each-ref",
-      shQuote("--format=%(creatordate:short)"), tag),
+    c(
+      "-C",
+      shQuote(root),
+      "for-each-ref",
+      shQuote("--format=%(creatordate:short)"),
+      tag
+    ),
     stdout = TRUE,
     stderr = FALSE
   ))

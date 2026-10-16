@@ -25,8 +25,12 @@
 # recorded so a legacy-bridge fit says which scalar it ran under.
 # `completion` is the record an INLA emit keeps of the priors it added to
 # what was stated (R/inla_default_priors.R). NULL on every other route.
-.fb_model_fingerprint <- function(fb, data, prior_vc_sd = NA_real_,
-                                  completion = NULL) {
+.fb_model_fingerprint <- function(
+  fb,
+  data,
+  prior_vc_sd = NA_real_,
+  completion = NULL
+) {
   forms <- .fb_canonical_model_strings(fb)
   priors <- .fb_prior_record(fb, prior_vc_sd = prior_vc_sd)
   priors <- .fb_prior_record_completion(priors, completion)

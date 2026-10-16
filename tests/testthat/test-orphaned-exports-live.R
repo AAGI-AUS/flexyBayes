@@ -20,7 +20,9 @@ mk_orphan_data <- function(n_group = 12L, n_rep = 5L) {
   g <- factor(rep(seq_len(n_group), each = n_rep))
   x <- stats::rnorm(n_group * n_rep)
   u <- stats::rnorm(n_group, sd = 0.8)
-  y <- 1.2 + 0.6 * x + u[as.integer(g)] +
+  y <- 1.2 +
+    0.6 * x +
+    u[as.integer(g)] +
     stats::rnorm(n_group * n_rep, sd = 0.5)
   data.frame(y = y, x = x, g = g)
 }

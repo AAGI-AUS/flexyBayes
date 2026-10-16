@@ -238,7 +238,9 @@ tidy.flexybayes_inla <- function(
   if (isTRUE(conf.int) && !isTRUE(all.equal(conf.level, 0.95))) {
     message(
       "tidy.flexybayes_inla(): INLA reports 95% marginal credible bounds; ",
-      "conf.level = ", conf.level, " is ignored. Resample via vcov() for a ",
+      "conf.level = ",
+      conf.level,
+      " is ignored. Resample via vcov() for a ",
       "different level."
     )
   }

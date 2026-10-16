@@ -115,7 +115,9 @@ test_that(".fb_spectral_logdet() matches the brute-force log-determinant", {
   var_e <- 0.5
   V <- var_g * K + var_e * diag(spec$n)
   brute <- as.numeric(determinant(V, logarithm = TRUE)$modulus)
-  expect_equal(flexyBayes:::.fb_spectral_logdet(spec, var_g, var_e), brute,
+  expect_equal(
+    flexyBayes:::.fb_spectral_logdet(spec, var_g, var_e),
+    brute,
     tolerance = 1e-8
   )
 })
@@ -202,7 +204,10 @@ test_that(".fb_spectral() refuses a genuinely indefinite matrix", {
   U <- qr.Q(qr(matrix(stats::rnorm(36L), 6L, 6L)))
   K <- U %*% diag(c(5, 3, 1, 0.5, 0.2, -2)) %*% t(U)
   K <- (K + t(K)) / 2
-  expect_error(flexyBayes:::.fb_spectral(K, name = "G"), "positive-semidefinite")
+  expect_error(
+    flexyBayes:::.fb_spectral(K, name = "G"),
+    "positive-semidefinite"
+  )
 })
 
 test_that(".fb_spectral() refuses non-square and non-symmetric input", {
@@ -233,7 +238,8 @@ test_that(".fb_spectral_from_markers() matches eigendecomposition of G = Zc Zc' 
   expect_equal(ev_marker[seq_len(n)], ev_kin, tolerance = 1e-7)
 
   # Reconstruction agrees regardless of eigenvector sign convention.
-  G_marker <- from_marker$vectors %*% diag(from_marker$values) %*%
+  G_marker <- from_marker$vectors %*%
+    diag(from_marker$values) %*%
     t(from_marker$vectors)
   expect_equal(G_marker, G, tolerance = 1e-7, ignore_attr = TRUE)
 })
@@ -278,7 +284,10 @@ test_that(".fb_spectral_dvar() rejects negative variance components", {
   K <- .fb_spectral_kinship(n = 6L)
   spec <- flexyBayes:::.fb_spectral(K)
   expect_error(flexyBayes:::.fb_spectral_dvar(spec, -1, 1), "non-negative")
-  expect_error(flexyBayes:::.fb_spectral_dvar(spec, 1, NA_real_), "non-negative")
+  expect_error(
+    flexyBayes:::.fb_spectral_dvar(spec, 1, NA_real_),
+    "non-negative"
+  )
 })
 
 test_that("print.fb_spectral() renders rank and capture", {

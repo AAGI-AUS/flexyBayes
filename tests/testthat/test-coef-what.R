@@ -89,11 +89,20 @@ suppressPackageStartupMessages(library(testthat))
 }
 
 .CW_RANDOM_COLS <- c(
-  "group", "level", "estimate", "std.error", "conf.low", "conf.high"
+  "group",
+  "level",
+  "estimate",
+  "std.error",
+  "conf.low",
+  "conf.high"
 )
 
 .CW_MISSING_COLS <- c(
-  "row", "estimate", "std.error", "conf.low", "conf.high"
+  "row",
+  "estimate",
+  "std.error",
+  "conf.low",
+  "conf.high"
 )
 
 

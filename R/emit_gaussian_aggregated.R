@@ -303,7 +303,6 @@ emit_gaussian_aggregated <- function(
 }
 
 
-
 # ---------------------------------------------------------------- #
 # INLA path                                                         #
 # ---------------------------------------------------------------- #
@@ -605,7 +604,10 @@ emit_gaussian_aggregated <- function(
   # shape (mean/sd/q025/q975 per parameter) from summary.fixed +
   # summary.hyperpar.
   posterior_summary <- .agg_inla_summarise(
-    engine_out, fb_aggregated, ri_plan, residual_plan
+    engine_out,
+    fb_aggregated,
+    ri_plan,
+    residual_plan
   )
 
   # Per-row reconstructed fitted values for the $glm shim.

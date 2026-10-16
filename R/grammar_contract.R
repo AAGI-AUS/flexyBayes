@@ -323,8 +323,16 @@
           "A %s that is not a literal count would fit a different model ",
           "from the one written."
         ),
-        written, saw, what, fn, symbol,
-        fn, .dep(expr, 2), fn, .dep(expr, 2), what
+        written,
+        saw,
+        what,
+        fn,
+        symbol,
+        fn,
+        .dep(expr, 2),
+        fn,
+        .dep(expr, 2),
+        what
       ),
       form = fn,
       written = written
@@ -336,7 +344,10 @@
       reason_code = reason_code,
       message = sprintf(
         "%s() requires %s >= 1; got %s = %s.",
-        fn, symbol, symbol, value
+        fn,
+        symbol,
+        symbol,
+        value
       ),
       form = fn,
       written = written
@@ -345,7 +356,9 @@
 
   if (is.name(raw) || is.call(raw)) {
     not_a_count(paste0(
-      "`", paste(deparse(raw), collapse = ""), "`, which is not a number,"
+      "`",
+      paste(deparse(raw), collapse = ""),
+      "`, which is not a number,"
     ))
   }
   if (is.character(raw)) {

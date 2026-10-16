@@ -20,10 +20,11 @@
 # all, which is what a collapsed fit looks like from the inside.
 .sfc_sim <- function(n_row, n_col, rho_r, rho_c, sd_s, sd_e, seed) {
   set.seed(seed)
-  sigma <- sd_s^2 * kronecker(
-    .sfc_ar1_mat(n_row, rho_r),
-    .sfc_ar1_mat(n_col, rho_c)
-  )
+  sigma <- sd_s^2 *
+    kronecker(
+      .sfc_ar1_mat(n_row, rho_r),
+      .sfc_ar1_mat(n_col, rho_c)
+    )
   z <- as.numeric(
     t(chol(sigma + diag(1e-8, nrow(sigma)))) %*% stats::rnorm(nrow(sigma))
   )

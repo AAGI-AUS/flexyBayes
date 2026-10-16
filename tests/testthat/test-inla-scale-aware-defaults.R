@@ -54,7 +54,9 @@
     blk = factor(seq_len(4L))
   )
   u_b <- stats::rnorm(4L, 0, 2)
-  d$y <- 10 + 0.5 * as.numeric(d$trt) + u_b[as.integer(d$blk)] +
+  d$y <- 10 +
+    0.5 * as.numeric(d$trt) +
+    u_b[as.integer(d$blk)] +
     stats::rnorm(nrow(d), 0, 1)
   d
 }
@@ -79,7 +81,11 @@
 # A formula as one line with single spaces, so a match does not depend on
 # where deparse() wraps it.
 .sad_formula_text <- function(form) {
-  gsub("[[:space:]]+", " ", paste(deparse(form, width.cutoff = 500L), collapse = " "))
+  gsub(
+    "[[:space:]]+",
+    " ",
+    paste(deparse(form, width.cutoff = 500L), collapse = " ")
+  )
 }
 
 
@@ -98,7 +104,10 @@ test_that("an unstated block SD takes the bounded default on the per-row route",
   # The reference: the package default written out and stated, so it reaches
   # INLA without being filled in.
   stated <- .sad_quiet(flexybayes(
-    fixed = y ~ trt, random = ~blk, data = d, backend = "inla",
+    fixed = y ~ trt,
+    random = ~blk,
+    data = d,
+    backend = "inla",
     prior = fb_prior(
       sigma ~ uniform(lower = 0, upper = upper),
       sd(group = "blk") ~ uniform(lower = 0, upper = upper)
@@ -113,8 +122,15 @@ test_that("an unstated block SD takes the bounded default on the per-row route",
   sigma_only <- fb_prior(sigma ~ uniform(lower = 0, upper = upper))
   routes <- list(
     per_row = function() {
-      flexybayes(fixed = y ~ trt, random = ~blk, data = d, backend = "inla",
-                 aggregate = FALSE, prior = sigma_only, verbose = FALSE)
+      flexybayes(
+        fixed = y ~ trt,
+        random = ~blk,
+        data = d,
+        backend = "inla",
+        aggregate = FALSE,
+        prior = sigma_only,
+        verbose = FALSE
+      )
     }
   )
 
@@ -195,11 +211,16 @@ test_that("a slope SD and its coefficient do not move with the covariate's units
   # 8.64, which a wide stated fixed-effect prior alone restored to 10.4673.
   for (i in seq_len(nrow(cells))) {
     lab <- paste0("c = ", cells$c[[i]])
-    expect_lt(abs(cells$days[[i]] - reml_days), .sad_tol$days_lme4,
-              label = paste(lab, "Days against lme4"))
-    expect_lt(abs(cells$slope_sd[[i]] - reml_slope_sd) / reml_slope_sd,
-              .sad_tol$slope_reml_relative,
-              label = paste(lab, "slope SD against lme4"))
+    expect_lt(
+      abs(cells$days[[i]] - reml_days),
+      .sad_tol$days_lme4,
+      label = paste(lab, "Days against lme4")
+    )
+    expect_lt(
+      abs(cells$slope_sd[[i]] - reml_slope_sd) / reml_slope_sd,
+      .sad_tol$slope_reml_relative,
+      label = paste(lab, "slope SD against lme4")
+    )
   }
   # Against the fit on the covariate's own units. The posterior mean of a
   # standard deviation is not a REML estimate, at c = 1, where no bound
@@ -239,15 +260,27 @@ test_that("a non-Gaussian coefficient does not move when its covariate shrinks",
 
   for (family in c("poisson", "binomial")) {
     base <- count_design(family)
-    scaled <- vapply(c(0.001, 1), function(cc) {
-      d <- base
-      d$x <- cc * d$x
-      fit <- .sad_quiet(flexybayes(y ~ x + (1 | g), data = d, family = family,
-                                   backend = "inla", verbose = FALSE))
-      stats::coef(fit)[["x"]] * cc
-    }, numeric(1L))
-    expect_lt(abs(scaled[[1L]] - scaled[[2L]]) / abs(scaled[[2L]]),
-              .sad_tol$o1_across_scales, label = family)
+    scaled <- vapply(
+      c(0.001, 1),
+      function(cc) {
+        d <- base
+        d$x <- cc * d$x
+        fit <- .sad_quiet(flexybayes(
+          y ~ x + (1 | g),
+          data = d,
+          family = family,
+          backend = "inla",
+          verbose = FALSE
+        ))
+        stats::coef(fit)[["x"]] * cc
+      },
+      numeric(1L)
+    )
+    expect_lt(
+      abs(scaled[[1L]] - scaled[[2L]]) / abs(scaled[[2L]]),
+      .sad_tol$o1_across_scales,
+      label = family
+    )
   }
 })
 
@@ -265,8 +298,11 @@ test_that("a partial prior keeps what was stated and records what was filled", {
   prior <- fb_prior(sd(group = "Subject") ~ half_normal(scale = 20))
 
   emitted <- .sad_quiet(flexybayes(
-    Reaction ~ Days + (Days || Subject), data = d, backend = "inla",
-    prior = prior, return_code = TRUE
+    Reaction ~ Days + (Days || Subject),
+    data = d,
+    backend = "inla",
+    prior = prior,
+    return_code = TRUE
   ))
   # Stated: mapped by the response scale and nothing else.
   expect_equal(emitted$hyper$Subject$meta$family, "half_normal")
@@ -281,8 +317,11 @@ test_that("a partial prior keeps what was stated and records what was filled", {
   expect_true(emitted$hyper$Days_Subject$meta$package_chosen)
 
   fit <- .sad_quiet(flexybayes(
-    Reaction ~ Days + (Days || Subject), data = d, backend = "inla",
-    prior = prior, verbose = FALSE
+    Reaction ~ Days + (Days || Subject),
+    data = d,
+    backend = "inla",
+    prior = prior,
+    verbose = FALSE
   ))
   # The declaration the fit carries is the caller's, unchanged.
   expect_identical(fit$extras$fb_terms$priors, prior)
@@ -299,7 +338,10 @@ test_that("a partial prior keeps what was stated and records what was filled", {
   expect_false("sd_Days_Subject" %in% names(fp$engine_default_params))
 
   v <- summary(fit)$varcomp
-  expect_match(v$prior[v$component == "sd_Days_Subject"], "^half_normal\\(scale=")
+  expect_match(
+    v$prior[v$component == "sd_Days_Subject"],
+    "^half_normal\\(scale="
+  )
 })
 
 test_that("a stated fixed-effect prior is not rescaled by its covariate", {
@@ -314,8 +356,11 @@ test_that("a stated fixed-effect prior is not rescaled by its covariate", {
   # coefficient, whatever the covariate's units. On Dx, recorded in thousandths
   # of a day, it binds. That is what was asked for.
   blanket <- .sad_quiet(flexybayes(
-    Reaction ~ Dx + (1 | Subject), data = d, backend = "inla",
-    prior_fixed_sd = 7, return_code = TRUE
+    Reaction ~ Dx + (1 | Subject),
+    data = d,
+    backend = "inla",
+    prior_fixed_sd = 7,
+    return_code = TRUE
   ))
   expect_equal(blanket$control_fixed$prec, s_y^2 / 49)
   expect_false(is.list(blanket$control_fixed$prec))
@@ -324,8 +369,11 @@ test_that("a stated fixed-effect prior is not rescaled by its covariate", {
   set.seed(11L)
   d$z <- stats::rnorm(nrow(d), 0, 40)
   rowwise <- .sad_quiet(flexybayes(
-    Reaction ~ Dx + z + (1 | Subject), data = d, backend = "inla",
-    prior = fb_prior(b("Dx") ~ normal(mean = 0, sd = 4)), return_code = TRUE
+    Reaction ~ Dx + z + (1 | Subject),
+    data = d,
+    backend = "inla",
+    prior = fb_prior(b("Dx") ~ normal(mean = 0, sd = 4)),
+    return_code = TRUE
   ))
   expect_equal(rowwise$control_fixed$prec$Dx, s_y^2 / 16)
   # normal(0, 1e5 sd(y) / sd(z)), restated on the standardised response.
@@ -336,7 +384,10 @@ test_that("a factor contrast keeps INLA's own fixed-effect default", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   emitted <- .sad_quiet(flexybayes(
-    fixed = y ~ trt, random = ~blk, data = .sad_blocks(), backend = "inla",
+    fixed = y ~ trt,
+    random = ~blk,
+    data = .sad_blocks(),
+    backend = "inla",
     return_code = TRUE
   ))
   expect_length(emitted$control_fixed, 0L)
@@ -353,8 +404,14 @@ test_that("a factor contrast keeps INLA's own fixed-effect default", {
 
 .sad_three_way <- function() {
   set.seed(20260913L)
-  d <- expand.grid(a = factor(1:3), b = factor(1:3), cc = factor(1:2), rep = 1:4)
-  d$y <- 50 + stats::rnorm(18L, 0, 4)[as.integer(interaction(d$a, d$b, d$cc))] +
+  d <- expand.grid(
+    a = factor(1:3),
+    b = factor(1:3),
+    cc = factor(1:2),
+    rep = 1:4
+  )
+  d$y <- 50 +
+    stats::rnorm(18L, 0, 4)[as.integer(interaction(d$a, d$b, d$cc))] +
     stats::rnorm(nrow(d), 0, 8)
   d
 }
@@ -365,7 +422,10 @@ test_that("a multi-way random interaction takes the half-normal default", {
   d <- .sad_three_way()
 
   emitted <- .sad_quiet(flexybayes(
-    fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+    fixed = y ~ 1,
+    random = ~ a:b:cc,
+    data = d,
+    backend = "inla",
     return_code = TRUE
   ))
   # half_normal(scale = 5 sd(y) / divisor), restated on the standardised
@@ -391,7 +451,10 @@ test_that("a stated prior on a multi-way random interaction reaches INLA", {
   # multi-way interaction, and this call was refused with
   # prior_target_not_in_model although the default fills the same key.
   emitted <- .sad_quiet(flexybayes(
-    fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+    fixed = y ~ 1,
+    random = ~ a:b:cc,
+    data = d,
+    backend = "inla",
     prior = fb_prior(sd(group = "a:b:cc") ~ uniform(lower = 0, upper = 20)),
     return_code = TRUE
   ))
@@ -408,7 +471,11 @@ test_that("a stated prior on a multi-way random interaction reaches INLA", {
     "prior = \"expression: U=([^;]+);.*$"
   )
   expect_match(form, pattern)
-  expect_equal(as.numeric(sub(pattern, "\\1", form)), expected, tolerance = 1e-12)
+  expect_equal(
+    as.numeric(sub(pattern, "\\1", form)),
+    expected,
+    tolerance = 1e-12
+  )
 
   # A key this model does not carry is still refused: an interaction naming a
   # factor the model does not have, and a two-way interaction of its factors.
@@ -419,8 +486,12 @@ test_that("a stated prior on a multi-way random interaction reaches INLA", {
   for (prior in refused) {
     err <- tryCatch(
       .sad_quiet(flexybayes(
-        fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
-        prior = prior, return_code = TRUE
+        fixed = y ~ 1,
+        random = ~ a:b:cc,
+        data = d,
+        backend = "inla",
+        prior = prior,
+        return_code = TRUE
       )),
       error = function(e) e
     )
@@ -444,12 +515,17 @@ test_that("each block of a blocks-format vm() takes the default under a partial 
   fb <- fb_from_asreml(
     fixed = yield ~ 1,
     random = ~ vm(geno, cov = fb_cov(blocks, type = "blocks")),
-    data = d, family = "gaussian", known_matrices = list(blocks = blocks),
+    data = d,
+    family = "gaussian",
+    known_matrices = list(blocks = blocks),
     prior = fb_prior(sigma ~ uniform(lower = 0, upper = 30))
   )
   emitted <- .sad_quiet(emit_inla(
-    fb, data = d, known_matrices = list(blocks = blocks),
-    return_code = TRUE, verbose = FALSE
+    fb,
+    data = d,
+    known_matrices = list(blocks = blocks),
+    return_code = TRUE,
+    verbose = FALSE
   ))
   expect_identical(emitted$hyper$geno$meta$family, "half_normal")
   expect_equal(
@@ -460,8 +536,13 @@ test_that("each block of a blocks-format vm() takes the default under a partial 
   for (k in 1:2) {
     expect_match(
       form,
-      paste0("f(geno_id_block_", k, ", model = \"generic0\", Cmatrix = blocks_Q_",
-             k, ", hyper"),
+      paste0(
+        "f(geno_id_block_",
+        k,
+        ", model = \"generic0\", Cmatrix = blocks_Q_",
+        k,
+        ", hyper"
+      ),
       fixed = TRUE
     )
   }
@@ -472,7 +553,10 @@ test_that("brms receives the declaration and its own defaults, unchanged", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .sad_blocks()
   code <- .sad_quiet(flexybayes(
-    fixed = y ~ trt, random = ~blk, data = d, backend = "brms",
+    fixed = y ~ trt,
+    random = ~blk,
+    data = d,
+    backend = "brms",
     prior = fb_prior(sigma ~ uniform(lower = 0, upper = 9)),
     return_code = TRUE
   ))

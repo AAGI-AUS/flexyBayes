@@ -23,7 +23,9 @@ summary.flexybayes_glm <- function(object, ...) {
 
   se <- sqrt(diag(V))
   draws <- attr(object, "posterior_draws")
-  exact <- !is.null(draws) && is.matrix(draws) && nrow(draws) > 0L &&
+  exact <- !is.null(draws) &&
+    is.matrix(draws) &&
+    nrow(draws) > 0L &&
     identical(colnames(draws), names(beta))
 
   # Probability of direction: the posterior mass on the side of zero the
@@ -107,15 +109,21 @@ confint.flexybayes_glm <- function(object, parm = NULL, level = 0.95, ...) {
   alpha <- 1 - level
   probs <- c(alpha / 2, 1 - alpha / 2)
   draws <- attr(object, "posterior_draws")
-  exact <- !is.null(draws) && is.matrix(draws) && nrow(draws) > 0L &&
+  exact <- !is.null(draws) &&
+    is.matrix(draws) &&
+    nrow(draws) > 0L &&
     identical(colnames(draws), names(beta))
 
   if (exact) {
     # as.matrix() drops the draws object's own dimnames names ("draw" /
     # "variable"), which apply() otherwise carries into the result and
     # prints as a stray header above the coefficient names.
-    ci_mat <- t(apply(as.matrix(unname(draws)), 2L, stats::quantile,
-                      probs = probs))
+    ci_mat <- t(apply(
+      as.matrix(unname(draws)),
+      2L,
+      stats::quantile,
+      probs = probs
+    ))
     basis <- "posterior_quantile"
   } else {
     se <- sqrt(diag(V))

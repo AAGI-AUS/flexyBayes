@@ -7,7 +7,10 @@
 # factor 0.88, 5 levels 0.19 to 0.36, 30 levels 0.07. The threshold is 0.4.
 
 .wv_silent_prior_note <- function(env = parent.frame()) {
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE, .local_envir = env)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    .local_envir = env
+  )
   threads <- INLA::inla.getOption("num.threads")
   INLA::inla.setOption(num.threads = "1:1")
   withr::defer(INLA::inla.setOption(num.threads = threads), envir = env)
@@ -44,8 +47,11 @@
     g = factor(rep(seq_len(levels), each = 10)),
     x = stats::rnorm(levels * 10)
   )
-  d$y <- 1 + 0.5 * d$x + stats::rnorm(levels)[d$g] +
-    stats::rnorm(levels, sd = 0.5)[d$g] * d$x + stats::rnorm(nrow(d))
+  d$y <- 1 +
+    0.5 * d$x +
+    stats::rnorm(levels)[d$g] +
+    stats::rnorm(levels, sd = 0.5)[d$g] * d$x +
+    stats::rnorm(nrow(d))
   d$x <- d$x * multiplier
   d
 }
@@ -60,7 +66,11 @@ test_that("DEF-004: a random copy of a fixed factor is flagged as weakly identif
   d$plot <- factor(paste0("p", d$blk))
   d$y <- stats::rnorm(6)[d$blk] + stats::rnorm(nrow(d))
   res <- .wv_fit(flexybayes(
-    y ~ blk, random = ~ plot, data = d, backend = "inla", verbose = FALSE
+    y ~ blk,
+    random = ~plot,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   expect_true(any(grepl("weakly identified", res$warnings, fixed = TRUE)))
   expect_true(any(grepl("sd_plot", res$warnings, fixed = TRUE)))
@@ -73,15 +83,20 @@ test_that("DEF-004: a grouping factor with three levels is flagged", {
   .wv_silent_prior_note()
   for (seed in 1:3) {
     res <- .wv_fit(fb(
-      y ~ 1 + (1 | g), data = .wv_intercepts(3, 10, seed),
-      backend = "inla", verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = .wv_intercepts(3, 10, seed),
+      backend = "inla",
+      verbose = FALSE
     ))
     expect_true(
       any(grepl("weakly identified", res$warnings, fixed = TRUE)),
       label = paste("seed", seed)
     )
-    expect_equal(.wv_note(res$fit, "sd_g"), "weakly identified",
-                 label = paste("seed", seed))
+    expect_equal(
+      .wv_note(res$fit, "sd_g"),
+      "weakly identified",
+      label = paste("seed", seed)
+    )
     ratio <- attr(res$fit$extras$variance_comps, "interval_ratio")
     expect_gte(ratio[["sd_g"]], .FB_WEAK_IDENTIFICATION_RATIO)
   }
@@ -93,8 +108,10 @@ test_that("DEF-004: a well-identified grouping factor is not flagged", {
   .wv_silent_prior_note()
   for (seed in 1:3) {
     res <- .wv_fit(fb(
-      y ~ 1 + (1 | g), data = .wv_intercepts(30, 8, seed),
-      backend = "inla", verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = .wv_intercepts(30, 8, seed),
+      backend = "inla",
+      verbose = FALSE
     ))
     expect_false(
       any(grepl("weakly identified", res$warnings, fixed = TRUE)),
@@ -114,14 +131,23 @@ test_that("DEF-004: rescaling a slope covariate by 1000 changes neither flag", {
     boundary <- logical(0)
     for (multiplier in c(1, 1000)) {
       res <- .wv_fit(fb(
-        y ~ x + (1 + x || g), data = .wv_slopes(levels, 1, multiplier),
-        backend = "inla", verbose = FALSE
+        y ~ x + (1 + x || g),
+        data = .wv_slopes(levels, 1, multiplier),
+        backend = "inla",
+        verbose = FALSE
       ))
       notes <- c(notes, .wv_note(res$fit, "sd_x_g"))
-      weak <- c(weak, any(grepl("sd_x_g", res$warnings, fixed = TRUE) &
-        grepl("weakly identified", res$warnings, fixed = TRUE)))
-      boundary <- c(boundary, any(grepl("at the boundary", res$warnings,
-                                        fixed = TRUE)))
+      weak <- c(
+        weak,
+        any(
+          grepl("sd_x_g", res$warnings, fixed = TRUE) &
+            grepl("weakly identified", res$warnings, fixed = TRUE)
+        )
+      )
+      boundary <- c(
+        boundary,
+        any(grepl("at the boundary", res$warnings, fixed = TRUE))
+      )
     }
     label <- paste(levels, "levels")
     expect_identical(notes[[1L]], notes[[2L]], label = label)
@@ -149,7 +175,9 @@ test_that("DEF-004: a slope SD is compared with the residual SD in response unit
       fb = list(
         response = "y",
         random_terms = list(list(
-          type = "simple_slope_uncor", var = "g", slope_var = "x"
+          type = "simple_slope_uncor",
+          var = "g",
+          slope_var = "x"
         ))
       ),
       data = d,
@@ -173,8 +201,10 @@ test_that("DEF-004: the weak-identification warning can be silenced by option", 
   .wv_silent_prior_note()
   withr::local_options(flexyBayes.silence_weak_identification_warning = TRUE)
   res <- .wv_fit(fb(
-    y ~ 1 + (1 | g), data = .wv_intercepts(3, 10, 1),
-    backend = "inla", verbose = FALSE
+    y ~ 1 + (1 | g),
+    data = .wv_intercepts(3, 10, 1),
+    backend = "inla",
+    verbose = FALSE
   ))
   expect_false(any(grepl("weakly identified", res$warnings, fixed = TRUE)))
   # The table still says so.
@@ -184,11 +214,19 @@ test_that("DEF-004: the weak-identification warning can be silenced by option", 
 # The interval ratio, (q97.5 - q2.5) / median on the SD, and its threshold.
 
 .wv_calibration <- function() {
-  path <- system.file("extdata", "weak_identification_calibration.csv",
-                      package = "flexyBayes")
+  path <- system.file(
+    "extdata",
+    "weak_identification_calibration.csv",
+    package = "flexyBayes"
+  )
   if (!nzchar(path)) {
-    path <- testthat::test_path("..", "..", "inst", "extdata",
-                                "weak_identification_calibration.csv")
+    path <- testthat::test_path(
+      "..",
+      "..",
+      "inst",
+      "extdata",
+      "weak_identification_calibration.csv"
+    )
   }
   utils::read.csv(path, stringsAsFactors = FALSE)
 }
@@ -239,14 +277,22 @@ test_that("DEF-201: besag C2 and C5 read on the SD scale stay below the ratio th
   med <- attr(vc, "posterior_median")
   # The posterior medians are SDs. Squared, they are the variances 19.5 and
   # 19.6 that DEFECTS.tsv records.
-  expect_equal(unname(med[c("sd_gen__envC2", "sd_gen__envC5")])^2,
-               c(19.5, 19.6), tolerance = 0.02)
+  expect_equal(
+    unname(med[c("sd_gen__envC2", "sd_gen__envC5")])^2,
+    c(19.5, 19.6),
+    tolerance = 0.02
+  )
   ratio <- attr(vc, "interval_ratio")
-  expect_equal(unname(ratio[c("sd_gen__envC2", "sd_gen__envC5")]),
-               c(1.69, 1.75), tolerance = 0.02)
+  expect_equal(
+    unname(ratio[c("sd_gen__envC2", "sd_gen__envC5")]),
+    c(1.69, 1.75),
+    tolerance = 0.02
+  )
   # DEF-201 stays open: neither reading flags them.
   notes <- .fb_varcomp_notes(
-    vc$component, vc$q97.5, med,
+    vc$component,
+    vc$q97.5,
+    med,
     prior_share = attr(vc, "prior_share"),
     interval_ratio = ratio
   )
@@ -259,7 +305,9 @@ test_that("DEF-201: besag C2 and C5 read on the SD scale stay below the ratio th
   vc$q97.5[[i]] <- vc$q2.5[[i]] + 4.3 * med[["sd_gen__envC2"]]
   attr(vc, "interval_ratio") <- .fb_interval_ratio(vc)
   notes <- .fb_varcomp_notes(
-    vc$component, vc$q97.5, med,
+    vc$component,
+    vc$q97.5,
+    med,
     prior_share = attr(vc, "prior_share"),
     interval_ratio = attr(vc, "interval_ratio")
   )

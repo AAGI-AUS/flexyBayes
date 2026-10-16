@@ -78,8 +78,12 @@
   d <- dim(K)
   if (is.null(d) || length(d) != 2L || d[[1L]] != d[[2L]]) {
     stop(
-      "`", name, "` must be a square matrix for spectral decomposition; ",
-      "got dim ", paste(d, collapse = " x "), ".",
+      "`",
+      name,
+      "` must be a square matrix for spectral decomposition; ",
+      "got dim ",
+      paste(d, collapse = " x "),
+      ".",
       call. = FALSE
     )
   }
@@ -90,21 +94,33 @@
 
   if (!.fb_spectral_is_symmetric(K, tol)) {
     stop(
-      "`", name, "` must be symmetric for spectral decomposition. A ",
+      "`",
+      name,
+      "` must be symmetric for spectral decomposition. A ",
       "relationship / kinship matrix is symmetric by construction; ",
-      "isSymmetric() returned FALSE beyond tolerance ", format(tol), ".",
+      "isSymmetric() returned FALSE beyond tolerance ",
+      format(tol),
+      ".",
       call. = FALSE
     )
   }
 
   if (!is.null(rank)) {
     if (
-      length(rank) != 1L || is.na(rank) || rank < 1L || rank > n ||
+      length(rank) != 1L ||
+        is.na(rank) ||
+        rank < 1L ||
+        rank > n ||
         rank != as.integer(rank)
     ) {
       stop(
-        "`rank` must be a single integer in 1:", n, " (the dimension of `",
-        name, "`); got ", paste(rank, collapse = ", "), ".",
+        "`rank` must be a single integer in 1:",
+        n,
+        " (the dimension of `",
+        name,
+        "`); got ",
+        paste(rank, collapse = ", "),
+        ".",
         call. = FALSE
       )
     }
@@ -116,7 +132,9 @@
   lambda_max <- max(vals_raw)
   if (!is.finite(lambda_max)) {
     stop(
-      "spectral decomposition of `", name, "` produced non-finite ",
+      "spectral decomposition of `",
+      name,
+      "` produced non-finite ",
       "eigenvalues; check the matrix for NA / Inf entries.",
       call. = FALSE
     )
@@ -128,10 +146,15 @@
   worst_neg <- min(vals_raw)
   if (lambda_max <= 0 || worst_neg < neg_floor) {
     stop(
-      "`", name, "` is not positive-semidefinite: its smallest eigenvalue ",
-      format(worst_neg, digits = 4L), " is below the tolerance floor ",
-      format(neg_floor, digits = 4L), " (lambda_max = ",
-      format(lambda_max, digits = 4L), "). A covariance / relationship ",
+      "`",
+      name,
+      "` is not positive-semidefinite: its smallest eigenvalue ",
+      format(worst_neg, digits = 4L),
+      " is below the tolerance floor ",
+      format(neg_floor, digits = 4L),
+      " (lambda_max = ",
+      format(lambda_max, digits = 4L),
+      "). A covariance / relationship ",
       "matrix must be PSD; check the matrix construction.",
       call. = FALSE
     )
@@ -213,8 +236,11 @@
   d <- dim(Z)
   if (is.null(d) || length(d) != 2L) {
     stop(
-      "`", name, "` must be an n x m marker matrix; got ",
-      paste(class(Z), collapse = "/"), ".",
+      "`",
+      name,
+      "` must be an n x m marker matrix; got ",
+      paste(class(Z), collapse = "/"),
+      ".",
       call. = FALSE
     )
   }
@@ -226,7 +252,9 @@
   if (length(m) != 1L || is.na(m) || m <= 0) {
     stop(
       "`m` (the relationship normaliser) must be a single positive ",
-      "number; got ", paste(m, collapse = ", "), ".",
+      "number; got ",
+      paste(m, collapse = ", "),
+      ".",
       call. = FALSE
     )
   }
@@ -238,8 +266,11 @@
   bad <- !is.finite(Zc)
   if (any(bad)) {
     stop(
-      "centring / scaling `", name, "` produced non-finite values (",
-      sum(bad), " entries), a marker column with zero variance cannot ",
+      "centring / scaling `",
+      name,
+      "` produced non-finite values (",
+      sum(bad),
+      " entries), a marker column with zero variance cannot ",
       "be unit-scaled. Drop monomorphic markers before forming the ",
       "relationship matrix.",
       call. = FALSE
@@ -249,12 +280,17 @@
   if (!is.null(rank)) {
     max_rank <- min(n, n_markers)
     if (
-      length(rank) != 1L || is.na(rank) || rank < 1L || rank > max_rank ||
+      length(rank) != 1L ||
+        is.na(rank) ||
+        rank < 1L ||
+        rank > max_rank ||
         rank != as.integer(rank)
     ) {
       stop(
-        "`rank` must be a single integer in 1:", max_rank,
-        " (min(n, m) for the marker SVD); got ", paste(rank, collapse = ", "),
+        "`rank` must be a single integer in 1:",
+        max_rank,
+        " (min(n, m) for the marker SVD); got ",
+        paste(rank, collapse = ", "),
         ".",
         call. = FALSE
       )
@@ -311,8 +347,12 @@
   A <- as.matrix(A)
   if (nrow(A) != spec$rank) {
     stop(
-      "back-rotation expects ", spec$rank, " rows (the spectral rank); ",
-      "got ", nrow(A), ".",
+      "back-rotation expects ",
+      spec$rank,
+      " rows (the spectral rank); ",
+      "got ",
+      nrow(A),
+      ".",
       call. = FALSE
     )
   }
@@ -357,8 +397,11 @@
   if (spec$rank != spec$n) {
     stop(
       "`.fb_spectral_logdet()` requires the full-rank decomposition ",
-      "(rank == n); this object is truncated to rank ", spec$rank, " of ",
-      spec$n, ". The truncated determinant needs the residual-only ",
+      "(rank == n); this object is truncated to rank ",
+      spec$rank,
+      " of ",
+      spec$n,
+      ". The truncated determinant needs the residual-only ",
       "complement and is not computed here.",
       call. = FALSE
     )
@@ -375,21 +418,32 @@ is_fb_spectral <- function(x) inherits(x, "fb_spectral")
 print.fb_spectral <- function(x, ...) {
   cat("<fb_spectral> ", x$name, ": ", x$n, " x ", x$n, "\n", sep = "")
   cat(
-    "  rank: ", x$rank, "/", x$rank_full,
-    if (x$rank < x$rank_full) " (truncated)" else " (full)", "\n",
+    "  rank: ",
+    x$rank,
+    "/",
+    x$rank_full,
+    if (x$rank < x$rank_full) " (truncated)" else " (full)",
+    "\n",
     sep = ""
   )
   cat(
-    "  variance captured: ", format(round(x$capture_trace, 4L)),
-    " (trace), ", format(round(x$capture_frobenius, 4L)), " (Frobenius)\n",
+    "  variance captured: ",
+    format(round(x$capture_trace, 4L)),
+    " (trace), ",
+    format(round(x$capture_frobenius, 4L)),
+    " (Frobenius)\n",
     sep = ""
   )
   nc <- x$negative_clamped
   if (!is.null(nc) && nc$count > 0L) {
     cat(
-      "  PSD repair: ", nc$count, " small-negative eigenvalue",
-      if (nc$count != 1L) "s" else "", " clamped to 0 (min ",
-      format(nc$min, digits = 3L), ")\n",
+      "  PSD repair: ",
+      nc$count,
+      " small-negative eigenvalue",
+      if (nc$count != 1L) "s" else "",
+      " clamped to 0 (min ",
+      format(nc$min, digits = 3L),
+      ")\n",
       sep = ""
     )
   }
@@ -412,7 +466,9 @@ print.fb_spectral <- function(x, ...) {
       as.matrix(M),
       error = function(e) {
         stop(
-          "`", name, "` could not be coerced to a matrix: ",
+          "`",
+          name,
+          "` could not be coerced to a matrix: ",
           conditionMessage(e),
           call. = FALSE
         )
@@ -438,7 +494,8 @@ print.fb_spectral <- function(x, ...) {
   if (!is_fb_spectral(spec)) {
     stop(
       "expected an `fb_spectral` object from `.fb_spectral()`; got ",
-      paste(class(spec), collapse = "/"), ".",
+      paste(class(spec), collapse = "/"),
+      ".",
       call. = FALSE
     )
   }
@@ -470,8 +527,14 @@ print.fb_spectral <- function(x, ...) {
   }
   if (nrow(M) != spec$n) {
     stop(
-      op, " expects ", spec$n, " rows (the matrix dimension of `",
-      spec$name, "`); got ", nrow(M), ".",
+      op,
+      " expects ",
+      spec$n,
+      " rows (the matrix dimension of `",
+      spec$name,
+      "`); got ",
+      nrow(M),
+      ".",
       call. = FALSE
     )
   }

@@ -15,8 +15,10 @@
 test_that("the probe compiles a three-line program where a toolchain exists", {
   skip_on_cran()
   skip_if_not_installed("pkgbuild")
-  skip_if_not(isTRUE(pkgbuild::has_build_tools(debug = FALSE)),
-              "no C++ build tools on this machine")
+  skip_if_not(
+    isTRUE(pkgbuild::has_build_tools(debug = FALSE)),
+    "no C++ build tools on this machine"
+  )
   expect_true(.fb_cxx_toolchain_works())
 })
 
@@ -80,6 +82,9 @@ test_that("a probe that cannot run at all does not accuse the toolchain", {
     error = function(e) e
   )
   expect_false(inherits(err, "flexybayes_refusal"))
-  expect_match(conditionMessage(err), "brms::brm() failed: invalid connection",
-               fixed = TRUE)
+  expect_match(
+    conditionMessage(err),
+    "brms::brm() failed: invalid connection",
+    fixed = TRUE
+  )
 })

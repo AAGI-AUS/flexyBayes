@@ -539,7 +539,8 @@ confint.flexybayes <- function(object, parm = NULL, level = 0.95, ...) {
     message = paste0(
       "confint() cannot form credible intervals for this fit: it carries ",
       "no posterior-draw slot. The fit's class is <",
-      paste(class(object), collapse = ", "), ">. Fixed-effect intervals ",
+      paste(class(object), collapse = ", "),
+      ">. Fixed-effect intervals ",
       "are available from summary() on every active engine, and an INLA ",
       "or brms fit answers confint() from its own method."
     )
@@ -631,9 +632,12 @@ residuals.flexybayes_aggregated <- function(object, ...) {
   stop(.fb_refusal_condition(
     reason_code = "streamed_rows_not_retained",
     message = paste0(
-      what, " is not available for this streamed fit: it was fitted to ",
-      format(n_obs, big.mark = ",", scientific = FALSE), " rows and keeps ",
-      "only the first ", format(n_held, big.mark = ",", scientific = FALSE),
+      what,
+      " is not available for this streamed fit: it was fitted to ",
+      format(n_obs, big.mark = ",", scientific = FALSE),
+      " rows and keeps ",
+      "only the first ",
+      format(n_held, big.mark = ",", scientific = FALSE),
       " it read. The fit itself uses every row. Fit the data in memory with ",
       "flexybayes(..., aggregate = TRUE) for row-level values."
     ),
@@ -676,9 +680,13 @@ logLik.flexybayes <- function(object, ...) {
       reason_code = "conditional_loglik_not_available",
       message = paste0(
         "logLik() cannot be computed for this fit: it carries ",
-        if (is.null(y)) "no response vector (`$glm$y`)" else
-          "no recorded response family",
-        ". The fit's class is <", paste(class(object), collapse = ", "),
+        if (is.null(y)) {
+          "no response vector (`$glm$y`)"
+        } else {
+          "no recorded response family"
+        },
+        ". The fit's class is <",
+        paste(class(object), collapse = ", "),
         ">. Returning NA here would let AIC() and anova() report a ",
         "comparison that was never made."
       )
@@ -702,7 +710,8 @@ logLik.flexybayes <- function(object, ...) {
       reason_code = "conditional_loglik_not_available",
       message = paste0(
         "logLik() has no plug-in conditional log-likelihood for the '",
-        fam_link$family, "' family. The implemented families are ",
+        fam_link$family,
+        "' family. The implemented families are ",
         "gaussian, binomial and poisson. Use the engine's own model ",
         "comparison instead: loo::loo() on brms draws, or the DIC and ",
         "WAIC that summary() reports for an INLA fit."
@@ -854,7 +863,8 @@ model.matrix.flexybayes <- function(object, newdata = NULL, ...) {
         "model.matrix() cannot rebuild the fixed-effect design for this ",
         "fit: it carries ",
         if (is.null(form)) "no fixed-effect formula" else "no fitted data",
-        ". The fit's class is <", paste(class(object), collapse = ", "),
+        ". The fit's class is <",
+        paste(class(object), collapse = ", "),
         ">. Rebuild the design from the original call instead."
       )
     ))
@@ -979,19 +989,33 @@ model.matrix.flexybayes <- function(object, newdata = NULL, ...) {
 update.flexybayes <- function(object, ...) {
   cl <- object$extras$call_info
   required <- c(
-    "fixed", "random", "residual", "family", "link", "known_matrices",
-    "weights", "n_samples", "warmup", "chains", "prior_fixed_sd",
-    "prior_vc_sd", "na_action", "backend", "aggregate"
+    "fixed",
+    "random",
+    "residual",
+    "family",
+    "link",
+    "known_matrices",
+    "weights",
+    "n_samples",
+    "warmup",
+    "chains",
+    "prior_fixed_sd",
+    "prior_vc_sd",
+    "na_action",
+    "backend",
+    "aggregate"
   )
   missing_fields <- setdiff(required, names(cl))
   dat <- object$glm$data %||% object$data
 
   # A streamed fit read its source in chunks and keeps only its first rows,
   # so re-issuing the call through flexybayes() would fit different data.
-  if (identical(
-    object[["extras"]][["manifest"]][["route"]][["route"]],
-    "streamed_count"
-  )) {
+  if (
+    identical(
+      object[["extras"]][["manifest"]][["route"]][["route"]],
+      "streamed_count"
+    )
+  ) {
     stop(.fb_refusal_condition(
       reason_code = "update_streamed_fit_not_supported",
       message = paste0(
@@ -1015,7 +1039,8 @@ update.flexybayes <- function(object, ...) {
         } else {
           "the fitted data"
         },
-        ". The fit's class is <", paste(class(object), collapse = ", "),
+        ". The fit's class is <",
+        paste(class(object), collapse = ", "),
         ">. Re-issue the original flexybayes() call with the arguments ",
         "you want changed."
       )
@@ -1048,6 +1073,7 @@ update.flexybayes <- function(object, ...) {
           "brms-style entry, or `random = ~ ...` / `residual = ~ ...` ",
           "on the ASReml grammar."
         ),
+        # fmt: skip
         family_class =
           "flexybayes_update_unnamed_argument_not_supported_refusal"
       ))
@@ -1177,7 +1203,9 @@ update.flexybayes <- function(object, ...) {
   # is applied, so the re-fit would run under a prior the fit did not.
   supplied <- .fb_fit_ir(object)$prior_scalars$supplied
   if (!is.null(supplied)) {
-    if (!isTRUE(supplied[["fixed_sd"]])) args$prior_fixed_sd <- NULL
+    if (!isTRUE(supplied[["fixed_sd"]])) {
+      args$prior_fixed_sd <- NULL
+    }
     if (!isTRUE(supplied[["vc_sd"]])) args$prior_vc_sd <- NULL
   }
 
@@ -1191,8 +1219,10 @@ update.flexybayes <- function(object, ...) {
   env <- new.env(parent = parent.frame())
   data_name <- cl$data_name
   if (
-    !"data" %in% names(dots) && is.character(data_name) &&
-      length(data_name) == 1L && identical(make.names(data_name), data_name)
+    !"data" %in% names(dots) &&
+      is.character(data_name) &&
+      length(data_name) == 1L &&
+      identical(make.names(data_name), data_name)
   ) {
     assign(data_name, args$data, envir = env)
     args$data <- as.name(data_name)

@@ -192,7 +192,12 @@ emit_brms <- function(
     fb
   )
   pooled <- .fb_brms_pooled_lowering(
-    .fb_pooled_blocks(fb), brms_specs, fb, brms_form, data, brms_data2,
+    .fb_pooled_blocks(fb),
+    brms_specs,
+    fb,
+    brms_form,
+    data,
+    brms_data2,
     brms_family
   )
   brms_prior <- .brms_specs_to_object(c(brms_specs, pooled$specs))
@@ -216,7 +221,9 @@ emit_brms <- function(
   )
   if (!is.null(formula_hook)) {
     hooked <- .fb_refit_apply_formula_hook(
-      formula_hook, linear_form, brms_prior
+      formula_hook,
+      linear_form,
+      brms_prior
     )
     brms_form <- hooked$formula
     brms_prior <- hooked$prior
@@ -488,10 +495,14 @@ emit_brms <- function(
       # Which prior became which brms prior row, as brms reports it back
       # (R/model_manifest.R).
       manifest = .fb_manifest_brms(
-        fb, brms_prior, brmsfit, tagged_prior,
+        fb,
+        brms_prior,
+        brmsfit,
+        tagged_prior,
         completion = default_completion,
         pooled_slots = .fb_manifest_brms_pooled_slots(
-          pooled, if (!is.null(pooled)) brms::stancode(brmsfit)
+          pooled,
+          if (!is.null(pooled)) brms::stancode(brmsfit)
         )
       ),
       # NULL unless the fit carries a pooled() prior. print(), summary()
@@ -1029,7 +1040,10 @@ emit_brms <- function(
   }
   if (has_weight_offset) {
     sigma_rhs <- paste0(
-      sigma_rhs, " + offset(", .FB_BRMS_WEIGHTS_OFFSET_COL, ")"
+      sigma_rhs,
+      " + offset(",
+      .FB_BRMS_WEIGHTS_OFFSET_COL,
+      ")"
     )
   }
 
@@ -1045,11 +1059,28 @@ emit_brms <- function(
   outer <- term$outer %||% "f"
   inner <- term$inner %||% "g"
   paste0(
-    "corh(", outer, "):", inner, " asks for separate variances with one ",
+    "corh(",
+    outer,
+    "):",
+    inner,
+    " asks for separate variances with one ",
     "shared correlation. flexyBayes has no lowering for it on either ",
-    "engine. Use diag(", outer, "):", inner, " for separate variances ",
-    "without correlation, us(", outer, "):", inner, " on brms to estimate ",
-    "every correlation, or random = ~ ", inner, " + ", outer, ":", inner,
+    "engine. Use diag(",
+    outer,
+    "):",
+    inner,
+    " for separate variances ",
+    "without correlation, us(",
+    outer,
+    "):",
+    inner,
+    " on brms to estimate ",
+    "every correlation, or random = ~ ",
+    inner,
+    " + ",
+    outer,
+    ":",
+    inner,
     " for one variance with a shared correlation of zero or more."
   )
 }
@@ -1289,8 +1320,15 @@ emit_brms <- function(
         stop(.fb_refusal_condition(
           reason_code = "nested_index_name_collision",
           message = paste0(
-            "Fitting at(", term$outer, ", ", term$level, "):", term$inner,
-            " on brms needs a column named `", cols[[lev]], "`, and ",
+            "Fitting at(",
+            term$outer,
+            ", ",
+            term$level,
+            "):",
+            term$inner,
+            " on brms needs a column named `",
+            cols[[lev]],
+            "`, and ",
             "`data` already has one. Rename that column."
           )
         ))
@@ -1859,11 +1897,14 @@ emit_brms <- function(
   # A pooled residual, `sigma ~ 1 + (1 | f)`, puts each level's log sigma
   # at b_sigma_Intercept + r_<f>__sigma[<level>,Intercept].
   pooled_cols <- grep(
-    paste0("^r_", var_name, "__sigma\\["), colnames(draws), value = TRUE
+    paste0("^r_", var_name, "__sigma\\["),
+    colnames(draws),
+    value = TRUE
   )
   if (length(pooled_cols) && "b_sigma_Intercept" %in% colnames(draws)) {
     labels <- sub(
-      paste0("^r_", var_name, "__sigma\\[(.*),Intercept\\]$"), "\\1",
+      paste0("^r_", var_name, "__sigma\\[(.*),Intercept\\]$"),
+      "\\1",
       pooled_cols
     )
     log_sigma <- as.numeric(draws[, "b_sigma_Intercept"]) +
@@ -2009,7 +2050,9 @@ emit_brms <- function(
     "b_sigma_<level>"
   }
   cat(
-    "  Summarised from the draws of exp(2 * ", log_sigma, "); the fitted\n",
+    "  Summarised from the draws of exp(2 * ",
+    log_sigma,
+    "); the fitted\n",
     "  coefficients are on log sigma, so neither they nor their posterior\n",
     "  means are variances. There is no scalar residual variance in this\n",
     "  model, the sectioning replaces it.\n",
@@ -2221,7 +2264,13 @@ predict.flexybayes_brms <- function(
 ) {
   type <- match.arg(type)
   .fb_predict_new_route(
-    allow_new_levels, mean_by, classify, type, se.fit, re_formula, summary
+    allow_new_levels,
+    mean_by,
+    classify,
+    type,
+    se.fit,
+    re_formula,
+    summary
   )
   if (isTRUE(allow_new_levels)) {
     return(.fb_predict_new_brms(object, newdata, mean_by, n_draws, level))

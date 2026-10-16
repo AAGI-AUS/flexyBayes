@@ -95,8 +95,13 @@ test_that("streaming refuses a transformed response by name", {
     family = "gaussian"
   )
   expect_error(
-    .fb_stream_aggregate(fb, src = tab, trials = NULL, exposure = NULL,
-                         verbose = FALSE),
+    .fb_stream_aggregate(
+      fb,
+      src = tab,
+      trials = NULL,
+      exposure = NULL,
+      verbose = FALSE
+    ),
     "expression"
   )
 })

@@ -330,8 +330,7 @@
 .fb_best_of_fill <- function(pool, limit) {
   running <- sum(!vapply(pool$handles, is.null, logical(1)))
   while (
-    pool$next_j <= pool$k && pool$next_j < pool$first_failure &&
-      running < limit
+    pool$next_j <= pool$k && pool$next_j < pool$first_failure && running < limit
   ) {
     j <- pool$next_j
     pool$started[[j]] <- proc.time()[["elapsed"]]
@@ -444,11 +443,13 @@
     if (!length(open)) {
       break
     }
-    done <- open[!vapply(
-      pool$handles[open],
-      .fb_inla_isolated_running,
-      logical(1)
-    )]
+    done <- open[
+      !vapply(
+        pool$handles[open],
+        .fb_inla_isolated_running,
+        logical(1)
+      )
+    ]
     if (!length(done)) {
       Sys.sleep(0.05)
       next

@@ -177,9 +177,13 @@ test_that("the level map legalises exactly the factors the model touches", {
     c("high N", "low N", "nil N")
   )
   expect_identical(unname(fit$level_labels$TRIAL[["1"]]), "1")
-  expect_identical(fit$level_labels$TRIAL, stats::setNames(
-    levels(.space_level_data()$TRIAL), levels(.space_level_data()$TRIAL)
-  ))
+  expect_identical(
+    fit$level_labels$TRIAL,
+    stats::setNames(
+      levels(.space_level_data()$TRIAL),
+      levels(.space_level_data()$TRIAL)
+    )
+  )
 })
 
 

@@ -530,7 +530,9 @@
       "link only (INLA's `scale = w` per-observation precision ",
       "multiplier and brms's sigma-distributional offset both give ",
       "Var(y_i) = sigma^2 / w_i, the same Gaussian likelihood weighting ",
-      "on either engine). This model is family = \"", fam, "\"",
+      "on either engine). This model is family = \"",
+      fam,
+      "\"",
       if (!link_ok) paste0(", link = \"", fb$link, "\"") else "",
       ". Drop `weights`, or pre-scale the response if the intended ",
       "semantics is exactly Var(y_i) = sigma^2 / w_i."
@@ -560,7 +562,10 @@
   stop(.fb_refusal_condition(
     reason_code = "fixed_offset_unsupported",
     message = paste0(
-      "The fixed formula carries ", label, ", and ", route,
+      "The fixed formula carries ",
+      label,
+      ", and ",
+      route,
       " does not carry an offset."
     ),
     offsets = offsets,
@@ -586,7 +591,8 @@
   } else {
     unique(yv)
   }
-  values_shown <- paste(utils::head(as.character(offending), 6L),
+  values_shown <- paste(
+    utils::head(as.character(offending), 6L),
     collapse = ", "
   )
   more_note <- if (length(offending) > 6L) {
@@ -598,8 +604,13 @@
     paste0("the value(s) ", values_shown, more_note, " outside {0, 1}")
   } else {
     paste0(
-      "class `", class(yv)[[1L]], "`, not a numeric 0/1 vector ",
-      "(value(s) ", values_shown, more_note, ")"
+      "class `",
+      class(yv)[[1L]],
+      "`, not a numeric 0/1 vector ",
+      "(value(s) ",
+      values_shown,
+      more_note,
+      ")"
     )
   }
 
@@ -607,10 +618,15 @@
     reason_code = "binomial_response_not_binary",
     message = paste0(
       "family = \"binomial\" requires a numeric 0/1 response on this ",
-      "entry point. Column `", col, "` carries ", what, ". There is no ",
+      "entry point. Column `",
+      col,
+      "` carries ",
+      what,
+      ". There is no ",
       "cbind(success, failure) or trials = spelling on flexybayes() / ",
       "fb_inla() / fb_brms(). Pass pre-aggregated trial counts through ",
-      "flexybayes_stream(..., trials = ...) instead, or recode `", col,
+      "flexybayes_stream(..., trials = ...) instead, or recode `",
+      col,
       "` to a numeric 0/1 vector for a per-row binary outcome."
     ),
     family_class = "flexybayes_binomial_response_not_binary_refusal",
@@ -654,10 +670,16 @@
       stop(.fb_refusal_condition(
         reason_code = "fa_not_representable",
         message = paste0(
-          "fa(", term$var, ", k) names a factor-analytic covariance with no ",
+          "fa(",
+          term$var,
+          ", k) names a factor-analytic covariance with no ",
           "grouping factor. flexyBayes does not fit a factor-analytic ",
-          "covariance in any form. Write diag(", term$var, "):<group> for ",
-          "one variance per level, or us(", term$var, "):<group> on brms ",
+          "covariance in any form. Write diag(",
+          term$var,
+          "):<group> for ",
+          "one variance per level, or us(",
+          term$var,
+          "):<group> on brms ",
           "for the full covariance."
         )
       ))
@@ -674,7 +696,12 @@
       stop(.fb_refusal_condition(
         reason_code = "factor_analytic_not_repeatable",
         message = paste0(
-          "fa(", term$outer, ", ", term$k, "):", term$inner,
+          "fa(",
+          term$outer,
+          ", ",
+          term$k,
+          "):",
+          term$inner,
           " asks for a factor-analytic genotype-by-environment covariance, ",
           "which flexyBayes does not fit on either engine. In a test fixed ",
           "before it ran, INLA fits of simulated trials with a known ",
@@ -683,9 +710,16 @@
           "times for k = 1 and 125 of 150 for k = 2, against 136 required, ",
           "and for k = 2 the genetic correlations were biased upward. ",
           "flexyBayes has no factor-analytic lowering for brms. Write ",
-          "diag(", term$outer, "):", term$inner, ", one variance per ",
-          "environment, which fits on both engines, or us(", term$outer,
-          "):", term$inner, " on brms, which estimates every correlation. ",
+          "diag(",
+          term$outer,
+          "):",
+          term$inner,
+          ", one variance per ",
+          "environment, which fits on both engines, or us(",
+          term$outer,
+          "):",
+          term$inner,
+          " on brms, which estimates every correlation. ",
           "On INLA, summary(fit)$varcomp marks some variances the data ",
           "barely identify as `weakly identified`."
         )
@@ -695,9 +729,13 @@
       stop(.fb_refusal_condition(
         reason_code = "ar2_not_representable",
         message = paste0(
-          "ar2(", term$var, ") asks for a second-order autoregressive ",
+          "ar2(",
+          term$var,
+          ") asks for a second-order autoregressive ",
           "structure. flexyBayes writes first-order autoregressive terms ",
-          "only, on INLA. Use ar1(", term$var, ") for the first-order ",
+          "only, on INLA. Use ar1(",
+          term$var,
+          ") for the first-order ",
           "process. For a second-order one, INLA's own ar model takes ",
           "higher orders, and ASReml fits ar2()."
         )
@@ -707,10 +745,16 @@
       stop(.fb_refusal_condition(
         reason_code = "corh_no_equicorrelation_representation",
         message = paste0(
-          "cor(", term$var, ") asks for one correlation shared by every ",
+          "cor(",
+          term$var,
+          ") asks for one correlation shared by every ",
           "pair of levels. flexyBayes has no lowering for it on either ",
-          "engine. Use us(", term$var, "):g on brms to estimate every ",
-          "correlation, or diag(", term$var, "):g for separate variances ",
+          "engine. Use us(",
+          term$var,
+          "):g on brms to estimate every ",
+          "correlation, or diag(",
+          term$var,
+          "):g for separate variances ",
           "without correlation."
         )
       ))
@@ -743,8 +787,11 @@
       stop(.fb_refusal_condition(
         reason_code = "interaction_not_representable",
         message = paste0(
-          "flexyBayes cannot fit the interaction of a \"", left,
-          "\" term with a \"", right, "\" term. It matches none of the ",
+          "flexyBayes cannot fit the interaction of a \"",
+          left,
+          "\" term with a \"",
+          right,
+          "\" term. It matches none of the ",
           "structured interactions flexyBayes recognises: fa(f, k):g, ",
           "us(f):g, corh(f):g, diag(f):g, at(f):units, ar1(r):ar1(c), ",
           "vm(g, K):f and the crossings a:b and a:b:c. ",
@@ -828,44 +875,65 @@
 .ar1_residual_refusal_message <- function(term) {
   if (
     identical(term$type, "ar1_spatial_at") ||
-      (identical(term$type, "ar1_spatial") && isTRUE(term$col_ar1) &&
+      (identical(term$type, "ar1_spatial") &&
+        isTRUE(term$col_ar1) &&
         is.null(term$at_var))
   ) {
     spelling <- if (identical(term$type, "ar1_spatial_at")) {
       paste0(
-        "dsum(~ ar1(", term$row_var, "):ar1(", term$col_var, ") | ",
-        term$by_var, ")"
+        "dsum(~ ar1(",
+        term$row_var,
+        "):ar1(",
+        term$col_var,
+        ") | ",
+        term$by_var,
+        ")"
       )
     } else {
       .ar1_term_spelling(term)
     }
     return(paste0(
-      "residual = ~ ", spelling, " asks for ASReml's nugget-free ",
+      "residual = ~ ",
+      spelling,
+      " asks for ASReml's nugget-free ",
       "separable residual, which flexyBayes fits for a Gaussian response ",
       "with the identity link only. For this family, write the field on ",
-      "the random side, random = ~ ar1(", term$row_var, "):ar1(",
-      term$col_var, "), which fits on INLA."
+      "the random side, random = ~ ar1(",
+      term$row_var,
+      "):ar1(",
+      term$col_var,
+      "), which fits on INLA."
     ))
   }
   spelling <- .ar1_term_spelling(term)
   asreml_params <- if (identical(term$type, "ar1_spatial")) {
     paste0(
-      "two parameters (the correlation along ", term$row_var,
-      " and one variance, shared by every level of ", term$col_var, ")"
+      "two parameters (the correlation along ",
+      term$row_var,
+      " and one variance, shared by every level of ",
+      term$col_var,
+      ")"
     )
   } else {
     paste0(
-      "two parameters (the correlation along ", term$var, " and one variance)"
+      "two parameters (the correlation along ",
+      term$var,
+      " and one variance)"
     )
   }
   paste0(
-    "residual = ~ ", spelling, " asks for ASReml's autoregressive ",
+    "residual = ~ ",
+    spelling,
+    " asks for ASReml's autoregressive ",
     "residual: one correlated residual with no independent plot error, ",
-    asreml_params, ". flexyBayes fits this process as a latent field plus ",
+    asreml_params,
+    ". flexyBayes fits this process as a latent field plus ",
     "the Gaussian observation error, three parameters, which is a ",
     "different model and gives a different correlation when the data ",
     "carry plot-to-plot noise. Write the field on the random side, ",
-    "random = ~ ", spelling, ", which fits that model under its own name ",
+    "random = ~ ",
+    spelling,
+    ", which fits that model under its own name ",
     "on INLA (one observation per grid node), or use ASReml for the ",
     "residual form (Gilmour, Cullis, & Verbyla, 1997). The separable ",
     "residual ~ ar1(row):ar1(col) is fitted without a nugget."
@@ -905,11 +973,15 @@
     ""
   }
   message(
-    "flexyBayes: ", paste(passed, collapse = " and "),
+    "flexyBayes: ",
+    paste(passed, collapse = " and "),
     if (length(passed) == 1L) " is" else " are",
-    " a Stan sampler setting the ", engine, " backend does not use, so ",
+    " a Stan sampler setting the ",
+    engine,
+    " backend does not use, so ",
     if (length(passed) == 1L) "it has" else "they have",
-    " no effect on this fit.", tail_note
+    " no effect on this fit.",
+    tail_note
   )
   invisible(NULL)
 }
@@ -1090,7 +1162,8 @@
         } else {
           paste0(
             "flexyBayes cannot fit this model on brms (",
-            cap$reason_code, ")."
+            cap$reason_code,
+            ")."
           )
         },
         family_class = paste0("flexybayes_", cap$reason_code)
@@ -1134,11 +1207,14 @@
         backend = "brms",
         path = "explicit_brms",
         gate_checks = NULL,
-        reason = .fb_pooled_reason(paste0(
-          "user requested brms explicitly ",
-          "(Stan passthrough, lgm_gate() not ",
-          "consulted on this path)."
-        ), fb),
+        reason = .fb_pooled_reason(
+          paste0(
+            "user requested brms explicitly ",
+            "(Stan passthrough, lgm_gate() not ",
+            "consulted on this path)."
+          ),
+          fb
+        ),
         preflight_summary = preflight_result,
         representation_plan = .representation_plan_from_preflight(
           preflight_result
@@ -1303,8 +1379,11 @@
             gate_checks = gated$capabilities,
             reason = paste0(
               "lgm_gate() accepted, INLA not installed, auto routed to ",
-              if (is.na(fallback_backend)) "no active backend" else
-                fallback_backend,
+              if (is.na(fallback_backend)) {
+                "no active backend"
+              } else {
+                fallback_backend
+              },
               "."
             ),
             preflight_summary = preflight_result,
@@ -1631,7 +1710,8 @@
       if (!is.na(primary_rule)) {
         paste0("flexybayes_lgm_", primary_rule)
       }
-    ) %||% character(0),
+    ) %||%
+      character(0),
     lgm_refusal = gated,
     rule_id = primary_rule
   ))

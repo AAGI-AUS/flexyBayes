@@ -37,13 +37,22 @@
   survival_family = list(fixed = y ~ x, random = ~g, family = "weibull"),
   smoother_fixed = list(fixed = y ~ s(z), random = ~g),
   factor_slope_bar = list(fixed = y ~ x + (trt | g)),
-  lognormal_nonpositive = list(fixed = yneg ~ x, random = ~g, family = "lognormal"),
+  lognormal_nonpositive = list(
+    fixed = yneg ~ x,
+    random = ~g,
+    family = "lognormal"
+  ),
   missing_column = list(fixed = y ~ nosuch, random = ~g),
   missing_random_column = list(fixed = y ~ x, random = ~nosuch),
   fa_term = list(fixed = y ~ x, random = ~ fa(trt, 2):g),
   bad_backend = list(fixed = y ~ x, random = ~g, backend = "stan_direct"),
   bad_aggregate = list(fixed = y ~ x, random = ~g, aggregate = "foo"),
-  bad_link = list(fixed = n ~ x, random = ~g, family = "poisson", link = "probit"),
+  bad_link = list(
+    fixed = n ~ x,
+    random = ~g,
+    family = "poisson",
+    link = "probit"
+  ),
   bad_prior = list(fixed = y ~ x, random = ~g, prior = "sd ~ banana(1)"),
   weights_wrong_length = list(fixed = y ~ x, random = ~g, weights = c(1, 2)),
   data_not_frame = list(fixed = y ~ x, random = ~g, data = "d")
@@ -52,7 +61,10 @@
 .g17_routes <- function(d) {
   fit_route <- function(extra) {
     function(a) {
-      do.call(flexybayes, utils::modifyList(c(list(data = d, verbose = FALSE), extra), a))
+      do.call(
+        flexybayes,
+        utils::modifyList(c(list(data = d, verbose = FALSE), extra), a)
+      )
     }
   }
   list(
@@ -67,7 +79,10 @@
     stream = function(a) {
       a$source <- if (is.null(a$data)) d else a$data
       a[c("data", "aggregate", "weights", "link")] <- NULL
-      do.call(flexybayes_stream, utils::modifyList(list(verbose = FALSE, fit = FALSE), a))
+      do.call(
+        flexybayes_stream,
+        utils::modifyList(list(verbose = FALSE, fit = FALSE), a)
+      )
     }
   )
 }
@@ -96,13 +111,18 @@ test_that("DC-17 guard: every route refuses an unfittable model with a typed ref
         )),
         error = function(e) e
       )
-      if (!inherits(out, "error")) next
+      if (!inherits(out, "error")) {
+        next
+      }
       refused <- refused + 1L
       typed <- inherits(out, "flexybayes_refusal") &&
-        is.character(out$reason_code) && nzchar(out$reason_code)
+        is.character(out$reason_code) &&
+        nzchar(out$reason_code)
       if (!typed) {
         untyped[[paste(nm, r)]] <- paste0(
-          class(out)[1L], ": ", substr(conditionMessage(out), 1L, 80L)
+          class(out)[1L],
+          ": ",
+          substr(conditionMessage(out), 1L, 80L)
         )
       }
     }

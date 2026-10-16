@@ -1069,9 +1069,7 @@ print.lgm_refusal <- function(x, ...) {
     first_type <- as.character(first$type)
     first_label <- .inla_random_term_class_label(first_type)
     fmt <- first$cov_representation$format
-    detail <- if (
-      first_type %in% c("vm", "ped") && identical(fmt, "blocks")
-    ) {
+    detail <- if (first_type %in% c("vm", "ped") && identical(fmt, "blocks")) {
       paste0(
         "A blocks carrier is refused on INLA. flexyBayes's INLA route would ",
         "fit each block as its own field with its own standard deviation, ",
@@ -1250,7 +1248,6 @@ print.lgm_refusal <- function(x, ...) {
   }
   .lgm_pass("residual_term_type_inla")
 }
-
 
 
 # ---------------------------------------------------------------- #

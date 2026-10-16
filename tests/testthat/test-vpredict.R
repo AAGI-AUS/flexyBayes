@@ -12,8 +12,13 @@
 # and a component name the fit does not carry refuses instead of resolving
 # against whatever the caller has in their workspace.
 
-.vp_fixture <- function(seed = 11L, n_g = 40L, n_rep = 8L,
-                        sd_g = 1.0, sd_resid = 0.6) {
+.vp_fixture <- function(
+  seed = 11L,
+  n_g = 40L,
+  n_rep = 8L,
+  sd_g = 1.0,
+  sd_resid = 0.6
+) {
   set.seed(seed)
   tab <- expand.grid(rep = seq_len(n_rep), gen = factor(seq_len(n_g)))
   u <- rnorm(n_g, 0, sd_g)
@@ -84,8 +89,12 @@ test_that("the interval respects the boundary the delta method does not", {
   expect_gte(res$conf.low[res$functional == "ratio"], 0)
 
   # And the draws themselves, not only their summary.
-  d <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
-                n_draws = 1000L, draws = TRUE)
+  d <- vpredict(
+    fit,
+    h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
+    n_draws = 1000L,
+    draws = TRUE
+  )
   expect_true(all(d[, "h2"] >= 0 & d[, "h2"] <= 1))
 })
 
@@ -102,8 +111,12 @@ test_that("the functional's draws are continuous, not INLA's integration grid", 
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture())
-  d <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
-                n_draws = 1000L, draws = TRUE)
+  d <- vpredict(
+    fit,
+    h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
+    n_draws = 1000L,
+    draws = TRUE
+  )
   expect_gt(length(unique(d[, "h2"])), 500L)
   # And the support is genuinely wider than the central interval, which a
   # 15-atom distribution cannot be: its min IS its 2.5th percentile.
@@ -118,8 +131,13 @@ test_that("draws = TRUE returns one column per functional", {
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture(n_g = 20L, n_rep = 4L))
-  d <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
-                ratio ~ sd_gen / sigma, n_draws = 300L, draws = TRUE)
+  d <- vpredict(
+    fit,
+    h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
+    ratio ~ sd_gen / sigma,
+    n_draws = 300L,
+    draws = TRUE
+  )
   expect_true(is.matrix(d))
   expect_identical(colnames(d), c("h2", "ratio"))
   expect_identical(nrow(d), 300L)
@@ -189,8 +207,14 @@ test_that("the same functional reads the same on either engine", {
   a <- h2(.vp_fit(tab, "inla"), 4000L)
   b <- h2(
     suppressMessages(flexybayes(
-      y ~ 1, random = ~gen, data = tab, backend = "brms",
-      chains = 2L, n_samples = 1000L, warmup = 1000L, seed = 1L,
+      y ~ 1,
+      random = ~gen,
+      data = tab,
+      backend = "brms",
+      chains = 2L,
+      n_samples = 1000L,
+      warmup = 1000L,
+      seed = 1L,
       verbose = FALSE
     )),
     2000L

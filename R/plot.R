@@ -495,7 +495,9 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 .fb_variogram_draw <- function(tab, index_vars, n_observed, n_design) {
   title <- "Empirical residual variogram"
   subtitle <- sprintf(
-    "%d observed / %d design rows", n_observed, n_design
+    "%d observed / %d design rows",
+    n_observed,
+    n_design
   )
   # Carried on the returned table as well as printed, so the two cannot
   # be checked separately and drift.
@@ -560,8 +562,9 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   index_vars <- .fb_variogram_index(x)
   dat <- .fb_fit_data(x)
 
-  if (length(index_vars) == 0L || is.null(dat) ||
-    !all(index_vars %in% names(dat))) {
+  if (
+    length(index_vars) == 0L || is.null(dat) || !all(index_vars %in% names(dat))
+  ) {
     stop(.fb_refusal_condition(
       reason_code = "variogram_requires_design_index",
       message = paste0(
@@ -569,7 +572,8 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
         "separation along, and this fit carries none",
         if (length(index_vars) > 0L) {
           paste0(
-            " (the recorded index ", paste(index_vars, collapse = ", "),
+            " (the recorded index ",
+            paste(index_vars, collapse = ", "),
             " is not a column of the fitted data)"
           )
         } else {
@@ -599,7 +603,9 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
     return(.plot_unavailable(
       "variogram",
       paste0(
-        "only ", length(keep), " row(s) carry an observed residual, which ",
+        "only ",
+        length(keep),
+        " row(s) carry an observed residual, which ",
         "is too few to form a semivariance."
       )
     ))
@@ -608,7 +614,8 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
     return(.plot_unavailable(
       "variogram",
       paste0(
-        length(keep), " observed rows would need ",
+        length(keep),
+        " observed rows would need ",
         format(length(keep)^2, big.mark = " ", scientific = FALSE),
         " pairwise separations to be held at once. Plot a subset of the ",
         "array, or read the fitted correlations from summary(fit)$varcomp."
@@ -664,15 +671,18 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   if (length(terms) > 1L) {
     stop(
       "plot(type = \"spatial_field\") draws one field, and this fit carries ",
-      length(terms), " separable fields (",
+      length(terms),
+      " separable fields (",
       paste(vapply(terms, .ar1_term_spelling, character(1L)), collapse = ", "),
       ").",
       call. = FALSE
     )
   }
   term <- terms[[1L]]
-  if (!is.null(trial) &&
-        (!is.character(trial) || length(trial) != 1L || is.na(trial))) {
+  if (
+    !is.null(trial) &&
+      (!is.character(trial) || length(trial) != 1L || is.na(trial))
+  ) {
     stop("`trial` must be a single string.", call. = FALSE)
   }
 
@@ -680,7 +690,9 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   data <- x$data
   level_of <- function(v) {
     .inla_restore_level_labels(
-      x$level_labels, v, levels(factor(data[[v]]))
+      x$level_labels,
+      v,
+      levels(factor(data[[v]]))
     )
   }
   row_levels <- level_of(term$row_var)
@@ -692,9 +704,12 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
     at_levels <- level_of(term$at_var)
     if (is.null(trial) || !trial %in% at_levels) {
       stop(
-        "`trial` must name the level of `", term$at_var, "` whose field ",
+        "`trial` must name the level of `",
+        term$at_var,
+        "` whose field ",
         "is drawn: this fit carries one field for each of ",
-        paste(at_levels, collapse = ", "), ".",
+        paste(at_levels, collapse = ", "),
+        ".",
         call. = FALSE
       )
     }
@@ -727,8 +742,17 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # "viridis") gives it, written out so the display needs no graphics-device
 # package.
 .FB_HEAT_COLOURS <- c(
-  "#4B0055", "#44286E", "#274983", "#006791", "#008298", "#009B95",
-  "#00B28A", "#00C475", "#7ED357", "#C2DE34", "#FDE333"
+  "#4B0055",
+  "#44286E",
+  "#274983",
+  "#006791",
+  "#008298",
+  "#009B95",
+  "#00B28A",
+  "#00C475",
+  "#7ED357",
+  "#C2DE34",
+  "#FDE333"
 )
 
 # .plot_spatial_field(): the type = "spatial_field" entry point.
@@ -761,32 +785,59 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
     main = field$title,
     ...
   )
-  graphics::axis(1L, at = seq_len(n_col), labels = colnames(values),
-                 cex.axis = 0.8)
-  graphics::axis(2L, at = seq_len(n_row), labels = rownames(values),
-                 las = 1L, cex.axis = 0.8)
+  graphics::axis(
+    1L,
+    at = seq_len(n_col),
+    labels = colnames(values),
+    cex.axis = 0.8
+  )
+  graphics::axis(
+    2L,
+    at = seq_len(n_row),
+    labels = rownames(values),
+    las = 1L,
+    cex.axis = 0.8
+  )
   graphics::box()
   graphics::mtext(
     paste0("posterior mean of ", field$spelling, ", response scale"),
-    side = 3L, line = 0.4, cex = 0.8
+    side = 3L,
+    line = 0.4,
+    cex = 0.8
   )
 
   # The colour key, in the right margin -------------------------------------
   usr <- graphics::par("usr")
   key_x <- usr[[2L]] + 0.04 * (usr[[2L]] - usr[[1L]])
   key_w <- 0.05 * (usr[[2L]] - usr[[1L]])
-  key_y <- usr[[3L]] + (breaks - span[[1L]]) / diff(span) *
-    (usr[[4L]] - usr[[3L]])
-  graphics::rect(key_x, key_y[-length(key_y)], key_x + key_w, key_y[-1L],
-                 col = colours, border = NA, xpd = NA)
-  graphics::rect(key_x, key_y[[1L]], key_x + key_w, key_y[[length(key_y)]],
-                 border = "black", xpd = NA)
+  key_y <- usr[[3L]] +
+    (breaks - span[[1L]]) / diff(span) * (usr[[4L]] - usr[[3L]])
+  graphics::rect(
+    key_x,
+    key_y[-length(key_y)],
+    key_x + key_w,
+    key_y[-1L],
+    col = colours,
+    border = NA,
+    xpd = NA
+  )
+  graphics::rect(
+    key_x,
+    key_y[[1L]],
+    key_x + key_w,
+    key_y[[length(key_y)]],
+    border = "black",
+    xpd = NA
+  )
   key_at <- c(span[[1L]], 0, span[[2L]])
   key_at <- key_at[key_at >= span[[1L]] & key_at <= span[[2L]]]
   graphics::text(
     key_x + key_w,
     usr[[3L]] + (key_at - span[[1L]]) / diff(span) * (usr[[4L]] - usr[[3L]]),
-    labels = format(signif(key_at, 3L)), pos = 4L, cex = 0.7, xpd = NA
+    labels = format(signif(key_at, 3L)),
+    pos = 4L,
+    cex = 0.7,
+    xpd = NA
   )
   invisible(field)
 }

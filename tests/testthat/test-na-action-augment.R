@@ -24,12 +24,20 @@
 
 # One observation per node on a complete n_row x n_col grid with a
 # separable AR1 field plus nugget.
-.grid_sim <- function(n_row = 8L, n_col = 6L, rho_r = 0.6, rho_c = 0.3,
-                      sd_s = 1.2, sd_e = 0.4, seed = 2026L) {
+.grid_sim <- function(
+  n_row = 8L,
+  n_col = 6L,
+  rho_r = 0.6,
+  rho_c = 0.3,
+  sd_s = 1.2,
+  sd_e = 0.4,
+  seed = 2026L
+) {
   set.seed(seed)
   g <- expand.grid(col = seq_len(n_col), row = seq_len(n_row))
   L <- t(chol(sd_s^2 * kronecker(.ar1_m(n_row, rho_r), .ar1_m(n_col, rho_c))))
-  g$y <- 20 + as.numeric(L %*% stats::rnorm(n_row * n_col)) +
+  g$y <- 20 +
+    as.numeric(L %*% stats::rnorm(n_row * n_col)) +
     stats::rnorm(n_row * n_col, 0, sd_e)
   g$row <- factor(g$row)
   g$col <- factor(g$col)
@@ -48,10 +56,14 @@
 test_that("augment reinstates absent design cells with a missing response", {
   g <- .grid_sim(4L, 3L)
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col"
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
     )),
     residual_terms = list(list(type = "units")),
     source = "asreml"
@@ -74,9 +86,13 @@ test_that("omit drops missing-response rows", {
   g <- .grid_sim(4L, 3L)
   g$y[c(1L, 5L)] <- NA
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
-    fixed_terms = list(), random_terms = list(),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    response = "y",
+    family = "gaussian",
+    link = "identity",
+    fixed_terms = list(),
+    random_terms = list(),
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   res <- flexyBayes:::.fb_apply_na_action(ir, g, "omit")
   expect_equal(nrow(res$data), nrow(g) - 2L)
@@ -88,9 +104,13 @@ test_that("fail refuses a missing response", {
   g <- .grid_sim(4L, 3L)
   g$y[1L] <- NA
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
-    fixed_terms = list(), random_terms = list(),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    response = "y",
+    family = "gaussian",
+    link = "identity",
+    fixed_terms = list(),
+    random_terms = list(),
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   expect_error(
     flexyBayes:::.fb_apply_na_action(ir, g, "fail"),
@@ -106,10 +126,13 @@ test_that("a missing covariate is refused under every na_action", {
   g$x <- stats::rnorm(nrow(g))
   g$x[3L] <- NA
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(list(type = "continuous", var = "x")),
     random_terms = list(),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   for (act in c("augment", "omit", "fail")) {
     expect_error(
@@ -126,7 +149,9 @@ test_that("an absent cell with an unrecorded design factor refuses", {
   g <- .grid_sim(4L, 3L)
   g$geno <- factor(rep(letters[1:4], length.out = nrow(g)))
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(
       list(type = "simple", var = "geno"),
@@ -144,10 +169,14 @@ test_that("an absent cell with an unrecorded design factor refuses", {
 test_that("complete data is untouched by any na_action", {
   g <- .grid_sim(4L, 3L)
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col"
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
     )),
     residual_terms = list(list(type = "units")),
     source = "asreml"
@@ -175,14 +204,22 @@ test_that("augment fits a holed grid that omit refuses", {
   for (dat in list(na_row, absent)) {
     expect_error(
       suppressMessages(flexybayes(
-        y ~ 1, random = ~ ar1(row):ar1(col), data = dat,
-        backend = "inla", na_action = "omit", verbose = FALSE
+        y ~ 1,
+        random = ~ ar1(row):ar1(col),
+        data = dat,
+        backend = "inla",
+        na_action = "omit",
+        verbose = FALSE
       )),
       class = "flexybayes_refusal_ar1_spatial_requires_complete_grid"
     )
     expect_no_error(suppressMessages(flexybayes(
-      y ~ 1, random = ~ ar1(row):ar1(col), data = dat,
-      backend = "inla", na_action = "augment", verbose = FALSE
+      y ~ 1,
+      random = ~ ar1(row):ar1(col),
+      data = dat,
+      backend = "inla",
+      na_action = "augment",
+      verbose = FALSE
     )))
   }
 })
@@ -200,12 +237,20 @@ test_that("the two routes to a completed grid give the same analysis", {
   na_row$y[lost] <- NA
 
   f_na <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = na_row,
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = na_row,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
   f_absent <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g[-lost, ],
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g[-lost, ],
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
 
   h1 <- .hyper(f_na)
@@ -227,8 +272,11 @@ test_that("the two routes to a completed grid give the same analysis", {
   # first one (it did, in a full-suite run) while being far looser than the
   # rest deserve. Splitting the comparison keeps the tight check where it is
   # meaningful and states plainly why one parameter cannot carry it.
-  obs_prec <- grepl("Precision for the Gaussian observations", names(h1),
-                    fixed = TRUE)
+  obs_prec <- grepl(
+    "Precision for the Gaussian observations",
+    names(h1),
+    fixed = TRUE
+  )
   if (any(obs_prec)) {
     expect_equal(unname(h1[obs_prec]), unname(h2[obs_prec]), tolerance = 0.08)
   }
@@ -241,8 +289,12 @@ test_that("the fit records what the layer did", {
   g <- .grid_sim()
   g$y[c(5L, 19L)] <- NA
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
   m <- fit$extras$na_action
   expect_identical(m$na_action, "augment")
@@ -351,14 +403,24 @@ test_that("the high-missingness warning fires once and is silenceable", {
 test_that("the record carries the same fields on every response policy", {
   g <- .grid_sim(4L, 3L)
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
-    fixed_terms = list(), random_terms = list(),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    response = "y",
+    family = "gaussian",
+    link = "identity",
+    fixed_terms = list(),
+    random_terms = list(),
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   fields <- c(
-    "na_action", "na_covariate", "n_missing_response", "n_cells_completed",
-    "design_index_vars", "n_design", "n_observed",
-    "n_covariate_rows_dropped", "missing_fraction"
+    "na_action",
+    "na_covariate",
+    "n_missing_response",
+    "n_cells_completed",
+    "design_index_vars",
+    "n_design",
+    "n_observed",
+    "n_covariate_rows_dropped",
+    "missing_fraction"
   )
   for (act in c("augment", "omit", "fail")) {
     meta <- flexyBayes:::.fb_apply_na_action(ir, g, act)$meta
@@ -371,12 +433,17 @@ test_that("n_design and n_observed count the augmented design", {
   g <- .grid_sim(4L, 3L)
   g$y[c(2L, 5L)] <- NA
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col"
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
     )),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
 
   # Two lost yields on a complete grid: the design keeps all 12 cells,
@@ -400,9 +467,13 @@ test_that("missing_fraction is present and zero on the omit path", {
   g <- .grid_sim(4L, 3L)
   g$y[c(2L, 5L)] <- NA
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
-    fixed_terms = list(), random_terms = list(),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    response = "y",
+    family = "gaussian",
+    link = "identity",
+    fixed_terms = list(),
+    random_terms = list(),
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   meta <- flexyBayes:::.fb_apply_na_action(ir, g, "omit")$meta
   expect_false(is.null(meta$missing_fraction))
@@ -417,12 +488,17 @@ test_that("fail leaves the design grid alone", {
   # the missing responses it exists to refuse, so it does not run.
   g <- .grid_sim(4L, 3L)
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col"
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
     )),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   res <- flexyBayes:::.fb_apply_na_action(ir, g[-1L, ], "fail")
   expect_equal(nrow(res$data), nrow(g) - 1L)
@@ -437,8 +513,12 @@ test_that("the fit records the requested policy in its call record", {
   g <- .grid_sim()
   g$y[c(5L, 19L)] <- NA
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
   expect_identical(fit$extras$call_info$na_action, "augment")
   expect_equal(fit$extras$na_action$n_design, nrow(g))
@@ -452,8 +532,12 @@ test_that("an asreml na.method() value fits the same model as the string", {
   g <- .grid_sim()
   g$y[c(5L, 19L)] <- NA
   as_list <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g, backend = "inla",
-    na_action = .asreml_na_method_recorded("explicit"), verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    na_action = .asreml_na_method_recorded("explicit"),
+    verbose = FALSE
   ))
   expect_identical(as_list$extras$na_action$na_action, "augment")
   expect_identical(as_list$extras$call_info$na_action, "augment")
@@ -478,15 +562,33 @@ test_that("an INLA fit records the same call fields a brms fit does", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   g <- .grid_sim()
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    verbose = FALSE
   ))
 
   expected <- c(
-    "fixed", "random", "residual", "data_name", "family", "link",
-    "known_matrices", "weights", "n_samples", "warmup", "chains",
-    "seed", "control", "prior_fixed_sd", "prior_vc_sd", "na_action",
-    "backend", "aggregate", "verbose"
+    "fixed",
+    "random",
+    "residual",
+    "data_name",
+    "family",
+    "link",
+    "known_matrices",
+    "weights",
+    "n_samples",
+    "warmup",
+    "chains",
+    "seed",
+    "control",
+    "prior_fixed_sd",
+    "prior_vc_sd",
+    "na_action",
+    "backend",
+    "aggregate",
+    "verbose"
   )
   expect_identical(names(fit$extras$call_info), expected)
 
@@ -506,8 +608,11 @@ test_that("update() re-fits an INLA model instead of refusing it", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   g <- .grid_sim()
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    verbose = FALSE
   ))
   refit <- suppressMessages(stats::update(fit, random = ~ ar1(row):ar1(col)))
   expect_s3_class(refit, "flexybayes_inla")
@@ -533,8 +638,12 @@ test_that("the broken-grid refusal cites ASReml and names the remedy", {
 
   err <- tryCatch(
     suppressMessages(flexybayes(
-      y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-      backend = "inla", na_action = "omit", verbose = FALSE
+      y ~ 1,
+      random = ~ ar1(row):ar1(col),
+      data = g,
+      backend = "inla",
+      na_action = "omit",
+      verbose = FALSE
     )),
     condition = function(e) e
   )
@@ -558,7 +667,9 @@ test_that("the undeterminable-cell refusal names LANCER and the field book", {
   g <- .grid_sim(4L, 3L)
   g$geno <- factor(rep(letters[1:4], length.out = nrow(g)))
   ir <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(
       list(type = "simple", var = "geno"),
@@ -597,8 +708,12 @@ test_that("summary()$missing names the lost plots on an INLA field fit", {
   lost <- c(5L, 19L)
   g$y[lost] <- NA
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
 
   captured <- utils::capture.output(print(s <- summary(fit)))
@@ -642,8 +757,12 @@ test_that("a complete grid reports a typed zero-row missing table", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   g <- .grid_sim()
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
   mv <- stats::coef(fit, what = "missing")
   expect_s3_class(mv, "data.frame")
@@ -673,8 +792,13 @@ test_that("a non-identity link withholds the table and says why", {
   d$y <- stats::rpois(48L, exp(0.6 + 0.3 * d$x))
   d$y[c(2L, 17L)] <- NA
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    y ~ x, random = ~g, data = d, family = "poisson",
-    backend = "inla", na_action = "augment", verbose = FALSE
+    y ~ x,
+    random = ~g,
+    data = d,
+    family = "poisson",
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   )))
 
   expect_warning(

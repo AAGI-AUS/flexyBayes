@@ -303,7 +303,10 @@ proceed.flexybayes_review <- function(x, ...) {
   }
   if (!is.null(x$finish)) {
     fit <- .fb_finish_fit(
-      fit, x$ir, x$finish$na_meta, x$finish$na_action,
+      fit,
+      x$ir,
+      x$finish$na_meta,
+      x$finish$na_action,
       x$finish$known_variance
     )
   }

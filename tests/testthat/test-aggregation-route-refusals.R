@@ -39,8 +39,13 @@ test_that("aggregate = TRUE on a missing response raises a typed refusal", {
 
   expect_error(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, residual = ~ units, data = d,
-      backend = "inla", na_action = "augment", aggregate = TRUE,
+      fixed = y ~ trt,
+      random = ~blk,
+      residual = ~units,
+      data = d,
+      backend = "inla",
+      na_action = "augment",
+      aggregate = TRUE,
       verbose = FALSE
     )),
     class = "flexybayes_refusal_aggregation_response_incomplete"
@@ -55,8 +60,13 @@ test_that("the missing-response refusal keeps the family class and wording", {
 
   err <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, residual = ~ units, data = d,
-      backend = "inla", na_action = "augment", aggregate = TRUE,
+      fixed = y ~ trt,
+      random = ~blk,
+      residual = ~units,
+      data = d,
+      backend = "inla",
+      na_action = "augment",
+      aggregate = TRUE,
       verbose = FALSE
     )),
     error = function(e) e
@@ -65,8 +75,11 @@ test_that("the missing-response refusal keeps the family class and wording", {
   expect_s3_class(err, "flexybayes_aggregate_refusal")
   expect_s3_class(err, "flexybayes_refusal")
   # Users match on this text, so it is pinned.
-  expect_match(conditionMessage(err), "the response has missing values",
-               fixed = TRUE)
+  expect_match(
+    conditionMessage(err),
+    "the response has missing values",
+    fixed = TRUE
+  )
   expect_match(conditionMessage(err), "per-cell sufficient", fixed = TRUE)
   expect_identical(err$reason_code, "aggregation_response_incomplete")
 })
@@ -86,8 +99,12 @@ test_that("aggregate = TRUE on brms raises a typed refusal", {
 
   expect_error(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, data = d,
-      backend = "brms", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~blk,
+      data = d,
+      backend = "brms",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     class = "flexybayes_refusal_aggregation_route_unavailable"
   )
@@ -100,15 +117,22 @@ test_that("the brms aggregation refusal names the backend and its wording", {
 
   err <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, data = d,
-      backend = "brms", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~blk,
+      data = d,
+      backend = "brms",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     error = function(e) e
   )
   expect_s3_class(err, "flexybayes_aggregate_refusal")
   expect_identical(err$backend, "brms")
-  expect_match(conditionMessage(err),
-               "is not supported on backend = \"brms\"", fixed = TRUE)
+  expect_match(
+    conditionMessage(err),
+    "is not supported on backend = \"brms\"",
+    fixed = TRUE
+  )
   expect_match(conditionMessage(err), "switch backend", fixed = TRUE)
 })
 
@@ -127,8 +151,12 @@ test_that("aggregate = TRUE with no resolvable route raises a typed refusal", {
 
   expect_error(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ us(g2):blk, data = d,
-      backend = "auto", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~ us(g2):blk,
+      data = d,
+      backend = "auto",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     class = "flexybayes_refusal_aggregation_route_unavailable"
   )
@@ -140,16 +168,26 @@ test_that("the no-route refusal keeps the family class and its wording", {
 
   err <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ us(g2):blk, data = d,
-      backend = "auto", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~ us(g2):blk,
+      data = d,
+      backend = "auto",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     error = function(e) e
   )
   expect_s3_class(err, "flexybayes_aggregate_refusal")
-  expect_match(conditionMessage(err), "no active aggregated backend",
-               fixed = TRUE)
-  expect_match(conditionMessage(err), "INLA refused or unavailable",
-               fixed = TRUE)
+  expect_match(
+    conditionMessage(err),
+    "no active aggregated backend",
+    fixed = TRUE
+  )
+  expect_match(
+    conditionMessage(err),
+    "INLA refused or unavailable",
+    fixed = TRUE
+  )
   expect_identical(err$reason_code, "aggregation_route_unavailable")
 })
 
@@ -167,8 +205,12 @@ test_that("the two route refusals carry their 0.9.3 message verbatim", {
 
   err_brms <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, data = d,
-      backend = "brms", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~blk,
+      data = d,
+      backend = "brms",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     error = function(e) e
   )
@@ -183,8 +225,12 @@ test_that("the two route refusals carry their 0.9.3 message verbatim", {
 
   err_route <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ us(g2):blk, data = d,
-      backend = "auto", aggregate = TRUE, verbose = FALSE
+      fixed = y ~ trt,
+      random = ~ us(g2):blk,
+      data = d,
+      backend = "auto",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     error = function(e) e
   )
@@ -206,8 +252,13 @@ test_that("the missing-response refusal carries its message verbatim", {
 
   err <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, residual = ~ units, data = d,
-      backend = "inla", na_action = "augment", aggregate = TRUE,
+      fixed = y ~ trt,
+      random = ~blk,
+      residual = ~units,
+      data = d,
+      backend = "inla",
+      na_action = "augment",
+      aggregate = TRUE,
       verbose = FALSE
     )),
     error = function(e) e
@@ -229,8 +280,10 @@ test_that("the missing-response refusal carries its message verbatim", {
 # ---------------------------------------------------------------- #
 
 test_that("both codes are registered and reachable from fb_refusals()", {
-  for (code in c("aggregation_response_incomplete",
-                 "aggregation_route_unavailable")) {
+  for (code in c(
+    "aggregation_response_incomplete",
+    "aggregation_route_unavailable"
+  )) {
     entry <- flexyBayes:::.lookup_refusal(code)
     expect_type(entry, "list")
     expect_identical(entry$since_version, "0.9.2")
@@ -243,15 +296,23 @@ test_that("both codes are registered and reachable from fb_refusals()", {
 })
 
 test_that("the two codes describe two different boundaries", {
-  tbl <- fb_refusals(reason_code = c("aggregation_response_incomplete",
-                                     "aggregation_route_unavailable"))
+  tbl <- fb_refusals(
+    reason_code = c(
+      "aggregation_response_incomplete",
+      "aggregation_route_unavailable"
+    )
+  )
   expect_identical(nrow(tbl), 2L)
-  expect_match(tbl$description[tbl$reason_code ==
-                                 "aggregation_response_incomplete"],
-               "sufficient", fixed = TRUE)
-  expect_match(tbl$description[tbl$reason_code ==
-                                 "aggregation_route_unavailable"],
-               "no aggregated emit route", fixed = TRUE)
+  expect_match(
+    tbl$description[tbl$reason_code == "aggregation_response_incomplete"],
+    "sufficient",
+    fixed = TRUE
+  )
+  expect_match(
+    tbl$description[tbl$reason_code == "aggregation_route_unavailable"],
+    "no aggregated emit route",
+    fixed = TRUE
+  )
 })
 
 # ---------------------------------------------------------------- #
@@ -286,8 +347,12 @@ test_that("aggregate = TRUE with a non-canonical link raises inla_gate_refused",
   d$y <- d$y_bin
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1 + (1 | g), data = d, family = stats::binomial(link = "probit"),
-      backend = "inla", aggregate = TRUE, verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = d,
+      family = stats::binomial(link = "probit"),
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     class = "flexybayes_refusal_inla_gate_refused"
   )
@@ -295,47 +360,56 @@ test_that("aggregate = TRUE with a non-canonical link raises inla_gate_refused",
   d$y <- d$y_poi
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1 + (1 | g), data = d, family = stats::poisson(link = "sqrt"),
-      backend = "inla", aggregate = TRUE, verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = d,
+      family = stats::poisson(link = "sqrt"),
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
     )),
     class = "flexybayes_refusal_inla_gate_refused"
   )
 })
 
-test_that(
-  "aggregate = TRUE with a family the aggregated route cannot take raises aggregation_route_unavailable",
-  {
-    withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-    d <- .agg_link_trial()
-    d$y <- d$y_gam
+test_that("aggregate = TRUE with a family the aggregated route cannot take raises aggregation_route_unavailable", {
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .agg_link_trial()
+  d$y <- d$y_gam
 
-    err <- tryCatch(
-      suppressMessages(flexybayes(
-        y ~ 1 + (1 | g), data = d, family = "gamma",
-        backend = "inla", aggregate = TRUE, verbose = FALSE
-      )),
-      error = function(e) e
-    )
-    expect_s3_class(err, "flexybayes_refusal_aggregation_route_unavailable")
-    expect_s3_class(err, "flexybayes_refusal")
-    expect_identical(err$reason_code, "aggregation_route_unavailable")
-    expect_match(conditionMessage(err), "gamma", fixed = TRUE)
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ 1 + (1 | g),
+      data = d,
+      family = "gamma",
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
+    )),
+    error = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_refusal_aggregation_route_unavailable")
+  expect_s3_class(err, "flexybayes_refusal")
+  expect_identical(err$reason_code, "aggregation_route_unavailable")
+  expect_match(conditionMessage(err), "gamma", fixed = TRUE)
 
-    # The family scope check does not depend on which backend was asked
-    # for, so "auto" reaches the same reason.
-    err_auto <- tryCatch(
-      suppressMessages(flexybayes(
-        y ~ 1 + (1 | g), data = d, family = "gamma",
-        backend = "auto", aggregate = TRUE, verbose = FALSE
-      )),
-      error = function(e) e
-    )
-    expect_s3_class(
-      err_auto,
-      "flexybayes_refusal_aggregation_route_unavailable"
-    )
-  }
-)
+  # The family scope check does not depend on which backend was asked
+  # for, so "auto" reaches the same reason.
+  err_auto <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ 1 + (1 | g),
+      data = d,
+      family = "gamma",
+      backend = "auto",
+      aggregate = TRUE,
+      verbose = FALSE
+    )),
+    error = function(e) e
+  )
+  expect_s3_class(
+    err_auto,
+    "flexybayes_refusal_aggregation_route_unavailable"
+  )
+})
 
 test_that("flexybayes_stream() with a non-canonical link or family refuses typed", {
   d <- .agg_link_trial()
@@ -344,8 +418,12 @@ test_that("flexybayes_stream() with a non-canonical link or family refuses typed
   d_bin$y <- d_bin$y_bin
   expect_error(
     flexybayes_stream(
-      fixed = y ~ 1, random = ~g, source = d_bin,
-      family = stats::binomial(link = "probit"), fit = FALSE, verbose = FALSE
+      fixed = y ~ 1,
+      random = ~g,
+      source = d_bin,
+      family = stats::binomial(link = "probit"),
+      fit = FALSE,
+      verbose = FALSE
     ),
     class = "flexybayes_refusal_aggregation_route_unavailable"
   )
@@ -354,8 +432,12 @@ test_that("flexybayes_stream() with a non-canonical link or family refuses typed
   d_poi$y <- d_poi$y_poi
   expect_error(
     flexybayes_stream(
-      fixed = y ~ 1, random = ~g, source = d_poi,
-      family = stats::poisson(link = "sqrt"), fit = FALSE, verbose = FALSE
+      fixed = y ~ 1,
+      random = ~g,
+      source = d_poi,
+      family = stats::poisson(link = "sqrt"),
+      fit = FALSE,
+      verbose = FALSE
     ),
     class = "flexybayes_refusal_aggregation_route_unavailable"
   )
@@ -364,8 +446,12 @@ test_that("flexybayes_stream() with a non-canonical link or family refuses typed
   d_gam$y <- d_gam$y_gam
   expect_error(
     flexybayes_stream(
-      fixed = y ~ 1, random = ~g, source = d_gam,
-      family = "gamma", fit = FALSE, verbose = FALSE
+      fixed = y ~ 1,
+      random = ~g,
+      source = d_gam,
+      family = "gamma",
+      fit = FALSE,
+      verbose = FALSE
     ),
     class = "flexybayes_refusal_aggregation_route_unavailable"
   )
@@ -381,14 +467,22 @@ test_that("the default link still aggregates on both entries", {
   d$y <- d$y_bin
 
   fit <- suppressMessages(flexybayes(
-    y ~ 1 + (1 | g), data = d, family = "binomial",
-    backend = "inla", aggregate = TRUE, verbose = FALSE
+    y ~ 1 + (1 | g),
+    data = d,
+    family = "binomial",
+    backend = "inla",
+    aggregate = TRUE,
+    verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes_aggregated")
 
   agg <- flexybayes_stream(
-    fixed = y ~ 1, random = ~g, source = d,
-    family = "binomial", fit = FALSE, verbose = FALSE
+    fixed = y ~ 1,
+    random = ~g,
+    source = d,
+    family = "binomial",
+    fit = FALSE,
+    verbose = FALSE
   )
   expect_s3_class(agg, "fb_aggregated")
 })

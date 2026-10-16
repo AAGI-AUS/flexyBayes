@@ -9,20 +9,33 @@ test_that("DEF-228: proceed() fits through dispatch and keeps the call record", 
     .dispatch_backend = function(...) {
       dispatched <<- list(...)
       structure(
-        list(extras = list(call_info = list(backend = "brms"), fb_terms = "terms")),
+        list(
+          extras = list(call_info = list(backend = "brms"), fb_terms = "terms")
+        ),
         class = c("flexybayes_brms", "flexybayes")
       )
     },
     .fb_fixed_alias_attach = function(fit, fb) fit
   )
   review <- flexyBayes:::.new_flexybayes_review(
-    code = "model {}", backend = "stan_via_brms",
-    ir = structure(list(), class = "fb_terms"), prior = NULL,
-    data_name = "d", call = quote(flexybayes(y ~ 1)), seed = NULL,
-    proceed_args = list(data = d, backend = "brms", aggregate = "auto",
-                        na_action = "augment"),
-    finish = list(na_meta = list(policy = "augment"), na_action = "augment",
-                  known_variance = v)
+    code = "model {}",
+    backend = "stan_via_brms",
+    ir = structure(list(), class = "fb_terms"),
+    prior = NULL,
+    data_name = "d",
+    call = quote(flexybayes(y ~ 1)),
+    seed = NULL,
+    proceed_args = list(
+      data = d,
+      backend = "brms",
+      aggregate = "auto",
+      na_action = "augment"
+    ),
+    finish = list(
+      na_meta = list(policy = "augment"),
+      na_action = "augment",
+      known_variance = v
+    )
   )
   fit <- suppressMessages(proceed(review))
   expect_identical(dispatched$backend, "brms")

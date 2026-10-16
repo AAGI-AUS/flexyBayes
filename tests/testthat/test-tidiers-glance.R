@@ -12,18 +12,32 @@
 # instead of guessed at.
 
 .glance_cols <- c(
-  "nobs", "npar", "logLik", "family", "link",
-  "chains", "samples", "max_rhat", "min_ess", "run_time"
+  "nobs",
+  "npar",
+  "logLik",
+  "family",
+  "link",
+  "chains",
+  "samples",
+  "max_rhat",
+  "min_ess",
+  "run_time"
 )
 
 test_that("glance() returns the one-row shape on a plain INLA fit", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   set.seed(20260826L)
-  d <- data.frame(y = stats::rnorm(60), x = stats::rnorm(60),
-                   g = factor(rep(1:6, 10)))
+  d <- data.frame(
+    y = stats::rnorm(60),
+    x = stats::rnorm(60),
+    g = factor(rep(1:6, 10))
+  )
   fit <- suppressMessages(flexybayes(
-    y ~ x + (1 | g), data = d, backend = "inla", verbose = FALSE
+    y ~ x + (1 | g),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   g <- suppressMessages(glance(fit))
   expect_s3_class(g, "data.frame")
@@ -44,8 +58,11 @@ test_that("glance() returns the one-row shape on a brms fit (regression guard)",
   skip_if_not_installed("brms")
   skip_if_not_long_tier()
   set.seed(20260826L)
-  d <- data.frame(y = stats::rnorm(60), x = stats::rnorm(60),
-                   g = factor(rep(1:6, 10)))
+  d <- data.frame(
+    y = stats::rnorm(60),
+    x = stats::rnorm(60),
+    g = factor(rep(1:6, 10))
+  )
   fit <- suppressWarnings(suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,

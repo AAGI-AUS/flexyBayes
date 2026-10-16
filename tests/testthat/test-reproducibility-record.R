@@ -629,8 +629,15 @@ test_that("every brms fit an entry point returns carries the record", {
     mcmc_verbose = FALSE
   )
   proceeded <- quiet(proceed(review))
-  fold <- quiet(fb_refit(per_row, data = d, fixed = y ~ p1, backend = "brms",
-                        seed = 5L, verbose = FALSE, mcmc_verbose = FALSE))
+  fold <- quiet(fb_refit(
+    per_row,
+    data = d,
+    fixed = y ~ p1,
+    backend = "brms",
+    seed = 5L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  ))
 
   fits <- list(
     flexybayes = per_row,

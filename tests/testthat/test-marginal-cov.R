@@ -67,7 +67,9 @@ fbmc_site_data <- function(seed = 3L) {
       env = factor(rep(c("a", "b"), 24L))
     )
     d$x <- stats::rnorm(48L)
-    d$y <- 1 + d$x + stats::rnorm(6L)[d$site] +
+    d$y <- 1 +
+      d$x +
+      stats::rnorm(6L)[d$site] +
       stats::rnorm(24L, sd = 0.4)[as.integer(interaction(d$site, d$year))] +
       stats::rnorm(48L, sd = ifelse(d$env == "a", 0.5, 1.5))
     d
@@ -82,8 +84,11 @@ fbmc_field_data <- function(seed = 4L) {
     d$range <- factor(d$range)
     d$row <- factor(d$row)
     d$x <- stats::rnorm(nrow(d))
-    d$y <- 2 + d$x + stats::rnorm(3L)[d$trial] +
-      0.5 * as.integer(d$range) - 0.3 * as.integer(d$row) +
+    d$y <- 2 +
+      d$x +
+      stats::rnorm(3L)[d$trial] +
+      0.5 * as.integer(d$range) -
+      0.3 * as.integer(d$row) +
       stats::rnorm(nrow(d), sd = 0.5)
     rownames(d) <- NULL
     d
@@ -130,16 +135,24 @@ test_that("one AR1 x AR1 field per trial: rho_range^|dr| rho_row^|dc| within a t
   skip_if_not_installed("INLA")
   fbmc_quiet()
   d <- fbmc_field_data()
-  fit <- fbmc_fit(y ~ x, random = ~ trial + id(trial):ar1(range):ar1(row),
-                  data = d)
+  fit <- fbmc_fit(
+    y ~ x,
+    random = ~ trial + id(trial):ar1(range):ar1(row),
+    data = d
+  )
   v <- fbmc_values(fit)
   s <- v$var
   rho <- v$rho
   same <- fbmc_same(d$trial)
   want <- diag(s[["sigma"]], nrow(d)) +
     s[["sd_trial"]] * same +
-    s[["sd_spatial"]] * same *
-      rho[["rho_range"]]^abs(outer(as.integer(d$range), as.integer(d$range), "-")) *
+    s[["sd_spatial"]] *
+      same *
+      rho[["rho_range"]]^abs(outer(
+        as.integer(d$range),
+        as.integer(d$range),
+        "-"
+      )) *
       rho[["rho_row"]]^abs(outer(as.integer(d$row), as.integer(d$row), "-"))
   x <- fb_marginal_cov(fit)
   got <- as.matrix(x)
@@ -151,8 +164,12 @@ test_that("a residual sectioned by a factor: each row's residual variance is its
   skip_if_not_installed("INLA")
   fbmc_quiet()
   d <- fbmc_site_data()
-  fit <- fbmc_fit(y ~ x, random = ~site, residual = ~ dsum(~ units | env),
-                  data = d)
+  fit <- fbmc_fit(
+    y ~ x,
+    random = ~site,
+    residual = ~ dsum(~ units | env),
+    data = d
+  )
   s <- fbmc_values(fit)$var
   want <- diag(s[paste0("sigma_", as.character(d$env))]) +
     s[["sd_site"]] * fbmc_same(d$site)
@@ -198,8 +215,11 @@ test_that("a per-trial field's Kronecker factors, multiplied out, equal its bloc
   skip_if_not_installed("INLA")
   fbmc_quiet()
   d <- fbmc_field_data()
-  fit <- fbmc_fit(y ~ x, random = ~ trial + id(trial):ar1(range):ar1(row),
-                  data = d)
+  fit <- fbmc_fit(
+    y ~ x,
+    random = ~ trial + id(trial):ar1(range):ar1(row),
+    data = d
+  )
   x <- fb_marginal_cov(fit)
   field <- x$blocks[["spatial"]]
   f <- field$kronecker
@@ -222,8 +242,11 @@ test_that("a subset of rows gives the submatrix, and rows by cols the rectangle"
   skip_if_not_installed("INLA")
   fbmc_quiet()
   d <- fbmc_field_data()
-  fit <- fbmc_fit(y ~ x, random = ~ trial + id(trial):ar1(range):ar1(row),
-                  data = d)
+  fit <- fbmc_fit(
+    y ~ x,
+    random = ~ trial + id(trial):ar1(range):ar1(row),
+    data = d
+  )
   full <- as.matrix(fb_marginal_cov(fit))
   rows <- c(30L, 2L, 17L, 5L, 11L)
   sub <- fb_marginal_cov(fit, rows = rows)
@@ -259,7 +282,10 @@ test_that("variances = FALSE gives the structure alone, and as.matrix() refuses 
   fit <- fbmc_fit(y ~ x, random = ~site, data = d)
   x <- fb_marginal_cov(fit, variances = FALSE)
   expect_true(is.na(x$blocks[["site"]]$variance))
-  expect_error(as.matrix(x), class = "flexybayes_refusal_marginal_cov_not_buildable")
+  expect_error(
+    as.matrix(x),
+    class = "flexybayes_refusal_marginal_cov_not_buildable"
+  )
   # The structure re-evaluated at given variances.
   y <- fb_marginal_cov(x, variances = list(residual = 0.5, terms = c(site = 2)))
   want <- diag(0.5, nrow(d)) + 2 * fbmc_same(d$site)

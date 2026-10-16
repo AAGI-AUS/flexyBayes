@@ -73,6 +73,7 @@
   "refused"
 )
 
+# fmt: skip
 .FB_TRANSLATION_CARDINALITY <- c(
   "Fixed factors, covariates, means model" =
     "one-to-one: a b() prior reaches its own coefficient",
@@ -259,6 +260,7 @@
       engine = "brms",
       class = "covariance-family",
       condition = "",
+      # fmt: skip
       oracle =
         "Live emission and parameter-count tests; no current ASReml comparison",
       anchor = "test-unstructured-gxe-inla.R"
@@ -522,6 +524,7 @@
         "equivalence: the design row is kept as a latent target. The",
         "estimator assumptions are the user's to check."
       ),
+      # fmt: skip
       oracle =
         "Large missing-plot simulation study and independent dense-V REML",
       anchor = "test-na-action-augment.R"

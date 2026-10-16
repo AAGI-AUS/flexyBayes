@@ -47,16 +47,37 @@
   suppressMessages(switch(
     route,
     per_row = flexybayes(
-      fixed, random = ~geno, data = data, family = family, prior = prior,
-      backend = "inla", aggregate = FALSE, verbose = FALSE, ...
+      fixed,
+      random = ~geno,
+      data = data,
+      family = family,
+      prior = prior,
+      backend = "inla",
+      aggregate = FALSE,
+      verbose = FALSE,
+      ...
     ),
     aggregated = flexybayes(
-      fixed, random = ~geno, data = data, family = family, prior = prior,
-      backend = "inla", aggregate = TRUE, verbose = FALSE, ...
+      fixed,
+      random = ~geno,
+      data = data,
+      family = family,
+      prior = prior,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE,
+      ...
     ),
     stream = flexybayes_stream(
-      fixed, random = ~geno, source = data, family = family, prior = prior,
-      backend = "inla", chunk_rows = 50000, verbose = FALSE, ...
+      fixed,
+      random = ~geno,
+      source = data,
+      family = family,
+      prior = prior,
+      backend = "inla",
+      chunk_rows = 50000,
+      verbose = FALSE,
+      ...
     )
   ))
 }
@@ -69,8 +90,10 @@ test_that("fitted() and residuals() on aggregated count fits match the per-row f
   .acc_one_thread()
   d <- .acc_counts(1200L, 314L)
 
-  for (case in list(list(fixed = y ~ env, family = "poisson"),
-                    list(fixed = b ~ env, family = "binomial"))) {
+  for (case in list(
+    list(fixed = y ~ env, family = "poisson"),
+    list(fixed = b ~ env, family = "binomial")
+  )) {
     agg <- .acc_fit("aggregated", case$fixed, d, case$family)
     row <- .acc_fit("per_row", case$fixed, d, case$family)
     expect_s3_class(agg, "flexybayes_aggregated")
@@ -101,7 +124,11 @@ test_that("an offset inside each cell reaches the aggregated fitted values", {
   expect_equal(unname(fitted(agg)), unname(fitted(row)), tolerance = 1e-6)
   # Residuals sit near zero, where a relative tolerance against the per-row
   # fit measures nothing useful. They are held to their definition instead.
-  expect_equal(unname(residuals(agg)), unname(d$y - fitted(agg)), tolerance = 1e-12)
+  expect_equal(
+    unname(residuals(agg)),
+    unname(d$y - fitted(agg)),
+    tolerance = 1e-12
+  )
 })
 
 test_that("aggregated fitted values follow the rows, not the cells", {
@@ -142,11 +169,19 @@ test_that("a streamed fit returns row values only when it holds every row", {
   agg <- .acc_fit("aggregated", y ~ env, d, "poisson")
   small <- .acc_fit("stream", y ~ env, d, "poisson")
   expect_equal(unname(fitted(small)), unname(fitted(agg)), tolerance = 1e-6)
-  expect_equal(unname(residuals(small)), unname(residuals(agg)), tolerance = 1e-6)
+  expect_equal(
+    unname(residuals(small)),
+    unname(residuals(agg)),
+    tolerance = 1e-6
+  )
 
   exposed <- .acc_fit("stream", y ~ env, d, "poisson", exposure = "m")
   offset_fit <- .acc_fit("aggregated", y ~ env + offset(log(m)), d, "poisson")
-  expect_equal(unname(fitted(exposed)), unname(fitted(offset_fit)), tolerance = 1e-6)
+  expect_equal(
+    unname(fitted(exposed)),
+    unname(fitted(offset_fit)),
+    tolerance = 1e-6
+  )
 
   # 110,000 rows: the head sample is the first 100,000 only.
   big <- .acc_fit("stream", y ~ env, .acc_counts(110000L, 319L), "poisson")
@@ -165,8 +200,10 @@ test_that("nobs() and glance() report the integer the summary reports", {
   .acc_one_thread()
   d <- .acc_counts(1200L, 320L)
 
-  for (fit in list(.acc_fit("aggregated", y ~ env, d, "poisson"),
-                   .acc_fit("stream", y ~ env, d, "poisson"))) {
+  for (fit in list(
+    .acc_fit("aggregated", y ~ env, d, "poisson"),
+    .acc_fit("stream", y ~ env, d, "poisson")
+  )) {
     expect_identical(stats::nobs(fit), 1200L)
     expect_identical(stats::nobs(fit), summary(fit)$n_design)
     expect_identical(suppressMessages(glance(fit))$nobs, 1200L)
@@ -206,7 +243,9 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     },
     "emmeans::recover_data" = function(fit) emmeans::recover_data(fit),
     "family" = function(fit) family(fit),
-    "fb_as_draws_simple" = function(fit) fb_as_draws_simple(fit, n_samples = 20L),
+    "fb_as_draws_simple" = function(fit) {
+      fb_as_draws_simple(fit, n_samples = 20L)
+    },
     "fb_log_posterior" = function(fit) fb_log_posterior(fit),
     "fitted" = function(fit) fitted(fit),
     "formula" = function(fit) formula(fit),
@@ -215,9 +254,13 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     "logLik" = function(fit) logLik(fit),
     "loo::loo" = function(fit) loo::loo(fit),
     "marginaleffects::get_coef" = function(fit) marginaleffects::get_coef(fit),
-    "marginaleffects::get_predict" = function(fit) marginaleffects::get_predict(fit),
+    "marginaleffects::get_predict" = function(fit) {
+      marginaleffects::get_predict(fit)
+    },
     "marginaleffects::get_vcov" = function(fit) marginaleffects::get_vcov(fit),
-    "marginaleffects::set_coef" = function(fit) marginaleffects::set_coef(fit, coef(fit)),
+    "marginaleffects::set_coef" = function(fit) {
+      marginaleffects::set_coef(fit, coef(fit))
+    },
     "model.matrix" = function(fit) stats::model.matrix(fit),
     "nlme::ranef" = function(fit) nlme::ranef(fit),
     "nobs" = function(fit) stats::nobs(fit),
@@ -226,12 +269,20 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
       on.exit(grDevices::dev.off(), add = TRUE)
       plot(fit)
     },
-    "posterior::as_draws" = function(fit) posterior::as_draws(fit, n_draws = 20L),
-    "posterior::as_draws_df" = function(fit) posterior::as_draws_df(fit, n_draws = 20L),
-    "posterior::as_draws_matrix" = function(fit) posterior::as_draws_matrix(fit, n_draws = 20L),
+    "posterior::as_draws" = function(fit) {
+      posterior::as_draws(fit, n_draws = 20L)
+    },
+    "posterior::as_draws_df" = function(fit) {
+      posterior::as_draws_df(fit, n_draws = 20L)
+    },
+    "posterior::as_draws_matrix" = function(fit) {
+      posterior::as_draws_matrix(fit, n_draws = 20L)
+    },
     "predict" = function(fit) predict(fit),
     "print" = function(fit) utils::capture.output(print(fit)),
-    "prior_summary" = function(fit) utils::capture.output(print(prior_summary(fit))),
+    "prior_summary" = function(fit) {
+      utils::capture.output(print(prior_summary(fit)))
+    },
     "ranef" = function(fit) ranef(fit),
     "residuals" = function(fit) residuals(fit),
     "rstantools::prior_summary" = function(fit) {
@@ -252,12 +303,28 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
   expect_identical(setdiff(generics, names(calls)), character(0))
 
   fits <- list(
-    aggregated = .acc_fit("aggregated", y ~ env, .acc_counts(1200L, 321L), "poisson"),
-    streamed_head_sample = .acc_fit("stream", y ~ env, .acc_counts(110000L, 322L), "poisson")
+    aggregated = .acc_fit(
+      "aggregated",
+      y ~ env,
+      .acc_counts(1200L, 321L),
+      "poisson"
+    ),
+    streamed_head_sample = .acc_fit(
+      "stream",
+      y ~ env,
+      .acc_counts(110000L, 322L),
+      "poisson"
+    )
   )
   for (pkg in c(
-    "bayesplot", "emmeans", "insight", "loo", "marginaleffects", "nlme",
-    "posterior", "rstantools"
+    "bayesplot",
+    "emmeans",
+    "insight",
+    "loo",
+    "marginaleffects",
+    "nlme",
+    "posterior",
+    "rstantools"
   )) {
     skip_if_not_installed(pkg)
   }

@@ -15,8 +15,12 @@
   if (is.symbol(head)) {
     return(c(pkg = "", fun = as.character(head)))
   }
-  if (is.call(head) && length(head) == 3L && is.symbol(head[[1L]]) &&
-        as.character(head[[1L]]) %in% c("::", ":::")) {
+  if (
+    is.call(head) &&
+      length(head) == 3L &&
+      is.symbol(head[[1L]]) &&
+      as.character(head[[1L]]) %in% c("::", ":::")
+  ) {
     return(c(pkg = as.character(head[[2L]]), fun = as.character(head[[3L]])))
   }
   c(pkg = "", fun = "")
@@ -39,7 +43,9 @@
   hits <- character(0)
   for (nm in ls(ns, all.names = TRUE)) {
     obj <- get(nm, envir = ns)
-    if (!is.function(obj) || is.primitive(obj)) next
+    if (!is.function(obj) || is.primitive(obj)) {
+      next
+    }
     found <- character(0)
     visit <- function(cl) found <<- c(found, visit_one(cl))
     .lean_walk(body(obj), visit)
@@ -52,28 +58,59 @@
 }
 
 .lean_network_funs <- c(
-  "url", "download.file", "curlGetHeaders", "socketConnection",
-  "make.socket", "serverSocket", "socketAccept", "browseURL"
+  "url",
+  "download.file",
+  "curlGetHeaders",
+  "socketConnection",
+  "make.socket",
+  "serverSocket",
+  "socketAccept",
+  "browseURL"
 )
 .lean_network_pkgs <- c("curl", "httr", "httr2", "RCurl", "crul", "websocket")
 .lean_url_readers <- c(
-  "file", "gzcon", "readLines", "readRDS", "load", "source", "scan",
-  "read.table", "read.csv", "read.dcf", "fread"
+  "file",
+  "gzcon",
+  "readLines",
+  "readRDS",
+  "load",
+  "source",
+  "scan",
+  "read.table",
+  "read.csv",
+  "read.dcf",
+  "fread"
 )
 
 .lean_network_visitor <- function(cl) {
   nm <- .lean_call_name(cl)
-  if (nm[["fun"]] %in% .lean_network_funs || nm[["pkg"]] %in% .lean_network_pkgs) {
-    return(paste0("calls ", nm[["pkg"]], if (nzchar(nm[["pkg"]])) "::", nm[["fun"]], "()"))
+  if (
+    nm[["fun"]] %in% .lean_network_funs || nm[["pkg"]] %in% .lean_network_pkgs
+  ) {
+    return(paste0(
+      "calls ",
+      nm[["pkg"]],
+      if (nzchar(nm[["pkg"]])) "::",
+      nm[["fun"]],
+      "()"
+    ))
   }
-  if (identical(nm[["fun"]], "do.call") && length(cl) > 1L &&
-        is.character(cl[[2L]]) && cl[[2L]] %in% .lean_network_funs) {
+  if (
+    identical(nm[["fun"]], "do.call") &&
+      length(cl) > 1L &&
+      is.character(cl[[2L]]) &&
+      cl[[2L]] %in% .lean_network_funs
+  ) {
     return(paste0("do.call()s ", cl[[2L]], "()"))
   }
   if (nm[["fun"]] %in% .lean_url_readers) {
     for (a in as.list(cl)[-1L]) {
-      if (!missing(a) && is.character(a) && length(a) == 1L &&
-            grepl("^(https?|ftp)://", a)) {
+      if (
+        !missing(a) &&
+          is.character(a) &&
+          length(a) == 1L &&
+          grepl("^(https?|ftp)://", a)
+      ) {
         return(paste0("reads a URL with ", nm[["fun"]], "()"))
       }
     }
@@ -89,7 +126,9 @@
   inner <- character(0)
   for (a in as.list(cl)[-1L]) {
     if (!missing(a)) {
-      .lean_walk(a, function(c2) inner <<- c(inner, .lean_call_name(c2)[["fun"]]))
+      .lean_walk(a, function(c2) {
+        inner <<- c(inner, .lean_call_name(c2)[["fun"]])
+      })
     }
   }
   if (any(inner %in% c("parse", "str2lang", "str2expression"))) {
@@ -123,19 +162,33 @@ test_that("exported calls that need no engine leave options and the random-numbe
     fb_refusals = quote(fb_refusals()),
     fb_backend_status = quote(fb_backend_status()),
     fb_from_brms = quote(fb_from_brms(y ~ x + (1 | g), data = d)),
-    fb_from_asreml = quote(fb_from_asreml(y ~ x, random = ~ g, data = d)),
-    fb_complete_grid = quote(fb_complete_grid(holed, ~ row * col, response = "yield")),
+    fb_from_asreml = quote(fb_from_asreml(y ~ x, random = ~g, data = d)),
+    fb_complete_grid = quote(fb_complete_grid(
+      holed,
+      ~ row * col,
+      response = "yield"
+    )),
     fb_plan = quote(fb_plan(y ~ x + (1 | g), data = d)),
-    flexybayes_plan = quote(flexybayes(y ~ x + (1 | g), data = d, plan = TRUE, verbose = FALSE))
+    flexybayes_plan = quote(flexybayes(
+      y ~ x + (1 | g),
+      data = d,
+      plan = TRUE,
+      verbose = FALSE
+    ))
   )
   for (nm in names(calls)) {
     set.seed(20260916L)
     opt_before <- options()
     seed_before <- get(".Random.seed", envir = globalenv())
     suppressMessages(eval(calls[[nm]]))
-    expect_identical(options(), opt_before, label = paste0("options() after ", nm, "()"))
     expect_identical(
-      get(".Random.seed", envir = globalenv()), seed_before,
+      options(),
+      opt_before,
+      label = paste0("options() after ", nm, "()")
+    )
+    expect_identical(
+      get(".Random.seed", envir = globalenv()),
+      seed_before,
       label = paste0(".Random.seed after ", nm, "()")
     )
   }
@@ -143,14 +196,32 @@ test_that("exported calls that need no engine leave options and the random-numbe
 
 test_that("Imports and namespace imports stay within the listed set", {
   allowed <- c(
-    "cli", "data.table", "generics",
-    "stats", "methods", "graphics", "mgcv", "Matrix", "parallel", "utils"
+    "cli",
+    "data.table",
+    "generics",
+    "stats",
+    "methods",
+    "graphics",
+    "mgcv",
+    "Matrix",
+    "parallel",
+    "utils"
   )
-  dcf <- read.dcf(system.file("DESCRIPTION", package = "flexyBayes"), fields = "Imports")
-  imports <- trimws(sub("\\(.*\\)", "", strsplit(dcf[1L, "Imports"], ",")[[1L]]))
+  dcf <- read.dcf(
+    system.file("DESCRIPTION", package = "flexyBayes"),
+    fields = "Imports"
+  )
+  imports <- trimws(sub(
+    "\\(.*\\)",
+    "",
+    strsplit(dcf[1L, "Imports"], ",")[[1L]]
+  ))
   imports <- imports[nzchar(imports)]
   expect_identical(setdiff(imports, allowed), character(0))
-  ns_imports <- setdiff(names(getNamespaceImports(asNamespace("flexyBayes"))), c("", "base"))
+  ns_imports <- setdiff(
+    names(getNamespaceImports(asNamespace("flexyBayes"))),
+    c("", "base")
+  )
   expect_identical(setdiff(ns_imports, allowed), character(0))
 })
 
@@ -164,8 +235,19 @@ test_that("every pkg:: call in the namespace names a declared or base R package"
   declared <- trimws(sub("\\(.*\\)", "", unlist(strsplit(dcf[1L, ], ","))))
   declared <- declared[!is.na(declared) & nzchar(declared)]
   base_r <- c(
-    "base", "compiler", "datasets", "graphics", "grDevices", "grid",
-    "methods", "parallel", "splines", "stats", "stats4", "tcltk", "tools",
+    "base",
+    "compiler",
+    "datasets",
+    "graphics",
+    "grDevices",
+    "grid",
+    "methods",
+    "parallel",
+    "splines",
+    "stats",
+    "stats4",
+    "tcltk",
+    "tools",
     "utils"
   )
   allowed <- c(declared, base_r, "flexyBayes")

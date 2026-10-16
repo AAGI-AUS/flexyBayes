@@ -6,7 +6,9 @@
   set.seed(20260924L)
   d <- data.frame(site = factor(rep(sprintf("S%02d", 1:12), each = 8L)))
   d$x <- stats::rnorm(nrow(d))
-  d$y <- 1 + 0.5 * d$x + stats::rnorm(12L, sd = 0.4)[as.integer(d$site)] +
+  d$y <- 1 +
+    0.5 * d$x +
+    stats::rnorm(12L, sd = 0.4)[as.integer(d$site)] +
     stats::rnorm(nrow(d), sd = 0.3)
   d
 }
@@ -14,7 +16,8 @@
 # The first number after `pattern` in `text`.
 .ps_number <- function(text, pattern) {
   hit <- regmatches(
-    text, regexec(paste0(pattern, "([-+0-9.eE]+)"), text)
+    text,
+    regexec(paste0(pattern, "([-+0-9.eE]+)"), text)
   )[[1L]]
   as.numeric(hit[[2L]])
 }
@@ -29,8 +32,14 @@ test_that("the note, the banner and print() state the scale of the prior", {
   notes <- NULL
   banner <- utils::capture.output(
     notes <- testthat::capture_messages(
-      fit <- flexybayes(y ~ x, random = ~ site, data = d, backend = "inla",
-                        verbose = TRUE, mcmc_verbose = FALSE)
+      fit <- flexybayes(
+        y ~ x,
+        random = ~site,
+        data = d,
+        backend = "inla",
+        verbose = TRUE,
+        mcmc_verbose = FALSE
+      )
     )
   )
   note <- grep("half_normal(scale = ", notes, fixed = TRUE, value = TRUE)
@@ -43,11 +52,14 @@ test_that("the note, the banner and print() state the scale of the prior", {
   printed <- paste(utils::capture.output(print(fit)), collapse = "\n")
   for (txt in c(formula_line, printed)) {
     expect_match(
-      txt, "on the standardised response = half-normal-SD(", fixed = TRUE
+      txt,
+      "on the standardised response = half-normal-SD(",
+      fixed = TRUE
     )
     standardised <- .ps_number(txt, "<prior: half-normal-SD\\(")
     back <- .ps_number(
-      txt, "on the standardised response = half-normal-SD\\("
+      txt,
+      "on the standardised response = half-normal-SD\\("
     )
     # The same prior, converted by hand: scale on y = scale on y / sd(y)
     # times sd(y), each at the precision it is printed to.
@@ -62,8 +74,13 @@ test_that("the prior INLA received is the stated prior on the response scale", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .ps_data()
-  fit <- flexybayes(y ~ x, random = ~ site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   stated <- prior_summary(fit)$default_scale
   sent_text <- paste(deparse(fit$extras$formula), collapse = " ")
   sent <- .ps_number(sent_text, "expression: s=")
@@ -81,7 +98,8 @@ test_that("the prior INLA received is the stated prior on the response scale", {
     tolerance = 1e-12
   )
   expect_equal(
-    stats::integrate(half_normal, 0, Inf, scale = stated)$value, 1,
+    stats::integrate(half_normal, 0, Inf, scale = stated)$value,
+    1,
     tolerance = 1e-6
   )
 })
@@ -92,8 +110,13 @@ test_that("prior_summary() states the scale of the default and of each slot", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .ps_data()
-  fit <- flexybayes(y ~ x, random = ~ site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   out <- utils::capture.output(print(prior_summary(fit)))
   scale_line <- grep("Scale s", out, fixed = TRUE, value = TRUE)
   expect_length(scale_line, 1L)
@@ -101,7 +124,9 @@ test_that("prior_summary() states the scale of the default and of each slot", {
   slots <- grep("<prior: half-normal-SD(", out, fixed = TRUE, value = TRUE)
   expect_length(slots, 2L)
   expect_true(all(grepl(
-    "on the standardised response = half-normal-SD(", slots, fixed = TRUE
+    "on the standardised response = half-normal-SD(",
+    slots,
+    fixed = TRUE
   )))
 })
 
@@ -127,7 +152,8 @@ test_that("a lognormal prior on the standardised response is not tagged half-nor
   block <- function(expr) {
     paste0(
       "f(g, model = \"iid\", hyper = list(prec = list(prior = \"",
-      expr, "\")))"
+      expr,
+      "\")))"
     )
   }
   # The legacy lognormal(0, 1) on SD, restated on y / 2: its location moves

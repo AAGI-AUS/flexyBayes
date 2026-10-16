@@ -8,10 +8,17 @@
     trt = factor(rep(c("a", "b", "c"), 24)),
     x = stats::rnorm(72)
   )
-  d$y <- 1 + c(0, 0.5, -0.3)[d$trt] + 0.4 * d$x +
-    stats::rnorm(6)[d$site] + stats::rnorm(72)
+  d$y <- 1 +
+    c(0, 0.5, -0.3)[d$trt] +
+    0.4 * d$x +
+    stats::rnorm(6)[d$site] +
+    stats::rnorm(72)
   suppressWarnings(suppressMessages(flexybayes(
-    y ~ trt + x, random = ~site, data = d, backend = "inla", verbose = FALSE
+    y ~ trt + x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   )))
 }
 
@@ -24,7 +31,10 @@
   eta <- 0.4 + (5e-4 + b[as.integer(d$g)]) * d$x + u[as.integer(d$g)]
   d$y <- stats::rpois(nrow(d), exp(eta))
   suppressWarnings(suppressMessages(flexybayes(
-    y ~ x + (x || g), data = d, family = "poisson", backend = "inla",
+    y ~ x + (x || g),
+    data = d,
+    family = "poisson",
+    backend = "inla",
     verbose = FALSE
   )))
 }
@@ -145,7 +155,11 @@ test_that("DEF-007: draws on a sum-to-zero random walk keep the constraint", {
   d <- data.frame(x = rep(1:25, 3))
   d$y <- sin(d$x / 4) + stats::rnorm(75, 0, 0.3)
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ 1, random = ~ spl(x), data = d, backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ spl(x),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   )))
   expect_false(is.null(fit$inla$misc$configs$constr))
   set.seed(1)

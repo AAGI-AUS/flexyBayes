@@ -79,16 +79,27 @@ test_that("INLA weighted fixed effects and sigma match lme4::lmer(weights=)", {
   ref_sigma <- stats::sigma(lm4)
 
   fit <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = d$w, backend = "inla",
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = d$w,
+    backend = "inla",
     verbose = FALSE
   )
   # INLA's Laplace approximation on a well-identified random-intercept
   # Gaussian model is close to REML on data this size, 2% covers both
   # the approximation gap and simulation noise. The live figures this
   # file was grounded from ran at 0.2-0.4%.
-  expect_equal(unname(coef(fit)["(Intercept)"]), unname(ref_fixef[["(Intercept)"]]),
-    tolerance = 0.02)
-  expect_equal(unname(coef(fit)["x"]), unname(ref_fixef[["x"]]), tolerance = 0.02)
+  expect_equal(
+    unname(coef(fit)["(Intercept)"]),
+    unname(ref_fixef[["(Intercept)"]]),
+    tolerance = 0.02
+  )
+  expect_equal(
+    unname(coef(fit)["x"]),
+    unname(ref_fixef[["x"]]),
+    tolerance = 0.02
+  )
   expect_equal(.wl_sigma(fit), ref_sigma, tolerance = 0.02)
 })
 
@@ -104,17 +115,31 @@ test_that("brms weighted fixed effects and sigma match lme4::lmer(weights=)", {
   ref_sigma <- stats::sigma(lm4)
 
   fit <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = d$w, backend = "brms",
-    n_samples = 700L, warmup = 700L, chains = 2L, seed = 11L,
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = d$w,
+    backend = "brms",
+    n_samples = 700L,
+    warmup = 700L,
+    chains = 2L,
+    seed = 11L,
     verbose = FALSE
   )
   # A posterior mean against a REML point estimate, from an HMC fit at a
   # few hundred effective samples, 3% covers the sampler's own Monte
   # Carlo error on top of the (small, here) posterior-mean/REML gap. The
   # live figures this file was grounded from ran at 0.1-0.3%.
-  expect_equal(unname(coef(fit)["(Intercept)"]), unname(ref_fixef[["(Intercept)"]]),
-    tolerance = 0.03)
-  expect_equal(unname(coef(fit)["x"]), unname(ref_fixef[["x"]]), tolerance = 0.03)
+  expect_equal(
+    unname(coef(fit)["(Intercept)"]),
+    unname(ref_fixef[["(Intercept)"]]),
+    tolerance = 0.03
+  )
+  expect_equal(
+    unname(coef(fit)["x"]),
+    unname(ref_fixef[["x"]]),
+    tolerance = 0.03
+  )
   expect_equal(.wl_sigma(fit), ref_sigma, tolerance = 0.03)
 })
 
@@ -124,11 +149,19 @@ test_that("doubling weights on INLA leaves fixed effects unchanged and doubles s
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wl_dat()
   fit_w <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = d$w, backend = "inla",
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = d$w,
+    backend = "inla",
     verbose = FALSE
   )
   fit_2w <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = 2 * d$w, backend = "inla",
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = 2 * d$w,
+    backend = "inla",
     verbose = FALSE
   )
   expect_equal(coef(fit_w), coef(fit_2w), tolerance = 1e-3)
@@ -153,13 +186,27 @@ test_that("doubling weights on brms leaves fixed effects unchanged and doubles s
   # coefficient-agreement assertions below hold at essentially the same
   # values either way (ratio 1.998, coef diff 0.005).
   fit_w <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = d$w, backend = "brms",
-    n_samples = 1500L, warmup = 1000L, chains = 2L, seed = 21L,
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = d$w,
+    backend = "brms",
+    n_samples = 1500L,
+    warmup = 1000L,
+    chains = 2L,
+    seed = 21L,
     verbose = FALSE
   )
   fit_2w <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = 2 * d$w, backend = "brms",
-    n_samples = 1500L, warmup = 1000L, chains = 2L, seed = 21L,
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = 2 * d$w,
+    backend = "brms",
+    n_samples = 1500L,
+    warmup = 1000L,
+    chains = 2L,
+    seed = 21L,
     verbose = FALSE
   )
   # Fixed effects: two independent HMC runs on the same data, so a few
@@ -177,7 +224,11 @@ test_that("backend = \"auto\" fits the Gaussian weighted model", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wl_dat(seed = 7L)
   fit <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = d$w, backend = "auto",
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = d$w,
+    backend = "auto",
     verbose = FALSE
   )
   expect_true(inherits(fit, "flexybayes"))
@@ -195,7 +246,11 @@ test_that("brms's own weights() addition term is NOT what gets emitted", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wl_dat(seed = 3L, n = 60L, n_group = 6L)
   code <- flexybayes(
-    y ~ x, random = ~g, data = d, weights = d$w, backend = "brms",
+    y ~ x,
+    random = ~g,
+    data = d,
+    weights = d$w,
+    backend = "brms",
     return_code = TRUE
   )
   stan_txt <- paste(code, collapse = "\n")

@@ -18,19 +18,36 @@ skip_if_no_brms <- function() skip_if_not_installed("brms")
 # One trial's complete n_row x n_col separable AR1(row) x AR1(col) field
 # plus a Gaussian nugget, the same generator test-inla-spatial-ar1.R
 # uses for its own (independent, non-INLA) GLS/REML oracle.
-.at_trial_field <- function(n_row, n_col, rho_r, rho_c, sd_s, sd_e, seed, mu = 5) {
+.at_trial_field <- function(
+  n_row,
+  n_col,
+  rho_r,
+  rho_c,
+  sd_s,
+  sd_e,
+  seed,
+  mu = 5
+) {
   set.seed(seed)
   grid <- expand.grid(col = seq_len(n_col), row = seq_len(n_row))
-  L <- t(chol(sd_s^2 * kronecker(.ar1_mat(n_row, rho_r), .ar1_mat(n_col, rho_c))))
+  L <- t(chol(
+    sd_s^2 * kronecker(.ar1_mat(n_row, rho_r), .ar1_mat(n_col, rho_c))
+  ))
   u <- as.numeric(L %*% stats::rnorm(n_row * n_col))
   data.frame(
     y = mu + u + stats::rnorm(n_row * n_col, 0, sd_e),
-    row = factor(grid$row), col = factor(grid$col)
+    row = factor(grid$row),
+    col = factor(grid$col)
   )
 }
 
 .three_trial_data <- function(
-  n_row = 6L, n_col = 8L, rho_r = 0.5, rho_c = 0.3, sd_s = 1.0, sd_e = 0.5,
+  n_row = 6L,
+  n_col = 8L,
+  rho_r = 0.5,
+  rho_c = 0.3,
+  sd_s = 1.0,
+  sd_e = 0.5,
   seeds = c(1001L, 1002L, 1003L)
 ) {
   trials <- lapply(seq_along(seeds), function(i) {
@@ -48,7 +65,9 @@ skip_if_no_brms <- function() skip_if_not_installed("brms")
 
 .one_trial_grid <- function() {
   data.frame(
-    y = rnorm(6), row = factor(1:6), col = factor(rep(1, 6)),
+    y = rnorm(6),
+    row = factor(1:6),
+    col = factor(rep(1, 6)),
     trial = factor(rep("T1", 6))
   )
 }
@@ -64,11 +83,20 @@ test_that("id(trial):ar1(row):ar1(col) parses to ar1_spatial with at_var set", {
     term <- fb$random_terms[[1]]
     expect_identical(
       term[c("type", "row_var", "col_var", "at_var")],
-      list(type = "ar1_spatial", row_var = "row", col_var = "col", at_var = "trial")
+      list(
+        type = "ar1_spatial",
+        row_var = "row",
+        col_var = "col",
+        at_var = "trial"
+      )
     )
     expect_true(isTRUE(term$col_ar1))
   }
-  fb <- fb_from_asreml(fixed = y ~ 1, random = ~ id(trial):ar1(row):id(col), data = d)
+  fb <- fb_from_asreml(
+    fixed = y ~ 1,
+    random = ~ id(trial):ar1(row):id(col),
+    data = d
+  )
   term <- fb$random_terms[[1]]
   expect_identical(term$at_var, "trial")
   expect_false(isTRUE(term$col_ar1))
@@ -83,7 +111,13 @@ test_that("other AR1 fields of three or more factors still refuse", {
     ~ id(trial):ar1(row):id(col):ar1(x)
   )) {
     expect_error(
-      flexybayes(y ~ 1, random = random, data = d, backend = "inla", verbose = FALSE),
+      flexybayes(
+        y ~ 1,
+        random = random,
+        data = d,
+        backend = "inla",
+        verbose = FALSE
+      ),
       class = "flexybayes_refusal_interaction_not_representable"
     )
   }
@@ -92,22 +126,36 @@ test_that("other AR1 fields of three or more factors still refuse", {
 test_that("at(trial):ar1(row):ar1(col) is one field per trial, not on brms", {
   sim <- .three_trial_data()
   fb <- fb_from_asreml(
-    fixed = y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = sim$data
+    fixed = y ~ 1,
+    random = ~ at(trial):ar1(row):ar1(col),
+    data = sim$data
   )
   term <- fb$random_terms[[1]]
   expect_identical(term$type, "ar1_spatial_at")
   expect_identical(term$by_levels, c("T1", "T2", "T3"))
   err <- tryCatch(
-    flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
-               data = sim$data, backend = "brms", verbose = FALSE),
+    flexybayes(
+      y ~ 1,
+      random = ~ at(trial):ar1(row):ar1(col),
+      data = sim$data,
+      backend = "brms",
+      verbose = FALSE
+    ),
     error = function(e) e
   )
   expect_s3_class(err, "flexybayes_refusal_stan_cannot_represent_ar1_field")
-  plan <- fb_plan(y ~ 1, data = sim$data,
-                  random = ~ at(trial):ar1(row):ar1(col), backend = "brms")
+  plan <- fb_plan(
+    y ~ 1,
+    data = sim$data,
+    random = ~ at(trial):ar1(row):ar1(col),
+    backend = "brms"
+  )
   expect_false(plan$will_fit)
-  expect_match(plan$will_fit_reason, "stan_cannot_represent_ar1_field",
-               fixed = TRUE)
+  expect_match(
+    plan$will_fit_reason,
+    "stan_cannot_represent_ar1_field",
+    fixed = TRUE
+  )
 })
 
 test_that("ar1(row):ar1(col) alone still parses with at_var = NULL (no regression)", {
@@ -120,7 +168,9 @@ test_that("ar1(row):ar1(col) alone still parses with at_var = NULL (no regressio
 
 test_that("at(trial, level):ar1(row):ar1(col) keeps the named level only", {
   d <- data.frame(
-    y = rnorm(12), row = factor(rep(1:6, 2)), col = factor(rep(1, 12)),
+    y = rnorm(12),
+    row = factor(rep(1:6, 2)),
+    col = factor(rep(1, 12)),
     trial = factor(rep(c("T1", "T2"), each = 6))
   )
   fb <- fb_from_asreml(
@@ -177,14 +227,20 @@ test_that("a complete lattice on every trial fits cleanly", {
 
 test_that(".inla_ar1_field_term() adds replicate = <at_var>_id only when at_var is set", {
   term_single <- list(
-    type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = TRUE
   )
   expect_identical(
     flexyBayes:::.inla_ar1_field_term(term_single),
     'f(row_id, model = "ar1", group = col_id, control.group = list(model = "ar1"))'
   )
   term_nested <- list(
-    type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE,
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = TRUE,
     at_var = "trial"
   )
   expect_identical(
@@ -198,11 +254,20 @@ test_that(".inla_ar1_field_term() adds replicate = <at_var>_id only when at_var 
 
 test_that(".ar1_term_spelling() quotes the id() wrapper only when at_var is set", {
   term_single <- list(
-    type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = TRUE
   )
-  expect_identical(flexyBayes:::.ar1_term_spelling(term_single), "ar1(row):ar1(col)")
+  expect_identical(
+    flexyBayes:::.ar1_term_spelling(term_single),
+    "ar1(row):ar1(col)"
+  )
   term_nested <- list(
-    type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE,
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = TRUE,
     at_var = "trial"
   )
   expect_identical(
@@ -254,15 +319,32 @@ test_that("the brms plan says the field will not fit", {
   sim <- .three_trial_data()
   single <- sim$data[sim$data$trial == "T1", ]
   plans <- list(
-    fb_plan(y ~ 1, data = sim$data, random = ~ id(trial):ar1(row):ar1(col),
-            backend = "brms"),
-    flexybayes(y ~ 1, random = ~ id(trial):ar1(row):ar1(col),
-               data = sim$data, backend = "brms", plan = TRUE),
-    fb_plan(y ~ 1, data = single, random = ~ ar1(row):ar1(col), backend = "brms")
+    fb_plan(
+      y ~ 1,
+      data = sim$data,
+      random = ~ id(trial):ar1(row):ar1(col),
+      backend = "brms"
+    ),
+    flexybayes(
+      y ~ 1,
+      random = ~ id(trial):ar1(row):ar1(col),
+      data = sim$data,
+      backend = "brms",
+      plan = TRUE
+    ),
+    fb_plan(
+      y ~ 1,
+      data = single,
+      random = ~ ar1(row):ar1(col),
+      backend = "brms"
+    )
   )
   for (p in plans) {
     expect_false(p$will_fit)
-    expect_identical(p$will_fit_reason, "brms refuses: stan_cannot_represent_ar1_field")
+    expect_identical(
+      p$will_fit_reason,
+      "brms refuses: stan_cannot_represent_ar1_field"
+    )
   }
 })
 
@@ -319,7 +401,10 @@ test_that(".preflight_term_level_count() sizes ar1_spatial with and without at_v
     48L
   )
   term_nested <- list(
-    type = "ar1_spatial", row_var = "row", col_var = "col", at_var = "trial"
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    at_var = "trial"
   )
   expect_identical(
     flexyBayes:::.preflight_term_level_count(term_nested, ds),
@@ -386,8 +471,13 @@ test_that("oracle: the nested fit recovers both rhos inside their 95% credible i
   n_row <- 6L
   n_col <- 8L
   sim <- .three_trial_data(
-    n_row = n_row, n_col = n_col, rho_r = rho_row_true, rho_c = rho_col_true,
-    sd_s = 1.0, sd_e = 0.5, seeds = c(1001L, 1002L, 1003L)
+    n_row = n_row,
+    n_col = n_col,
+    rho_r = rho_row_true,
+    rho_c = rho_col_true,
+    sd_s = 1.0,
+    sd_e = 0.5,
+    seeds = c(1001L, 1002L, 1003L)
   )
 
   fit <- flexybayes(

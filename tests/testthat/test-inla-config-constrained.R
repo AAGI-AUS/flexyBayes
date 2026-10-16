@@ -13,8 +13,10 @@
 test_that("DEF-205: the stored precision does not factorise as it stands", {
   ref <- .cc_ref()
   k <- ref$failing_configs[[1L]]
-  q <- Matrix::forceSymmetric(ref$fit$inla$misc$configs$config[[k]]$Q,
-                              uplo = "U")
+  q <- Matrix::forceSymmetric(
+    ref$fit$inla$misc$configs$config[[k]]$Q,
+    uplo = "U"
+  )
   expect_error(
     suppressWarnings(Matrix::Cholesky(q, LDL = FALSE)),
     "not positive"
@@ -60,9 +62,12 @@ test_that("DEF-205: posterior draws meet the constraint and match INLA's", {
   sd_inla <- sqrt(diag(ref$oracle$fixed_cov))
   mean_se <- sd_inla * sqrt(1 / n + 1 / ref$oracle$n_draws)
   gap_mean <- (rowMeans(fixed) - ref$oracle$fixed_mean) / mean_se
-  expect_true(all(abs(gap_mean) <= 4),
-              label = paste(round(gap_mean, 2), collapse = ", "))
-  sd_se <- ref$oracle$spline_sd * sqrt(1 / (2 * n) + 1 / (2 * ref$oracle$n_draws))
+  expect_true(
+    all(abs(gap_mean) <= 4),
+    label = paste(round(gap_mean, 2), collapse = ", ")
+  )
+  sd_se <- ref$oracle$spline_sd *
+    sqrt(1 / (2 * n) + 1 / (2 * ref$oracle$n_draws))
   gap_sd <- (apply(spline, 1L, stats::sd) - ref$oracle$spline_sd) / sd_se
   expect_lt(max(abs(gap_sd)), 4.5)
 })
@@ -86,6 +91,9 @@ test_that("a precision no constraint repairs is refused by name", {
   fit <- ref$fit
   fit$inla$misc$configs$constr <- NULL
   err <- tryCatch(vcov(fit), error = function(e) e)
-  expect_s3_class(err, "flexybayes_refusal_inla_config_precision_not_positive_definite")
+  expect_s3_class(
+    err,
+    "flexybayes_refusal_inla_config_precision_not_positive_definite"
+  )
   expect_match(conditionMessage(err), "configuration", fixed = TRUE)
 })

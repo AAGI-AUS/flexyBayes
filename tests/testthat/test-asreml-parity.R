@@ -23,8 +23,13 @@
 .ap_reference <- function() {
   path <- system.file("extdata", "asreml_parity.rds", package = "flexyBayes")
   if (!nzchar(path)) {
-    path <- testthat::test_path("..", "..", "inst", "extdata",
-                                "asreml_parity.rds")
+    path <- testthat::test_path(
+      "..",
+      "..",
+      "inst",
+      "extdata",
+      "asreml_parity.rds"
+    )
   }
   readRDS(path)
 }
@@ -42,13 +47,16 @@
 .ap_fit <- function(shape, d = .ap_data(shape), ...) {
   f <- switch(
     shape,
-    "01_iid_intercept" = list(yield ~ gen, ~ rep, NULL),
+    "01_iid_intercept" = list(yield ~ gen, ~rep, NULL),
     "02_nested_stratum" = list(yield ~ gen, ~ rep + rep:block, NULL),
-    "15_weights" = list(yield ~ gen, ~ rep, NULL),
+    "15_weights" = list(yield ~ gen, ~rep, NULL),
     "03_diag_gxe" = list(yield ~ env, ~ diag(env):gen, NULL),
-    "05_combined_met" = list(yield ~ env, ~ diag(env):gen,
-                             ~ dsum(~ units | env)),
-    "04_dsum_residual" = list(yield ~ env, ~ gen, ~ dsum(~ units | env)),
+    "05_combined_met" = list(
+      yield ~ env,
+      ~ diag(env):gen,
+      ~ dsum(~ units | env)
+    ),
+    "04_dsum_residual" = list(yield ~ env, ~gen, ~ dsum(~ units | env)),
     list(yield ~ env, ~ us(env):gen, NULL)
   )
   args <- list(fixed = f[[1L]], random = f[[2L]], data = d, verbose = FALSE)
@@ -75,8 +83,7 @@
   diag_gen <- grepl("^env:gen!env_[^:]+$", term)
   out[diag_gen] <- sub("^env:gen!env_", "sd_gen__env", term[diag_gen])
   us_var <- grepl("^env:gen!env_([^:]+):\\1$", term)
-  out[us_var] <- sub("^env:gen!env_([^:]+):.*$", "sd_gen__env\\1",
-                     term[us_var])
+  out[us_var] <- sub("^env:gen!env_([^:]+):.*$", "sd_gen__env\\1", term[us_var])
   section <- grepl("^env_.+!R$", term)
   out[section] <- sub("^env_(.+)!R$", "sigma_\\1", term[section])
   out
@@ -102,10 +109,11 @@
     asreml = vc$component,
     flexybayes = fb,
     rel_diff = abs(fb - vc$component) / vc$component,
-    identified = vc$bound %in% c("P", "?") & vc$component > 0 &
+    identified = vc$bound %in%
+      c("P", "?") &
+      vc$component > 0 &
       vc$std.error / vc$component < .AP_IDENTIFIED_SE_RATIO,
-    weak_flag = notes$note[match(name, notes$component)] ==
-      "weakly identified",
+    weak_flag = notes$note[match(name, notes$component)] == "weakly identified",
     stringsAsFactors = FALSE
   )
 }
@@ -150,8 +158,11 @@
   expect_identical(.ap_varcomp_misses(vc), character(0), label = shape)
   expect_gt(sum(vc$identified), 0L)
   # The components ASReml does not identify that the package flags.
-  expect_identical(vc$component[!vc$identified & vc$weak_flag], weak,
-                   label = shape)
+  expect_identical(
+    vc$component[!vc$identified & vc$weak_flag],
+    weak,
+    label = shape
+  )
   invisible(list(fit = fit, rec = rec, fixed = fx, varcomp = vc))
 }
 
@@ -162,9 +173,16 @@ test_that("the stored fits cover the eight shapes and every one converged", {
   ref <- .ap_reference()
   expect_setequal(
     names(ref$fits),
-    c("01_iid_intercept", "02_nested_stratum", "03_diag_gxe",
-      "04_dsum_residual", "05_combined_met", "06_us_dim2", "07_us_dim3",
-      "15_weights")
+    c(
+      "01_iid_intercept",
+      "02_nested_stratum",
+      "03_diag_gxe",
+      "04_dsum_residual",
+      "05_combined_met",
+      "06_us_dim2",
+      "07_us_dim3",
+      "15_weights"
+    )
   )
   expect_match(ref$stamp$asreml, "^4\\.2\\.")
   for (rec in ref$fits) {
@@ -238,17 +256,26 @@ test_that("03 diag(env):gen: residual agrees with ASReml, and at() is the same m
   # ASReml fits at(env):gen and diag(env):gen to the same likelihood.
   at_rec <- out$rec$at
   expect_equal(at_rec$loglik, out$rec$loglik, tolerance = 1e-8)
-  expect_equal(at_rec$varcomp$component, out$rec$varcomp$component,
-               tolerance = 1e-6)
+  expect_equal(
+    at_rec$varcomp$component,
+    out$rec$varcomp$component,
+    tolerance = 1e-6
+  )
   # flexyBayes reads the two spellings to the same random term. Repeated
   # identical fits of this shape differ by up to 4% in the genotype
   # variances, so the check is on the parsed model, not on two fits.
   d <- .ap_data("03_diag_gxe")
   expect_identical(
-    .fb_from_asreml_impl(yield ~ env, random = ~ at(env):gen,
-                         data = d)$random_terms,
-    .fb_from_asreml_impl(yield ~ env, random = ~ diag(env):gen,
-                         data = d)$random_terms
+    .fb_from_asreml_impl(
+      yield ~ env,
+      random = ~ at(env):gen,
+      data = d
+    )$random_terms,
+    .fb_from_asreml_impl(
+      yield ~ env,
+      random = ~ diag(env):gen,
+      data = d
+    )$random_terms
   )
 })
 
@@ -313,21 +340,33 @@ test_that("06 and 07 us(env):gen on brms: fixed effects and identified variances
   for (shape in c("06_us_dim2", "07_us_dim3")) {
     rec <- .ap_reference()$fits[[shape]]
     fit <- suppressWarnings(.ap_fit(
-      shape, backend = "brms", chains = 4L, seed = 20261008L
+      shape,
+      backend = "brms",
+      chains = 4L,
+      seed = 20261008L
     ))
-    expect_identical(.ap_fixed_misses(.ap_fixed_pairs(rec, fit)),
-                     character(0), label = shape)
+    expect_identical(
+      .ap_fixed_misses(.ap_fixed_pairs(rec, fit)),
+      character(0),
+      label = shape
+    )
     vc <- .ap_varcomp_pairs(rec, fit)
     expect_identical(.ap_varcomp_misses(vc), character(0), label = shape)
     expect_true("sigma" %in% vc$component[vc$identified])
     # A genetic correlation is compared when ASReml identifies both of its
     # variances. On these counties at most one of each pair is, so no
     # correlation is compared.
-    pair <- regmatches(rec$correlations$functional,
-                       gregexpr("env[^_]+", rec$correlations$functional))
-    both <- vapply(pair, function(p) {
-      all(paste0("sd_gen__", p) %in% vc$component[vc$identified])
-    }, logical(1))
+    pair <- regmatches(
+      rec$correlations$functional,
+      gregexpr("env[^_]+", rec$correlations$functional)
+    )
+    both <- vapply(
+      pair,
+      function(p) {
+        all(paste0("sd_gen__", p) %in% vc$component[vc$identified])
+      },
+      logical(1)
+    )
     expect_false(any(both), label = shape)
   }
 })

@@ -94,7 +94,8 @@
   slope_lookup <- list()
   for (t in fb$random_terms %||% list()) {
     if (
-      t$type %in% c("simple_slope_uncor", "simple_slope_cor") &&
+      t$type %in%
+        c("simple_slope_uncor", "simple_slope_cor") &&
         !is.null(t$slope_var) &&
         nzchar(t$slope_var) &&
         !is.null(t$var) &&

@@ -33,9 +33,15 @@
 # kept, because the emit is unchanged and still reachable through
 # emit_inla(), as the us() branch is.
 
-.fa_fixture <- function(seed = 51L, n_gen = 80L, n_rep = 6L,
-                        loadings = c(1.0, 1.6, 0.5, -0.9),
-                        sd_f = 0.9, sd_spec = 0.25, sd_resid = 0.30) {
+.fa_fixture <- function(
+  seed = 51L,
+  n_gen = 80L,
+  n_rep = 6L,
+  loadings = c(1.0, 1.6, 0.5, -0.9),
+  sd_f = 0.9,
+  sd_spec = 0.25,
+  sd_resid = 0.30
+) {
   set.seed(seed)
   n_env <- length(loadings)
   vec_f <- rnorm(n_gen, 0, sd_f)
@@ -46,7 +52,8 @@
     env = factor(seq_len(n_env)),
     rep = seq_len(n_rep)
   )
-  tab$y <- 5 + mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
+  tab$y <- 5 +
+    mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
     rnorm(nrow(tab), 0, sd_resid)
   tab
 }
@@ -80,14 +87,20 @@ test_that("the emitted formula carries scaled copies and specific variances", {
     data = tab,
     family = "gaussian"
   )
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   anchor <- paste0("gen_fa1_env_", fb$random_terms[[1L]]$fa_order[[1L]])
   # The anchor is an ordinary iid field.
   expect_match(txt, paste0("f(", anchor, ", model = \"iid\""), fixed = TRUE)
   # Every other level is a scaled copy of it, that scaling is the loading.
-  expect_match(txt, paste0("copy = \"", anchor, "\", fixed = FALSE"),
-               fixed = TRUE)
+  expect_match(
+    txt,
+    paste0("copy = \"", anchor, "\", fixed = FALSE"),
+    fixed = TRUE
+  )
   # And one specific variance per level.
   expect_match(txt, "f(gen_psi_env_4, model = \"iid\"", fixed = TRUE)
 })
@@ -105,14 +118,16 @@ test_that("the emitted formula carries scaled copies and specific variances", {
     c(0.02, 0.0, 1.2, 0.4, -0.9)
   )
   n_env <- nrow(mat_l)
-  mat_u <- cbind(rnorm(n_gen, 0, 0.9), rnorm(n_gen, 0, 0.8)) %*% t(mat_l) +
+  mat_u <- cbind(rnorm(n_gen, 0, 0.9), rnorm(n_gen, 0, 0.8)) %*%
+    t(mat_l) +
     matrix(rnorm(n_gen * n_env, 0, 0.25), ncol = n_env)
   tab <- expand.grid(
     gen = factor(seq_len(n_gen)),
     env = factor(seq_len(n_env)),
     rep = seq_len(n_rep)
   )
-  tab$y <- 5 + mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
+  tab$y <- 5 +
+    mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
     rnorm(nrow(tab), 0, 0.3)
   tab
 }
@@ -120,8 +135,11 @@ test_that("the emitted formula carries scaled copies and specific variances", {
 test_that("a level with a near-zero loading is not chosen as the anchor", {
   # Level 1 has true loading 0.05. Anchored there, every other loading is a
   # ratio to almost zero.
-  tab <- .fa_fixture(n_gen = 60L, n_rep = 3L,
-                     loadings = c(0.05, 1.6, 0.5, -0.9))
+  tab <- .fa_fixture(
+    n_gen = 60L,
+    n_rep = 3L,
+    loadings = c(0.05, 1.6, 0.5, -0.9)
+  )
   fb <- fb_from_asreml(
     fixed = y ~ env,
     random = ~ fa(env, 1):gen,
@@ -134,8 +152,11 @@ test_that("a level with a near-zero loading is not chosen as the anchor", {
   expect_setequal(term$fa_order, seq_len(4L))
   # The level order the rest of the package reads is unchanged.
   expect_identical(term$outer_levels, as.character(1:4))
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   expect_match(txt, "f(gen_fa1_env_2, model = \"iid\"", fixed = TRUE)
   expect_match(txt, "f(gen_fa1_env_1, copy = \"gen_fa1_env_2\"", fixed = TRUE)
   expect_false(grepl("f(gen_fa1_env_1, model", txt, fixed = TRUE))
@@ -154,8 +175,11 @@ test_that("with k = 2 the second anchor is a different level carrying factor 2",
   # which factor order would anchor first, carries almost none.
   expect_identical(ord[1:2], c(2L, 3L))
   expect_setequal(ord, seq_len(5L))
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   expect_match(txt, "f(gen_fa1_env_2, model = \"iid\"", fixed = TRUE)
   expect_match(txt, "f(gen_fa2_env_3, model = \"iid\"", fixed = TRUE)
   # Factor 2 is not entered at the first anchor: the zero upper triangle.
@@ -174,8 +198,11 @@ test_that("the index columns follow the chosen anchors at k = 2", {
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_weak_identification_warning = TRUE
   )
-  fit <- .fa_fit_past_refusal(y ~ env, ~ fa(env, 2):gen,
-                              .fa_fixture_k2_weak_first(n_gen = 60L))
+  fit <- .fa_fit_past_refusal(
+    y ~ env,
+    ~ fa(env, 2):gen,
+    .fa_fixture_k2_weak_first(n_gen = 60L)
+  )
   expect_s3_class(fit, "flexybayes_inla")
   expect_identical(.fb_fa_identified(fit)$anchors, c("2", "3"))
 })
@@ -262,8 +289,11 @@ test_that("the refusal names the rank, the term and what to write instead", {
   expect_match(msg, "fa(env, 2):gen", fixed = TRUE)
   expect_match(msg, "diag(env):gen", fixed = TRUE)
   expect_match(msg, "us(env):gen", fixed = TRUE)
-  expect_match(msg, "marks some variances the data barely identify as `weakly identified`",
-               fixed = TRUE)
+  expect_match(
+    msg,
+    "marks some variances the data barely identify as `weakly identified`",
+    fixed = TRUE
+  )
   # It says why, with the coverage the simulation test required.
   expect_match(msg, "134 of 150", fixed = TRUE)
   expect_match(msg, "against 136 required", fixed = TRUE)

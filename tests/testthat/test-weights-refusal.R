@@ -37,7 +37,11 @@ test_that("a non-constant weight vector on Poisson is refused by name", {
   for (be in c("auto", "inla", "brms")) {
     err <- tryCatch(
       suppressMessages(flexybayes(
-        y ~ x, data = d, weights = w, family = "poisson", backend = be,
+        y ~ x,
+        data = d,
+        weights = w,
+        family = "poisson",
+        backend = be,
         return_code = TRUE
       )),
       error = function(e) e
@@ -53,8 +57,13 @@ test_that("a non-identity link on Gaussian is refused by name", {
   w <- as.numeric(seq_len(nrow(d)))
   err <- tryCatch(
     suppressMessages(flexybayes(
-      y ~ x, data = d, weights = w, family = "gaussian", link = "log",
-      backend = "brms", return_code = TRUE
+      y ~ x,
+      data = d,
+      weights = w,
+      family = "gaussian",
+      link = "log",
+      backend = "brms",
+      return_code = TRUE
     )),
     error = function(e) e
   )
@@ -77,7 +86,11 @@ test_that("Gaussian identity-link weights are NOT refused", {
   for (be in engines) {
     expect_no_error(
       suppressMessages(flexybayes(
-        y ~ x, data = d, weights = w, backend = be, return_code = TRUE
+        y ~ x,
+        data = d,
+        weights = w,
+        backend = be,
+        return_code = TRUE
       ))
     )
   }
@@ -91,8 +104,12 @@ test_that("the refusal fires before the fit, not after", {
   d <- .wdat_count()
   expect_error(
     suppressMessages(flexybayes(
-      y ~ x, data = d, weights = as.numeric(seq_len(nrow(d))),
-      family = "poisson", backend = "brms", return_code = TRUE
+      y ~ x,
+      data = d,
+      weights = as.numeric(seq_len(nrow(d))),
+      family = "poisson",
+      backend = "brms",
+      return_code = TRUE
     )),
     class = "flexybayes_refusal_weights_requires_gaussian"
   )
@@ -110,8 +127,13 @@ test_that("aggregate = TRUE with weights is refused by name", {
   d <- data.frame(y = y, x = x, g = g, w = w)
   err <- tryCatch(
     suppressMessages(flexybayes(
-      y ~ x, random = ~g, data = d, weights = w, aggregate = TRUE,
-      backend = "inla", verbose = FALSE
+      y ~ x,
+      random = ~g,
+      data = d,
+      weights = w,
+      aggregate = TRUE,
+      backend = "inla",
+      verbose = FALSE
     )),
     error = function(e) e
   )
@@ -132,8 +154,13 @@ test_that("aggregate = \"auto\" with weights falls through to per-row, unrefused
   d <- data.frame(y = y, x = x, g = g, w = w)
   expect_no_error(
     suppressMessages(flexybayes(
-      y ~ x, random = ~g, data = d, weights = w, aggregate = "auto",
-      backend = "inla", verbose = FALSE
+      y ~ x,
+      random = ~g,
+      data = d,
+      weights = w,
+      aggregate = "auto",
+      backend = "inla",
+      verbose = FALSE
     ))
   )
 })
@@ -148,15 +175,22 @@ test_that("constant weights are the unweighted model and pass through", {
   d <- .wdat()
   expect_no_error(
     suppressMessages(flexybayes(
-      y ~ x, data = d, weights = rep(1, nrow(d)),
-      backend = "inla", return_code = TRUE
+      y ~ x,
+      data = d,
+      weights = rep(1, nrow(d)),
+      backend = "inla",
+      return_code = TRUE
     ))
   )
   dc <- .wdat_count()
   expect_no_error(
     suppressMessages(flexybayes(
-      y ~ x, data = dc, weights = rep(2.5, nrow(dc)), family = "poisson",
-      backend = "brms", return_code = TRUE
+      y ~ x,
+      data = dc,
+      weights = rep(2.5, nrow(dc)),
+      family = "poisson",
+      backend = "brms",
+      return_code = TRUE
     ))
   )
 })
@@ -167,7 +201,10 @@ test_that("NULL weights are unaffected", {
   d <- .wdat()
   expect_no_error(
     suppressMessages(flexybayes(
-      y ~ x, data = d, backend = "inla", return_code = TRUE
+      y ~ x,
+      data = d,
+      backend = "inla",
+      return_code = TRUE
     ))
   )
 })
@@ -189,7 +226,9 @@ test_that("the guard reads the IR, not only the dispatch argument", {
   # caller that built the IR upstream would slip past the gate.
   d <- .wdat_count(5L)
   ir <- flexyBayes:::fb_from_asreml(
-    y ~ x, data = d, weights = c(1, 2, 3, 4, 5),
+    y ~ x,
+    data = d,
+    weights = c(1, 2, 3, 4, 5),
     family = "poisson"
   )
   expect_error(
@@ -215,6 +254,7 @@ test_that("fb_plan() agrees with live dispatch on the family refusal", {
   dg <- .wdat()
   wg <- as.numeric(seq_len(nrow(dg)))
   expect_s3_class(
-    fb_plan(y ~ x, data = dg, weights = wg, family = "gaussian"), "fb_plan"
+    fb_plan(y ~ x, data = dg, weights = wg, family = "gaussian"),
+    "fb_plan"
   )
 })

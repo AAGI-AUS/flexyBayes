@@ -109,8 +109,13 @@
   # prevent. A fit carrying the term is still reachable through a direct
   # emit_inla() call, as the us() branch is, so the line still has a reader.
   reg <- .fb_translation_registry()
-  row <- reg[reg$class %in% c("conditional", "refused") &
-    grepl("fa(", reg$spelling, fixed = TRUE), , drop = FALSE]
+  row <- reg[
+    reg$class %in%
+      c("conditional", "refused") &
+      grepl("fa(", reg$spelling, fixed = TRUE),
+    ,
+    drop = FALSE
+  ]
   if (nrow(row) == 0L) {
     return("")
   }

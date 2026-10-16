@@ -291,7 +291,9 @@ test_that(".default_half_normal_prior() builds half-normal specs scaled by 5*sd(
   expect_identical(p$specs[[1]]$target$type, "sigma")
   expect_identical(p$specs[[1]]$spec$family, "half_normal")
   expect_named(p$specs[[1]]$spec$args, "scale")
-  expect_true(abs(p$specs[[1]]$spec$args$scale - 5 * sd(d$y) / .hn_divisor()) < 1e-9)
+  expect_true(
+    abs(p$specs[[1]]$spec$args$scale - 5 * sd(d$y) / .hn_divisor()) < 1e-9
+  )
   expect_identical(p$specs[[2]]$target$type, "sd")
   expect_identical(p$specs[[2]]$target$group, "g")
   expect_identical(p$specs[[2]]$spec$family, "half_normal")
@@ -326,7 +328,8 @@ test_that(".default_half_normal_prior() extends to vm() + ped() per §1.4", {
   expect_identical(p$specs[[3]]$spec$family, "half_normal")
   # Scale calculation: identity-link Gaussian -> 5 * sd(y) / divisor.
   expect_true(
-    abs(p$specs[[2]]$spec$args$scale - 5 * stats::sd(d$y) / .hn_divisor()) < 1e-9
+    abs(p$specs[[2]]$spec$args$scale - 5 * stats::sd(d$y) / .hn_divisor()) <
+      1e-9
   )
   # Attribute trail: per-form marker + per-prior basis.
   expect_identical(
@@ -390,7 +393,11 @@ test_that(".default_half_normal_scale() picks family-aware scales", {
   expect_identical(s_be$basis, "logit_half_normal")
   expect_identical(s_be$scale, 5 / .hn_divisor())
 
-  s_nb <- flexyBayes:::.default_half_normal_scale(NULL, "y", "negative_binomial")
+  s_nb <- flexyBayes:::.default_half_normal_scale(
+    NULL,
+    "y",
+    "negative_binomial"
+  )
   expect_identical(s_nb$basis, "log_link_half_normal")
   expect_identical(s_nb$scale, 3 / .hn_divisor())
 })

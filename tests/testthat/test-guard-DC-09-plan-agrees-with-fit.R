@@ -17,7 +17,9 @@
 .g09_data <- function() {
   set.seed(9)
   d <- expand.grid(
-    rowf = factor(1:6), colf = factor(1:4), env = factor(c("e1", "e2", "e3"))
+    rowf = factor(1:6),
+    colf = factor(1:4),
+    env = factor(c("e1", "e2", "e3"))
   )
   d$gen <- factor(sample(sprintf("v%d", 1:8), nrow(d), replace = TRUE))
   d$x <- stats::rnorm(nrow(d))
@@ -32,14 +34,21 @@
   poisson_iid = list(n ~ env, random = ~gen, family = "poisson"),
   poisson_continuous = list(n ~ x, random = ~gen, family = "poisson"),
   interaction = list(y ~ env, random = ~ gen + env:gen),
-  dsum_residual = list(y ~ env, random = ~gen, residual = ~ dsum(~ units | env)),
+  dsum_residual = list(
+    y ~ env,
+    random = ~gen,
+    residual = ~ dsum(~ units | env)
+  ),
   diag = list(y ~ env, random = ~ diag(env):gen),
   us = list(y ~ env, random = ~ us(env):gen),
   correlated_slope = list(y ~ x + (x | gen)),
   uncorrelated_slope = list(y ~ x + (x || gen)),
   aggregate_gaussian = list(y ~ env, random = ~gen, aggregate = TRUE),
   aggregate_continuous = list(
-    n ~ x, random = ~gen, family = "poisson", aggregate = TRUE
+    n ~ x,
+    random = ~gen,
+    family = "poisson",
+    aggregate = TRUE
   ),
   ar1_field = list(y ~ env, random = ~ gen + id(env):ar1(rowf):ar1(colf)),
   lognormal = list(pos ~ env, random = ~gen, family = "lognormal"),
@@ -117,7 +126,10 @@ test_that("DC-09 guard: fb_plan() names the route the fit takes", {
     }
   }
   # The corpus reaches every route.
-  expect_setequal(unique(verdicts), c("refused", "per_row", "aggregated", "brms"))
+  expect_setequal(
+    unique(verdicts),
+    c("refused", "per_row", "aggregated", "brms")
+  )
   expect_identical(
     setdiff(names(disagree), names(.g09_open)),
     character(0),

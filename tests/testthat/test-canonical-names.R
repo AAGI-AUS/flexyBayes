@@ -15,7 +15,6 @@
 #     engines' names through the registry, with no user-supplied map.
 #   - register_canonical_mapper() round-trips a custom mapper.
 
-
 mk_canon_data <- function() {
   set.seed(20260522L)
   n <- 30L
@@ -211,4 +210,3 @@ test_that("register_canonical_mapper() round-trips a custom mapper", {
     "must be a function"
   )
 })
-

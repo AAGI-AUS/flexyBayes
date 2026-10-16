@@ -11,7 +11,9 @@
 
 .gblup_term <- function(var = "geno", fmt = "dense", sym = "Gmat") {
   list(
-    type = "vm", var = var, mat = sym,
+    type = "vm",
+    var = var,
+    mat = sym,
     cov_representation = list(format = fmt, data = sym, scheme = NULL)
   )
 }
@@ -32,7 +34,9 @@ test_that(".fb_brms_data2() materialises each carrier to the relationship covari
   expect_equal(unname(d2c$Lc), G, tolerance = 1e-8, ignore_attr = TRUE)
 
   Q <- solve(G)
-  fb_prec <- list(random_terms = list(.gblup_term(fmt = "precision", sym = "Qp")))
+  fb_prec <- list(
+    random_terms = list(.gblup_term(fmt = "precision", sym = "Qp"))
+  )
   d2p <- flexyBayes:::.fb_brms_data2(fb_prec, list(Qp = Q), dat)
   expect_equal(unname(d2p$Qp), G, tolerance = 1e-8, ignore_attr = TRUE)
 })
@@ -48,7 +52,10 @@ test_that(".fb_brms_covname() refuses the block and low-rank carriers on brms", 
     flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "low_rank")),
     "INLA-only"
   )
-  expect_equal(flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "dense")), "Gmat")
+  expect_equal(
+    flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "dense")),
+    "Gmat"
+  )
 })
 
 test_that("brms backend now generates GBLUP Stan code via the known-covariance route", {
@@ -65,9 +72,13 @@ test_that("brms backend now generates GBLUP Stan code via the known-covariance r
     y = stats::rnorm(24L)
   )
   code <- flexybayes(
-    y ~ 1, random = ~ vm(geno, Gmat), data = dat,
-    known_matrices = list(Gmat = G), backend = "brms",
-    return_code = TRUE, verbose = FALSE
+    y ~ 1,
+    random = ~ vm(geno, Gmat),
+    data = dat,
+    known_matrices = list(Gmat = G),
+    backend = "brms",
+    return_code = TRUE,
+    verbose = FALSE
   )
   # The Cholesky-of-known-covariance group effect is the GBLUP structure.
   expect_true(grepl("Lcov", code, fixed = TRUE))
@@ -120,14 +131,23 @@ test_that("GBLUP recovers heritability and breeding values across both active en
   dimnames(Q) <- dimnames(G)
 
   fit_brms <- flexybayes(
-    y ~ 1, random = ~ vm(geno, Gmat), data = dat,
-    known_matrices = list(Gmat = G), backend = "brms",
-    n_samples = 700L, warmup = 700L, chains = 2L,
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ 1,
+    random = ~ vm(geno, Gmat),
+    data = dat,
+    known_matrices = list(Gmat = G),
+    backend = "brms",
+    n_samples = 700L,
+    warmup = 700L,
+    chains = 2L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )
   fit_inla <- flexybayes(
-    y ~ 1, random = ~ vm(geno, cov = fb_cov(Qprec, type = "precision")),
-    data = dat, known_matrices = list(Qprec = Q), backend = "inla",
+    y ~ 1,
+    random = ~ vm(geno, cov = fb_cov(Qprec, type = "precision")),
+    data = dat,
+    known_matrices = list(Qprec = Q),
+    backend = "inla",
     verbose = FALSE
   )
 

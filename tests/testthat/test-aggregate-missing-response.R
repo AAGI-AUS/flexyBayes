@@ -11,8 +11,7 @@
 # with the default aggregate = "auto".
 # =============================================================================
 
-.rcbd_with_hole <- function(n_row = 8L, n_col = 6L, n_missing = 7L,
-                            seed = 1L) {
+.rcbd_with_hole <- function(n_row = 8L, n_col = 6L, n_missing = 7L, seed = 1L) {
   set.seed(seed)
   d <- expand.grid(col_num = seq_len(n_col), row_num = seq_len(n_row))
   d$blk <- factor(rep(seq_len(6L), length.out = nrow(d)))
@@ -27,8 +26,13 @@ test_that("a missing response does not break the default aggregate = auto", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .rcbd_with_hole()
   expect_no_error(suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units,
-    data = d, backend = "inla", na_action = "augment", verbose = FALSE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   )))
 })
 
@@ -38,12 +42,22 @@ test_that("auto and explicit aggregate = FALSE agree when a response is missing"
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .rcbd_with_hole()
   f_auto <- suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "inla", na_action = "augment", verbose = FALSE
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   ))
   f_row <- suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-    backend = "inla", na_action = "augment", aggregate = FALSE,
+    fixed = y ~ 1,
+    random = ~blk,
+    residual = ~units,
+    data = d,
+    backend = "inla",
+    na_action = "augment",
+    aggregate = FALSE,
     verbose = FALSE
   ))
   h1 <- f_auto$inla$summary.hyperpar[, "mean"]
@@ -63,8 +77,13 @@ test_that("aggregate = TRUE refuses to compress a missing response", {
   d <- .rcbd_with_hole()
   expect_error(
     suppressMessages(flexybayes(
-      fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
-      backend = "inla", na_action = "augment", aggregate = TRUE,
+      fixed = y ~ 1,
+      random = ~blk,
+      residual = ~units,
+      data = d,
+      backend = "inla",
+      na_action = "augment",
+      aggregate = TRUE,
       verbose = FALSE
     )),
     "missing values"
@@ -81,8 +100,12 @@ test_that("the aggregated path is untouched when nothing is missing", {
   d <- .rcbd_with_hole(n_missing = 0L)
   d$y <- stats::rpois(nrow(d), 3)
   fit <- suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk,
-    data = d, family = "poisson", backend = "inla", verbose = FALSE
+    fixed = y ~ 1,
+    random = ~blk,
+    data = d,
+    family = "poisson",
+    backend = "inla",
+    verbose = FALSE
   ))
   path <- fit$extras$backend_decision$path %||% ""
   expect_match(paste(path, collapse = " "), "aggregat")

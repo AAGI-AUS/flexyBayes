@@ -45,7 +45,10 @@ fbiso_data <- function(seed = 20260919L, n_group = 12L, per = 8L) {
     d$z1 <- stats::rnorm(n)
     d$z2 <- stats::rnorm(n)
     u <- stats::rnorm(n_group, sd = 0.7)
-    d$y <- 1 + 0.5 * d$x + 0.8 * d$z1 + u[as.integer(d$g)] +
+    d$y <- 1 +
+      0.5 * d$x +
+      0.8 * d$z1 +
+      u[as.integer(d$g)] +
       stats::rnorm(n, sd = 0.5)
     d
   })
@@ -99,10 +102,12 @@ fbiso_watcher <- function(busy = TRUE, timeout = 120) {
           if (!fresh) {
             next
           }
-          running <- !busy || length(tryCatch(
-            ps::ps_children(k),
-            error = function(e) list()
-          )) > 0L
+          running <- !busy ||
+            length(tryCatch(
+              ps::ps_children(k),
+              error = function(e) list()
+            )) >
+              0L
           if (running) {
             tools::pskill(pid, tools::SIGKILL)
             return(as.integer(pid))
@@ -148,7 +153,9 @@ fbiso_diff <- function(a, b, path = "") {
     return(paste0(path, if (same_text) " <environment>" else " <value>"))
   }
   if (
-    is.list(a) && is.list(b) && length(a) == length(b) &&
+    is.list(a) &&
+      is.list(b) &&
+      length(a) == length(b) &&
       identical(names(a), names(b))
   ) {
     nm <- names(a) %||% as.character(seq_along(a))
@@ -190,9 +197,13 @@ fbiso_inla_numbers <- function(fit) {
 fbiso_distance <- function(a, b) {
   x <- fbiso_inla_numbers(a)
   y <- fbiso_inla_numbers(b)
-  vapply(names(x), function(nm) {
-    max(abs(x[[nm]] - y[[nm]])) / max(abs(c(x[[nm]], y[[nm]])))
-  }, numeric(1))
+  vapply(
+    names(x),
+    function(nm) {
+      max(abs(x[[nm]] - y[[nm]])) / max(abs(c(x[[nm]], y[[nm]])))
+    },
+    numeric(1)
+  )
 }
 
 # From ten in-process fits (45 pairs, largest 2.18e-5): about ten times
@@ -228,10 +239,19 @@ test_that("asking for isolation without callr refuses by name, before any fit", 
     .fb_isolation_callr_available = function() FALSE
   )
   d <- fbiso_data()
-  refusal <- fbiso_with("process", tryCatch(
-    flexybayes(y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE),
-    error = function(e) e
-  ))
+  refusal <- fbiso_with(
+    "process",
+    tryCatch(
+      flexybayes(
+        y ~ x,
+        random = ~g,
+        data = d,
+        backend = "inla",
+        verbose = FALSE
+      ),
+      error = function(e) e
+    )
+  )
   expect_s3_class(refusal, "flexybayes_refusal")
   expect_identical(refusal$reason_code, "isolation_requires_callr")
   expect_match(conditionMessage(refusal), "callr")
@@ -257,30 +277,36 @@ test_that("the child runs this session's namespace, options, engine settings and
   expected_state <- get(".Random.seed", envir = globalenv())
   set.seed(42L)
 
-  info <- fbiso_with("process", .fb_isolated_call(
-    function() {
-      ns <- asNamespace("flexyBayes")
-      was <- ns$.emit_state_get("auto_fallback_note")
-      ns$.emit_state_set("auto_fallback_note", TRUE)
-      list(
-        pid = Sys.getpid(),
-        path = getNamespaceInfo(ns, "path"),
-        isolation = getOption("flexyBayes.isolation"),
-        option = getOption("flexyBayes.silence_convergence_warning"),
-        inla_threads = INLA::inla.getOption("num.threads"),
-        omp = Sys.getenv("OMP_NUM_THREADS"),
-        note_was = was,
-        draw = stats::rnorm(1L)
-      )
-    },
-    engine = "none",
-    entry_point = "a test"
-  ))
+  info <- fbiso_with(
+    "process",
+    .fb_isolated_call(
+      function() {
+        ns <- asNamespace("flexyBayes")
+        was <- ns$.emit_state_get("auto_fallback_note")
+        ns$.emit_state_set("auto_fallback_note", TRUE)
+        list(
+          pid = Sys.getpid(),
+          path = getNamespaceInfo(ns, "path"),
+          isolation = getOption("flexyBayes.isolation"),
+          option = getOption("flexyBayes.silence_convergence_warning"),
+          inla_threads = INLA::inla.getOption("num.threads"),
+          omp = Sys.getenv("OMP_NUM_THREADS"),
+          note_was = was,
+          draw = stats::rnorm(1L)
+        )
+      },
+      engine = "none",
+      entry_point = "a test"
+    )
+  )
 
   # Another process, running the namespace this session loaded: under
   # pkgload that is the source tree, not an installed build.
   expect_false(identical(info$pid, Sys.getpid()))
-  expect_identical(info$path, getNamespaceInfo(asNamespace("flexyBayes"), "path"))
+  expect_identical(
+    info$path,
+    getNamespaceInfo(asNamespace("flexyBayes"), "path")
+  )
   # No second level of isolation inside the child.
   expect_identical(info$isolation, "none")
   expect_true(info$option)
@@ -300,51 +326,62 @@ test_that("the child runs this session's namespace, options, engine settings and
 test_that("output, messages and warnings come back in order, and a refusal arrives as itself", {
   fbiso_skip()
   events <- character(0)
-  printed <- utils::capture.output(value <- withCallingHandlers(
-    fbiso_with("process", .fb_isolated_call(
-      function() {
-        cat("line one\n")
-        message("a message")
-        warning(structure(
-          class = c("flexybayes_deprecated", "warning", "condition"),
-          list(message = "a classed warning", call = NULL)
-        ))
-        cat("line two\n")
-        7
+  printed <- utils::capture.output(
+    value <- withCallingHandlers(
+      fbiso_with(
+        "process",
+        .fb_isolated_call(
+          function() {
+            cat("line one\n")
+            message("a message")
+            warning(structure(
+              class = c("flexybayes_deprecated", "warning", "condition"),
+              list(message = "a classed warning", call = NULL)
+            ))
+            cat("line two\n")
+            7
+          },
+          engine = "none",
+          entry_point = "a test"
+        )
+      ),
+      message = function(m) {
+        events <<- c(events, paste0("message: ", trimws(conditionMessage(m))))
+        invokeRestart("muffleMessage")
       },
-      engine = "none",
-      entry_point = "a test"
-    )),
-    message = function(m) {
-      events <<- c(events, paste0("message: ", trimws(conditionMessage(m))))
-      invokeRestart("muffleMessage")
-    },
-    warning = function(w) {
-      events <<- c(
-        events,
-        paste0("warning: ", conditionMessage(w), " [", class(w)[[1L]], "]")
-      )
-      invokeRestart("muffleWarning")
-    }
-  ))
+      warning = function(w) {
+        events <<- c(
+          events,
+          paste0("warning: ", conditionMessage(w), " [", class(w)[[1L]], "]")
+        )
+        invokeRestart("muffleWarning")
+      }
+    )
+  )
   expect_identical(value, 7)
   expect_identical(printed, c("line one", "line two"))
   expect_identical(
     events,
-    c("message: a message", "warning: a classed warning [flexybayes_deprecated]")
+    c(
+      "message: a message",
+      "warning: a classed warning [flexybayes_deprecated]"
+    )
   )
 
   refusal <- tryCatch(
-    fbiso_with("process", .fb_isolated_call(
-      function() {
-        stop(asNamespace("flexyBayes")$.fb_refusal_condition(
-          reason_code = "isolated_process_died",
-          message = "a refusal inside the child"
-        ))
-      },
-      engine = "none",
-      entry_point = "a test"
-    )),
+    fbiso_with(
+      "process",
+      .fb_isolated_call(
+        function() {
+          stop(asNamespace("flexyBayes")$.fb_refusal_condition(
+            reason_code = "isolated_process_died",
+            message = "a refusal inside the child"
+          ))
+        },
+        engine = "none",
+        entry_point = "a test"
+      )
+    ),
     error = function(e) e
   )
   expect_s3_class(refusal, "flexybayes_refusal")
@@ -429,7 +466,11 @@ test_that("an isolated INLA fit matches in-process fits, exactly outside the eng
     boundary <- cross[endsWith(cross, "<environment>")]
     expect_true(all(
       sub(" <environment>$", "", boundary) %in%
-        c("$extras$call_info$fixed", "$extras$call_info$random", "$extras$formula")
+        c(
+          "$extras$call_info$fixed",
+          "$extras$call_info$random",
+          "$extras$formula"
+        )
     ))
     derived <- setdiff(cross, c(boundary, "$extras$run_time <value>"))
     for (path in derived) {
@@ -525,5 +566,3 @@ test_that("an isolated brms fit returns the in-process draws, with a seed and fr
   expect_identical(proceeded_isolated$extras$isolation$mode, "process")
   expect_identical(draws(proceeded_isolated), draws(proceeded_here))
 })
-
-

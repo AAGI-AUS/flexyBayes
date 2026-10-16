@@ -73,8 +73,16 @@ fb_gblup_cv <- function(
   n <- length(y)
   if (nrow(K) != n || ncol(K) != n) {
     stop(
-      "`K` must be an ", n, " x ", n, " relationship matrix aligned to `y`, ",
-      "got ", nrow(K), " x ", ncol(K), ".",
+      "`K` must be an ",
+      n,
+      " x ",
+      n,
+      " relationship matrix aligned to `y`, ",
+      "got ",
+      nrow(K),
+      " x ",
+      ncol(K),
+      ".",
       call. = FALSE
     )
   }
@@ -115,7 +123,12 @@ fb_gblup_cv <- function(
       test <- which(fold_id == f)
       train <- which(fold_id != f)
       preds[test] <- .fb_gblup_predict(
-        y, X, K, train, test, tol = tol
+        y,
+        X,
+        K,
+        train,
+        test,
+        tol = tol
       )
       pred_acc[rep_i, f] <- suppressWarnings(
         stats::cor(preds[test], y[test])
@@ -159,17 +172,29 @@ fb_gblup_cv <- function(
 print.fb_gblup_cv <- function(x, ...) {
   cat("<fb_gblup_cv>  genomic-prediction cross-validation\n")
   cat(
-    "  ", x$n, " genotypes, ", x$folds, "-fold",
-    if (x$repeats > 1L) paste0(" x ", x$repeats, " repeats") else "", "\n",
-    sep = ""
-  )
-  cat("  REML heritability (full data): ", format(round(x$h2, 3L)), "\n",
+    "  ",
+    x$n,
+    " genotypes, ",
+    x$folds,
+    "-fold",
+    if (x$repeats > 1L) paste0(" x ", x$repeats, " repeats") else "",
+    "\n",
     sep = ""
   )
   cat(
-    "  prediction accuracy: ", format(round(x$accuracy, 3L)),
-    "  (per-fold mean ", format(round(x$accuracy_mean, 3L)),
-    " +/- ", format(round(x$accuracy_se, 3L)), ")\n",
+    "  REML heritability (full data): ",
+    format(round(x$h2, 3L)),
+    "\n",
+    sep = ""
+  )
+  cat(
+    "  prediction accuracy: ",
+    format(round(x$accuracy, 3L)),
+    "  (per-fold mean ",
+    format(round(x$accuracy_mean, 3L)),
+    " +/- ",
+    format(round(x$accuracy_se, 3L)),
+    ")\n",
     sep = ""
   )
   cat("  bias (obs ~ pred slope): ", format(round(x$bias, 3L)), "\n", sep = "")

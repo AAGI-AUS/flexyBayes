@@ -42,7 +42,6 @@
 #   y : c("include", "omit", "fail")   -> default "include"
 #   x : c("fail", "include", "omit")   -> default "fail"
 
-
 # .asreml_na_method_recorded() --- one recorded na.method() return value
 #
 # `case` selects which recorded call to return. `"explicit"` is the fully
@@ -56,8 +55,15 @@
 # @noRd
 # @keywords internal
 .asreml_na_method_recorded <- function(
-  case = c("explicit", "default", "y_include", "y_omit", "y_fail",
-           "x_omit", "x_include")
+  case = c(
+    "explicit",
+    "default",
+    "y_include",
+    "y_omit",
+    "y_fail",
+    "x_omit",
+    "x_include"
+  )
 ) {
   case <- match.arg(case)
   switch(

@@ -16,9 +16,14 @@
 # =============================================================================
 
 fake_hyper <- function(resid_prec, comp_precs, comp_low = NULL) {
-  nm <- c("Precision for the Gaussian observations",
-          paste0("Precision for f", seq_along(comp_precs)))
-  low <- c(resid_prec * 0.9, if (is.null(comp_low)) comp_precs * 0.9 else comp_low)
+  nm <- c(
+    "Precision for the Gaussian observations",
+    paste0("Precision for f", seq_along(comp_precs))
+  )
+  low <- c(
+    resid_prec * 0.9,
+    if (is.null(comp_low)) comp_precs * 0.9 else comp_low
+  )
   m <- data.frame(
     mean = c(resid_prec, comp_precs),
     `0.025quant` = low,
@@ -31,31 +36,37 @@ fake_hyper <- function(resid_prec, comp_precs, comp_low = NULL) {
 test_that("a component pinned at zero variance is detected from the raw table", {
   # A component whose variance is below 1e-4 of the residual's (the 1% rule
   # on the SD scale, squared) counts as pinned.
-  fit <- list(summary.hyperpar = fake_hyper(
-    resid_prec = 0.0025,          # residual variance 400
-    comp_precs = c(1e10, 0.01)    # first is pinned, second is healthy
-  ))
+  fit <- list(
+    summary.hyperpar = fake_hyper(
+      resid_prec = 0.0025, # residual variance 400
+      comp_precs = c(1e10, 0.01) # first is pinned, second is healthy
+    )
+  )
   hit <- .fb_inla_collapsed_hyper(fit)
   expect_length(hit, 1L)
   expect_equal(hit, "Precision for f1")
 })
 
 test_that("a healthy fit yields no pinned components", {
-  fit <- list(summary.hyperpar = fake_hyper(
-    resid_prec = 0.0025,
-    comp_precs = c(0.01, 0.02, 0.005)
-  ))
+  fit <- list(
+    summary.hyperpar = fake_hyper(
+      resid_prec = 0.0025,
+      comp_precs = c(0.01, 0.02, 0.005)
+    )
+  )
   expect_equal(.fb_inla_collapsed_hyper(fit), character(0))
 })
 
 test_that("the detector reads the low end of the interval, not the mean", {
   # A component whose mean precision is enormous but whose interval reaches
   # a plausible variance is not pinned: the fit is uncertain, not collapsed.
-  fit <- list(summary.hyperpar = fake_hyper(
-    resid_prec = 0.0025,
-    comp_precs = c(1e10),
-    comp_low = c(0.01)
-  ))
+  fit <- list(
+    summary.hyperpar = fake_hyper(
+      resid_prec = 0.0025,
+      comp_precs = c(1e10),
+      comp_low = c(0.01)
+    )
+  )
   expect_equal(.fb_inla_collapsed_hyper(fit), character(0))
 })
 
@@ -67,8 +78,12 @@ test_that("the probe does not run when nothing is pinned", {
 
 test_that("a better restart is judged better only beyond the declared margin", {
   probe_at <- function(delta) {
-    list(mlik_original = -100, mlik_restart = -100 + delta, delta = delta,
-         collapsed = "Precision for f1")
+    list(
+      mlik_original = -100,
+      mlik_restart = -100 + delta,
+      delta = delta,
+      collapsed = "Precision for f1"
+    )
   }
   # The margin is two log units, the conventional positive-evidence step.
   expect_gt(.FB_RESTART_MLIK_MARGIN, 0)
@@ -80,10 +95,18 @@ test_that("a better restart is judged better only beyond the declared margin", {
 })
 
 test_that("the reason names how many components were affected", {
-  one <- .fb_restart_reason(list(mlik_original = -1, mlik_restart = -1, delta = 5,
-                                 collapsed = "Precision for f1"))
-  many <- .fb_restart_reason(list(mlik_original = -1, mlik_restart = -1, delta = 5,
-                                  collapsed = paste0("Precision for f", 1:6)))
+  one <- .fb_restart_reason(list(
+    mlik_original = -1,
+    mlik_restart = -1,
+    delta = 5,
+    collapsed = "Precision for f1"
+  ))
+  many <- .fb_restart_reason(list(
+    mlik_original = -1,
+    mlik_restart = -1,
+    delta = 5,
+    collapsed = paste0("Precision for f", 1:6)
+  ))
   expect_match(one, "the component ", fixed = TRUE)
   expect_match(many, "the 6 components ", fixed = TRUE)
 })
@@ -96,13 +119,17 @@ test_that("a live fit that needed a restart returns the restarted fit", {
   e <- new.env()
   utils::data("besag.met", package = "agridat", envir = e)
   d <- e$besag.met
-  d$env <- factor(d$county); d$gen <- factor(d$gen)
+  d$env <- factor(d$county)
+  d$gen <- factor(d$gen)
   d <- d[!is.na(d$yield), ]
   d <- d[order(d$env, d$gen), ]
   rownames(d) <- NULL
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    yield ~ env, random = ~ diag(env):gen, data = d,
-    backend = "inla", verbose = FALSE
+    yield ~ env,
+    random = ~ diag(env):gen,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   )))
 
   probe <- fit$num_check$restart_probe
@@ -138,17 +165,23 @@ test_that("the adopted fit is the restarted fit, not the original", {
   e <- new.env()
   utils::data("besag.met", package = "agridat", envir = e)
   d <- e$besag.met
-  d$env <- factor(d$county); d$gen <- factor(d$gen)
+  d$env <- factor(d$county)
+  d$gen <- factor(d$gen)
   d <- d[!is.na(d$yield), ]
   d <- d[order(d$env, d$gen), ]
   rownames(d) <- NULL
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    yield ~ env, random = ~ diag(env):gen, data = d,
-    backend = "inla", verbose = FALSE
+    yield ~ env,
+    random = ~ diag(env):gen,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   )))
   probe <- fit$num_check$restart_probe
-  skip_if(!isTRUE(fit$num_check$restart_adopted),
-          "this run's first optimisation was not beaten")
+  skip_if(
+    !isTRUE(fit$num_check$restart_adopted),
+    "this run's first optimisation was not beaten"
+  )
   # The returned object must carry the restart's marginal likelihood, not
   # the one it was shown to be worse than. Without this the adoption could
   # record itself while still handing back the original fit.

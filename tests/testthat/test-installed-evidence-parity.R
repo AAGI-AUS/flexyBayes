@@ -30,7 +30,8 @@
 .iep_grid_builder <- function() {
   path <- .iep_pkg_file("tools", "capability_grid_matrix.R")
   testthat::skip_if(
-    is.na(path), "tools/capability_grid_matrix.R is not in the installed tree"
+    is.na(path),
+    "tools/capability_grid_matrix.R is not in the installed tree"
   )
   env <- new.env()
   source(path, local = env)
@@ -51,7 +52,8 @@
   if (!identical(nrow(left), nrow(right))) {
     return(sprintf(
       "row count differs: registry-derived %d, installed CSV %d",
-      nrow(left), nrow(right)
+      nrow(left),
+      nrow(right)
     ))
   }
   if (!identical(left$cell, right$cell)) {
@@ -63,13 +65,18 @@
   }
   sprintf(
     "%s: registry says '%s', installed CSV says '%s'",
-    left$cell[bad], left$verdict[bad], right$verdict[bad]
+    left$cell[bad],
+    left$verdict[bad],
+    right$verdict[bad]
   )
 }
 
 test_that("the installed capability CSV agrees with the live registry", {
   csv_path <- .iep_pkg_file(
-    "inst", "validation", "execution_grid", "capability_matrix.csv"
+    "inst",
+    "validation",
+    "execution_grid",
+    "capability_matrix.csv"
   )
   skip_if(is.na(csv_path), "the installed capability CSV is not in the tree")
   builder <- .iep_grid_builder()
@@ -93,7 +100,10 @@ test_that("the parity check rejects a CSV with one changed verdict", {
   # check that only counted rows would pass a CSV carrying the right
   # cells at the wrong verdicts.
   csv_path <- .iep_pkg_file(
-    "inst", "validation", "execution_grid", "capability_matrix.csv"
+    "inst",
+    "validation",
+    "execution_grid",
+    "capability_matrix.csv"
   )
   skip_if(is.na(csv_path), "the installed capability CSV is not in the tree")
   builder <- .iep_grid_builder()
@@ -140,8 +150,10 @@ test_that("the parity check rejects a CSV with one changed verdict", {
     sprintf(
       "%s: registry says '%s', installed CSV says '%s'",
       csv$cell[!is.na(expected_verdict) & csv$verdict != expected_verdict],
-      expected_verdict[!is.na(expected_verdict) &
-        csv$verdict != expected_verdict],
+      expected_verdict[
+        !is.na(expected_verdict) &
+          csv$verdict != expected_verdict
+      ],
       csv$verdict[!is.na(expected_verdict) & csv$verdict != expected_verdict]
     )
   )
@@ -149,7 +161,9 @@ test_that("the parity check rejects a CSV with one changed verdict", {
 
 .iep_installed_csv <- function() {
   path <- system.file(
-    "validation", "execution_grid", "capability_matrix.csv",
+    "validation",
+    "execution_grid",
+    "capability_matrix.csv",
     package = "flexyBayes"
   )
   expect_true(nzchar(path))

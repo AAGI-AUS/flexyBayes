@@ -191,7 +191,8 @@
 # @keywords internal
 .fb_warn_boundary_collapse <- function(object) {
   silent <- getOption(
-    "flexyBayes.silence_boundary_collapse_warning", FALSE
+    "flexyBayes.silence_boundary_collapse_warning",
+    FALSE
   )
   if (isTRUE(silent)) {
     return(invisible(NULL))

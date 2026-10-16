@@ -34,7 +34,13 @@ test_that("DEF-212: a fixed or random term naming a column not in the data is re
   d <- .er_data()
   cls <- "flexybayes_refusal_model_variable_not_in_data"
   err <- expect_error(
-    .er_quiet(flexybayes(y ~ nosuch, random = ~g, data = d, backend = "inla", verbose = FALSE)),
+    .er_quiet(flexybayes(
+      y ~ nosuch,
+      random = ~g,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )),
     class = cls
   )
   expect_identical(err$variables, "nosuch")
@@ -43,18 +49,36 @@ test_that("DEF-212: a fixed or random term naming a column not in the data is re
     stop("an engine was reached")
   })
   err <- expect_error(
-    .er_quiet(flexybayes(y ~ x, random = ~ g + nosuch, data = d, backend = "inla", verbose = FALSE)),
+    .er_quiet(flexybayes(
+      y ~ x,
+      random = ~ g + nosuch,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )),
     class = cls
   )
   expect_identical(err$variables, "nosuch")
   expect_error(
-    .er_quiet(flexybayes(y ~ x, random = ~nosuch, data = d, backend = "brms",
-      return_code = TRUE, verbose = FALSE)),
+    .er_quiet(flexybayes(
+      y ~ x,
+      random = ~nosuch,
+      data = d,
+      backend = "brms",
+      return_code = TRUE,
+      verbose = FALSE
+    )),
     class = cls
   )
   expect_error(
-    .er_quiet(flexybayes(n ~ x, random = ~nosuch, data = d, family = "poisson",
-      aggregate = TRUE, verbose = FALSE)),
+    .er_quiet(flexybayes(
+      n ~ x,
+      random = ~nosuch,
+      data = d,
+      family = "poisson",
+      aggregate = TRUE,
+      verbose = FALSE
+    )),
     class = cls
   )
   expect_error(fb_plan(y ~ x + nosuch:z, random = ~g, data = d), class = cls)
@@ -65,10 +89,19 @@ test_that("DEF-213: an aggregate value other than TRUE, FALSE or \"auto\" is ref
   d <- .er_data()
   cls <- "flexybayes_refusal_aggregate_argument_invalid"
   expect_error(
-    flexybayes(y ~ x, random = ~g, data = d, aggregate = "foo", verbose = FALSE),
+    flexybayes(
+      y ~ x,
+      random = ~g,
+      data = d,
+      aggregate = "foo",
+      verbose = FALSE
+    ),
     class = cls
   )
-  err <- expect_error(fb_plan(y ~ x, random = ~g, data = d, aggregate = NA), class = cls)
+  err <- expect_error(
+    fb_plan(y ~ x, random = ~g, data = d, aggregate = NA),
+    class = cls
+  )
   expect_match(conditionMessage(err), "NA", fixed = TRUE)
 })
 
@@ -76,12 +109,23 @@ test_that("DEF-214: weights of the wrong length or type are refused by name on b
   d <- .er_data()
   cls <- "flexybayes_refusal_weights_invalid"
   err <- expect_error(
-    flexybayes(y ~ x, random = ~g, data = d, weights = c(1, 2), verbose = FALSE),
+    flexybayes(
+      y ~ x,
+      random = ~g,
+      data = d,
+      weights = c(1, 2),
+      verbose = FALSE
+    ),
     class = cls
   )
   expect_match(conditionMessage(err), "2 values for 30 rows", fixed = TRUE)
   expect_error(
-    flexybayes(y ~ x + (1 | g), data = d, weights = rep("a", 30L), verbose = FALSE),
+    flexybayes(
+      y ~ x + (1 | g),
+      data = d,
+      weights = rep("a", 30L),
+      verbose = FALSE
+    ),
     class = cls
   )
   expect_error(fb_plan(y ~ x, random = ~g, data = d, weights = 1), class = cls)
@@ -91,17 +135,33 @@ test_that("DEF-215: a prior that is not an fb_prior() object is refused by name"
   d <- .er_data()
   cls <- "flexybayes_refusal_prior_not_fb_prior"
   err <- expect_error(
-    flexybayes(y ~ x, random = ~g, data = d, prior = "sd ~ banana(1)",
-      backend = "inla", verbose = FALSE),
+    flexybayes(
+      y ~ x,
+      random = ~g,
+      data = d,
+      prior = "sd ~ banana(1)",
+      backend = "inla",
+      verbose = FALSE
+    ),
     class = cls
   )
   expect_match(conditionMessage(err), "character", fixed = TRUE)
   expect_error(
-    flexybayes(y ~ x, random = ~g, data = d, prior = list(sd = 1),
-      backend = "brms", return_code = TRUE, verbose = FALSE),
+    flexybayes(
+      y ~ x,
+      random = ~g,
+      data = d,
+      prior = list(sd = 1),
+      backend = "brms",
+      return_code = TRUE,
+      verbose = FALSE
+    ),
     class = cls
   )
-  expect_error(fb_plan(y ~ x + (1 | g), data = d, priors = "sd ~ banana(1)"), class = cls)
+  expect_error(
+    fb_plan(y ~ x + (1 | g), data = d, priors = "sd ~ banana(1)"),
+    class = cls
+  )
 })
 
 test_that("DEF-216: the aggregated routes' refusals are flexybayes refusals with a registered code", {
@@ -110,8 +170,14 @@ test_that("DEF-216: the aggregated routes' refusals are flexybayes refusals with
   d <- .er_data()
   # A continuous covariate forces one cell per row.
   err <- expect_error(
-    .er_quiet(flexybayes(n ~ z, random = ~g, data = d, family = "poisson",
-      aggregate = TRUE, verbose = FALSE)),
+    .er_quiet(flexybayes(
+      n ~ z,
+      random = ~g,
+      data = d,
+      family = "poisson",
+      aggregate = TRUE,
+      verbose = FALSE
+    )),
     class = "flexybayes_refusal"
   )
   expect_s3_class(err, "flexybayes_aggregate_refusal")
@@ -119,18 +185,34 @@ test_that("DEF-216: the aggregated routes' refusals are flexybayes refusals with
   expect_true("continuous_cell_key_data_dependent" %in% err$reason_codes)
   # The in-memory scope gate.
   fb <- .build_ir_polymorphic(
-    fixed = n ~ x, random = ~g, residual = NULL, data = d, family = "poisson",
-    link = NULL, weights = NULL, known_matrices = list(), prior = NULL,
-    prior_fixed_sd = 100, prior_vc_sd = 1
+    fixed = n ~ x,
+    random = ~g,
+    residual = NULL,
+    data = d,
+    family = "poisson",
+    link = NULL,
+    weights = NULL,
+    known_matrices = list(),
+    prior = NULL,
+    prior_fixed_sd = 100,
+    prior_vc_sd = 1
   )
-  err <- expect_error(.assert_aggregate_in_scope(fb), class = "flexybayes_refusal")
+  err <- expect_error(
+    .assert_aggregate_in_scope(fb),
+    class = "flexybayes_refusal"
+  )
   expect_s3_class(err, "flexybayes_aggregate_out_of_scope")
   expect_identical(err$reason_code, "aggregation_out_of_scope")
   expect_identical(err$scope_reason, "non_gaussian_family")
   # The streamed scope gate.
   err <- expect_error(
-    .er_quiet(flexybayes_stream(y ~ x, random = ~ fa(trt, 2):g, source = d,
-      fit = FALSE, verbose = FALSE)),
+    .er_quiet(flexybayes_stream(
+      y ~ x,
+      random = ~ fa(trt, 2):g,
+      source = d,
+      fit = FALSE,
+      verbose = FALSE
+    )),
     class = "flexybayes_refusal"
   )
   expect_s3_class(err, "flexybayes_aggregate_out_of_scope")
@@ -143,12 +225,24 @@ test_that("DEF-217: a stream source that is neither a file nor a data frame is r
   d <- .er_data()
   cls <- "flexybayes_refusal_stream_source_invalid"
   err <- expect_error(
-    flexybayes_stream(y ~ x, random = ~g, source = "d", fit = FALSE, verbose = FALSE),
+    flexybayes_stream(
+      y ~ x,
+      random = ~g,
+      source = "d",
+      fit = FALSE,
+      verbose = FALSE
+    ),
     class = cls
   )
   expect_match(conditionMessage(err), "`d`", fixed = TRUE)
   expect_error(
-    flexybayes_stream(y ~ x, random = ~g, source = 42, fit = FALSE, verbose = FALSE),
+    flexybayes_stream(
+      y ~ x,
+      random = ~g,
+      source = 42,
+      fit = FALSE,
+      verbose = FALSE
+    ),
     class = cls
   )
 })
@@ -160,18 +254,33 @@ test_that("DEF-218: a factor or character response is refused for a family not b
   d$trt_chr <- as.character(d$trt)
   cls <- "flexybayes_refusal_response_not_numeric"
   err <- expect_error(
-    .er_quiet(flexybayes(trt ~ z, random = ~g, data = d, backend = "inla", verbose = FALSE)),
+    .er_quiet(flexybayes(
+      trt ~ z,
+      random = ~g,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )),
     class = cls
   )
   expect_identical(err$column, "trt")
   expect_match(conditionMessage(err), "factor", fixed = TRUE)
   expect_error(
-    .er_quiet(flexybayes(trt ~ z, random = ~g, data = d, backend = "brms",
-      return_code = TRUE, verbose = FALSE)),
+    .er_quiet(flexybayes(
+      trt ~ z,
+      random = ~g,
+      data = d,
+      backend = "brms",
+      return_code = TRUE,
+      verbose = FALSE
+    )),
     class = cls
   )
   expect_error(fb_plan(trt ~ z, random = ~g, data = d), class = cls)
-  expect_error(fb_plan(trt_chr ~ z + (1 | g), data = d, family = "poisson"), class = cls)
+  expect_error(
+    fb_plan(trt_chr ~ z + (1 | g), data = d, family = "poisson"),
+    class = cls
+  )
   d$two <- factor(rep(c("no", "yes"), 15L))
   expect_error(fb_plan(two ~ z, data = d, family = "binary"), class = cls)
   # A binomial family keeps its own refusal, now in the plan as well.
@@ -221,19 +330,38 @@ test_that("DEF-223: fb_plan() refuses aggregate = TRUE where the fit refuses it"
   .er_options()
   d <- .er_data()
   for (backend in c("auto", "inla")) {
-    p <- fb_plan(n ~ z, random = ~g, data = d, family = "poisson",
-      aggregate = TRUE, backend = backend)
+    p <- fb_plan(
+      n ~ z,
+      random = ~g,
+      data = d,
+      family = "poisson",
+      aggregate = TRUE,
+      backend = backend
+    )
     expect_false(p$will_fit)
     expect_match(p$will_fit_reason, "aggregation_plan_ineligible", fixed = TRUE)
     expect_error(
-      .er_quiet(flexybayes(n ~ z, random = ~g, data = d, family = "poisson",
-        aggregate = TRUE, backend = backend, verbose = FALSE)),
+      .er_quiet(flexybayes(
+        n ~ z,
+        random = ~g,
+        data = d,
+        family = "poisson",
+        aggregate = TRUE,
+        backend = backend,
+        verbose = FALSE
+      )),
       class = "flexybayes_refusal_aggregation_plan_ineligible"
     )
   }
   # A model the aggregation compresses still plans the aggregated route.
   d4 <- d[rep(seq_len(nrow(d)), 4L), ]
-  p <- fb_plan(n ~ x, random = ~g, data = d4, family = "poisson", aggregate = TRUE)
+  p <- fb_plan(
+    n ~ x,
+    random = ~g,
+    data = d4,
+    family = "poisson",
+    aggregate = TRUE
+  )
   expect_true(p$will_fit)
   expect_identical(p$path, "aggregated_inla")
 })
@@ -244,16 +372,30 @@ test_that("DEF-224: the bar grammar fits a transformed response as the ASReml gr
   .er_options()
   set.seed(22)
   d <- data.frame(g = factor(rep(1:6, each = 10L)), x = stats::rnorm(60L))
-  d$y <- exp(1 + 0.3 * d$x + stats::rnorm(6L, 0, 0.3)[d$g] + stats::rnorm(60L, 0, 0.2))
-  bar <- .er_quiet(flexybayes(log(y) ~ x + (1 | g), data = d, backend = "inla", verbose = FALSE))
-  asr <- .er_quiet(flexybayes(log(y) ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE))
+  d$y <- exp(
+    1 + 0.3 * d$x + stats::rnorm(6L, 0, 0.3)[d$g] + stats::rnorm(60L, 0, 0.2)
+  )
+  bar <- .er_quiet(flexybayes(
+    log(y) ~ x + (1 | g),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  ))
+  asr <- .er_quiet(flexybayes(
+    log(y) ~ x,
+    random = ~g,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  ))
   expect_identical(.fb_fit_ir(bar)$response, "log(y)")
   expect_true(isTRUE(.fb_fit_ir(bar)$response_is_expression))
   # Two identical ASReml-grammar calls differ by about 1e-8 in the
   # coefficients and 3e-6 (relative) in the precisions.
   expect_equal(coef(bar), coef(asr), tolerance = 1e-6)
   expect_equal(
-    bar$inla$summary.hyperpar$mean, asr$inla$summary.hyperpar$mean,
+    bar$inla$summary.hyperpar$mean,
+    asr$inla$summary.hyperpar$mean,
     tolerance = 1e-4
   )
   # The peer: lme4's REML estimates of the same model.

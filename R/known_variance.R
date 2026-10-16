@@ -92,7 +92,10 @@
     paste0("a ", class(known_variance)[[1L]], " was given")
   } else if (length(known_variance) != n) {
     paste0(
-      "it has ", length(known_variance), " values and `data` has ", n,
+      "it has ",
+      length(known_variance),
+      " values and `data` has ",
+      n,
       " rows"
     )
   } else if (any(!is.finite(known_variance))) {
@@ -115,7 +118,9 @@
       "`known_variance` must be a numeric vector with one finite, ",
       "non-negative variance for each row of `data`, or a symmetric ",
       "positive-definite covariance matrix with one row and column for ",
-      "each row of `data`, and ", problem, ". ",
+      "each row of `data`, and ",
+      problem,
+      ". ",
       "A row whose first-stage estimate carries no error takes 0."
     )
   ))
@@ -153,7 +158,9 @@
     linked <- zero[rowSums(k[zero, , drop = FALSE] != 0) > 0L]
     if (length(linked) > 0L) {
       problem <- paste0(
-        "row ", linked[[1L]], " has a zero variance and a nonzero covariance"
+        "row ",
+        linked[[1L]],
+        " has a zero variance and a nonzero covariance"
       )
     } else if (
       length(positive) > 0L &&
@@ -198,7 +205,9 @@
     .fb_known_variance_refuse(paste0(
       "`known_variance` adds a known variance to the residual variance of a ",
       "Gaussian response on the identity link, Var(y_i) = sigma^2 + v_i. ",
-      "This model is family = \"", fam, "\"",
+      "This model is family = \"",
+      fam,
+      "\"",
       if (!link_ok) paste0(", link = \"", fb$link, "\"") else "",
       ", which has no additive residual variance for it to join."
     ))
@@ -220,7 +229,9 @@
         paste0("`", .fb_known_variance_columns(), "`", collapse = ", "),
         ", and `data` already has ",
         paste0("`", taken, "`", collapse = ", "),
-        ". Rename ", if (length(taken) > 1L) "them" else "it", "."
+        ". Rename ",
+        if (length(taken) > 1L) "them" else "it",
+        "."
       )
     ))
   }
@@ -286,7 +297,8 @@
   if (is.null(index) || length(index) != nrow(data)) {
     .fb_known_variance_refuse(paste0(
       "The model carries a known covariance matrix, and its data has no `",
-      .FB_KNOWN_ROW_COL, "` column holding each row's index into it."
+      .FB_KNOWN_ROW_COL,
+      "` column holding each row's index into it."
     ))
   }
   out <- matrix(0, nrow = nrow(data), ncol = nrow(data))
@@ -315,13 +327,19 @@
 .fb_inla_known_variance_formula_term <- function(fb = NULL) {
   if (!is.null(.fb_known_variance_term(fb)$matrix)) {
     return(paste0(
-      "f(", .FB_INLA_KNOWN_INDEX, ", model = \"generic0\", Cmatrix = ",
-      .FB_INLA_KNOWN_PRECISION, ", ",
+      "f(",
+      .FB_INLA_KNOWN_INDEX,
+      ", model = \"generic0\", Cmatrix = ",
+      .FB_INLA_KNOWN_PRECISION,
+      ", ",
       "hyper = list(prec = list(initial = 0, fixed = TRUE)))"
     ))
   }
   paste0(
-    "f(", .FB_INLA_KNOWN_INDEX, ", ", .FB_INLA_KNOWN_SCALE,
+    "f(",
+    .FB_INLA_KNOWN_INDEX,
+    ", ",
+    .FB_INLA_KNOWN_SCALE,
     ", model = \"iid\", ",
     "hyper = list(prec = list(initial = 0, fixed = TRUE)))"
   )

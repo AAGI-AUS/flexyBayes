@@ -200,8 +200,11 @@ test_that(".lgm_check_hyperparam_budget() refuses above the hard limit", {
   fb <- mk_fb(random_terms = re)
   r <- flexyBayes:::.lgm_check_hyperparam_budget(fb)
   expect_false(r$pass)
-  expect_match(r$reason, "is above the 15 flexyBayes allows on INLA",
-    fixed = TRUE)
+  expect_match(
+    r$reason,
+    "is above the 15 flexyBayes allows on INLA",
+    fixed = TRUE
+  )
 })
 
 test_that(".lgm_count_hyperparams() charges fa_gxe 2k hyperparameters", {
@@ -221,13 +224,16 @@ test_that(".inla_random_term_class_label() GxE labels use plain ASCII, not U+00D
   # when these labels reach a vignette. The literal ASCII spelling is
   # asserted, not just the absence of the glyph.
   expect_identical(
-    flexyBayes:::.inla_random_term_class_label("fa_gxe"), "factor-analytic GxE"
+    flexyBayes:::.inla_random_term_class_label("fa_gxe"),
+    "factor-analytic GxE"
   )
   expect_identical(
-    flexyBayes:::.inla_random_term_class_label("us_gxe"), "unstructured GxE"
+    flexyBayes:::.inla_random_term_class_label("us_gxe"),
+    "unstructured GxE"
   )
   expect_identical(
-    flexyBayes:::.inla_random_term_class_label("corh_gxe"), "equicorrelated GxE"
+    flexyBayes:::.inla_random_term_class_label("corh_gxe"),
+    "equicorrelated GxE"
   )
   for (lbl in c(
     flexyBayes:::.inla_random_term_class_label("fa_gxe"),
@@ -307,7 +313,11 @@ test_that(".lgm_check_random_term_inla_support() says so when brms cannot", {
   fb <- mk_fb(random_terms = list(list(type = "fa", var = "env", k = 2L)))
   r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
   expect_false(r$pass)
-  expect_match(r$reason, "flexyBayes cannot fit it on brms either", fixed = TRUE)
+  expect_match(
+    r$reason,
+    "flexyBayes cannot fit it on brms either",
+    fixed = TRUE
+  )
   expect_false(grepl("brms cannot represent", r$reason, fixed = TRUE))
 })
 
@@ -357,9 +367,14 @@ test_that(".lgm_check_random_term_inla_support() accepts ar1 (spatial field)", {
 })
 
 test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial", {
-  fb <- mk_fb(random_terms = list(list(
-    type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
-  )))
+  fb <- mk_fb(
+    random_terms = list(list(
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col",
+      col_ar1 = TRUE
+    ))
+  )
   r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
   expect_true(r$pass)
 })
@@ -375,9 +390,13 @@ test_that(".lgm_check_residual_term_inla_support() accepts at_units", {
 })
 
 test_that(".lgm_check_residual_term_inla_support() refuses a structured residual", {
-  fb <- mk_fb(residual_terms = list(list(
-    type = "ar1_spatial", row_var = "row", col_var = "col"
-  )))
+  fb <- mk_fb(
+    residual_terms = list(list(
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
+    ))
+  )
   r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
   expect_false(r$pass)
   expect_identical(r$rule_id, "residual_term_type_inla")
@@ -398,9 +417,13 @@ test_that("lgm_gate() refuses a vm random term via random_term_type_inla", {
 })
 
 test_that("lgm_gate() refuses a structured residual via residual_term_type_inla", {
-  fb <- mk_fb(residual_terms = list(list(
-    type = "ar1_spatial", row_var = "row", col_var = "col"
-  )))
+  fb <- mk_fb(
+    residual_terms = list(list(
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col"
+    ))
+  )
   out <- flexyBayes:::lgm_gate(fb)
   expect_s3_class(out, "lgm_refusal")
   expect_identical(out$primary_rule, "residual_term_type_inla")
@@ -524,8 +547,11 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
   )
   out <- flexyBayes:::lgm_gate(fb)
   text <- capture.output(print(out))
-  expect_true(any(grepl("flexyBayes cannot fit this model on INLA", text,
-    fixed = TRUE)))
+  expect_true(any(grepl(
+    "flexyBayes cannot fit this model on INLA",
+    text,
+    fixed = TRUE
+  )))
   expect_true(any(grepl("\\[family_allowlist\\]", text)))
   expect_true(any(grepl("\\[latent_class\\]", text)))
   # The refusal names one route onward and one place to read the rest.
@@ -587,8 +613,11 @@ test_that("an explicit inla request refused by the gate raises a typed condition
   expect_s3_class(err, "error")
 
   # Every existing gate message survives verbatim inside the condition.
-  expect_match(conditionMessage(err), "flexyBayes cannot fit this model on INLA",
-    fixed = TRUE)
+  expect_match(
+    conditionMessage(err),
+    "flexyBayes cannot fit this model on INLA",
+    fixed = TRUE
+  )
   expect_match(conditionMessage(err), "backend = \"brms\"", fixed = TRUE)
   expect_match(conditionMessage(err), "?lgm_gate", fixed = TRUE)
 
@@ -610,12 +639,15 @@ test_that("a gate refusal through the fb_inla() pin is typed and names its rule"
   }
 
   err <- tryCatch(
-    suppressMessages(suppressWarnings(fb_inla(
-      fixed = y ~ x,
-      random = stats::reformulate(paste0("g", 1:16)),
-      data = d,
-      verbose = FALSE
-    ), classes = "flexybayes_deprecated")),
+    suppressMessages(suppressWarnings(
+      fb_inla(
+        fixed = y ~ x,
+        random = stats::reformulate(paste0("g", 1:16)),
+        data = d,
+        verbose = FALSE
+      ),
+      classes = "flexybayes_deprecated"
+    )),
     condition = function(e) e
   )
 
@@ -650,7 +682,8 @@ test_that("every flexyBayes-<NN>-<slug> filename named in R/ exists under vignet
   expect_gt(length(r_files), 0L)
 
   real_pages <- sub(
-    "\\.Rmd\\.orig$", "",
+    "\\.Rmd\\.orig$",
+    "",
     list.files(vig_dir, pattern = "^flexyBayes-[0-9]{2}-.*\\.Rmd\\.orig$")
   )
   expect_gt(length(real_pages), 0L)

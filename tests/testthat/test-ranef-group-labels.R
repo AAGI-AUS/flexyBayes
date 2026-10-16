@@ -15,8 +15,11 @@ test_that("a nested term keeps its own name in ranef()", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   data(john.alpha, package = "agridat")
   fit <- suppressMessages(flexybayes(
-    yield ~ rep, random = ~ rep:block + gen,
-    data = john.alpha, backend = "inla", verbose = FALSE
+    yield ~ rep,
+    random = ~ rep:block + gen,
+    data = john.alpha,
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
   expect_true("rep:block" %in% names(r))
@@ -35,8 +38,11 @@ test_that("a plain grouping factor is left alone", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   data(john.alpha, package = "agridat")
   fit <- suppressMessages(flexybayes(
-    yield ~ rep, random = ~gen, data = john.alpha,
-    backend = "inla", verbose = FALSE
+    yield ~ rep,
+    random = ~gen,
+    data = john.alpha,
+    backend = "inla",
+    verbose = FALSE
   ))
   expect_identical(names(ranef(fit)), "gen")
 })
@@ -51,8 +57,11 @@ test_that("the label map covers every structured term type it claims", {
 
   cases <- list(
     list(random = ~ rep:gen, index = "rep_gen_id", label = "rep:gen"),
-    list(random = ~ diag(env):gen, index = "gen_at_env_1",
-         label = "gen (env = 1)"),
+    list(
+      random = ~ diag(env):gen,
+      index = "gen_at_env_1",
+      label = "gen (env = 1)"
+    ),
     list(random = ~ us(env):gen, index = "gen_by_env_id", label = "gen:env")
   )
   for (cs in cases) {
@@ -69,8 +78,11 @@ test_that("the correlated slope's two index blocks take distinct labels", {
   # deviations, and mapping both to `x | g` returned a list with two
   # elements of the same name, `ranef(fit)[["x | g"]]` reached only the
   # first, and no caller could tell which block that was.
-  d <- data.frame(y = stats::rnorm(40), x = stats::rnorm(40),
-                  g = factor(rep(letters[1:8], each = 5)))
+  d <- data.frame(
+    y = stats::rnorm(40),
+    x = stats::rnorm(40),
+    g = factor(rep(letters[1:8], each = 5))
+  )
   fb <- fb_from_brms(y ~ x + (x | g), data = d)
   map <- .fb_inla_group_labels(fb)
   expect_identical(unname(map[["g_cor_x_id"]]), "(Intercept) | g")
@@ -102,8 +114,11 @@ test_that("an interaction group reports the interaction's own levels", {
   d <- e$john.alpha
 
   fit <- suppressMessages(flexybayes(
-    yield ~ rep, random = ~ rep:block + gen,
-    data = d, backend = "inla", verbose = FALSE
+    yield ~ rep,
+    random = ~ rep:block + gen,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   got <- ranef(fit)[["rep:block"]]$level
 
@@ -113,10 +128,12 @@ test_that("an interaction group reports the interaction's own levels", {
   # lexicographic with the FIRST variable slowest, so the order is
   # `order(rep, block)` over the observed cells.
   cells <- unique(d[c("rep", "block")])
-  cells <- cells[order(
-    as.integer(factor(cells$rep, levels = levels(factor(d$rep)))),
-    as.integer(factor(cells$block, levels = levels(factor(d$block))))
-  ), ]
+  cells <- cells[
+    order(
+      as.integer(factor(cells$rep, levels = levels(factor(d$rep)))),
+      as.integer(factor(cells$block, levels = levels(factor(d$block))))
+    ),
+  ]
   expected <- paste0(cells$rep, ":", cells$block)
 
   expect_identical(got, expected)
@@ -170,12 +187,16 @@ test_that("an uncorrelated slope reports lme4's levels, on the right rows", {
   d <- lme4::sleepstudy
   fit <- suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
-    data = d, backend = "inla", verbose = FALSE
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
-  oracle <- rownames(lme4::ranef(
-    lme4::lmer(Reaction ~ Days + (Days || Subject), data = d)
-  )$Subject)
+  oracle <- rownames(
+    lme4::ranef(
+      lme4::lmer(Reaction ~ Days + (Days || Subject), data = d)
+    )$Subject
+  )
 
   expect_true("Days | Subject" %in% names(r))
   expect_identical(r[["Days | Subject"]]$level, oracle)
@@ -197,12 +218,20 @@ test_that("diag(f):g reports each level of f as a group over the levels of g", {
     env = factor(c("dry", "wet", "irrigated")),
     rep = 1:3
   )
-  mat_u <- matrix(stats::rnorm(36L, sd = rep(c(0.8, 1.6, 2.4), each = 12L)),
-                  12L, 3L)
-  d$y <- 10 + mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
+  mat_u <- matrix(
+    stats::rnorm(36L, sd = rep(c(0.8, 1.6, 2.4), each = 12L)),
+    12L,
+    3L
+  )
+  d$y <- 10 +
+    mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
     stats::rnorm(nrow(d), 0, 0.3)
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ diag(env):gen, data = d, backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ diag(env):gen,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
 
@@ -211,9 +240,13 @@ test_that("diag(f):g reports each level of f as a group over the levels of g", {
   for (g in groups) {
     expect_identical(r[[g]]$level, levels(d$gen), info = g)
   }
-  contrib <- vapply(seq_len(nrow(d)), function(i) {
-    .rgl_effect(r, paste0("gen (env = ", d$env[i], ")"), d$gen[i])
-  }, numeric(1L))
+  contrib <- vapply(
+    seq_len(nrow(d)),
+    function(i) {
+      .rgl_effect(r, paste0("gen (env = ", d$env[i], ")"), d$gen[i])
+    },
+    numeric(1L)
+  )
   expect_lt(.rgl_placement_gap(fit, .rgl_intercept(fit), contrib), 0.1)
 })
 
@@ -228,7 +261,8 @@ test_that("us(f):g fitted by emit_inla() reports its cells as g:f", {
     rep = 1:3
   )
   mat_u <- matrix(stats::rnorm(20L, sd = 1.5), 10L, 2L)
-  d$y <- 10 + mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
+  d$y <- 10 +
+    mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
     stats::rnorm(nrow(d), 0, 0.3)
   fb <- fb_from_asreml(y ~ 1, random = ~ us(env):gen, data = d)
   expect_s3_class(lgm_gate(fb), "lgm_refusal")
@@ -262,12 +296,16 @@ test_that("fa(f, k):g has no random-effect table to label, because it refuses", 
   vec_f <- stats::rnorm(15L, 0, 1.2)
   mat_u <- outer(vec_f, c(1, 1.5, -0.8)) +
     matrix(stats::rnorm(45L, 0, 0.3), 15L, 3L)
-  d$y <- 10 + mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
+  d$y <- 10 +
+    mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
     stats::rnorm(nrow(d), 0, 0.3)
   err <- tryCatch(
     suppressMessages(flexybayes(
-      y ~ 1, random = ~ fa(env, 1):gen, data = d,
-      backend = "inla", verbose = FALSE
+      y ~ 1,
+      random = ~ fa(env, 1):gen,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
     )),
     error = function(e) e
   )
@@ -291,12 +329,16 @@ test_that("vm() reports the genotypes it was given, on the right rows", {
   levs <- sprintf("line%02d", 1:10)
   mat_k <- .rgl_kinship(levs, 304L)
   d <- data.frame(geno = factor(rep(levs, 4L)))
-  d$y <- 10 + stats::rnorm(10L, 0, 1.5)[as.integer(d$geno)] +
+  d$y <- 10 +
+    stats::rnorm(10L, 0, 1.5)[as.integer(d$geno)] +
     stats::rnorm(nrow(d), 0, 0.3)
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ vm(geno, cov = fb_cov(Qk, type = "precision")),
-    data = d, known_matrices = list(Qk = solve(mat_k)),
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ vm(geno, cov = fb_cov(Qk, type = "precision")),
+    data = d,
+    known_matrices = list(Qk = solve(mat_k)),
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
 
@@ -313,12 +355,16 @@ test_that("ped() reports the animals it was given, on the right rows", {
   levs <- paste0("A", 101:110)
   mat_a <- .rgl_kinship(levs, 305L)
   d <- data.frame(animal = factor(rep(levs, 3L)))
-  d$y <- 10 + stats::rnorm(10L, 0, 1.5)[as.integer(d$animal)] +
+  d$y <- 10 +
+    stats::rnorm(10L, 0, 1.5)[as.integer(d$animal)] +
     stats::rnorm(nrow(d), 0, 0.3)
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ped(animal, Ainv, use_sparse_precision = TRUE),
-    data = d, known_matrices = list(Ainv = solve(mat_a)),
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ ped(animal, Ainv, use_sparse_precision = TRUE),
+    data = d,
+    known_matrices = list(Ainv = solve(mat_a)),
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
 
@@ -335,10 +381,15 @@ test_that("ar1(t) reports the occasions it was fitted over", {
   set.seed(309L)
   n_t <- 30L
   d <- data.frame(t = factor(sprintf("wk%02d", seq_len(n_t))))
-  d$y <- 10 + as.numeric(stats::arima.sim(list(ar = 0.8), n_t, sd = 1)) +
+  d$y <- 10 +
+    as.numeric(stats::arima.sim(list(ar = 0.8), n_t, sd = 1)) +
     stats::rnorm(n_t, 0, 0.2)
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(t), data = d, backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ ar1(t),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
 
@@ -362,15 +413,20 @@ test_that("one AR1 field per trial reports its plots as trial:row:col", {
     col = factor(paste0("C", seq_len(n_col))),
     trial = factor(c("Roseworthy", "Turretfield"))
   )
-  field <- c(mat_l %*% stats::rnorm(n_row * n_col),
-             mat_l %*% stats::rnorm(n_row * n_col))
+  field <- c(
+    mat_l %*% stats::rnorm(n_row * n_col),
+    mat_l %*% stats::rnorm(n_row * n_col)
+  )
   d$y <- 10 + field + stats::rnorm(nrow(d), 0, 0.3)
   # Rows in an order unrelated to the field's own layout, so the table's
   # order cannot be read off the data's.
   d <- d[sample(nrow(d)), ]
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ id(trial):ar1(row):ar1(col), data = d,
-    backend = "inla", verbose = FALSE
+    y ~ 1,
+    random = ~ id(trial):ar1(row):ar1(col),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   ))
   r <- ranef(fit)
 
@@ -392,20 +448,30 @@ test_that("relabelling moves no number: nested and correlated-slope tables", {
   skip_if_not_installed("lme4")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  engine_cols <- c(estimate = "mean", std.error = "sd",
-                   conf.low = "0.025quant", conf.high = "0.975quant")
+  engine_cols <- c(
+    estimate = "mean",
+    std.error = "sd",
+    conf.low = "0.025quant",
+    conf.high = "0.975quant"
+  )
   same_numbers <- function(got, tab, rows) {
     for (k in names(engine_cols)) {
-      expect_identical(got[[k]], as.numeric(tab[[engine_cols[[k]]]][rows]),
-                       info = k)
+      expect_identical(
+        got[[k]],
+        as.numeric(tab[[engine_cols[[k]]]][rows]),
+        info = k
+      )
     }
   }
 
   e <- new.env()
   utils::data("john.alpha", package = "agridat", envir = e)
   fit <- suppressMessages(flexybayes(
-    yield ~ rep, random = ~ rep:block + gen,
-    data = e$john.alpha, backend = "inla", verbose = FALSE
+    yield ~ rep,
+    random = ~ rep:block + gen,
+    data = e$john.alpha,
+    backend = "inla",
+    verbose = FALSE
   ))
   tab <- fit$inla$summary.random$rep_block_id
   same_numbers(ranef(fit)[["rep:block"]], tab, seq_len(nrow(tab)))
@@ -416,8 +482,11 @@ test_that("relabelling moves no number: nested and correlated-slope tables", {
   d <- expand.grid(obs = 1:6, g = factor(sprintf("plot%02d", seq_len(n_g))))
   d$x <- stats::runif(nrow(d), -2, 2)
   mat_u <- matrix(stats::rnorm(2L * n_g), n_g, 2L) %*% diag(c(1.2, 0.6))
-  d$y <- 5 + 1.5 * d$x + mat_u[as.integer(d$g), 1L] +
-    mat_u[as.integer(d$g), 2L] * d$x + stats::rnorm(nrow(d), 0, 0.3)
+  d$y <- 5 +
+    1.5 * d$x +
+    mat_u[as.integer(d$g), 1L] +
+    mat_u[as.integer(d$g), 2L] * d$x +
+    stats::rnorm(nrow(d), 0, 0.3)
   fb <- fb_from_brms(y ~ x + (x | g), data = d, family = "gaussian")
   fit <- suppressMessages(emit_inla(fb, data = d, verbose = FALSE))
   r <- ranef(fit)
@@ -425,8 +494,14 @@ test_that("relabelling moves no number: nested and correlated-slope tables", {
 
   expect_identical(r[["(Intercept) | g"]]$level, oracle)
   expect_identical(r[["x | g"]]$level, oracle)
-  same_numbers(r[["(Intercept) | g"]], fit$inla$summary.random$g_cor_x_id,
-               seq_len(n_g))
-  same_numbers(r[["x | g"]], fit$inla$summary.random$g_cor_x_slope_id,
-               n_g + seq_len(n_g))
+  same_numbers(
+    r[["(Intercept) | g"]],
+    fit$inla$summary.random$g_cor_x_id,
+    seq_len(n_g)
+  )
+  same_numbers(
+    r[["x | g"]],
+    fit$inla$summary.random$g_cor_x_slope_id,
+    n_g + seq_len(n_g)
+  )
 })

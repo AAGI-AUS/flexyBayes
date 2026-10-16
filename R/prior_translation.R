@@ -245,7 +245,9 @@
   tbl <- tbl[tbl$engine == engine & tbl$verdict == "translate", , drop = FALSE]
   if (!nrow(tbl)) {
     return(paste0(
-      "flexyBayes translates no prior for backend = \"", engine, "\".\n"
+      "flexyBayes translates no prior for backend = \"",
+      engine,
+      "\".\n"
     ))
   }
   label <- c(

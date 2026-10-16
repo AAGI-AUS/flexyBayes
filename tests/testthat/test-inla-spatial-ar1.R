@@ -29,11 +29,14 @@
 # Row is the OUTER index, col the INNER index, matching kronecker(R_row, R_col).
 .spatial_sim <- function(n_row, n_col, rho_r, rho_c, sd_s, sd_e, mu = 5) {
   grid <- expand.grid(col = seq_len(n_col), row = seq_len(n_row)) # col fast
-  L <- t(chol(sd_s^2 * kronecker(.ar1_mat(n_row, rho_r), .ar1_mat(n_col, rho_c))))
+  L <- t(chol(
+    sd_s^2 * kronecker(.ar1_mat(n_row, rho_r), .ar1_mat(n_col, rho_c))
+  ))
   u <- as.numeric(L %*% stats::rnorm(n_row * n_col))
   data.frame(
     y = mu + u + stats::rnorm(n_row * n_col, 0, sd_e),
-    row = factor(grid$row), col = factor(grid$col)
+    row = factor(grid$row),
+    col = factor(grid$col)
   )
 }
 
@@ -44,36 +47,57 @@
   X <- matrix(1, length(y), 1L)
   vy <- stats::var(y)
   nll <- function(par) {
-    rr <- tanh(par[1]); rc <- tanh(par[2]); ss2 <- exp(par[3]); se2 <- exp(par[4])
+    rr <- tanh(par[1])
+    rc <- tanh(par[2])
+    ss2 <- exp(par[3])
+    se2 <- exp(par[4])
     er <- eigen(.ar1_mat(n_row, rr), symmetric = TRUE)
     ec <- eigen(.ar1_mat(n_col, rc), symmetric = TRUE)
     U <- kronecker(er$vectors, ec$vectors)
     dv <- as.numeric(ss2 * kronecker(er$values, ec$values) + se2)
-    if (any(dv <= 0)) return(1e10)
-    yt <- crossprod(U, y); Xt <- crossprod(U, X)
+    if (any(dv <= 0)) {
+      return(1e10)
+    }
+    yt <- crossprod(U, y)
+    Xt <- crossprod(U, X)
     A <- crossprod(Xt, Xt / dv)
     beta <- solve(A, crossprod(Xt, yt / dv))
     rt <- yt - Xt %*% beta
-    0.5 * (sum(log(dv)) + sum((rt^2) / dv) +
-             determinant(A, logarithm = TRUE)$modulus[1])
+    0.5 *
+      (sum(log(dv)) +
+        sum((rt^2) / dv) +
+        determinant(A, logarithm = TRUE)$modulus[1])
   }
   best <- NULL
-  for (s in list(c(atanh(0.3), atanh(0.3), log(vy / 2), log(vy / 2)),
-                 c(atanh(0.6), atanh(0.2), log(vy / 2), log(vy / 4)))) {
-    o <- tryCatch(stats::optim(s, nll, method = "Nelder-Mead",
-                               control = list(maxit = 800L, reltol = 1e-10)),
-                  error = function(e) NULL)
+  for (s in list(
+    c(atanh(0.3), atanh(0.3), log(vy / 2), log(vy / 2)),
+    c(atanh(0.6), atanh(0.2), log(vy / 2), log(vy / 4))
+  )) {
+    o <- tryCatch(
+      stats::optim(
+        s,
+        nll,
+        method = "Nelder-Mead",
+        control = list(maxit = 800L, reltol = 1e-10)
+      ),
+      error = function(e) NULL
+    )
     if (!is.null(o) && (is.null(best) || o$value < best$value)) best <- o
   }
   p <- best$par
-  list(rho_row = tanh(p[1]), rho_col = tanh(p[2]),
-       sd_s = sqrt(exp(p[3])), sd_e = sqrt(exp(p[4])))
+  list(
+    rho_row = tanh(p[1]),
+    rho_col = tanh(p[2]),
+    sd_s = sqrt(exp(p[3])),
+    sd_e = sqrt(exp(p[4]))
+  )
 }
 
 .inla_spatial_hyper <- function(fit) {
   hp <- fit$inla$summary.hyperpar
   gv <- function(p) {
-    i <- grep(p, rownames(hp)); if (length(i)) hp$mean[i[1]] else NA_real_
+    i <- grep(p, rownames(hp))
+    if (length(i)) hp$mean[i[1]] else NA_real_
   }
   list(
     rho_row = gv("^Rho for row_id"),
@@ -86,21 +110,32 @@
 # ---- emit: the grouped-AR1 f() string ---------------------------------------
 
 test_that("emit: separable ar1(row):ar1(col) -> INLA grouped-AR1 f()", {
-  term <- list(type = "ar1_spatial", row_var = "row", col_var = "col",
-               col_ar1 = TRUE)
+  term <- list(
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = TRUE
+  )
   expect_identical(
     flexyBayes:::.inla_ar1_field_term(term),
-    paste0("f(row_id, model = \"ar1\", group = col_id, ",
-           "control.group = list(model = \"ar1\"))")
+    paste0(
+      "f(row_id, model = \"ar1\", group = col_id, ",
+      "control.group = list(model = \"ar1\"))"
+    )
   )
 })
 
 test_that("emit: ar1(row):id(col) -> AR1 x iid group model", {
-  term <- list(type = "ar1_spatial", row_var = "row", col_var = "col",
-               col_ar1 = FALSE)
+  term <- list(
+    type = "ar1_spatial",
+    row_var = "row",
+    col_var = "col",
+    col_ar1 = FALSE
+  )
   expect_match(
     flexyBayes:::.inla_ar1_field_term(term),
-    "control.group = list(model = \"iid\")", fixed = TRUE
+    "control.group = list(model = \"iid\")",
+    fixed = TRUE
   )
 })
 
@@ -141,19 +176,28 @@ test_that("gate: the hyperparameter budget counts the field's own parameters", {
   # the group correlation; the observation nugget is the likelihood's own
   # precision, counted on the family side.
   fb1 <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(type = "ar1", var = "t")),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb1), 3L)
   fb2 <- flexyBayes:::new_fb_terms(
-    response = "y", family = "gaussian", link = "identity",
+    response = "y",
+    family = "gaussian",
+    link = "identity",
     fixed_terms = list(),
     random_terms = list(list(
-      type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
+      type = "ar1_spatial",
+      row_var = "row",
+      col_var = "col",
+      col_ar1 = TRUE
     )),
-    residual_terms = list(list(type = "units")), source = "asreml"
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
   )
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb2), 4L)
 })
@@ -171,12 +215,20 @@ test_that("INLA grouped-AR1 recovers the separable structure vs an independent R
   set.seed(20260725L)
   # Distinct row/col correlations make recovery a defect-catcher: an iid emit,
   # a single-AR1, or a swapped-Kronecker orientation cannot match both.
-  n_row <- 12L; n_col <- 10L
-  rho_r <- 0.8; rho_c <- 0.4; sd_s <- 1.0; sd_e <- 0.5
+  n_row <- 12L
+  n_col <- 10L
+  rho_r <- 0.8
+  rho_c <- 0.4
+  sd_s <- 1.0
+  sd_e <- 0.5
   d <- .spatial_sim(n_row, n_col, rho_r, rho_c, sd_s, sd_e)
 
-  fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
-                    backend = "inla")
+  fit <- flexybayes(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = d,
+    backend = "inla"
+  )
   inla_h <- .inla_spatial_hyper(fit)
   orc <- .spatial_reml_oracle(d$y, n_row, n_col)
 
@@ -204,8 +256,12 @@ test_that("summary and print report all four field parameters", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(11L)
   d <- .spatial_sim(11L, 22L, 0.7, 0.5, 1, 0.5)
-  fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
-                    backend = "inla")
+  fit <- flexybayes(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = d,
+    backend = "inla"
+  )
 
   tab <- flexyBayes:::.inla_spatial_hyper_table(fit)
   expect_equal(nrow(tab), 4L)
@@ -214,7 +270,8 @@ test_that("summary and print report all four field parameters", {
     c(
       "correlation along row (rho_row)",
       "correlation along col (rho_col)",
-      "field SD (sigma_field)", "nugget SD (sigma_e)"
+      "field SD (sigma_field)",
+      "nugget SD (sigma_e)"
     )
   )
   # Posterior medians near the values the grid was simulated from, and every
@@ -263,8 +320,12 @@ test_that("canonical names: rho_row / rho_col / sd_spatial resolve", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(3L)
   d <- .spatial_sim(7L, 6L, 0.7, 0.4, 1, 0.5)
-  fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
-                    backend = "inla")
+  fit <- flexybayes(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = d,
+    backend = "inla"
+  )
   co <- flexyBayes:::.fb_canonical_draws(fit)
   expect_true(all(c("rho_row", "rho_col", "sd_spatial") %in% names(co)))
 })
@@ -284,8 +345,12 @@ test_that("auto routes a designed spatial trial to INLA", {
   )
   set.seed(5L)
   d <- .spatial_sim(6L, 5L, 0.7, 0.4, 1, 0.5)
-  fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
-                    backend = "auto")
+  fit <- flexybayes(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = d,
+    backend = "auto"
+  )
   expect_identical(fit$extras$backend_decision$backend, "inla")
 })
 
@@ -299,7 +364,10 @@ test_that("the residual field fits without a nugget; the 1-D one refuses", {
   set.seed(5L)
   d <- .spatial_sim(6L, 5L, 0.7, 0.4, 1, 0.5)
   fit <- suppressMessages(flexybayes(
-    y ~ 1, residual = ~ ar1(row):ar1(col), data = d, backend = "inla"
+    y ~ 1,
+    residual = ~ ar1(row):ar1(col),
+    data = d,
+    backend = "inla"
   ))
   expect_setequal(
     as.character(summary(fit)$varcomp$component),
@@ -308,7 +376,10 @@ test_that("the residual field fits without a nugget; the 1-D one refuses", {
   # The 1-D residual spelling refuses.
   err <- tryCatch(
     suppressMessages(flexybayes(
-      y ~ 1, residual = ~ ar1(row), data = d, backend = "inla"
+      y ~ 1,
+      residual = ~ ar1(row),
+      data = d,
+      backend = "inla"
     )),
     error = function(e) e
   )
@@ -323,8 +394,12 @@ test_that("a replicated / incomplete grid refuses (fidelity condition)", {
   d <- .spatial_sim(6L, 5L, 0.7, 0.4, 1, 0.5)
   d2 <- rbind(d, d[1:4, ]) # 4 replicated nodes
   expect_error(
-    flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d2,
-               backend = "inla"),
+    flexybayes(
+      y ~ 1,
+      random = ~ ar1(row):ar1(col),
+      data = d2,
+      backend = "inla"
+    ),
     class = "flexybayes_refusal_ar1_spatial_requires_complete_grid"
   )
 })

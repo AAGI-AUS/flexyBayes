@@ -205,7 +205,9 @@ fb_gev <- function(
   if (!isTRUE(opt$convergence == 0L)) {
     warning(
       "fb_gev(): the maximum-likelihood optimiser did not converge ",
-      "(convergence code ", opt$convergence, "). Treat the estimates as ",
+      "(convergence code ",
+      opt$convergence,
+      "). Treat the estimates as ",
       "provisional and inspect the data.",
       call. = FALSE
     )
@@ -321,7 +323,9 @@ print.fb_gev_fit <- function(x, ...) {
   if (length(y) < 4L) {
     stop(
       "`y` must contain at least four finite values to identify the three ",
-      "GEV parameters; got ", length(y), ".",
+      "GEV parameters; got ",
+      length(y),
+      ".",
       call. = FALSE
     )
   }
@@ -330,8 +334,9 @@ print.fb_gev_fit <- function(x, ...) {
 
 # Validate a positive scalar argument.
 .check_positive_scalar <- function(value, name) {
-  if (!is.numeric(value) || length(value) != 1L || !is.finite(value) ||
-      value <= 0) {
+  if (
+    !is.numeric(value) || length(value) != 1L || !is.finite(value) || value <= 0
+  ) {
     stop("`", name, "` must be a single positive number.", call. = FALSE)
   }
   invisible(value)

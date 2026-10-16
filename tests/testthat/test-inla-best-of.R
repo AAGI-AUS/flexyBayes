@@ -3,9 +3,11 @@
 
 # A stand-in for an INLA fit: a marginal likelihood, a mode status and a
 # narrow marginal for each precision.
-.bo_fake <- function(mlik, prec = c("the Gaussian observations" = 4,
-                                    site = 1),
-                     status = 0L) {
+.bo_fake <- function(
+  mlik,
+  prec = c("the Gaussian observations" = 4, site = 1),
+  status = 0L
+) {
   marg <- function(p) {
     x <- seq(0.99 * p, 1.01 * p, length.out = 201L)
     cbind(x = x, y = stats::dnorm(x, p, 0.001 * p))
@@ -82,14 +84,20 @@
     trt = factor(rep(c("a", "b", "c"), 24)),
     x = stats::rnorm(72)
   )
-  d$y <- 1 + c(0, 0.5, -0.3)[d$trt] + 0.4 * d$x +
-    stats::rnorm(6)[d$site] + stats::rnorm(72)
+  d$y <- 1 +
+    c(0, 0.5, -0.3)[d$trt] +
+    0.4 * d$x +
+    stats::rnorm(6)[d$site] +
+    stats::rnorm(72)
   d
 }
 
 .bo_fit <- function() {
   suppressWarnings(suppressMessages(flexybayes(
-    y ~ trt + x, random = ~site, data = .bo_data(), backend = "inla",
+    y ~ trt + x,
+    random = ~site,
+    data = .bo_data(),
+    backend = "inla",
     verbose = FALSE
   )))
 }
@@ -127,8 +135,13 @@ test_that("a bad option value refuses before INLA is called", {
     .inla_call = function(args) stop("INLA must not be called")
   )
   expect_error(
-    flexybayes(y ~ trt, random = ~site, data = .bo_data(), backend = "inla",
-               verbose = FALSE),
+    flexybayes(
+      y ~ trt,
+      random = ~site,
+      data = .bo_data(),
+      backend = "inla",
+      verbose = FALSE
+    ),
     class = "flexybayes_refusal_inla_best_of_invalid"
   )
 })
@@ -154,8 +167,11 @@ test_that("the fit with the highest marginal likelihood is kept, the first of eq
 test_that("the record carries each fit's status and each SD's spread", {
   skip_if_not_installed("INLA")
   .bo_mock_isolated(list(
-    .bo_fake(-8, c("the Gaussian observations" = 4, site = 1 / 1.21),
-             status = 1L),
+    .bo_fake(
+      -8,
+      c("the Gaussian observations" = 4, site = 1 / 1.21),
+      status = 1L
+    ),
     .bo_fake(-9, c("the Gaussian observations" = 4, site = 1))
   ))
   rec <- .fb_inla_best_of(.bo_fake(-10), list(), k = 3L)$record
@@ -175,7 +191,11 @@ test_that("the record carries each fit's status and each SD's spread", {
     tolerance = 1e-4
   )
   line <- .fb_best_of_line(rec)
-  expect_match(line, "fit 2 of 3 kept (highest marginal likelihood)", fixed = TRUE)
+  expect_match(
+    line,
+    "fit 2 of 3 kept (highest marginal likelihood)",
+    fixed = TRUE
+  )
   expect_match(
     line,
     "the SD for site differed by 10.0% across the 3 fits",
@@ -259,8 +279,12 @@ test_that("k = 1 is the single fit, with nothing added to the record", {
   expect_identical(
     names(rec),
     c(
-      "r_version", "flexybayes_version", "engine", "engine_versions",
-      "threads", "seed"
+      "r_version",
+      "flexybayes_version",
+      "engine",
+      "engine_versions",
+      "threads",
+      "seed"
     )
   )
   expect_false(any(grepl("Best of", utils::capture.output(print(fit)))))
@@ -318,7 +342,11 @@ test_that("flexybayes() keeps the better fit from a separate process and says so
     fixed = TRUE
   )))
   summarised <- utils::capture.output(print(summary(fit)))
-  expect_true(any(grepl("the SD for site differed by", summarised, fixed = TRUE)))
+  expect_true(any(grepl(
+    "the SD for site differed by",
+    summarised,
+    fixed = TRUE
+  )))
 })
 
 test_that("the fits started before the session fit run beside it", {
@@ -547,7 +575,9 @@ test_that("best of 3 runs its fits at once in fresh R processes on a package fix
     flexyBayes.inla_best_of_workers = 3L
   )
   # The fixture is small. The guard is tested above.
-  testthat::local_mocked_bindings(.fb_free_memory_bytes = function() 64 * 1024^3)
+  testthat::local_mocked_bindings(.fb_free_memory_bytes = function() {
+    64 * 1024^3
+  })
   t0 <- proc.time()[["elapsed"]]
   fit <- .bo_fit()
   elapsed <- proc.time()[["elapsed"]] - t0

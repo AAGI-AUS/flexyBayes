@@ -569,7 +569,9 @@
         unknown_representation = TRUE
       ))
     }
-    bytes <- 4 * n_rows * 2 + # intercept-block and slope-block indices
+    bytes <- 4 *
+      n_rows *
+      2 + # intercept-block and slope-block indices
       8 * n_rows + # slope variable column
       8 * k * 2L + # latent intercepts and slopes
       .FB_PREFLIGHT_TERM_OVERHEAD
@@ -836,7 +838,8 @@
 
   if (identical(kind, "fixed")) {
     if (
-      ttype %in% c("smooth", "s", "t2", "smooth_mgcv") &&
+      ttype %in%
+        c("smooth", "s", "t2", "smooth_mgcv") &&
         !is.null(term[["var"]])
     ) {
       return(paste0("s(", term[["var"]], ")"))
@@ -1082,8 +1085,7 @@
     }
     res <- tryCatch(
       as.numeric(suppressWarnings(
-        system2("sysctl", c("-n", "hw.memsize"),
-          stdout = TRUE, stderr = FALSE)
+        system2("sysctl", c("-n", "hw.memsize"), stdout = TRUE, stderr = FALSE)
       )[1]),
       error = function(e) NA_real_
     )

@@ -12,15 +12,26 @@
 # likelihood.
 # =============================================================================
 
-
-mock_inla_fit <- function(mode_status = 0, mlik = -143.3, confirm = TRUE,
-                          reasons = character(0)) {
+mock_inla_fit <- function(
+  mode_status = 0,
+  mlik = -143.3,
+  confirm = TRUE,
+  reasons = character(0)
+) {
   fit <- list(
     inla = list(
-      mode = if (is.null(mode_status)) NULL else list(mode.status = mode_status),
+      mode = if (is.null(mode_status)) {
+        NULL
+      } else {
+        list(mode.status = mode_status)
+      },
       mlik = if (is.null(mlik)) NULL else matrix(mlik, 1L, 1L)
     ),
-    num_check = if (is.null(confirm)) NULL else list(pass = confirm, reasons = reasons)
+    num_check = if (is.null(confirm)) {
+      NULL
+    } else {
+      list(pass = confirm, reasons = reasons)
+    }
   )
   class(fit) <- c("flexybayes_inla", "flexybayes", "list")
   fit
@@ -138,8 +149,15 @@ test_that("the verdict carries the evidence it was formed from", {
   # A consumer that needs a stricter rule can apply it to the evidence
   # without reimplementing the verdict.
   expect_true(all(
-    c("mode_status", "mlik", "numerical_confirm",
-      "max_rhat", "min_ess_bulk", "n_divergent") %in% names(v$evidence)
+    c(
+      "mode_status",
+      "mlik",
+      "numerical_confirm",
+      "max_rhat",
+      "min_ess_bulk",
+      "n_divergent"
+    ) %in%
+      names(v$evidence)
   ))
 })
 

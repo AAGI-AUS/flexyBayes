@@ -31,7 +31,9 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
     lines <- readLines(f, warn = FALSE)
     for (i in seq_along(lines)) {
       line <- lines[[i]]
-      if (grepl("^\\s*#", line)) next # full-line comment, not code
+      if (grepl("^\\s*#", line)) {
+        next
+      } # full-line comment, not code
       for (p in patterns) {
         if (grepl(p, line, fixed = TRUE)) {
           hits[[length(hits) + 1L]] <- list(
@@ -66,7 +68,9 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
     expect_true(
       any(vapply(hits, function(h) identical(h$file, nm), logical(1L))),
       label = paste0(
-        "allowlist entry '", nm, "' names no surviving cast: remove it"
+        "allowlist entry '",
+        nm,
+        "' names no surviving cast: remove it"
       )
     )
   }
@@ -167,13 +171,23 @@ test_that("aggregate = TRUE on an overflowing cell key refuses by name before an
     f2 = factor(rep(c("p", "q", "r"), 8L))
   )
   expect_error(
-    suppressMessages(flexybayes(y ~ f1, random = ~ f2, data = d,
-      backend = "inla", aggregate = TRUE)),
+    suppressMessages(flexybayes(
+      y ~ f1,
+      random = ~f2,
+      data = d,
+      backend = "inla",
+      aggregate = TRUE
+    )),
     class = "flexybayes_refusal_cell_count_exceeds_integer"
   )
   # auto: the plan surface carries the reason and the route is per row.
-  p <- fb_plan(y ~ f1, random = ~ f2, data = d, backend = "inla",
-    aggregate = "auto")
+  p <- fb_plan(
+    y ~ f1,
+    random = ~f2,
+    data = d,
+    backend = "inla",
+    aggregate = "auto"
+  )
   expect_true("cell_count_exceeds_integer" %in% p$aggregation$reason_codes)
 })
 
@@ -204,53 +218,59 @@ test_that("aggregation planner does not refuse below the integer cell-count limi
 # (c) .preflight_factor_interaction_dummies()                        #
 # ---------------------------------------------------------------- #
 
-test_that(paste(
-  ".preflight_factor_interaction_dummies() carries the product as a",
-  "double and returns NA_integer_ cleanly past the limit"
-), {
-  # Three factors at 3,000 levels each: (3000 - 1)^3 ~= 2.7e10, past
-  # 2^31 - 1. Built from dictionaries, as in (b).
-  ds <- .fb_dataset(
-    data = NULL,
-    n_rows = 1000L,
-    col_types = list(
-      y = "double", f1 = "factor", f2 = "factor", f3 = "factor"
-    ),
-    dictionaries = list(
-      f1 = as.character(seq_len(3000L)),
-      f2 = as.character(seq_len(3000L)),
-      f3 = as.character(seq_len(3000L))
+test_that(
+  paste(
+    ".preflight_factor_interaction_dummies() carries the product as a",
+    "double and returns NA_integer_ cleanly past the limit"
+  ),
+  {
+    # Three factors at 3,000 levels each: (3000 - 1)^3 ~= 2.7e10, past
+    # 2^31 - 1. Built from dictionaries, as in (b).
+    ds <- .fb_dataset(
+      data = NULL,
+      n_rows = 1000L,
+      col_types = list(
+        y = "double",
+        f1 = "factor",
+        f2 = "factor",
+        f3 = "factor"
+      ),
+      dictionaries = list(
+        f1 = as.character(seq_len(3000L)),
+        f2 = as.character(seq_len(3000L)),
+        f3 = as.character(seq_len(3000L))
+      )
     )
-  )
-  vars <- c("f1", "f2", "f3")
+    vars <- c("f1", "f2", "f3")
 
-  # The package function returns NA_integer_ with no coercion warning.
-  expect_no_warning(
-    result <- .preflight_factor_interaction_dummies(vars, ds)
-  )
-  expect_identical(result, NA_integer_)
-
-  # Induced defect: the same body without the `is.finite()` /
-  # `> .Machine$integer.max` guard. It also returns NA, but with a
-  # coercion warning.
-  .icc_unfixed_dummies <- function(vars, fb_dataset) {
-    if (!length(vars)) {
-      return(NA_integer_)
-    }
-    ks <- vapply(
-      vars,
-      function(v) .fb_dataset_levels(fb_dataset, as.character(v)),
-      numeric(1L)
+    # The package function returns NA_integer_ with no coercion warning.
+    expect_no_warning(
+      result <- .preflight_factor_interaction_dummies(vars, ds)
     )
-    if (anyNA(ks)) {
-      return(NA_integer_)
+    expect_identical(result, NA_integer_)
+
+    # Induced defect: the same body without the `is.finite()` /
+    # `> .Machine$integer.max` guard. It also returns NA, but with a
+    # coercion warning.
+    .icc_unfixed_dummies <- function(vars, fb_dataset) {
+      if (!length(vars)) {
+        return(NA_integer_)
+      }
+      ks <- vapply(
+        vars,
+        function(v) .fb_dataset_levels(fb_dataset, as.character(v)),
+        numeric(1L)
+      )
+      if (anyNA(ks)) {
+        return(NA_integer_)
+      }
+      ks_minus_one <- pmax(ks - 1, 0)
+      as.integer(prod(ks_minus_one)) # unguarded cast
     }
-    ks_minus_one <- pmax(ks - 1, 0)
-    as.integer(prod(ks_minus_one)) # unguarded cast
+    expect_warning(
+      bad <- .icc_unfixed_dummies(vars, ds),
+      "NAs introduced by coercion to integer range"
+    )
+    expect_identical(bad, NA_integer_)
   }
-  expect_warning(
-    bad <- .icc_unfixed_dummies(vars, ds),
-    "NAs introduced by coercion to integer range"
-  )
-  expect_identical(bad, NA_integer_)
-})
+)

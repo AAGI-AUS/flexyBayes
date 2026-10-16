@@ -59,7 +59,9 @@ test_that(".capability_brms() inspects residual_terms, not just random_terms", {
   expect_identical(
     flexyBayes:::.capability_brms(
       .mk_resid_ir(list(list(
-        type = "ar1_spatial", row_var = "row", col_var = "col"
+        type = "ar1_spatial",
+        row_var = "row",
+        col_var = "col"
       )))
     ),
     "stan_cannot_represent_ar1_residual"
@@ -87,8 +89,11 @@ test_that("explicit brms refuses a random-side AR1 field", {
   g <- .complete_grid()
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-      backend = "brms", return_code = TRUE
+      y ~ 1,
+      random = ~ ar1(row):ar1(col),
+      data = g,
+      backend = "brms",
+      return_code = TRUE
     )),
     class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
   )
@@ -103,22 +108,31 @@ test_that("the residual AR1 spelling is not handed to brms", {
   g <- .complete_grid()
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
-      backend = "brms", return_code = TRUE
+      y ~ 1,
+      residual = ~ ar1(row):ar1(col),
+      data = g,
+      backend = "brms",
+      return_code = TRUE
     )),
     class = "flexybayes_refusal_stan_cannot_represent_ar1_residual"
   )
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
-      backend = "auto", return_code = TRUE
+      y ~ 1,
+      residual = ~ ar1(row):ar1(col),
+      data = g,
+      backend = "auto",
+      return_code = TRUE
     )),
     class = "flexybayes_refusal_auto_no_active_route"
   )
   # The 1-D spelling refuses on the same grounds.
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1, residual = ~ ar1(row), data = g, backend = "inla",
+      y ~ 1,
+      residual = ~ ar1(row),
+      data = g,
+      backend = "inla",
       return_code = TRUE
     )),
     class = "flexybayes_refusal_ar1_residual_not_representable"
@@ -135,8 +149,11 @@ test_that("auto + return_code refuses when brms cannot represent the model", {
   g <- .complete_grid()
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-      backend = "auto", return_code = TRUE
+      y ~ 1,
+      random = ~ ar1(row):ar1(col),
+      data = g,
+      backend = "auto",
+      return_code = TRUE
     )),
     class = "flexybayes_refusal_auto_no_active_route"
   )
@@ -148,8 +165,11 @@ test_that("auto + review_code refuses when brms cannot represent the model", {
   g <- .complete_grid()
   expect_error(
     suppressMessages(flexybayes(
-      y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-      backend = "auto", review_code = TRUE
+      y ~ 1,
+      random = ~ ar1(row):ar1(col),
+      data = g,
+      backend = "auto",
+      review_code = TRUE
     )),
     class = "flexybayes_refusal_auto_no_active_route"
   )
@@ -166,8 +186,11 @@ test_that("INLA emits the separable AR1xAR1 field for a complete grid", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   g <- .complete_grid()
   code <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
-    backend = "inla", return_code = TRUE
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = g,
+    backend = "inla",
+    return_code = TRUE
   ))
   f <- paste(deparse(code$formula), collapse = " ")
   expect_match(f, "model\\s*=\\s*\"ar1\"")
@@ -183,7 +206,11 @@ test_that("brms code for an unstructured model still carries its terms", {
   g <- .complete_grid()
   g$blk <- factor(rep(1:4, length.out = nrow(g)))
   code <- suppressMessages(flexybayes(
-    y ~ x, random = ~ blk, data = g, backend = "auto", return_code = TRUE
+    y ~ x,
+    random = ~blk,
+    data = g,
+    backend = "auto",
+    return_code = TRUE
   ))
   txt <- paste(as.character(code), collapse = "\n")
   expect_match(txt, "Intercept")

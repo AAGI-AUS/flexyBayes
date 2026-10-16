@@ -120,16 +120,24 @@
   }
   if (!is.character(value)) {
     stop(
-      "`na_action`: the `", slot, "` slot must be a character value, not ",
-      "an object of class <", paste(class(value), collapse = ", "), ">.",
+      "`na_action`: the `",
+      slot,
+      "` slot must be a character value, not ",
+      "an object of class <",
+      paste(class(value), collapse = ", "),
+      ">.",
       call. = FALSE
     )
   }
   word <- value[[1L]]
   if (!word %in% choices) {
     stop(
-      "`na_action`: \"", word, "\" is not a recognised `", slot,
-      "` policy. Use one of ", paste0("\"", choices, "\"", collapse = ", "),
+      "`na_action`: \"",
+      word,
+      "\" is not a recognised `",
+      slot,
+      "` policy. Use one of ",
+      paste0("\"", choices, "\"", collapse = ", "),
       ".",
       call. = FALSE
     )
@@ -231,7 +239,10 @@
   stop(.fb_refusal_condition(
     reason_code = "response_not_finite",
     message = paste0(
-      "The response `", fb$response, "` has ", length(bad),
+      "The response `",
+      fb$response,
+      "` has ",
+      length(bad),
       " value(s) that are not finite (",
       paste0("row ", shown, ": ", as.character(vals[shown]), collapse = ", "),
       if (length(bad) > length(shown)) ", ..." else "",
@@ -277,9 +288,15 @@
   stop(.fb_refusal_condition(
     reason_code = "family_response_domain_violation",
     message = paste0(
-      "family = \"", fb$family, "\" requires a response ",
-      .fb_response_domain_describe(domain), ". Column `", fb$response,
-      "` has ", length(bad), " value(s) outside that domain (",
+      "family = \"",
+      fb$family,
+      "\" requires a response ",
+      .fb_response_domain_describe(domain),
+      ". Column `",
+      fb$response,
+      "` has ",
+      length(bad),
+      " value(s) outside that domain (",
       paste0("row ", shown, ": ", as.character(yv[shown]), collapse = ", "),
       if (length(bad) > length(shown)) ", ..." else "",
       "). ",
@@ -319,14 +336,24 @@
   collect <- function(tl) {
     for (t in tl %||% list()) {
       fields <- c(
-        "var", "row_var", "col_var", "by_var", "group", "inner", "outer"
+        "var",
+        "row_var",
+        "col_var",
+        "by_var",
+        "group",
+        "inner",
+        "outer"
       )
       for (f in fields) {
         v <- t[[f]]
         if (is.character(v)) out <<- c(out, v)
       }
-      if (is.character(t$vars)) out <<- c(out, t$vars)
-      if (!is.null(t$expr)) out <<- c(out, all.vars(t$expr))
+      if (is.character(t$vars)) {
+        out <<- c(out, t$vars)
+      }
+      if (!is.null(t$expr)) {
+        out <<- c(out, all.vars(t$expr))
+      }
       if (is.character(t$label) && !grepl("[^A-Za-z0-9._]", t$label)) {
         out <<- c(out, t$label)
       }
@@ -421,7 +448,8 @@
       stop(.fb_refusal_condition(
         reason_code = "missing_response_refused",
         message = paste0(
-          length(miss), " observation(s) have a missing response and ",
+          length(miss),
+          " observation(s) have a missing response and ",
           "na_action = \"fail\". Use na_action = \"augment\" to carry ",
           "them as latent quantities and keep the design intact, or ",
           "na_action = \"omit\" to analyse the observed cells only."
@@ -537,7 +565,9 @@
 .fb_apply_covariate_policy <- function(fb, data, x_policy) {
   cov_vars <- setdiff(intersect(.fb_model_vars(fb), names(data)), fb$response)
   bad_cov <- cov_vars[vapply(
-    cov_vars, function(v) anyNA(data[[v]]), logical(1)
+    cov_vars,
+    function(v) anyNA(data[[v]]),
+    logical(1)
   )]
   if (length(bad_cov) == 0L) {
     return(list(data = data, n_dropped = 0L))
@@ -549,7 +579,9 @@
     stop(.fb_refusal_condition(
       reason_code = "missing_covariate_not_supported",
       message = paste0(
-        "The predictor(s) ", named, " have missing values, and the ",
+        "The predictor(s) ",
+        named,
+        " have missing values, and the ",
         "covariate policy is `fail`, which is also what ASReml does by ",
         "default (na.method(x = \"fail\")). A missing predictor is not a ",
         "missing observation: the response device carries an unobserved ",
@@ -568,7 +600,9 @@
     stop(.fb_refusal_condition(
       reason_code = "covariate_zero_fill_not_supported",
       message = paste0(
-        "The predictor(s) ", named, " have missing values and the ",
+        "The predictor(s) ",
+        named,
+        " have missing values and the ",
         "covariate policy is `include`. ASReml treats a missing covariate ",
         "as zero under that setting (ASReml-R Reference Manual 4.2, ",
         "section 3.11). A zero is a value the plot did not have: the fit ",
@@ -590,8 +624,12 @@
   )
   n_dropped <- sum(drop_rows)
   warning(
-    "flexyBayes: dropped ", n_dropped, " row(s) of ", nrow(data),
-    " whose predictor value was missing in ", named,
+    "flexyBayes: dropped ",
+    n_dropped,
+    " row(s) of ",
+    nrow(data),
+    " whose predictor value was missing in ",
+    named,
     " (na_action covariate policy x = \"omit\"). Deletion is a ",
     "complete-case analysis of the remaining rows, and a covariance indexed ",
     "by the design is built over the reduced index set.",
@@ -635,8 +673,13 @@
   }
   .emit_state_set("high_missingness_warning", TRUE)
   warning(
-    "flexyBayes: ", format(round(100 * frac, 1)), "% of the fitted rows ",
-    "carry no observed response (", n_unobserved, " of ", n_rows,
+    "flexyBayes: ",
+    format(round(100 * frac, 1)),
+    "% of the fitted rows ",
+    "carry no observed response (",
+    n_unobserved,
+    " of ",
+    n_rows,
     "). The augmentation identity is unaffected: the fit targets the same ",
     "posterior as deleting those rows. Above roughly 30%, a rule of thumb, ",
     "the variance components are weakly identified and can sit near a ",

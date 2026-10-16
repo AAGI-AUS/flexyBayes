@@ -69,8 +69,11 @@ test_that("the emitted formula carries the scaled Wishart", {
   fb <- fb_from_brms(y ~ x + (x | g), data = d, family = "gaussian")
   fb$priors <- structure(list(specs = list()), class = c("fb_prior", "list"))
   attr(fb$priors, "fb_prior_default_scale") <- 5 * 50
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   expect_match(txt, "iid2d", fixed = TRUE)
   expect_match(txt, "theta1", fixed = TRUE)
 })
@@ -82,8 +85,11 @@ test_that("the correlated slope on sleepstudy refuses on INLA", {
   data(sleepstudy, package = "lme4")
   expect_error(
     suppressMessages(flexybayes(
-      Reaction ~ Days + (Days | Subject), data = sleepstudy,
-      backend = "inla", return_code = TRUE, verbose = FALSE
+      Reaction ~ Days + (Days | Subject),
+      data = sleepstudy,
+      backend = "inla",
+      return_code = TRUE,
+      verbose = FALSE
     )),
     class = "flexybayes_refusal_correlated_covariance_requires_brms"
   )
@@ -105,9 +111,15 @@ test_that("the correlated slope on sleepstudy is fitted on brms, near REML", {
   data(sleepstudy, package = "lme4")
 
   fit <- suppressMessages(suppressWarnings(flexybayes(
-    Reaction ~ Days + (Days | Subject), data = sleepstudy,
-    backend = "auto", chains = 2L, n_samples = 800L, warmup = 400L,
-    seed = 20260913L, verbose = FALSE, mcmc_verbose = FALSE
+    Reaction ~ Days + (Days | Subject),
+    data = sleepstudy,
+    backend = "auto",
+    chains = 2L,
+    n_samples = 800L,
+    warmup = 400L,
+    seed = 20260913L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   )))
   expect_s3_class(fit, "flexybayes_brms")
   v <- summary(fit)$varcomp
@@ -115,10 +127,12 @@ test_that("the correlated slope on sleepstudy is fitted on brms, near REML", {
 
   ref <- lme4::lmer(Reaction ~ Days + (Days | Subject), data = sleepstudy)
   vc <- as.data.frame(lme4::VarCorr(ref))
-  ref_sd_int <- vc$sdcor[vc$grp == "Subject" & vc$var1 == "(Intercept)" &
-                           is.na(vc$var2)]
-  ref_sd_slope <- vc$sdcor[vc$grp == "Subject" & vc$var1 == "Days" &
-                             is.na(vc$var2)]
+  ref_sd_int <- vc$sdcor[
+    vc$grp == "Subject" & vc$var1 == "(Intercept)" & is.na(vc$var2)
+  ]
+  ref_sd_slope <- vc$sdcor[
+    vc$grp == "Subject" & vc$var1 == "Days" & is.na(vc$var2)
+  ]
   ref_cor <- vc$sdcor[!is.na(vc$var2)]
 
   expect_equal(unname(g[["sd_Subject"]]), ref_sd_int, tolerance = 0.30)

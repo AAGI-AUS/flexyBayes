@@ -309,7 +309,9 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
         stop(.fb_refusal_condition(
           reason_code = "prior_target_not_a_single_name",
           message = paste0(
-            "`b(", paste(deparse(raw), collapse = ""), ")` does not name one ",
+            "`b(",
+            paste(deparse(raw), collapse = ""),
+            ")` does not name one ",
             "coefficient. b() takes a single coefficient name, written as a ",
             "string, b(\"treatment\"), or as a bare symbol, ",
             "b(treatment).",
@@ -939,18 +941,27 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # `resp_sd`, when given, is the response standard deviation read from
 # somewhere other than `data`: the streamed route holds only a head sample
 # of the rows and reads it off the full sufficient statistics instead.
-.default_half_normal_scale <- function(data, response, family, link = NULL,
-                                       resp_sd = NULL) {
+.default_half_normal_scale <- function(
+  data,
+  response,
+  family,
+  link = NULL,
+  resp_sd = NULL
+) {
   link_class <- .fb_default_link_class(family, link)
 
   if (identical(link_class, "logit")) {
-    return(list(scale = 5 / .FB_DEFAULT_SCALE_DIVISOR,
-                basis = "logit_half_normal"))
+    return(list(
+      scale = 5 / .FB_DEFAULT_SCALE_DIVISOR,
+      basis = "logit_half_normal"
+    ))
   }
 
   if (identical(link_class, "log")) {
-    return(list(scale = 3 / .FB_DEFAULT_SCALE_DIVISOR,
-                basis = "log_link_half_normal"))
+    return(list(
+      scale = 3 / .FB_DEFAULT_SCALE_DIVISOR,
+      basis = "log_link_half_normal"
+    ))
   }
 
   if (!is.null(resp_sd)) {
@@ -1064,7 +1075,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   residual_sigma = TRUE
 ) {
   scl <- .default_half_normal_scale(
-    data, response, family, link, resp_sd = resp_sd
+    data,
+    response,
+    family,
+    link,
+    resp_sd = resp_sd
   )
   # A nugget-free residual field has no residual SD to put a prior on.
   specs <- if (residual_sigma) {
@@ -1174,7 +1189,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
         add_engine(
           paste0("cor_", t$var),
           paste0(
-            "(", t$slope_var, " | ", t$var, ") intercept-slope correlation ",
+            "(",
+            t$slope_var,
+            " | ",
+            t$var,
+            ") intercept-slope correlation ",
             "keeps brms's default LKJ prior; flexyBayes sets no correlation ",
             "prior"
           )
@@ -1542,8 +1561,11 @@ print.fb_prior <- function(x, ...) {
     target$type,
     "sigma" = if (nzchar(by)) paste0("sigma(", by, ")") else "sigma",
     "sd" = paste0(
-      "sd(group = \"", target$group, "\"",
-      if (nzchar(by)) paste0(", ", by), ")"
+      "sd(group = \"",
+      target$group,
+      "\"",
+      if (nzchar(by)) paste0(", ", by),
+      ")"
     ),
     "b" = paste0("b(\"", target$name, "\")"),
     "cor" = paste0("cor(group = \"", target$group, "\")"),

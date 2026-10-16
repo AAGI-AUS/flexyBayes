@@ -17,9 +17,16 @@
 # correlation comes back negative, and it checks the whole triple against
 # lme4's REML fit of the same model, an oracle this package did not write.
 
-.cs_fixture <- function(seed = 2026L, n_g = 60L, n_i = 12L,
-                        sd_int = 1.2, sd_slope = 0.6, rho = 0.6,
-                        sd_resid = 0.35, beta_x = 1.5) {
+.cs_fixture <- function(
+  seed = 2026L,
+  n_g = 60L,
+  n_i = 12L,
+  sd_int = 1.2,
+  sd_slope = 0.6,
+  rho = 0.6,
+  sd_resid = 0.35,
+  beta_x = 1.5
+) {
   set.seed(seed)
   cov_is <- rho * sd_int * sd_slope
   mat_s <- matrix(c(sd_int^2, cov_is, cov_is, sd_slope^2), 2L, 2L)
@@ -27,7 +34,10 @@
   tab <- expand.grid(obs = seq_len(n_i), g = factor(seq_len(n_g)))
   tab$x <- runif(nrow(tab), -2, 2)
   gi <- as.integer(tab$g)
-  tab$y <- 5 + beta_x * tab$x + mat_u[gi, 1L] + mat_u[gi, 2L] * tab$x +
+  tab$y <- 5 +
+    beta_x * tab$x +
+    mat_u[gi, 1L] +
+    mat_u[gi, 2L] * tab$x +
     rnorm(nrow(tab), 0, sd_resid)
   tab
 }
@@ -48,14 +58,20 @@ test_that("the gate refuses (x | g) for INLA, by its own rule", {
 test_that("the retained INLA emit is one iid2d field plus a copy", {
   tab <- .cs_fixture(n_g = 12L, n_i = 4L)
   fb <- fb_from_brms(y ~ x + (x | g), data = tab, family = "gaussian")
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   # One field of length 2 * n_g: intercepts then slopes.
   expect_match(txt, "f(g_cor_x_id, model = \"iid2d\", n = 24", fixed = TRUE)
   # The slope block is the SAME field, weighted by x, a copy, not a
   # second set of deviations.
-  expect_match(txt, "f(g_cor_x_slope_id, x, copy = \"g_cor_x_id\")",
-               fixed = TRUE)
+  expect_match(
+    txt,
+    "f(g_cor_x_slope_id, x, copy = \"g_cor_x_id\")",
+    fixed = TRUE
+  )
 })
 
 test_that("the two index names are distinct and derived from the term", {
@@ -63,11 +79,12 @@ test_that("the two index names are distinct and derived from the term", {
   # slopes, so the two blocks need two index columns whose names cannot
   # collide with each other or with a user column.
   expect_identical(.fb_inla_cor_slope_index("g", "x"), "g_cor_x_id")
-  expect_identical(.fb_inla_cor_slope_slope_index("g", "x"),
-                   "g_cor_x_slope_id")
+  expect_identical(.fb_inla_cor_slope_slope_index("g", "x"), "g_cor_x_slope_id")
   # A group or slope name R would not accept as a symbol is made safe.
-  expect_identical(.fb_inla_cor_slope_index("site name", "x"),
-                   "site.name_cor_x_id")
+  expect_identical(
+    .fb_inla_cor_slope_index("site name", "x"),
+    "site.name_cor_x_id"
+  )
 })
 
 test_that("a generated index name colliding with a user column refuses", {
@@ -122,12 +139,12 @@ test_that("brms recovers a negative correlation and agrees with lme4's REML fit"
 
   ref <- lme4::lmer(y ~ x + (x | g), data = tab)
   vc <- as.data.frame(lme4::VarCorr(ref))
-  ref_sd_int <- vc$sdcor[vc$grp == "g" & vc$var1 == "(Intercept)" &
-                           is.na(vc$var2)]
+  ref_sd_int <- vc$sdcor[
+    vc$grp == "g" & vc$var1 == "(Intercept)" & is.na(vc$var2)
+  ]
   ref_sd_slope <- vc$sdcor[vc$grp == "g" & vc$var1 == "x" & is.na(vc$var2)]
   ref_cor <- vc$sdcor[!is.na(vc$var2)]
   expect_equal(unname(got[["sd_g"]]), ref_sd_int, tolerance = 0.15)
   expect_equal(unname(got[["sd_g__x"]]), ref_sd_slope, tolerance = 0.15)
-  expect_equal(unname(got[["cor_g__Intercept__x"]]), ref_cor,
-               tolerance = 0.15)
+  expect_equal(unname(got[["cor_g__Intercept__x"]]), ref_cor, tolerance = 0.15)
 })

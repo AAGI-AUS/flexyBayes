@@ -25,7 +25,6 @@
 # The residual is independent units, or dsum(~ units | f) with one variance
 # per level of f. Anything else refuses with `marginal_cov_not_buildable`.
 
-
 #' The marginal covariance of the response of a fitted model
 #'
 #' @description
@@ -203,8 +202,14 @@ print.fb_marginal_cov <- function(x, ...) {
   }
   cat("  residual : ", residual, "\n", sep = "")
   for (b in x$blocks) {
-    cat("  block    : ", b$label, "  variance ", format(b$variance), "\n",
-        sep = "")
+    cat(
+      "  block    : ",
+      b$label,
+      "  variance ",
+      format(b$variance),
+      "\n",
+      sep = ""
+    )
   }
   if (!is.null(x$known_covariance)) {
     cat("  known covariance over the rows\n")
@@ -269,7 +274,9 @@ print.fb_marginal_cov <- function(x, ...) {
     if (is.null(v) || length(v) != nrow(data)) {
       .fb_known_variance_refuse(paste0(
         "fb_marginal_cov(): the model carries a known variance per row, and ",
-        "its data has no `", .FB_KNOWN_VARIANCE_COL, "` column holding one ",
+        "its data has no `",
+        .FB_KNOWN_VARIANCE_COL,
+        "` column holding one ",
         "value per row."
       ))
     }
@@ -300,8 +307,10 @@ print.fb_marginal_cov <- function(x, ...) {
 
 # .fb_marginal_cov_groups(): the grouping V is block-diagonal over.
 .fb_marginal_cov_groups <- function(blocks, frame, known_covariance) {
-  if (!is.null(known_covariance) &&
-        any(known_covariance[upper.tri(known_covariance)] != 0)) {
+  if (
+    !is.null(known_covariance) &&
+      any(known_covariance[upper.tri(known_covariance)] != 0)
+  ) {
     return(list(
       applicable = FALSE,
       column = NA_character_,
@@ -346,10 +355,19 @@ print.fb_marginal_cov <- function(x, ...) {
   if (is.null(rows)) {
     return(seq_len(x$n))
   }
-  if (!is.numeric(rows) || anyNA(rows) || any(rows < 1) || any(rows > x$n) ||
-        any(rows != round(rows))) {
+  if (
+    !is.numeric(rows) ||
+      anyNA(rows) ||
+      any(rows < 1) ||
+      any(rows > x$n) ||
+      any(rows != round(rows))
+  ) {
     stop(
-      "`", what, "` must be integer positions between 1 and ", x$n, ".",
+      "`",
+      what,
+      "` must be integer positions between 1 and ",
+      x$n,
+      ".",
       call. = FALSE
     )
   }
@@ -370,9 +388,14 @@ print.fb_marginal_cov <- function(x, ...) {
         reason_code = "marginal_cov_not_buildable",
         message = paste0(
           "fb_marginal_cov(): the variance-component table carries ",
-          length(hit), " rows named ", paste(names, collapse = " or "),
-          " for ", what, ", where one was expected. It carries: ",
-          paste(vc$component, collapse = ", "), "."
+          length(hit),
+          " rows named ",
+          paste(names, collapse = " or "),
+          " for ",
+          what,
+          ", where one was expected. It carries: ",
+          paste(vc$component, collapse = ", "),
+          "."
         ),
         terms = what
       ))
@@ -385,7 +408,9 @@ print.fb_marginal_cov <- function(x, ...) {
         reason_code = "marginal_cov_not_buildable",
         message = paste0(
           "fb_marginal_cov(): the fit reports no posterior standard ",
-          "deviation for `", row$component, "`, so the posterior mean of its ",
+          "deviation for `",
+          row$component,
+          "`, so the posterior mean of its ",
           "variance, estimate^2 + std.error^2, cannot be formed."
         ),
         terms = row$component
@@ -399,9 +424,16 @@ print.fb_marginal_cov <- function(x, ...) {
   } else {
     levels <- names(x$residual$variance)
     stats::setNames(
-      vapply(levels, function(l) {
-        second_moment(read(paste0("sigma_", l), paste0("the residual at ", l)))
-      }, numeric(1L)),
+      vapply(
+        levels,
+        function(l) {
+          second_moment(read(
+            paste0("sigma_", l),
+            paste0("the residual at ", l)
+          ))
+        },
+        numeric(1L)
+      ),
       levels
     )
   }
@@ -437,9 +469,13 @@ print.fb_marginal_cov <- function(x, ...) {
   if (!is.null(x$residual$by) && length(residual) != 1L) {
     residual <- residual[names(x$residual$variance)]
   }
-  if (!is.numeric(residual) || anyNA(residual) || any(residual <= 0) ||
-        !(length(residual) == 1L ||
-            length(residual) == length(x$residual$variance))) {
+  if (
+    !is.numeric(residual) ||
+      anyNA(residual) ||
+      any(residual <= 0) ||
+      !(length(residual) == 1L ||
+        length(residual) == length(x$residual$variance))
+  ) {
     stop(
       "`variances$residual` must be one positive variance, or one per ",
       "level of the residual's sections.",
@@ -453,18 +489,24 @@ print.fb_marginal_cov <- function(x, ...) {
     if (anyNA(variance) || !is.finite(variance) || variance < 0) {
       stop(
         "`variances$terms` must give a non-negative variance for block `",
-        nm, "`.",
+        nm,
+        "`.",
         call. = FALSE
       )
     }
     b$variance <- unname(variance)
     if (identical(b$structure$type, "ar1xar1")) {
       rho <- v$rho[[nm]]
-      if (is.null(rho) || !all(c("row", "col") %in% names(rho)) ||
-            any(abs(rho[c("row", "col")]) >= 1)) {
+      if (
+        is.null(rho) ||
+          !all(c("row", "col") %in% names(rho)) ||
+          any(abs(rho[c("row", "col")]) >= 1)
+      ) {
         stop(
           "`variances$rho` must give c(row = , col = ) correlations in ",
-          "(-1, 1) for block `", nm, "`.",
+          "(-1, 1) for block `",
+          nm,
+          "`.",
           call. = FALSE
         )
       }
@@ -557,15 +599,17 @@ print.fb_marginal_cov <- function(x, ...) {
 # .fb_sel_cov_slot(): one variance's structure. `components` are the names
 # the variance may carry in a fit's variance-component table: the INLA and
 # brms spellings differ for a slope and for a known-covariance term.
-.fb_sel_cov_slot <- function(name,
-                             label,
-                             components,
-                             index,
-                             n_levels,
-                             value = NULL,
-                             key = NULL,
-                             columns = character(0),
-                             structure = NULL) {
+.fb_sel_cov_slot <- function(
+  name,
+  label,
+  components,
+  index,
+  n_levels,
+  value = NULL,
+  key = NULL,
+  columns = character(0),
+  structure = NULL
+) {
   list(
     name = name,
     label = label,
@@ -614,8 +658,16 @@ print.fb_marginal_cov <- function(x, ...) {
       NULL
     )
     if (is.null(built)) {
-      named <- unlist(t[c("var", "outer", "inner", "row_var", "col_var",
-                          "vars", "at_var", "level")])
+      named <- unlist(t[c(
+        "var",
+        "outer",
+        "inner",
+        "row_var",
+        "col_var",
+        "vars",
+        "at_var",
+        "level"
+      )])
       refused <- c(
         refused,
         paste0(type, "(", paste(named, collapse = ", "), ")")
@@ -659,7 +711,9 @@ print.fb_marginal_cov <- function(x, ...) {
 
 .fb_sel_slots_nested <- function(outer, inner, data) {
   key <- paste0(
-    as.character(data[[outer]]), ":", as.character(data[[inner]])
+    as.character(data[[outer]]),
+    ":",
+    as.character(data[[inner]])
   )
   name <- paste0(outer, ":", inner)
   levels <- .fb_sel_level_index(key)
@@ -683,19 +737,22 @@ print.fb_marginal_cov <- function(x, ...) {
     list()
   }
   levels <- .fb_sel_level_index(data[[group]])
-  c(out, list(.fb_sel_cov_slot(
-    name = paste0(covariate, "_", group),
-    label = paste0("(", covariate, " || ", group, ")"),
-    components = c(
-      paste0("sd_", covariate, "_", group),
-      paste0("sd_", group, "__", covariate)
-    ),
-    index = levels$index,
-    n_levels = length(levels$levels),
-    value = as.numeric(data[[covariate]]),
-    key = as.character(data[[group]]),
-    columns = group
-  )))
+  c(
+    out,
+    list(.fb_sel_cov_slot(
+      name = paste0(covariate, "_", group),
+      label = paste0("(", covariate, " || ", group, ")"),
+      components = c(
+        paste0("sd_", covariate, "_", group),
+        paste0("sd_", group, "__", covariate)
+      ),
+      index = levels$index,
+      n_levels = length(levels$levels),
+      value = as.numeric(data[[covariate]]),
+      key = as.character(data[[group]]),
+      columns = group
+    ))
+  )
 }
 
 .fb_sel_slots_diag <- function(outer, inner, data) {
@@ -767,9 +824,10 @@ print.fb_marginal_cov <- function(x, ...) {
   m <- if (is.character(symbol) && length(symbol) == 1L) {
     known_matrices[[symbol]]
   }
-  if (is.null(m) ||
-        !format %in% c("dense", "chol", "precision",
-                       "pedigree_sparse_precision")) {
+  if (
+    is.null(m) ||
+      !format %in% c("dense", "chol", "precision", "pedigree_sparse_precision")
+  ) {
     return(NULL)
   }
   k <- switch(
@@ -819,8 +877,10 @@ print.fb_marginal_cov <- function(x, ...) {
     return(list(
       applicable = FALSE,
       reason = paste0(
-        paste(vapply(linking, function(s) s$label, character(1L)),
-              collapse = ", "),
+        paste(
+          vapply(linking, function(s) s$label, character(1L)),
+          collapse = ", "
+        ),
         " correlates rows across every level it indexes"
       )
     ))
@@ -828,13 +888,17 @@ print.fb_marginal_cov <- function(x, ...) {
   best <- NULL
   for (g in unique(unlist(lapply(slots, function(s) s$columns)))) {
     gv <- as.character(data[[g]])
-    nests <- all(vapply(slots, function(s) {
-      keep <- !is.na(s$index)
-      spans <- tapply(gv[keep], s$key[keep], function(x) {
-        length(unique(x))
-      })
-      all(spans <= 1L)
-    }, logical(1L)))
+    nests <- all(vapply(
+      slots,
+      function(s) {
+        keep <- !is.na(s$index)
+        spans <- tapply(gv[keep], s$key[keep], function(x) {
+          length(unique(x))
+        })
+        all(spans <= 1L)
+      },
+      logical(1L)
+    ))
     if (!nests) {
       next
     }

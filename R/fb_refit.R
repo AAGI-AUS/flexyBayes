@@ -4,8 +4,15 @@
 # Arguments of flexybayes() that state the model, fb_refit() takes them from
 # the fit.
 .FB_REFIT_MODEL_ARGS <- c(
-  "random", "residual", "family", "link", "known_matrices", "prior",
-  "prior_fixed_sd", "prior_vc_sd", "syntax"
+  "random",
+  "residual",
+  "family",
+  "link",
+  "known_matrices",
+  "prior",
+  "prior_fixed_sd",
+  "prior_vc_sd",
+  "syntax"
 )
 
 
@@ -118,8 +125,10 @@ fb_refit <- function(
   }
   readout <- match.arg(readout)
   dots <- list(...)
-  if (length(dots) > 0L &&
-        (is.null(names(dots)) || any(!nzchar(names(dots))))) {
+  if (
+    length(dots) > 0L &&
+      (is.null(names(dots)) || any(!nzchar(names(dots))))
+  ) {
     stop(
       "fb_refit(): every argument in `...` must be named, as an argument ",
       "of flexybayes().",
@@ -129,15 +138,18 @@ fb_refit <- function(
   stated <- intersect(names(dots), .FB_REFIT_MODEL_ARGS)
   if (length(stated) > 0L) {
     stop(
-      "fb_refit(): ", paste0("`", stated, "`", collapse = ", "),
+      "fb_refit(): ",
+      paste0("`", stated, "`", collapse = ", "),
       " would change the model the fit states. Use update() to refit a ",
       "changed model.",
       call. = FALSE
     )
   }
   if (!is.null(formula_hook) && !is.function(formula_hook)) {
-    stop("fb_refit(): `formula_hook` must be a function or NULL.",
-         call. = FALSE)
+    stop(
+      "fb_refit(): `formula_hook` must be a function or NULL.",
+      call. = FALSE
+    )
   }
 
   info <- fit$extras$call_info %||% list()
@@ -148,11 +160,20 @@ fb_refit <- function(
   )
   rows <- .fb_refit_rows(fit, info, ir, data, dots)
 
-  hooked <- !is.null(extra_prior) || !is.null(stanvars) ||
+  hooked <- !is.null(extra_prior) ||
+    !is.null(stanvars) ||
     !is.null(formula_hook)
   if (hooked) {
     return(.fb_refit_brms(
-      fit, info, ir, fixed, rows, extra_prior, stanvars, formula_hook, dots
+      fit,
+      info,
+      ir,
+      fixed,
+      rows,
+      extra_prior,
+      stanvars,
+      formula_hook,
+      dots
     ))
   }
 
@@ -180,8 +201,14 @@ fb_refit <- function(
       args[[paste0("prior_", which)]] <- .fb_prior_scalar_value(ir, which)
     }
   }
-  for (nm in c("na_action", "fixed_alias", "aggregate", "n_samples",
-               "warmup", "chains")) {
+  for (nm in c(
+    "na_action",
+    "fixed_alias",
+    "aggregate",
+    "n_samples",
+    "warmup",
+    "chains"
+  )) {
     if (!is.null(info[[nm]])) {
       args[[nm]] <- info[[nm]]
     }
@@ -307,7 +334,9 @@ fb_refit <- function(
     if (is.null(known_variance)) {
       .fb_known_variance_refuse(paste0(
         "fb_refit(): the fit carries a known variance per row, and `data` ",
-        "has no `", .FB_KNOWN_VARIANCE_COL, "` column to read it from. ",
+        "has no `",
+        .FB_KNOWN_VARIANCE_COL,
+        "` column to read it from. ",
         "Pass rows of the fit's own data (`fit$data`), or ",
         "`known_variance = ` with one value per row of `data`."
       ))
@@ -321,8 +350,17 @@ fb_refit <- function(
 # The refit on brms with extra prior rows, Stan code or a formula hook. The
 # model is built as flexybayes() builds it and handed to emit_brms(), which
 # takes these three, flexybayes() takes none of them.
-.fb_refit_brms <- function(fit, info, ir, fixed, rows, extra_prior, stanvars,
-                           formula_hook, dots) {
+.fb_refit_brms <- function(
+  fit,
+  info,
+  ir,
+  fixed,
+  rows,
+  extra_prior,
+  stanvars,
+  formula_hook,
+  dots
+) {
   engine <- if ("backend" %in% names(dots)) {
     dots$backend
   } else {
@@ -334,7 +372,8 @@ fb_refit <- function(
       message = paste0(
         "fb_refit(): `extra_prior`, `stanvars` and `formula_hook` are brms ",
         "objects, and this refit would run on \"",
-        .resolve_engine_string(engine), "\". Pass `backend = \"brms\"`."
+        .resolve_engine_string(engine),
+        "\". Pass `backend = \"brms\"`."
       )
     ))
   }
@@ -371,15 +410,23 @@ fb_refit <- function(
   }
   known <- .fb_known_variance_term(ir)
   if (!is.null(rows$known_variance)) {
-    known <- known %||% list(type = "known_variance",
-                             column = .FB_KNOWN_VARIANCE_COL)
+    known <- known %||%
+      list(type = "known_variance", column = .FB_KNOWN_VARIANCE_COL)
     known$values <- as.numeric(rows$known_variance)
     data[[.FB_KNOWN_VARIANCE_COL]] <- known$values
     fb$addition_terms <- c(fb$addition_terms %||% list(), list(known))
   }
 
-  passed <- c("seed", "control", "n_samples", "warmup", "chains",
-              "na_action", "weights", "known_variance")
+  passed <- c(
+    "seed",
+    "control",
+    "n_samples",
+    "warmup",
+    "chains",
+    "na_action",
+    "weights",
+    "known_variance"
+  )
   args <- c(
     list(
       fb = fb,
@@ -423,8 +470,11 @@ fb_refit <- function(
 # Calls a formula hook and checks what it returns.
 .fb_refit_apply_formula_hook <- function(formula_hook, formula, prior) {
   out <- formula_hook(formula, prior)
-  if (!is.list(out) || inherits(out, "brmsformula") ||
-        !all(c("formula", "prior") %in% names(out))) {
+  if (
+    !is.list(out) ||
+      inherits(out, "brmsformula") ||
+      !all(c("formula", "prior") %in% names(out))
+  ) {
     stop(
       "fb_refit(): `formula_hook` must return a list with elements ",
       "`formula` and `prior`.",

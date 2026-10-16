@@ -43,7 +43,10 @@
 # ---------------------------------------------------------------- #
 
 test_that("Engine: falls through to the raw backend string for an unrecognised engine", {
-  fit <- .test_truth_fit(backend = "future_engine", path = "explicit_future_engine")
+  fit <- .test_truth_fit(
+    backend = "future_engine",
+    path = "explicit_future_engine"
+  )
   repr <- flexyBayes:::.repr_label_for_fit(fit, fit$extras$backend_decision)
   engine <- flexyBayes:::.engine_label_for_fit(fit, fit$extras$backend_decision)
   expect_equal(repr, "exact (model, not inference)")

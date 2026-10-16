@@ -78,8 +78,11 @@
   if (length(var_g_draws) != length(var_e_draws)) {
     stop(
       "`var_g_draws` and `var_e_draws` must be the same length (one ",
-      "value per posterior draw); got ", length(var_g_draws), " and ",
-      length(var_e_draws), ".",
+      "value per posterior draw); got ",
+      length(var_g_draws),
+      " and ",
+      length(var_e_draws),
+      ".",
       call. = FALSE
     )
   }
@@ -136,11 +139,16 @@
 
   if (!is.null(marker_draws)) {
     marker_draws <- .fb_genomic_as_draw_matrix(
-      marker_draws, n_draws, "marker_draws"
+      marker_draws,
+      n_draws,
+      "marker_draws"
     )
     n_markers <- ncol(marker_draws)
     marker_labels <- .fb_genomic_labels(
-      marker_labels, marker_draws, n_markers, "m"
+      marker_labels,
+      marker_draws,
+      n_markers,
+      "m"
     )
     prob_retained <- if (inclusion_eps > 0) {
       colMeans(abs(marker_draws) > inclusion_eps)
@@ -170,9 +178,12 @@ print.fb_genomic_summary <- function(x, ...) {
   cat("<fb_genomic_summary>  (", x$n_draws, " draws)\n", sep = "")
   fmt <- function(s) {
     paste0(
-      format(round(s[["mean"]], 4L)), " [",
-      format(round(s[["q2.5"]], 4L)), ", ",
-      format(round(s[["q97.5"]], 4L)), "]"
+      format(round(s[["mean"]], 4L)),
+      " [",
+      format(round(s[["q2.5"]], 4L)),
+      ", ",
+      format(round(s[["q97.5"]], 4L)),
+      "]"
     )
   }
   cat("  heritability h^2 : ", fmt(x$heritability), "\n", sep = "")
@@ -180,8 +191,11 @@ print.fb_genomic_summary <- function(x, ...) {
   cat("  residual variance: ", fmt(x$residual_variance), "\n", sep = "")
   if (!is.null(x$gebv)) {
     cat(
-      "  GEBVs            : ", x$n_genotypes, " genotypes (mean reliability ",
-      format(round(mean(x$gebv$reliability, na.rm = TRUE), 3L)), ")\n",
+      "  GEBVs            : ",
+      x$n_genotypes,
+      " genotypes (mean reliability ",
+      format(round(mean(x$gebv$reliability, na.rm = TRUE), 3L)),
+      ")\n",
       sep = ""
     )
   }
@@ -252,8 +266,10 @@ genomic_summary <- function(fit, term = NULL) {
   chosen <- if (is.null(term)) {
     if (length(vmped) > 1L) {
       message(
-        "flexyBayes: genomic_summary() found ", length(vmped),
-        " relationship terms; summarising the first ('", vmped[[1L]]$var,
+        "flexyBayes: genomic_summary() found ",
+        length(vmped),
+        " relationship terms; summarising the first ('",
+        vmped[[1L]]$var,
         "'). Pass term = to choose another."
       )
     }
@@ -262,7 +278,9 @@ genomic_summary <- function(fit, term = NULL) {
     hit <- Filter(function(t) identical(t$var, term), vmped)
     if (!length(hit)) {
       stop(
-        "genomic_summary(): '", term, "' is not a vm() / ped() term in ",
+        "genomic_summary(): '",
+        term,
+        "' is not a vm() / ped() term in ",
         "this fit. Available: ",
         paste(vapply(vmped, function(t) t$var, character(1)), collapse = ", "),
         ".",
@@ -274,8 +292,10 @@ genomic_summary <- function(fit, term = NULL) {
 
   d <- .fb_genomic_draws(fit, chosen$var)
   .fb_genomic_summary(
-    d$var_g_draws, d$var_e_draws,
-    gebv_draws = d$gebv_draws, labels = d$labels
+    d$var_g_draws,
+    d$var_e_draws,
+    gebv_draws = d$gebv_draws,
+    labels = d$labels
   )
 }
 
@@ -334,8 +354,11 @@ genomic_summary <- function(fit, term = NULL) {
   if (is.null(var_g) || is.null(var_e)) {
     stop(
       "genomic_summary(): could not locate the genetic and residual ",
-      "variance draws for term '", var, "' on the ",
-      class(fit)[[1L]], " backend. The fit may predate the genomic ",
+      "variance draws for term '",
+      var,
+      "' on the ",
+      class(fit)[[1L]],
+      " backend. The fit may predate the genomic ",
       "output contract, or the term name does not match the draws.",
       call. = FALSE
     )
@@ -396,12 +419,18 @@ genomic_summary <- function(fit, term = NULL) {
 # Validate a draw vector: non-empty finite numeric.
 .fb_genomic_check_draws <- function(x, name) {
   if (!is.numeric(x) || length(x) == 0L) {
-    stop("`", name, "` must be a non-empty numeric vector of draws.",
+    stop(
+      "`",
+      name,
+      "` must be a non-empty numeric vector of draws.",
       call. = FALSE
     )
   }
   if (any(!is.finite(x))) {
-    stop("`", name, "` contains non-finite draws (NA / NaN / Inf).",
+    stop(
+      "`",
+      name,
+      "` contains non-finite draws (NA / NaN / Inf).",
       call. = FALSE
     )
   }
@@ -416,8 +445,13 @@ genomic_summary <- function(fit, term = NULL) {
   }
   if (nrow(M) != n_draws) {
     stop(
-      "`", name, "` must have one row per posterior draw (", n_draws,
-      "); got ", nrow(M), " rows.",
+      "`",
+      name,
+      "` must have one row per posterior draw (",
+      n_draws,
+      "); got ",
+      nrow(M),
+      " rows.",
       call. = FALSE
     )
   }
@@ -433,8 +467,12 @@ genomic_summary <- function(fit, term = NULL) {
   if (!is.null(labels)) {
     if (length(labels) != n) {
       stop(
-        "label vector length (", length(labels), ") does not match the ",
-        "number of columns (", n, ").",
+        "label vector length (",
+        length(labels),
+        ") does not match the ",
+        "number of columns (",
+        n,
+        ").",
         call. = FALSE
       )
     }

@@ -82,8 +82,11 @@ test_that("a skewed posterior separates the quantile interval from the normal on
   set.seed(9L)
   draws <- cbind(b = stats::rlnorm(6000L, meanlog = 0, sdlog = 0.9))
   g <- structure(
-    list(coefficients = c(b = mean(draws[, 1L])),
-         family = stats::gaussian(), df.residual = 30L),
+    list(
+      coefficients = c(b = mean(draws[, 1L])),
+      family = stats::gaussian(),
+      df.residual = 30L
+    ),
     class = c("flexybayes_glm", "list"),
     posterior_vcov = stats::cov(draws),
     posterior_draws = draws
@@ -134,13 +137,20 @@ test_that("a real brms fit carries its fixed-effect draws through", {
   d <- data.frame(x = stats::rnorm(n))
   d$y <- 1.5 + 0.8 * d$x + stats::rnorm(n)
   fit <- suppressMessages(flexybayes(
-    y ~ x, data = d, backend = "brms",
-    n_samples = 400, warmup = 400, chains = 2,
-    verbose = FALSE, mcmc_verbose = FALSE
+    y ~ x,
+    data = d,
+    backend = "brms",
+    n_samples = 400,
+    warmup = 400,
+    chains = 2,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   draws <- attr(fit$glm, "posterior_draws")
   expect_true(is.matrix(as.matrix(draws)))
   expect_identical(colnames(draws), names(fit$glm$coefficients))
-  expect_identical(attr(confint(fit$glm), "interval_basis"),
-                   "posterior_quantile")
+  expect_identical(
+    attr(confint(fit$glm), "interval_basis"),
+    "posterior_quantile"
+  )
 })

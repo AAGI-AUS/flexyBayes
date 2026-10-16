@@ -373,8 +373,13 @@
 #' @return A handle: the process, its PID and the files it uses.
 #' @noRd
 #' @keywords internal
-.fb_isolation_start <- function(fn_path, args = list(), pin = NULL,
-                                quote = TRUE, packages = "flexyBayes") {
+.fb_isolation_start <- function(
+  fn_path,
+  args = list(),
+  pin = NULL,
+  quote = TRUE,
+  packages = "flexyBayes"
+) {
   payload_path <- tempfile("fb_isolation_", fileext = ".rds")
   saveRDS(
     list(
@@ -511,12 +516,14 @@
 #' @return A refusal condition.
 #' @noRd
 #' @keywords internal
-.fb_isolation_died_condition <- function(status,
-                                         pid,
-                                         engine,
-                                         entry_point,
-                                         fold = NA_integer_,
-                                         stderr_tail = "") {
+.fb_isolation_died_condition <- function(
+  status,
+  pid,
+  engine,
+  entry_point,
+  fold = NA_integer_,
+  stderr_tail = ""
+) {
   status <- as.integer(status)
   signal <- if (!is.na(status) && status < 0L) -status else NA_integer_
   signal_names <- c(
@@ -601,8 +608,12 @@
 #'   refusal instead.
 #' @noRd
 #' @keywords internal
-.fb_isolation_harvest <- function(handle, engine, entry_point,
-                                  fold = NA_integer_) {
+.fb_isolation_harvest <- function(
+  handle,
+  engine,
+  entry_point,
+  fold = NA_integer_
+) {
   on.exit(unlink(handle$files), add = TRUE)
   on.exit(.fb_isolation_release(handle), add = TRUE)
   handle$proc$wait()
@@ -719,8 +730,14 @@
 #' @return The value `fn` returned in the child.
 #' @noRd
 #' @keywords internal
-.fb_isolated_call <- function(fn, args = list(), engine, entry_point,
-                              with_pid = FALSE, quote = TRUE) {
+.fb_isolated_call <- function(
+  fn,
+  args = list(),
+  engine,
+  entry_point,
+  with_pid = FALSE,
+  quote = TRUE
+) {
   fn_path <- tempfile("fb_isolation_fn_", fileext = ".rds")
   on.exit(unlink(fn_path), add = TRUE)
   saveRDS(fn, fn_path, compress = FALSE)
@@ -840,16 +857,18 @@ fb_isolated_lapply <- function(jobs, fn, plan = list()) {
     h <- running[[as.character(i)]]
     running[[as.character(i)]] <<- NULL
     outcome <- tryCatch(
-      list(record = .fb_isolation_harvest(
-        h,
-        plan$engine,
-        plan$entry_point,
-        fold = if (is.numeric(jobs[[i]]) && length(jobs[[i]]) == 1L) {
-          jobs[[i]]
-        } else {
-          i
-        }
-      )),
+      list(
+        record = .fb_isolation_harvest(
+          h,
+          plan$engine,
+          plan$entry_point,
+          fold = if (is.numeric(jobs[[i]]) && length(jobs[[i]]) == 1L) {
+            jobs[[i]]
+          } else {
+            i
+          }
+        )
+      ),
       error = function(e) list(condition = e)
     )
     done[[i]] <<- TRUE
@@ -872,9 +891,7 @@ fb_isolated_lapply <- function(jobs, fn, plan = list()) {
 
   while (!all(done[seq_len(min(n, first_failure))])) {
     limit <- if (plan$warm_first && !done[[1L]]) 1L else plan$workers
-    while (
-      next_i <= n && next_i < first_failure && length(running) < limit
-    ) {
+    while (next_i <= n && next_i < first_failure && length(running) < limit) {
       running[[as.character(next_i)]] <- .fb_isolation_start(
         fn_path,
         list(jobs[[next_i]]),
@@ -883,11 +900,13 @@ fb_isolated_lapply <- function(jobs, fn, plan = list()) {
       )
       next_i <- next_i + 1L
     }
-    finished <- names(running)[!vapply(
-      running,
-      function(h) h$proc$is_alive(),
-      logical(1)
-    )]
+    finished <- names(running)[
+      !vapply(
+        running,
+        function(h) h$proc$is_alive(),
+        logical(1)
+      )
+    ]
     if (length(finished) == 0L) {
       Sys.sleep(0.05)
       next

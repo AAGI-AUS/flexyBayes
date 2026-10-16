@@ -3,9 +3,16 @@
 
 .ilpm_data <- function() {
   set.seed(3)
-  d <- expand.grid(a = factor(1:3), b = factor(1:2), cc = factor(1:2), rep = 1:4)
+  d <- expand.grid(
+    a = factor(1:3),
+    b = factor(1:2),
+    cc = factor(1:2),
+    rep = 1:4
+  )
   d$x <- stats::rnorm(nrow(d))
-  d$y <- 1 + 0.5 * d$x + stats::rnorm(12)[interaction(d$a, d$b, d$cc)] +
+  d$y <- 1 +
+    0.5 * d$x +
+    stats::rnorm(12)[interaction(d$a, d$b, d$cc)] +
     stats::rnorm(nrow(d))
   d
 }
@@ -19,13 +26,20 @@ test_that("DEF-199: INLA and brms give a:b:cc the same prior under prior_vc_sd",
   )
   d <- .ilpm_data()
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ x, random = ~ a:b + a:b:cc, data = d, prior_vc_sd = 2,
-    backend = "inla", verbose = FALSE
+    y ~ x,
+    random = ~ a:b + a:b:cc,
+    data = d,
+    prior_vc_sd = 2,
+    backend = "inla",
+    verbose = FALSE
   )))
   applied <- prior_summary(fit)$legacy_vc_applied
 
   fb <- .fb_from_asreml_impl(
-    fixed = y ~ x, random = ~ a:b + a:b:cc, data = d, family = "gaussian"
+    fixed = y ~ x,
+    random = ~ a:b + a:b:cc,
+    data = d,
+    family = "gaussian"
   )
   specs <- .brms_legacy_specs(fb, prior_fixed_sd = 100, prior_vc_sd = 2)
   brms_sd <- Filter(function(s) identical(s$class, "sd"), specs)

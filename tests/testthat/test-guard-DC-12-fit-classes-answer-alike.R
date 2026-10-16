@@ -17,7 +17,10 @@
 #    and data (DEF-061, DEF-123, DEF-144).
 
 .g12_fit_classes <- c(
-  "flexybayes", "flexybayes_inla", "flexybayes_aggregated", "flexybayes_brms"
+  "flexybayes",
+  "flexybayes_inla",
+  "flexybayes_aggregated",
+  "flexybayes_brms"
 )
 
 # The class a brms fit carries (R/emit_brms.R). A long-tier block checks
@@ -80,16 +83,29 @@ test_that("DC-12 guard: every fit class reaches a package method", {
     flexyBayes.inla_threads = "1:1"
   )
   d <- .g12_data()
-  per_row <- suppressMessages(flexybayes(y ~ f, random = ~g, data = d, verbose = FALSE))
+  per_row <- suppressMessages(flexybayes(
+    y ~ f,
+    random = ~g,
+    data = d,
+    verbose = FALSE
+  ))
   aggregated <- suppressMessages(flexybayes(
-    n ~ f, random = ~g, data = d, family = "poisson", verbose = FALSE
+    n ~ f,
+    random = ~g,
+    data = d,
+    family = "poisson",
+    verbose = FALSE
   ))
   classes <- list(
     per_row = class(per_row),
     aggregated = class(aggregated),
     brms = .g12_brms_class
   )
-  expect_true(all(vapply(classes, function(k) "flexybayes" %in% k, logical(1L))))
+  expect_true(all(vapply(
+    classes,
+    function(k) "flexybayes" %in% k,
+    logical(1L)
+  )))
   expect_true("flexybayes_inla" %in% classes$aggregated)
 
   m <- .g12_methods()
@@ -118,9 +134,18 @@ test_that("DC-12 guard: no fit-class method swallows an argument a sibling takes
   m <- .g12_methods()
   d <- .g12_data()
   inla_fits <- list(
-    per_row = suppressMessages(flexybayes(y ~ f, random = ~g, data = d, verbose = FALSE)),
+    per_row = suppressMessages(flexybayes(
+      y ~ f,
+      random = ~g,
+      data = d,
+      verbose = FALSE
+    )),
     aggregated = suppressMessages(flexybayes(
-      n ~ f, random = ~g, data = d, family = "poisson", verbose = FALSE
+      n ~ f,
+      random = ~g,
+      data = d,
+      family = "poisson",
+      verbose = FALSE
     ))
   )
   classes <- c(lapply(inla_fits, class), list(brms = .g12_brms_class))
@@ -128,14 +153,22 @@ test_that("DC-12 guard: no fit-class method swallows an argument a sibling takes
   sentinel <- structure(list(), class = "g12_sentinel")
   swallowed <- character(0)
   for (g in setdiff(unique(m$generic[m$home == ""]), .g12_side_effects)) {
-    resolved <- vapply(classes, function(k) .g12_resolve(m, g, k), character(1L))
+    resolved <- vapply(
+      classes,
+      function(k) .g12_resolve(m, g, k),
+      character(1L)
+    )
     funs <- unique(stats::na.omit(resolved))
-    args <- lapply(funs, function(f) setdiff(names(formals(get(f, envir = ns))), "..."))
+    args <- lapply(funs, function(f) {
+      setdiff(names(formals(get(f, envir = ns))), "...")
+    })
     names(args) <- funs
     every <- unique(unlist(args))
     for (f in funs) {
       lacking <- setdiff(every, args[[f]])
-      if (!length(lacking)) next
+      if (!length(lacking)) {
+        next
+      }
       on_inla <- intersect(names(inla_fits), names(resolved)[resolved %in% f])
       if (!length(on_inla)) {
         # Only a brms fit reaches this method. Its body is read instead.
@@ -149,7 +182,11 @@ test_that("DC-12 guard: no fit-class method swallows an argument a sibling takes
       for (a in lacking) {
         out <- tryCatch(
           suppressMessages(utils::capture.output(do.call(
-            get(f, envir = ns), c(list(inla_fits[[on_inla[1L]]]), stats::setNames(list(sentinel), a))
+            get(f, envir = ns),
+            c(
+              list(inla_fits[[on_inla[1L]]]),
+              stats::setNames(list(sentinel), a)
+            )
           ))),
           error = function(e) e,
           warning = function(w) w
@@ -178,7 +215,9 @@ test_that("DC-12 guard: a generic another package exports still reaches the pack
     system.file("DESCRIPTION", package = "flexyBayes")
   }
   suggested <- trimws(sub(
-    "\\(.*", "", strsplit(read.dcf(desc, fields = "Suggests")[1L, 1L], ",")[[1L]]
+    "\\(.*",
+    "",
+    strsplit(read.dcf(desc, fields = "Suggests")[1L, 1L], ",")[[1L]]
   ))
   classes <- list(
     per_row = c("flexybayes_inla", "flexybayes"),
@@ -188,18 +227,28 @@ test_that("DC-12 guard: a generic another package exports still reaches the pack
   masked <- character(0)
   checked <- 0L
   for (p in suggested) {
-    if (!requireNamespace(p, quietly = TRUE)) next
+    if (!requireNamespace(p, quietly = TRUE)) {
+      next
+    }
     for (g in intersect(getNamespaceExports(p), generics)) {
       fn <- getExportedValue(p, g)
-      if (!is.function(fn) || !"UseMethod" %in% all.names(body(fn))) next
+      if (!is.function(fn) || !"UseMethod" %in% all.names(body(fn))) {
+        next
+      }
       home <- environment(fn)
-      if (identical(home, asNamespace("flexyBayes"))) next
+      if (identical(home, asNamespace("flexyBayes"))) {
+        next
+      }
       table <- get(".__S3MethodsTable__.", envir = home)
       checked <- checked + 1L
       for (nm in names(classes)) {
-        hit <- any(vapply(classes[[nm]], function(k) {
-          exists(paste0(g, ".", k), envir = table, inherits = FALSE)
-        }, logical(1L)))
+        hit <- any(vapply(
+          classes[[nm]],
+          function(k) {
+            exists(paste0(g, ".", k), envir = table, inherits = FALSE)
+          },
+          logical(1L)
+        ))
         if (!hit) {
           masked <- c(masked, paste0(p, "::", g, "() on the ", nm, " fit"))
         }
@@ -207,8 +256,10 @@ test_that("DC-12 guard: a generic another package exports still reaches the pack
     }
   }
   # The count depends on which Suggests are installed.
-  if (requireNamespace("INLA", quietly = TRUE) &&
-      requireNamespace("brms", quietly = TRUE)) {
+  if (
+    requireNamespace("INLA", quietly = TRUE) &&
+      requireNamespace("brms", quietly = TRUE)
+  ) {
     expect_gt(checked, 5L)
   }
   expect_identical(masked, character(0))
@@ -225,11 +276,19 @@ test_that("DC-12 guard: per-row and aggregated INLA fits answer in one shape", {
   d <- .g12_data()
   fits <- list(
     per_row = suppressMessages(flexybayes(
-      n ~ f, random = ~g, data = d, family = "poisson", aggregate = FALSE,
+      n ~ f,
+      random = ~g,
+      data = d,
+      family = "poisson",
+      aggregate = FALSE,
       verbose = FALSE
     )),
     aggregated = suppressMessages(flexybayes(
-      n ~ f, random = ~g, data = d, family = "poisson", verbose = FALSE
+      n ~ f,
+      random = ~g,
+      data = d,
+      family = "poisson",
+      verbose = FALSE
     ))
   )
   expect_true(inherits(fits$aggregated, "flexybayes_aggregated"))
@@ -255,8 +314,15 @@ test_that("DC-12 guard: a brms fit carries the class and slots the guard assumes
   skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .g12_data(), backend = "brms", chains = 1L,
-    n_samples = 200L, warmup = 200L, seed = 12L, verbose = FALSE,
+    y ~ f,
+    random = ~g,
+    data = .g12_data(),
+    backend = "brms",
+    chains = 1L,
+    n_samples = 200L,
+    warmup = 200L,
+    seed = 12L,
+    verbose = FALSE,
     mcmc_verbose = FALSE
   )))
   expect_identical(class(fit), .g12_brms_class)

@@ -35,7 +35,6 @@
 #   (n) 10-row priors-to-brms table: (x || g) adds the
 #       (class = "sd", coef = "<x>", group = "<g>") row.
 
-
 mk_slope_data <- function(
   seed = 20260523L,
   J = 18L,
@@ -134,8 +133,11 @@ test_that("(1 + x | g) is the same term as (x | g)", {
 test_that("emit_brms writes the single pipe back out", {
   d <- mk_slope_data()
   fb <- fb_from_brms(Reaction ~ Days + (Days | Subject), data = d)
-  txt <- gsub("\\s+", " ", paste(deparse(.fb_to_brms_formula(fb)),
-                                 collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.fb_to_brms_formula(fb)), collapse = " ")
+  )
   expect_match(txt, "(Days | Subject)", fixed = TRUE)
   expect_false(grepl("||", txt, fixed = TRUE))
 })
@@ -324,7 +326,6 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
 #
 # This cell compared a since-withdrawn native engine against brms
 # on (x || g) (see NEWS.md, 0.9.3).
-
 
 # ---------------------------------------------------------------- #
 # (j) Minimum-group guard: J >= 10 holds for the slope fixtures     #

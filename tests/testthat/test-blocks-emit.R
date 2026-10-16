@@ -247,8 +247,11 @@ test_that("lgm_gate refuses vm() with cov_representation$format = 'blocks'", {
   gated <- lgm_gate(fb)
   expect_true(inherits(gated, "lgm_refusal"))
   expect_identical(gated$failures[[1L]]$rule_id, "random_term_type_inla")
-  expect_match(gated$failures[[1L]]$reason, "blocks carrier is refused on INLA",
-               fixed = TRUE)
+  expect_match(
+    gated$failures[[1L]]$reason,
+    "blocks carrier is refused on INLA",
+    fixed = TRUE
+  )
 })
 
 # ---------------------------------------------------------------- #

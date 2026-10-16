@@ -58,10 +58,14 @@ test_that("values come back in job order from processes other than this one", {
   skip_on_cran()
   skip_if_not_installed("callr")
   me <- Sys.getpid()
-  out <- fb_isolated_lapply(1:3, function(j) {
-    Sys.sleep(c(0.6, 0.3, 0)[[j]])
-    list(j = j, pid = Sys.getpid(), omp = Sys.getenv("OMP_NUM_THREADS"))
-  }, list(workers = 3L, threads_per_worker = 2L))
+  out <- fb_isolated_lapply(
+    1:3,
+    function(j) {
+      Sys.sleep(c(0.6, 0.3, 0)[[j]])
+      list(j = j, pid = Sys.getpid(), omp = Sys.getenv("OMP_NUM_THREADS"))
+    },
+    list(workers = 3L, threads_per_worker = 2L)
+  )
   expect_identical(vapply(out, function(z) z$j, integer(1)), 1:3)
   expect_false(any(vapply(out, function(z) z$pid, integer(1)) == me))
   expect_identical(vapply(out, function(z) z$omp, ""), rep("2", 3L))
@@ -71,12 +75,16 @@ test_that("the lowest failing job's error is raised, keeping its class", {
   skip_on_cran()
   skip_if_not_installed("callr")
   refused <- tryCatch(
-    fb_isolated_lapply(1:3, function(j) {
-      if (j >= 2L) {
-        fb_refuse("isolated_process_died", paste0("job ", j, " refusing"))
-      }
-      j
-    }, list(workers = 1L)),
+    fb_isolated_lapply(
+      1:3,
+      function(j) {
+        if (j >= 2L) {
+          fb_refuse("isolated_process_died", paste0("job ", j, " refusing"))
+        }
+        j
+      },
+      list(workers = 1L)
+    ),
     error = function(e) e
   )
   expect_s3_class(refused, "flexybayes_refusal_isolated_process_died")

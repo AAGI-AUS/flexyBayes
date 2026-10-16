@@ -6,9 +6,13 @@
 # with no reason recorded beyond the allowlist. It is one of ASReml's two
 # multi-environment-trial workhorses.
 
-.hv_fixture <- function(seed = 21L, n_gen = 40L,
-                        sd_by_env = c(0.4, 1.0, 2.0), n_rep = 4L,
-                        sd_resid = 0.30) {
+.hv_fixture <- function(
+  seed = 21L,
+  n_gen = 40L,
+  sd_by_env = c(0.4, 1.0, 2.0),
+  n_rep = 4L,
+  sd_resid = 0.30
+) {
   set.seed(seed)
   n_env <- length(sd_by_env)
   tab <- expand.grid(
@@ -17,7 +21,8 @@
     rep = seq_len(n_rep)
   )
   mat_g <- vapply(sd_by_env, function(s) rnorm(n_gen, 0, s), numeric(n_gen))
-  tab$y <- 5 + mat_g[cbind(as.integer(tab$gen), as.integer(tab$env))] +
+  tab$y <- 5 +
+    mat_g[cbind(as.integer(tab$gen), as.integer(tab$env))] +
     rnorm(nrow(tab), 0, sd_resid)
   tab
 }
@@ -45,11 +50,17 @@ test_that("the emitted formula carries one iid field per level", {
   # deparse() wraps long formulas mid-call, so collapse and normalise the
   # whitespace before matching, otherwise the third f() splits and the
   # match fails on formatting instead of on content.
-  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
-                                 collapse = " "))
+  txt <- gsub(
+    "\\s+",
+    " ",
+    paste(deparse(.build_inla_formula(fb)), collapse = " ")
+  )
   for (lev in 1:3) {
-    expect_match(txt, paste0("f(gen_at_env_", lev, ", model = \"iid\""),
-                 fixed = TRUE)
+    expect_match(
+      txt,
+      paste0("f(gen_at_env_", lev, ", model = \"iid\""),
+      fixed = TRUE
+    )
   }
 })
 
@@ -84,12 +95,15 @@ test_that("INLA recovers per-level variances and agrees with lme4 REML", {
   # Agreement with the independent REML fit.
   m <- lme4::lmer(y ~ env + (0 + env || gen), data = tab, REML = TRUE)
   vc <- as.data.frame(lme4::VarCorr(m))
-  ref <- vc$sdcor[vc$grp == "gen" & vc$var1 %in% paste0("env", 1:3) &
-                    is.na(vc$var2)]
+  ref <- vc$sdcor[
+    vc$grp == "gen" & vc$var1 %in% paste0("env", 1:3) & is.na(vc$var2)
+  ]
   ref <- ref[seq_along(sd_by_env)]
-  got_sd <- vapply(seq_along(sd_by_env),
-                   function(i) unname(got[[paste0("sd_gen__env", i)]]),
-                   numeric(1))
+  got_sd <- vapply(
+    seq_along(sd_by_env),
+    function(i) unname(got[[paste0("sd_gen__env", i)]]),
+    numeric(1)
+  )
   expect_equal(got_sd, ref, tolerance = 0.20)
 })
 

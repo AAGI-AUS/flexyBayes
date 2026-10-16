@@ -25,7 +25,15 @@ test_that(".fb_gblup_predict() reproduces the exact full-matrix GBLUP prediction
   spec <- flexyBayes:::.fb_spectral(G[train, train])
   reml <- flexyBayes:::.fb_reml_vc(spec, y[train], X[train, , drop = FALSE])
   spectral_pred <- flexyBayes:::.fb_gblup_predict(y, X, G, train, test)
-  brute_pred <- .brute_gblup_predict(y, X, G, train, test, reml$delta, reml$beta)
+  brute_pred <- .brute_gblup_predict(
+    y,
+    X,
+    G,
+    train,
+    test,
+    reml$delta,
+    reml$beta
+  )
 
   expect_equal(spectral_pred, brute_pred, tolerance = 1e-7)
 })
@@ -34,8 +42,12 @@ test_that("fb_gblup_cv() gives strong accuracy when genotypes are related", {
   # Related genotypes (founder structure) are the realistic genomic-
   # selection setting: a held-out line is predicted from its relatives via
   # the relationship matrix. Accuracy is then substantial.
-  Z <- sim_related_markers(n_geno = 150L, n_markers = 600L, n_founders = 10L,
-    seed = 8L)
+  Z <- sim_related_markers(
+    n_geno = 150L,
+    n_markers = 600L,
+    n_founders = 10L,
+    seed = 8L
+  )
   G <- kinship_from_markers(Z)
   sim <- sim_gblup_pheno(G, var_g = 3, var_e = 1, n_rep = 1L, seed = 9L)
   cv <- fb_gblup_cv(sim$data$y, G, folds = 5L, seed = 11L)

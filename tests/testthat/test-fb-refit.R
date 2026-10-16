@@ -30,7 +30,11 @@ fbrf_data <- function(seed = 20261006L, n_site = 12L, per = 10L) {
       w = rep(c(1, 0.6), length.out = n)
     )
     u <- stats::rnorm(n_site, sd = 0.8)
-    d$y <- 2 + 0.5 * d$x + 0.3 * d$z + d$o + u[as.integer(d$site)] +
+    d$y <- 2 +
+      0.5 * d$x +
+      0.3 * d$z +
+      d$o +
+      u[as.integer(d$site)] +
       stats::rnorm(n, sd = 0.5)
     d
   })
@@ -106,8 +110,11 @@ FBRF_TOL_KNOWN <- 5e-3
 # The prior each engine slot was sent, and what INLA reports it received.
 fbrf_slots <- function(fit) {
   s <- fit$extras$manifest$slots
-  s <- s[s$section != "fixed", c("slot_id", "emitted", "readback"),
-         drop = FALSE]
+  s <- s[
+    s$section != "fixed",
+    c("slot_id", "emitted", "readback"),
+    drop = FALSE
+  ]
   s[order(s$slot_id), , drop = FALSE]
 }
 
@@ -118,8 +125,13 @@ test_that("fb_refit(fit) with nothing changed reproduces the fit", {
   fbrf_quiet()
   d <- fbrf_data()
   original <- fbrf_capture(
-    flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-               verbose = FALSE)
+    flexybayes(
+      y ~ x,
+      random = ~site,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )
   )
   fit <- original$value
   again <- fbrf_capture(fb_refit(fit))
@@ -141,11 +153,21 @@ test_that("add_fixed refits the model flexybayes() fits with the column written 
   skip_if_not_installed("INLA")
   fbrf_quiet()
   d <- fbrf_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   direct <- fbrf_capture(
-    flexybayes(y ~ x + z, random = ~site, data = d, backend = "inla",
-               verbose = FALSE)
+    flexybayes(
+      y ~ x + z,
+      random = ~site,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )
   )
   refit <- fbrf_capture(fb_refit(fit, add_fixed = ~z))
   by_formula <- refit$value
@@ -157,12 +179,18 @@ test_that("add_fixed refits the model flexybayes() fits with the column written 
     deparse(by_formula$extras$call_info$fixed),
     deparse(y ~ x + z)
   )
-  expect_identical(rownames(by_formula$inla$summary.fixed),
-                   c("(Intercept)", "x", "z"))
-  expect_lt(fbrf_rel(fbrf_medians(by_formula), fbrf_medians(direct$value)),
-            FBRF_TOL)
-  expect_lt(fbrf_rel(fbrf_medians(by_label), fbrf_medians(direct$value)),
-            FBRF_TOL)
+  expect_identical(
+    rownames(by_formula$inla$summary.fixed),
+    c("(Intercept)", "x", "z")
+  )
+  expect_lt(
+    fbrf_rel(fbrf_medians(by_formula), fbrf_medians(direct$value)),
+    FBRF_TOL
+  )
+  expect_lt(
+    fbrf_rel(fbrf_medians(by_label), fbrf_medians(direct$value)),
+    FBRF_TOL
+  )
 })
 
 
@@ -176,8 +204,14 @@ test_that("the refit carries priors, weights, offsets, known variance and engine
     sd(group = "site") ~ uniform(lower = 0, upper = 20)
   )
   fit <- suppressMessages(flexybayes(
-    y ~ x + offset(o), random = ~site, data = d, backend = "inla",
-    prior = priors, weights = d$w, known_variance = d$v, na_action = "omit",
+    y ~ x + offset(o),
+    random = ~site,
+    data = d,
+    backend = "inla",
+    prior = priors,
+    weights = d$w,
+    known_variance = d$v,
+    na_action = "omit",
     verbose = FALSE
   ))
   refit <- suppressMessages(fb_refit(fit, add_fixed = ~z))
@@ -196,8 +230,17 @@ test_that("the refit carries priors, weights, offsets, known variance and engine
     .fb_known_variance_term(fit$fb)$values
   )
   # Engine and engine settings, read off the refit's call record.
-  for (field in c("backend", "aggregate", "na_action", "family", "link",
-                  "random", "residual", "control", "seed")) {
+  for (field in c(
+    "backend",
+    "aggregate",
+    "na_action",
+    "family",
+    "link",
+    "random",
+    "residual",
+    "control",
+    "seed"
+  )) {
     expect_identical(
       refit$extras$call_info[[field]],
       fit$extras$call_info[[field]],
@@ -211,8 +254,13 @@ test_that("the refit carries priors, weights, offsets, known variance and engine
 
   # A package default prior is rebuilt over the refitted model, and on the
   # same data every slot gets the prior the fit's slot got.
-  fit_default <- flexybayes(y ~ x, random = ~site, data = d,
-                            backend = "inla", verbose = FALSE)
+  fit_default <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   refit_default <- fb_refit(fit_default, add_fixed = ~z)
   expect_identical(fbrf_slots(refit_default), fbrf_slots(fit_default))
   expect_identical(prior_summary(refit_default)$default_origin, "auto")
@@ -224,8 +272,14 @@ test_that("weights and a known variance follow new rows only when they can", {
   skip_if_not_installed("INLA")
   fbrf_quiet()
   d <- fbrf_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                    weights = d$w, verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    weights = d$w,
+    verbose = FALSE
+  )
   rows <- 1:100
   expect_error(
     fb_refit(fit, data = d[rows, ]),
@@ -234,8 +288,14 @@ test_that("weights and a known variance follow new rows only when they can", {
   refit <- fb_refit(fit, data = d[rows, ], weights = d$w[rows])
   expect_equal(.fb_ir_weights(refit$fb), d$w[rows])
 
-  kv <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                   known_variance = d$v, verbose = FALSE)
+  kv <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    known_variance = d$v,
+    verbose = FALSE
+  )
   # The fit's own data carries the known variance in a column, and other data
   # does not, and the refit refuses before fitting.
   expect_error(
@@ -260,8 +320,13 @@ test_that("fb_refit() refuses a fit it cannot rebuild and arguments that change 
   skip_if_not_installed("INLA")
   fbrf_quiet()
   d <- fbrf_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   bare <- fit
   bare$extras$call_info$fixed <- NULL
   expect_error(
@@ -284,8 +349,13 @@ test_that("formula_hook, extra_prior and stanvars reach the brms model", {
   skip_if_not_installed("brms")
   fbrf_quiet()
   d <- fbrf_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   seen <- new.env()
   hook <- function(formula, prior) {
     seen$formula <- formula
@@ -297,8 +367,10 @@ test_that("formula_hook, extra_prior and stanvars reach the brms model", {
     fit,
     add_fixed = ~z,
     extra_prior = brms::set_prior("normal(0, 0.25)", class = "b", coef = "z"),
-    stanvars = brms::stanvar(scode = "real fbrefit_marker = 1;",
-                             block = "tdata"),
+    stanvars = brms::stanvar(
+      scode = "real fbrefit_marker = 1;",
+      block = "tdata"
+    ),
     formula_hook = hook,
     backend = "brms",
     return_code = TRUE,
@@ -323,10 +395,14 @@ test_that("formula_hook, extra_prior and stanvars reach the brms model", {
   expect_match(code, "real fbrefit_marker = 1;", fixed = TRUE)
 
   # Without a hook the core's own linear formula is fitted.
-  plain <- fb_refit(fit, add_fixed = ~z, backend = "brms",
-                    extra_prior = brms::set_prior("normal(0, 0.25)",
-                                                  class = "b", coef = "z"),
-                    return_code = TRUE, verbose = FALSE)
+  plain <- fb_refit(
+    fit,
+    add_fixed = ~z,
+    backend = "brms",
+    extra_prior = brms::set_prior("normal(0, 0.25)", class = "b", coef = "z"),
+    return_code = TRUE,
+    verbose = FALSE
+  )
   expect_false(grepl("XQ", plain, fixed = TRUE))
   expect_match(plain, "normal_lpdf\\(b\\[[0-9]+\\] \\| 0, 0\\.25\\)")
 })
@@ -337,8 +413,13 @@ test_that("readout asks INLA for that readout only and returns the same estimate
   skip_if_not_installed("INLA")
   fbrf_quiet()
   d <- fbrf_data()
-  fit <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
-                    verbose = FALSE)
+  fit <- flexybayes(
+    y ~ x,
+    random = ~site,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   fd <- fit$data
   fd$y[fd$site %in% c("S01", "S02", "S03")] <- NA
   seen <- new.env()
@@ -387,8 +468,13 @@ test_that("a reduced readout runs no field test, and a full refit still does", {
     out$y <- 3 + stats::rnorm(nrow(out), sd = 0.6)
     out
   })
-  fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
-                    backend = "inla", verbose = FALSE)
+  fit <- flexybayes(
+    y ~ 1,
+    random = ~ ar1(row):ar1(col),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   fd <- fit$data
   fd$y[1:8] <- NA
   # The field test's fit is the one call that asks for the marginal
@@ -402,12 +488,20 @@ test_that("a reduced readout runs no field test, and a full refit still does", {
     ))
   }
   expect_identical(
-    field_tests(suppressWarnings(fb_refit(fit, data = fd, na_action = "augment"))),
+    field_tests(suppressWarnings(fb_refit(
+      fit,
+      data = fd,
+      na_action = "augment"
+    ))),
     1L
   )
   expect_identical(
-    field_tests(fb_refit(fit, data = fd, na_action = "augment",
-                         readout = "varcomp")),
+    field_tests(fb_refit(
+      fit,
+      data = fd,
+      na_action = "augment",
+      readout = "varcomp"
+    )),
     0L
   )
 })

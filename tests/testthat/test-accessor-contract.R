@@ -35,8 +35,15 @@ test_that("accessor contract: pinned column names/types on an INLA fit", {
   # summary(fit)$varcomp
   expect_named(
     s$varcomp,
-    c("component", "estimate", "std.error", "conf.low", "conf.high",
-      "prior", "note"),
+    c(
+      "component",
+      "estimate",
+      "std.error",
+      "conf.low",
+      "conf.high",
+      "prior",
+      "note"
+    ),
     ignore.order = FALSE
   )
   expect_type(s$varcomp$component, "character")
@@ -72,8 +79,16 @@ test_that("accessor contract: pinned column names/types on an INLA fit", {
   bd <- backend_decision(fit)
   expect_named(
     bd,
-    c("backend", "path", "gate_checks", "reason", "preflight_summary",
-      "representation_plan", "rejected_routes", "routing_policy_version"),
+    c(
+      "backend",
+      "path",
+      "gate_checks",
+      "reason",
+      "preflight_summary",
+      "representation_plan",
+      "rejected_routes",
+      "routing_policy_version"
+    ),
     ignore.order = FALSE
   )
   expect_identical(bd$backend, "inla")
@@ -114,8 +129,15 @@ test_that("accessor contract: pinned column names/types on a brms fit", {
   # accessor contract is that a caller need not know which engine ran.
   expect_named(
     s$varcomp,
-    c("component", "estimate", "std.error", "conf.low", "conf.high",
-      "prior", "note"),
+    c(
+      "component",
+      "estimate",
+      "std.error",
+      "conf.low",
+      "conf.high",
+      "prior",
+      "note"
+    ),
     ignore.order = FALSE
   )
   expect_type(s$varcomp$component, "character")
@@ -145,8 +167,16 @@ test_that("accessor contract: pinned column names/types on a brms fit", {
   bd <- backend_decision(fit)
   expect_named(
     bd,
-    c("backend", "path", "gate_checks", "reason", "preflight_summary",
-      "representation_plan", "rejected_routes", "routing_policy_version"),
+    c(
+      "backend",
+      "path",
+      "gate_checks",
+      "reason",
+      "preflight_summary",
+      "representation_plan",
+      "rejected_routes",
+      "routing_policy_version"
+    ),
     ignore.order = FALSE
   )
   expect_identical(bd$backend, "brms")

@@ -9,7 +9,11 @@
   # eb has true SD 0, so its precision marginal has a long right tail.
   d$y <- 2 + ge[d$gen] + stats::rnorm(nrow(d))
   suppressWarnings(suppressMessages(flexybayes(
-    y ~ env, random = ~ gen + eb, data = d, backend = "inla", verbose = FALSE
+    y ~ env,
+    random = ~ gen + eb,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
   )))
 }
 
@@ -44,9 +48,12 @@ test_that("DEF-001: SD quantiles match inla.hyperpar.sample() draws", {
   fit <- .vq_fit()
   vc <- fit$extras$variance_comps
   set.seed(1)
-  draws <- 1 / sqrt(INLA::inla.hyperpar.sample(
-    20000, fit$inla, improve.marginals = TRUE
-  ))
+  draws <- 1 /
+    sqrt(INLA::inla.hyperpar.sample(
+      20000,
+      fit$inla,
+      improve.marginals = TRUE
+    ))
   q <- apply(draws, 2, stats::quantile, probs = c(0.025, 0.5, 0.975))
   comp <- c("sigma", "sd_gen", "sd_eb")
   vc <- vc[match(comp, vc$component), ]
@@ -101,7 +108,10 @@ test_that("DEF-002: draws on a covariate-standardised slope are on the data scal
   eta <- 0.4 + (5e-4 + b[as.integer(d$g)]) * d$x + u[as.integer(d$g)]
   d$y <- stats::rpois(nrow(d), exp(eta))
   fit <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ x + (x || g), data = d, family = "poisson", backend = "inla",
+    y ~ x + (x || g),
+    data = d,
+    family = "poisson",
+    backend = "inla",
     verbose = FALSE
   )))
   expect_false(is.null(fit$extras$covariate_standardisation))

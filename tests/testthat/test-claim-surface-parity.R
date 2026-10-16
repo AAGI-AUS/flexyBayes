@@ -15,8 +15,10 @@
     file.path(testthat::test_path(), "..", ".."),
     mustWork = FALSE
   )
-  if (file.exists(file.path(root, "DESCRIPTION")) &&
-        file.exists(file.path(root, "NAMESPACE"))) {
+  if (
+    file.exists(file.path(root, "DESCRIPTION")) &&
+      file.exists(file.path(root, "NAMESPACE"))
+  ) {
     return(root)
   }
   NA_character_
@@ -41,8 +43,18 @@
 # "Four" -> 4. The prose spells the count, so the gate has to read the word.
 .cs_word_to_int <- function(w) {
   words <- c(
-    one = 1L, two = 2L, three = 3L, four = 4L, five = 5L, six = 6L,
-    seven = 7L, eight = 8L, nine = 9L, ten = 10L, eleven = 11L, twelve = 12L
+    one = 1L,
+    two = 2L,
+    three = 3L,
+    four = 4L,
+    five = 5L,
+    six = 6L,
+    seven = 7L,
+    eight = 8L,
+    nine = 9L,
+    ten = 10L,
+    eleven = 11L,
+    twelve = 12L
   )
   key <- tolower(w)
   if (!key %in% names(words)) {
@@ -87,26 +99,45 @@ test_that("the landing surfaces do not offer a verb the user cannot call", {
   # point. Internal documentation may name internal functions.
   root <- .cs_skip_if_no_source()
   ns <- .cs_read(root, "NAMESPACE")
-  exported <- sub("^export\\((.*)\\)$", "\\1", grep("^export\\(", ns, value = TRUE))
+  exported <- sub(
+    "^export\\((.*)\\)$",
+    "\\1",
+    grep("^export\\(", ns, value = TRUE)
+  )
 
-  files <- list.files(file.path(root, "R"), pattern = "\\.R$", full.names = TRUE)
+  files <- list.files(
+    file.path(root, "R"),
+    pattern = "\\.R$",
+    full.names = TRUE
+  )
   defined <- unique(unlist(lapply(files, function(f) {
     lines <- readLines(f, warn = FALSE)
-    sub("^([A-Za-z._][A-Za-z0-9._]*)\\s*<-\\s*function.*$", "\\1",
-        grep("^[A-Za-z._][A-Za-z0-9._]*\\s*<-\\s*function", lines, value = TRUE))
+    sub(
+      "^([A-Za-z._][A-Za-z0-9._]*)\\s*<-\\s*function.*$",
+      "\\1",
+      grep("^[A-Za-z._][A-Za-z0-9._]*\\s*<-\\s*function", lines, value = TRUE)
+    )
   })))
   uncallable <- setdiff(defined, exported)
   uncallable <- uncallable[!startsWith(uncallable, ".")]
 
   offered <- character(0)
   for (path in c("R/flexyBayes-package.R", "README.md")) {
-    if (!file.exists(file.path(root, path))) next
+    if (!file.exists(file.path(root, path))) {
+      next
+    }
     lines <- .cs_read(root, path)
-    prose <- if (endsWith(path, ".R")) grep("^#'", lines, value = TRUE) else lines
+    prose <- if (endsWith(path, ".R")) {
+      grep("^#'", lines, value = TRUE)
+    } else {
+      lines
+    }
     text <- paste(prose, collapse = "\n")
     for (fn in uncallable) {
-      if (grepl(paste0("[", fn, "()]"), text, fixed = TRUE) ||
-            grepl(paste0("`", fn, "()`"), text, fixed = TRUE)) {
+      if (
+        grepl(paste0("[", fn, "()]"), text, fixed = TRUE) ||
+          grepl(paste0("`", fn, "()`"), text, fixed = TRUE)
+      ) {
         offered <- c(offered, paste0(path, ": ", fn))
       }
     }
@@ -119,7 +150,11 @@ test_that("the startup banner does not advertise a withdrawn feature", {
   zzz <- paste(.cs_read(root, "R/zzz.R"), collapse = "\n")
   banner <- regmatches(
     zzz,
-    regexpr("packageStartupMessage\\((?:[^()]|\\([^()]*\\))*\\)", zzz, perl = TRUE)
+    regexpr(
+      "packageStartupMessage\\((?:[^()]|\\([^()]*\\))*\\)",
+      zzz,
+      perl = TRUE
+    )
   )
   expect_length(banner, 1L)
   # The banner once closed by advertising the cross-engine comparison,
@@ -131,14 +166,26 @@ test_that("the startup banner does not advertise a withdrawn feature", {
 test_that("every export appears in the pkgdown reference index", {
   root <- .cs_skip_if_no_source()
   ns <- .cs_read(root, "NAMESPACE")
-  exported <- sub("^export\\((.*)\\)$", "\\1", grep("^export\\(", ns, value = TRUE))
+  exported <- sub(
+    "^export\\((.*)\\)$",
+    "\\1",
+    grep("^export\\(", ns, value = TRUE)
+  )
 
   # The reference index entries are YAML list items: "      - fb_prior".
   pkgdown_lines <- trimws(.cs_read(root, "_pkgdown.yml"))
-  entries <- sub("^-\\s*", "", grep("^-\\s*[A-Za-z._]+$", pkgdown_lines, value = TRUE))
+  entries <- sub(
+    "^-\\s*",
+    "",
+    grep("^-\\s*[A-Za-z._]+$", pkgdown_lines, value = TRUE)
+  )
 
   # pkgdown leaves topics with \keyword{internal} out of the index.
-  rd_files <- list.files(file.path(root, "man"), pattern = "\\.Rd$", full.names = TRUE)
+  rd_files <- list.files(
+    file.path(root, "man"),
+    pattern = "\\.Rd$",
+    full.names = TRUE
+  )
   internal_aliases <- unlist(lapply(rd_files, function(path) {
     rd <- readLines(path, warn = FALSE)
     if (!any(rd == "\\keyword{internal}")) {
@@ -151,7 +198,8 @@ test_that("every export appears in the pkgdown reference index", {
     function(x) {
       # An export is indexed either by its own name or, for a generic, by
       # the method entries that carry its flexyBayes implementations.
-      !(x %in% entries) && !any(startsWith(entries, paste0(x, "."))) &&
+      !(x %in% entries) &&
+        !any(startsWith(entries, paste0(x, "."))) &&
         !(x %in% internal_aliases)
     },
     exported
@@ -163,9 +211,16 @@ test_that("every export appears in the pkgdown reference index", {
 test_that("every export appears in API_STABILITY.md", {
   root <- .cs_skip_if_no_source()
   ns <- .cs_read(root, "NAMESPACE")
-  exported <- sub("^export\\((.*)\\)$", "\\1", grep("^export\\(", ns, value = TRUE))
+  exported <- sub(
+    "^export\\((.*)\\)$",
+    "\\1",
+    grep("^export\\(", ns, value = TRUE)
+  )
   api <- paste(.cs_read(root, "API_STABILITY.md"), collapse = "\n")
-  missing <- Filter(function(x) !grepl(paste0("`", x, "("), api, fixed = TRUE), exported)
+  missing <- Filter(
+    function(x) !grepl(paste0("`", x, "("), api, fixed = TRUE),
+    exported
+  )
   expect_equal(missing, character(0))
 })
 
@@ -179,12 +234,19 @@ test_that("the landing surfaces carry no withdrawn capability claim", {
   # saying INLA refuses the MET halves it fits.
   root <- .cs_skip_if_no_source()
   withdrawn <- c(
-    "full MET", "full-MET", "in seconds", "property of the estimand",
-    "0.10.x patch", "refuses both halves"
+    "full MET",
+    "full-MET",
+    "in seconds",
+    "property of the estimand",
+    "0.10.x patch",
+    "refuses both halves"
   )
   surfaces <- c(
-    "README.md", "inst/KNOWN_ISSUES.md", "API_STABILITY.md",
-    "R/na_action.R", "R/capability_matrix.R"
+    "README.md",
+    "inst/KNOWN_ISSUES.md",
+    "API_STABILITY.md",
+    "R/na_action.R",
+    "R/capability_matrix.R"
   )
   found <- character(0)
   for (path in surfaces) {

@@ -29,8 +29,13 @@ suppressPackageStartupMessages(library(testthat))
 
 test_that("every recorded na.method() value is detected by shape", {
   cases <- c(
-    "explicit", "default", "y_include", "y_omit", "y_fail",
-    "x_omit", "x_include"
+    "explicit",
+    "default",
+    "y_include",
+    "y_omit",
+    "y_fail",
+    "x_omit",
+    "x_include"
   )
   for (case in cases) {
     m <- .asreml_na_method_recorded(case)
@@ -230,7 +235,9 @@ test_that("the asreml value and the native string do the same thing", {
 
   native <- flexyBayes:::.fb_apply_na_action(ir, g, "augment")
   asreml_shaped <- flexyBayes:::.fb_apply_na_action(
-    ir, g, .asreml_na_method_recorded("explicit")
+    ir,
+    g,
+    .asreml_na_method_recorded("explicit")
   )
   expect_identical(native$data, asreml_shaped$data)
   expect_identical(native$meta, asreml_shaped$meta)
@@ -243,7 +250,9 @@ test_that("y = omit drops the missing-response rows", {
   ir <- .na_method_ir()
 
   res <- flexyBayes:::.fb_apply_na_action(
-    ir, g, .asreml_na_method_recorded("y_omit")
+    ir,
+    g,
+    .asreml_na_method_recorded("y_omit")
   )
   expect_equal(nrow(res$data), nrow(g) - 2L)
   expect_identical(res$meta$na_action, "omit")
@@ -259,7 +268,9 @@ test_that("x = fail refuses a missing covariate by its own code", {
 
   err <- tryCatch(
     flexyBayes:::.fb_apply_na_action(
-      ir, g, .asreml_na_method_recorded("explicit")
+      ir,
+      g,
+      .asreml_na_method_recorded("explicit")
     ),
     condition = function(e) e
   )
@@ -278,7 +289,9 @@ test_that("x = include refuses the zero-fill by name", {
 
   err <- tryCatch(
     flexyBayes:::.fb_apply_na_action(
-      ir, g, .asreml_na_method_recorded("x_include")
+      ir,
+      g,
+      .asreml_na_method_recorded("x_include")
     ),
     condition = function(e) e
   )
@@ -298,7 +311,9 @@ test_that("x = omit drops the covariate-NA rows and says so", {
 
   w <- tryCatch(
     flexyBayes:::.fb_apply_na_action(
-      ir, g, .asreml_na_method_recorded("x_omit")
+      ir,
+      g,
+      .asreml_na_method_recorded("x_omit")
     ),
     warning = function(w) w
   )
@@ -308,7 +323,9 @@ test_that("x = omit drops the covariate-NA rows and says so", {
   expect_match(msg, "x", fixed = TRUE)
 
   res <- suppressWarnings(flexyBayes:::.fb_apply_na_action(
-    ir, g, .asreml_na_method_recorded("x_omit")
+    ir,
+    g,
+    .asreml_na_method_recorded("x_omit")
   ))
   expect_equal(nrow(res$data), nrow(g) - 2L)
   expect_false(anyNA(res$data$x))
@@ -321,7 +338,9 @@ test_that("the covariate policy is a no-op when no covariate is missing", {
   ir <- .na_method_ir()
   for (case in c("explicit", "x_omit", "x_include")) {
     res <- flexyBayes:::.fb_apply_na_action(
-      ir, g, .asreml_na_method_recorded(case)
+      ir,
+      g,
+      .asreml_na_method_recorded(case)
     )
     expect_equal(nrow(res$data), nrow(g), label = case)
     expect_equal(res$meta$n_covariate_rows_dropped, 0L, label = case)

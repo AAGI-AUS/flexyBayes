@@ -107,4 +107,3 @@ test_that("the aggregation plan routes its row count through the guard", {
   expect_true(any(grepl(".fb_checked_row_count", src, fixed = TRUE)))
   expect_false(any(grepl("as.integer(fb_dataset$n_rows)", src, fixed = TRUE)))
 })
-

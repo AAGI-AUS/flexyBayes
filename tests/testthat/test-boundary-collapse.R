@@ -118,13 +118,21 @@ test_that("the warning can be silenced by option", {
 # into the test.
 
 .calib_path <- function() {
-  local <- testthat::test_path("..", "..", "inst", "validation",
-                               "boundary_calibration.csv")
+  local <- testthat::test_path(
+    "..",
+    "..",
+    "inst",
+    "validation",
+    "boundary_calibration.csv"
+  )
   if (file.exists(local)) {
     return(local)
   }
-  installed <- system.file("validation", "boundary_calibration.csv",
-                           package = "flexyBayes")
+  installed <- system.file(
+    "validation",
+    "boundary_calibration.csv",
+    package = "flexyBayes"
+  )
   if (nzchar(installed)) installed else NA_character_
 }
 

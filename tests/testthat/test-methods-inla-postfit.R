@@ -48,7 +48,7 @@ test_that("fitted() on a non-identity (Poisson) INLA fit is on the response scal
 
   fv <- fitted(fit)
   expect_length(fv, nrow(d))
-  expect_true(all(fv > 0))   # response-scale rates, strictly positive
+  expect_true(all(fv > 0)) # response-scale rates, strictly positive
 })
 
 test_that("logLik() on an INLA fit returns NA, not a fabricated value", {
@@ -61,6 +61,6 @@ test_that("logLik() on an INLA fit returns NA, not a fabricated value", {
   expect_message(ll <- logLik(fit), "marginal")
   expect_s3_class(ll, "logLik")
   expect_true(is.na(as.numeric(ll)))
-  expect_equal(attr(ll, "df"), 2L)      # intercept + slope
+  expect_equal(attr(ll, "df"), 2L) # intercept + slope
   expect_equal(attr(ll, "nobs"), nrow(d))
 })

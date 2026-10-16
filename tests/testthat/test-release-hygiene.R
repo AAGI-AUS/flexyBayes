@@ -18,7 +18,10 @@
 
 # "owner/repo" from the GitHub URL in DESCRIPTION's BugReports field.
 .rh_github_repo <- function(root) {
-  bug <- unname(read.dcf(file.path(root, "DESCRIPTION"), fields = "BugReports")[1L, 1L])
+  bug <- unname(read.dcf(file.path(root, "DESCRIPTION"), fields = "BugReports")[
+    1L,
+    1L
+  ])
   sub("^https://github\\.com/([^/]+/[^/]+)/issues/?$", "\\1", bug)
 }
 
@@ -61,8 +64,10 @@ test_that("the README install block installs what building the vignettes needs",
   # remotes installs Imports only, and R CMD build stops without the
   # vignette builder named in DESCRIPTION.
   if (any(grepl("build_vignettes = TRUE", rmd, fixed = TRUE))) {
-    first <- paste(rmd[!grepl("install_github(", rmd, fixed = TRUE)],
-                   collapse = " ")
+    first <- paste(
+      rmd[!grepl("install_github(", rmd, fixed = TRUE)],
+      collapse = " "
+    )
     for (pkg in c("remotes", "knitr", "rmarkdown")) {
       expect_match(first, paste0("\"", pkg, "\""), fixed = TRUE, label = pkg)
     }
@@ -75,7 +80,10 @@ test_that("the README install block installs what building the vignettes needs",
 }
 
 .rh_description_people <- function(root, role) {
-  field <- read.dcf(file.path(root, "DESCRIPTION"), fields = "Authors@R")[1L, 1L]
+  field <- read.dcf(file.path(root, "DESCRIPTION"), fields = "Authors@R")[
+    1L,
+    1L
+  ]
   people <- eval(parse(text = field))
   people <- people[vapply(
     people,
@@ -97,8 +105,10 @@ test_that("the README install block installs what building the vignettes needs",
   }
   chars <- strsplit(substring(text, start), "")[[1L]]
   depth <- cumsum((chars == "[") - (chars == "]"))
-  block <- paste(chars[seq_len(which(depth == 0L & chars == "]")[1L])],
-                 collapse = "")
+  block <- paste(
+    chars[seq_len(which(depth == 0L & chars == "]")[1L])],
+    collapse = ""
+  )
   hits <- regmatches(
     block,
     gregexpr(paste0("\"", field, "\"\\s*:\\s*\"[^\"]*\""), block)
@@ -128,12 +138,21 @@ test_that("every citation surface names the DESCRIPTION authors", {
   from <- grep("^authors:", cff)
   to <- grep("^[a-z-]+:", cff)
   block <- cff[seq.int(from + 1L, min(to[to > from]) - 1L)]
-  family <- sub("^.*family-names:\\s*\"(.*)\"\\s*$", "\\1",
-                grep("family-names:", block, value = TRUE))
-  orcid <- sub("^.*orcid:\\s*\"(.*)\"\\s*$", "\\1",
-               grep("orcid:", block, value = TRUE))
-  expect_identical(.rh_key(family, orcid), authors,
-                   label = "CITATION.cff authors")
+  family <- sub(
+    "^.*family-names:\\s*\"(.*)\"\\s*$",
+    "\\1",
+    grep("family-names:", block, value = TRUE)
+  )
+  orcid <- sub(
+    "^.*orcid:\\s*\"(.*)\"\\s*$",
+    "\\1",
+    grep("orcid:", block, value = TRUE)
+  )
+  expect_identical(
+    .rh_key(family, orcid),
+    authors,
+    label = "CITATION.cff authors"
+  )
 
   # codemeta.json: authors and contributors, in DESCRIPTION's order.
   meta <- paste(.rh_read(root, "codemeta.json"), collapse = "\n")
@@ -143,8 +162,7 @@ test_that("every citation surface names the DESCRIPTION authors", {
       .rh_codemeta_values(meta, key, "familyName"),
       .rh_codemeta_values(meta, key, "@id")
     )
-    expect_identical(got, unname(expected),
-                     label = paste("codemeta.json", key))
+    expect_identical(got, unname(expected), label = paste("codemeta.json", key))
   }
 })
 
@@ -174,21 +192,43 @@ test_that("cran-comments.md sits at the root, outside the build", {
 test_that("every working folder at the root is kept out of the build", {
   root <- .rh_root()
   package <- c(
-    "DESCRIPTION", "NAMESPACE", "LICENSE", "NEWS.md", "README.md",
-    "R", "man", "tests", "vignettes", "inst", "data", "src", "tools",
-    ".Rbuildignore", ".gitignore"
+    "DESCRIPTION",
+    "NAMESPACE",
+    "LICENSE",
+    "NEWS.md",
+    "README.md",
+    "R",
+    "man",
+    "tests",
+    "vignettes",
+    "inst",
+    "data",
+    "src",
+    "tools",
+    ".Rbuildignore",
+    ".gitignore"
   )
   # Named even when absent, since they exist only in some checkouts.
   working <- c(
-    "review", "oracle_work", "validation", "vignettes-reserve", "data-raw",
-    "ledger", "paper", "dev-narrative", "docs", "flexyBayes.Rcheck"
+    "review",
+    "oracle_work",
+    "validation",
+    "vignettes-reserve",
+    "data-raw",
+    "ledger",
+    "paper",
+    "dev-narrative",
+    "docs",
+    "flexyBayes.Rcheck"
   )
   present <- list.files(root, all.files = TRUE, no.. = TRUE)
   candidates <- union(setdiff(present, package), working)
-  shipped <- candidates[!vapply(
-    candidates,
-    function(path) .rh_build_ignored(root, path),
-    logical(1L)
-  )]
+  shipped <- candidates[
+    !vapply(
+      candidates,
+      function(path) .rh_build_ignored(root, path),
+      logical(1L)
+    )
+  ]
   expect_identical(shipped, character(0))
 })

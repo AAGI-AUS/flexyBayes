@@ -22,7 +22,9 @@
     g = factor(rep(sprintf("g%02d", seq_len(12L)), each = 10L)),
     x = stats::rnorm(120L)
   )
-  d$y <- 10 + stats::rnorm(12L)[as.integer(d$g)] + 0.5 * d$x +
+  d$y <- 10 +
+    stats::rnorm(12L)[as.integer(d$g)] +
+    0.5 * d$x +
     stats::rnorm(120L, sd = c(1, 2)[as.integer(d$env)])
   d$count <- stats::rpois(
     120L,
@@ -105,7 +107,10 @@ test_that("T1: no prior input goes unused without a reason, on every route", {
   d <- .man_data()
 
   per_row <- .man_strict(flexybayes(
-    fixed = y ~ x, random = ~ g, data = d, backend = "inla",
+    fixed = y ~ x,
+    random = ~g,
+    data = d,
+    backend = "inla",
     prior = fb_prior(
       sigma ~ uniform(lower = 0, upper = 30),
       sd(group = "g") ~ uniform(lower = 0, upper = 20),
@@ -114,12 +119,21 @@ test_that("T1: no prior input goes unused without a reason, on every route", {
     verbose = FALSE
   ))
   aggregated <- .man_strict(flexybayes(
-    fixed = count ~ 1, random = ~ g, family = "poisson", data = d,
-    backend = "inla", aggregate = TRUE, verbose = FALSE
+    fixed = count ~ 1,
+    random = ~g,
+    family = "poisson",
+    data = d,
+    backend = "inla",
+    aggregate = TRUE,
+    verbose = FALSE
   ))
   streamed <- .man_strict(flexybayes_stream(
-    count ~ 1, random = ~ g, source = d, family = "poisson",
-    backend = "inla", verbose = FALSE
+    count ~ 1,
+    random = ~g,
+    source = d,
+    family = "poisson",
+    backend = "inla",
+    verbose = FALSE
   ))
 
   for (fit in list(per_row, aggregated, streamed)) {
@@ -132,8 +146,10 @@ test_that("T1: no prior input goes unused without a reason, on every route", {
 
   # Each stated prior on the per-row fit reaches exactly one slot.
   inputs <- .man_of(per_row)$inputs
-  expect_setequal(inputs$input_id[inputs$source == "explicit"],
-                  c("sigma:sigma", "sd:g", "b:x"))
+  expect_setequal(
+    inputs$input_id[inputs$source == "explicit"],
+    c("sigma:sigma", "sd:g", "b:x")
+  )
   expect_true(all(inputs$n_slots[inputs$source == "explicit"] == 1L))
 
   # The package default states a residual prior on every family, and a
@@ -149,9 +165,13 @@ test_that("T1: no prior input goes unused without a reason, on every route", {
   # prior_vc_sd written beside an fb_prior() reaches no slot on INLA: the
   # standard deviation the prior leaves unstated takes the package default.
   superseded <- .man_strict(flexybayes(
-    fixed = y ~ x, random = ~ g + a, data = d, backend = "inla",
+    fixed = y ~ x,
+    random = ~ g + a,
+    data = d,
+    backend = "inla",
     prior = fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 20)),
-    prior_vc_sd = 2, verbose = FALSE
+    prior_vc_sd = 2,
+    verbose = FALSE
   ))
   inputs <- .man_of(superseded)$inputs
   scalar <- inputs[inputs$input_id == "scalar:prior_vc_sd", , drop = FALSE]
@@ -169,28 +189,52 @@ test_that("T1: no prior input goes unused without a reason, on every route", {
 .man_inla_fits <- function(d) {
   list(
     sectioned = flexybayes(
-      fixed = y ~ x, random = ~ g, residual = ~ dsum(~ units | env),
-      data = d, backend = "inla", verbose = FALSE
+      fixed = y ~ x,
+      random = ~g,
+      residual = ~ dsum(~ units | env),
+      data = d,
+      backend = "inla",
+      verbose = FALSE
     ),
     heterogeneous = flexybayes(
-      fixed = y ~ 1, random = ~ diag(env):g, data = d, backend = "inla",
+      fixed = y ~ 1,
+      random = ~ diag(env):g,
+      data = d,
+      backend = "inla",
       prior = fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 15)),
       verbose = FALSE
     ),
-    slope = flexybayes(y ~ x + (x || g), data = d, backend = "inla",
-                       verbose = FALSE),
+    slope = flexybayes(
+      y ~ x + (x || g),
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    ),
     interaction = flexybayes(
-      fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+      fixed = y ~ 1,
+      random = ~ a:b:cc,
+      data = d,
+      backend = "inla",
       prior = fb_prior(sd(group = "a:b:cc") ~ uniform(lower = 0, upper = 20)),
       verbose = FALSE
     ),
     legacy = flexybayes(
-      fixed = y ~ x, random = ~ g, data = d, backend = "inla",
-      prior_vc_sd = 2, prior_fixed_sd = 50, verbose = FALSE
+      fixed = y ~ x,
+      random = ~g,
+      data = d,
+      backend = "inla",
+      prior_vc_sd = 2,
+      prior_fixed_sd = 50,
+      verbose = FALSE
     ),
     counts = flexybayes(
-      fixed = count ~ 1, random = ~ g, family = "poisson", data = d,
-      backend = "inla", aggregate = TRUE, verbose = FALSE
+      fixed = count ~ 1,
+      random = ~g,
+      family = "poisson",
+      data = d,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
     )
   )
 }
@@ -248,7 +292,10 @@ test_that("T3: brms reports every emitted prior row back as the user's", {
   # The parsed model is engine-agnostic. An INLA fit is the quickest way to
   # hold one with the stated prior attached.
   fb_ir <- .man_strict(flexybayes(
-    fixed = y ~ x, random = ~ g, data = d, backend = "inla",
+    fixed = y ~ x,
+    random = ~g,
+    data = d,
+    backend = "inla",
     prior = fb_prior(
       sigma ~ uniform(lower = 0, upper = 30),
       sd(group = "g") ~ half_normal(scale = 3),
@@ -258,10 +305,16 @@ test_that("T3: brms reports every emitted prior row back as the user's", {
   ))$extras$fb_terms
   rows <- flexyBayes:::.priors_to_brms(fb_ir$priors, fb_ir)
   unsampled <- brms::brm(
-    y ~ x + (1 | g), data = d, prior = rows, empty = TRUE, silent = 2L
+    y ~ x + (1 | g),
+    data = d,
+    prior = rows,
+    empty = TRUE,
+    silent = 2L
   )
   manifest <- flexyBayes:::.fb_manifest_brms(
-    fb = fb_ir, emitted_prior = rows, brmsfit = unsampled
+    fb = fb_ir,
+    emitted_prior = rows,
+    brmsfit = unsampled
   )
   emitted <- .man_package_slots(manifest)
   expect_equal(nrow(emitted), 3L)
@@ -280,13 +333,21 @@ test_that("T4: reported priors, route and evidence trace to the manifest", {
   skip_if_not_installed("INLA")
   d <- .man_data()
   per_row <- .man_strict(flexybayes(
-    fixed = y ~ x, random = ~ g, data = d, backend = "inla",
+    fixed = y ~ x,
+    random = ~g,
+    data = d,
+    backend = "inla",
     prior = fb_prior(sigma ~ uniform(lower = 0, upper = 30)),
     verbose = FALSE
   ))
   counts <- .man_strict(flexybayes(
-    fixed = count ~ 1, random = ~ g, family = "poisson", data = d,
-    backend = "inla", aggregate = TRUE, verbose = FALSE
+    fixed = count ~ 1,
+    random = ~g,
+    family = "poisson",
+    data = d,
+    backend = "inla",
+    aggregate = TRUE,
+    verbose = FALSE
   ))
 
   for (fit in list(per_row, counts)) {
@@ -337,8 +398,11 @@ test_that("T5: stated priors round-trip, and one-to-many inputs list each slot",
   skip_if_not_installed("INLA")
   d <- .man_data()
   sectioned <- .man_strict(flexybayes(
-    fixed = y ~ x, random = ~ g, residual = ~ dsum(~ units | env),
-    data = d, backend = "inla",
+    fixed = y ~ x,
+    random = ~g,
+    residual = ~ dsum(~ units | env),
+    data = d,
+    backend = "inla",
     prior = fb_prior(sigma ~ uniform(lower = 0, upper = 30)),
     verbose = FALSE
   ))
@@ -362,7 +426,10 @@ test_that("T5: stated priors round-trip, and one-to-many inputs list each slot",
   expect_false(any(grepl("retargeted", printed, fixed = TRUE)))
 
   heterogeneous <- .man_strict(flexybayes(
-    fixed = y ~ 1, random = ~ diag(env):g, data = d, backend = "inla",
+    fixed = y ~ 1,
+    random = ~ diag(env):g,
+    data = d,
+    backend = "inla",
     prior = fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 15)),
     verbose = FALSE
   ))
@@ -388,8 +455,12 @@ test_that("T6: on a three-way interaction only its own key takes a prior", {
     expect_identical(prior$specs[[1L]]$target$group, key)
     err <- tryCatch(
       .man_strict(flexybayes(
-        fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
-        prior = prior, return_code = TRUE
+        fixed = y ~ 1,
+        random = ~ a:b:cc,
+        data = d,
+        backend = "inla",
+        prior = prior,
+        return_code = TRUE
       )),
       error = function(e) e
     )
@@ -398,13 +469,17 @@ test_that("T6: on a three-way interaction only its own key takes a prior", {
   }
 
   fit <- .man_strict(flexybayes(
-    fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+    fixed = y ~ 1,
+    random = ~ a:b:cc,
+    data = d,
+    backend = "inla",
     prior = fb_prior(sd(group = "a:b:cc") ~ uniform(lower = 0, upper = 20)),
     verbose = FALSE
   ))
   manifest <- .man_of(fit)
   slot <- manifest$slots[
-    manifest$slots$input_id %in% "sd:a:b:cc", ,
+    manifest$slots$input_id %in% "sd:a:b:cc",
+    ,
     drop = FALSE
   ]
   expect_equal(nrow(slot), 1L)
@@ -414,8 +489,12 @@ test_that("T6: on a three-way interaction only its own key takes a prior", {
   # The aggregated count route checks the same thing against its own slots.
   err <- tryCatch(
     .man_strict(flexybayes(
-      fixed = count ~ 1, random = ~ g, family = "poisson", data = d,
-      backend = "inla", aggregate = TRUE,
+      fixed = count ~ 1,
+      random = ~g,
+      family = "poisson",
+      data = d,
+      backend = "inla",
+      aggregate = TRUE,
       prior = fb_prior(sd(group = "zz") ~ uniform(lower = 0, upper = 3)),
       verbose = FALSE
     )),
@@ -432,8 +511,11 @@ test_that("T7: every emitter call site returns a manifest or returns code", {
   dir_r <- testthat::test_path("..", "..", "R")
   skip_if_not(dir.exists(dir_r), "package sources are not available")
   emitters <- c(
-    "emit_inla", "emit_brms", "emit_count_aggregated",
-    "emit_gaussian_aggregated", ".backend_emit_fn"
+    "emit_inla",
+    "emit_brms",
+    "emit_count_aggregated",
+    "emit_gaussian_aggregated",
+    ".backend_emit_fn"
   )
   sites <- list()
   for (path in list.files(dir_r, pattern = "\\.R$", full.names = TRUE)) {
@@ -477,8 +559,10 @@ test_that("T7: every emitter call site returns a manifest or returns code", {
   )
   # Each emitter function attaches the manifest itself.
   for (fn in c("emit_inla", "emit_brms", ".agg_count_build_fit")) {
-    body_txt <- paste(deparse(get(fn, envir = asNamespace("flexyBayes"))),
-                      collapse = " ")
+    body_txt <- paste(
+      deparse(get(fn, envir = asNamespace("flexyBayes"))),
+      collapse = " "
+    )
     expect_match(body_txt, "manifest", fixed = TRUE, label = fn)
   }
 })
@@ -490,10 +574,17 @@ test_that("T7: a live brms fit carries a manifest that agrees with brms", {
   skip_if_not_long_tier()
   d <- .man_data()
   fit <- .man_strict(flexybayes(
-    fixed = y ~ x, random = ~ g, data = d, backend = "brms",
+    fixed = y ~ x,
+    random = ~g,
+    data = d,
+    backend = "brms",
     prior = fb_prior(sigma ~ uniform(lower = 0, upper = 30)),
-    n_samples = 100L, warmup = 100L, chains = 1L, seed = 1L,
-    verbose = FALSE, mcmc_verbose = FALSE
+    n_samples = 100L,
+    warmup = 100L,
+    chains = 1L,
+    seed = 1L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
   ))
   manifest <- .man_of(fit)
   expect_identical(manifest$engine, "brms")
@@ -512,14 +603,21 @@ test_that("T8: the emitter paths make no partial match of a list name", {
   skip_if_not_long_tier()
   d <- .man_data()
   expect_no_error(.man_strict(flexybayes(
-    fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+    fixed = y ~ 1,
+    random = ~ a:b:cc,
+    data = d,
+    backend = "inla",
     prior = fb_prior(sd(group = "a:b:cc") ~ uniform(lower = 0, upper = 20)),
     return_code = TRUE
   )))
   expect_no_error(.man_strict(.man_inla_fits(d)))
   expect_no_error(.man_strict(flexybayes_stream(
-    count ~ 1, random = ~ g, source = d, family = "poisson",
-    backend = "inla", verbose = FALSE
+    count ~ 1,
+    random = ~g,
+    source = d,
+    family = "poisson",
+    backend = "inla",
+    verbose = FALSE
   )))
 })
 

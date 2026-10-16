@@ -27,13 +27,24 @@
     }
   }
   stats_vec <- c(
-    "binomial", "Gamma", "gaussian", "inverse.gaussian", "poisson",
-    "quasi", "quasibinomial", "quasipoisson"
+    "binomial",
+    "Gamma",
+    "gaussian",
+    "inverse.gaussian",
+    "poisson",
+    "quasi",
+    "quasibinomial",
+    "quasipoisson"
   )
   for (nm in stats_vec) {
-    out[[paste0("stats::", nm, "()")]] <- get(nm, envir = asNamespace("stats"))()
+    out[[paste0("stats::", nm, "()")]] <- get(
+      nm,
+      envir = asNamespace("stats")
+    )()
   }
-  out[["stats::binomial(link = \"probit\")"]] <- stats::binomial(link = "probit")
+  out[["stats::binomial(link = \"probit\")"]] <- stats::binomial(
+    link = "probit"
+  )
   out[["brms::mixture(gaussian, gaussian)"]] <- suppressMessages(
     brms::mixture(stats::gaussian, stats::gaussian)
   )
@@ -55,7 +66,9 @@
   n <- nrow(d)
   d$y <- if (grepl("bernoulli|binomial", fam_name)) {
     stats::rbinom(n, 1L, stats::plogis(eta))
-  } else if (grepl("poisson|negbinomial|geometric|discrete_weibull", fam_name)) {
+  } else if (
+    grepl("poisson|negbinomial|geometric|discrete_weibull", fam_name)
+  ) {
     stats::rpois(n, exp(eta))
   } else if (grepl("beta", fam_name)) {
     stats::plogis(eta + stats::rnorm(n, 0, 0.3))
@@ -90,20 +103,39 @@
 .fog_calls <- function(family, link, d) {
   list(
     brms = .fog_outcome(flexybayes(
-      y ~ 1 + (1 | g), data = d, family = family, link = link,
-      backend = "brms", return_code = TRUE, verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = d,
+      family = family,
+      link = link,
+      backend = "brms",
+      return_code = TRUE,
+      verbose = FALSE
     )),
     inla = .fog_outcome(flexybayes(
-      y ~ 1 + (1 | g), data = d, family = family, link = link,
-      backend = "inla", return_code = TRUE, verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = d,
+      family = family,
+      link = link,
+      backend = "inla",
+      return_code = TRUE,
+      verbose = FALSE
     )),
     auto = .fog_outcome(flexybayes(
-      y ~ 1 + (1 | g), data = d, family = family, link = link,
-      backend = "auto", plan = TRUE, verbose = FALSE
+      y ~ 1 + (1 | g),
+      data = d,
+      family = family,
+      link = link,
+      backend = "auto",
+      plan = TRUE,
+      verbose = FALSE
     )),
     stream = .fog_outcome(flexybayes_stream(
-      fixed = y ~ 1, random = ~g, source = d, family = family,
-      fit = FALSE, verbose = FALSE
+      fixed = y ~ 1,
+      random = ~g,
+      source = d,
+      family = family,
+      fit = FALSE,
+      verbose = FALSE
     ))
   )
 }
@@ -121,15 +153,24 @@ test_that("every family object gets the outcome its name gets, on every entry", 
   expect_gte(length(fam_list), 50L)
 
   admit_brms <- c(
-    "gaussian", "binomial", "poisson", "gamma", "Gamma", "beta",
-    "hurdle_gamma", "lognormal"
+    "gaussian",
+    "binomial",
+    "poisson",
+    "gamma",
+    "Gamma",
+    "beta",
+    "hurdle_gamma",
+    "lognormal"
   )
   admit_inla <- c("gaussian", "binomial", "poisson", "gamma", "Gamma", "beta")
   # INLA takes each family's default link only (test-family-link-gate.R), so
   # stats::Gamma(), whose link is inverse, and binomial(link = "probit") are
   # refused there.
   inla_links <- c(
-    gaussian = "identity", binomial = "logit", poisson = "log", gamma = "log",
+    gaussian = "identity",
+    binomial = "logit",
+    poisson = "log",
+    gamma = "log",
     beta = "logit"
   )
   # flexybayes_stream() has no `link` argument: it aggregates these three
@@ -165,13 +206,15 @@ test_that("every family object gets the outcome its name gets, on every entry", 
     )
     expect_identical(
       identical(by_object$inla, "admitted"),
-      obj$family %in% admit_inla &&
+      obj$family %in%
+        admit_inla &&
         identical(unname(inla_links[tolower(obj$family)]), obj$link),
       label = paste(key, "admitted on INLA")
     )
     expect_identical(
       identical(by_object$stream, "admitted"),
-      obj$family %in% names(stream_links) &&
+      obj$family %in%
+        names(stream_links) &&
         identical(unname(stream_links[obj$family]), obj$link),
       label = paste(key, "admitted by flexybayes_stream()")
     )

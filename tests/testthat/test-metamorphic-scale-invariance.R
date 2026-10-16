@@ -52,12 +52,22 @@ test_that("a variance ratio is invariant to rescaling the response (iid intercep
   u <- stats::rnorm(n_g, sd = 1.5)
   d$y <- 2 + 0.8 * d$x + u[as.integer(d$g)] + stats::rnorm(nrow(d), sd = 1)
 
-  fit_1 <- flexybayes(y ~ x, random = ~ g, data = d,
-                      backend = "inla", verbose = FALSE)
+  fit_1 <- flexybayes(
+    y ~ x,
+    random = ~g,
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )
   d10 <- d
   d10$y <- 10 * d10$y
-  fit_10 <- flexybayes(y ~ x, random = ~ g, data = d10,
-                       backend = "inla", verbose = FALSE)
+  fit_10 <- flexybayes(
+    y ~ x,
+    random = ~g,
+    data = d10,
+    backend = "inla",
+    verbose = FALSE
+  )
 
   r1 <- .msi_ratio(fit_1, "sd_g", "sigma")
   r10 <- .msi_ratio(fit_10, "sd_g", "sigma")
@@ -100,14 +110,24 @@ test_that("a variance ratio is invariant to rescaling the response (nested strat
   # on `rep` by an earlier check at both scales (8 of 8 repeats each), and
   # the half-normal's scale moves with the response, so the gate still
   # measures invariance.
-  fit_1 <- flexybayes(yield ~ gen, random = ~ rep + rep:block, data = d,
-                      prior = .fb_test_john_alpha_prior(d),
-                      backend = "inla", verbose = FALSE)
+  fit_1 <- flexybayes(
+    yield ~ gen,
+    random = ~ rep + rep:block,
+    data = d,
+    prior = .fb_test_john_alpha_prior(d),
+    backend = "inla",
+    verbose = FALSE
+  )
   d10 <- d
   d10$yield <- 10 * d10$yield
-  fit_10 <- flexybayes(yield ~ gen, random = ~ rep + rep:block, data = d10,
-                       prior = .fb_test_john_alpha_prior(d10),
-                       backend = "inla", verbose = FALSE)
+  fit_10 <- flexybayes(
+    yield ~ gen,
+    random = ~ rep + rep:block,
+    data = d10,
+    prior = .fb_test_john_alpha_prior(d10),
+    backend = "inla",
+    verbose = FALSE
+  )
 
   # Read `rep:block`, not `rep`. The choice is the oracle's own identification
   # rule (compare.R: ASReml se/estimate < 0.5), applied to a metamorphic gate.
@@ -152,8 +172,12 @@ test_that("us() refuses on INLA at the original scale and rescaled (finding O04)
     dk$yield <- k * dk$yield
     expect_error(
       suppressMessages(flexybayes(
-        yield ~ env, random = ~ us(env):gen, data = dk,
-        backend = "inla", return_code = TRUE, verbose = FALSE
+        yield ~ env,
+        random = ~ us(env):gen,
+        data = dk,
+        backend = "inla",
+        return_code = TRUE,
+        verbose = FALSE
       )),
       class = "flexybayes_refusal_correlated_covariance_requires_brms",
       info = paste0("response multiplied by ", k)
@@ -175,8 +199,11 @@ test_that("(x | g) refuses on INLA at the original scale and rescaled (S01 D1)",
     dk$Reaction <- k * dk$Reaction
     expect_error(
       suppressMessages(flexybayes(
-        Reaction ~ Days + (Days | Subject), data = dk,
-        backend = "inla", return_code = TRUE, verbose = FALSE
+        Reaction ~ Days + (Days | Subject),
+        data = dk,
+        backend = "inla",
+        return_code = TRUE,
+        verbose = FALSE
       )),
       class = "flexybayes_refusal_correlated_covariance_requires_brms",
       info = paste0("response multiplied by ", k)

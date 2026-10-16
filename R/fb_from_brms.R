@@ -397,8 +397,7 @@ fb_from_brms <- function(
 #
 # @noRd
 # @keywords internal
-.fb_brms_refuse_unfitted_parts <- function(formula, family, link,
-                                           caller = "") {
+.fb_brms_refuse_unfitted_parts <- function(formula, family, link, caller = "") {
   refuse <- function(what) {
     stop(.fb_refusal_condition(
       reason_code = "brms_ingest_feature_unsupported",
@@ -411,7 +410,8 @@ fb_from_brms <- function(
   if (isTRUE(attr(formula$formula, "nl"))) {
     refuse(paste0(
       "brms::bf(nl = TRUE) declares a non-linear model (",
-      shown(formula$formula), "). flexyBayes fits predictors that are ",
+      shown(formula$formula),
+      "). flexyBayes fits predictors that are ",
       "linear in their terms, so it refuses this model."
     ))
   }
@@ -428,8 +428,12 @@ fb_from_brms <- function(
   if (length(pfix) > 0L) {
     refuse(paste0(
       "brms::bf() fixes a distributional parameter (",
-      paste(names(pfix), vapply(pfix, shown, character(1L)),
-            sep = " = ", collapse = ", "),
+      paste(
+        names(pfix),
+        vapply(pfix, shown, character(1L)),
+        sep = " = ",
+        collapse = ", "
+      ),
       "). flexyBayes estimates every distributional parameter and carries ",
       "no fixed value to either engine, so it refuses this model."
     ))
@@ -437,12 +441,19 @@ fb_from_brms <- function(
   if (!is.null(formula$family)) {
     named <- .resolve_family(formula$family, NULL)
     fitted <- .resolve_family(family, link)
-    if (!identical(c(named$family, named$link),
-                   c(fitted$family, fitted$link))) {
+    if (
+      !identical(c(named$family, named$link), c(fitted$family, fitted$link))
+    ) {
       refuse(paste0(
-        "brms::bf() names the family ", named$family, " (", named$link,
-        " link), and the `family` argument gives ", fitted$family, " (",
-        fitted$link, " link). flexyBayes reads the family from the ",
+        "brms::bf() names the family ",
+        named$family,
+        " (",
+        named$link,
+        " link), and the `family` argument gives ",
+        fitted$family,
+        " (",
+        fitted$link,
+        " link). flexyBayes reads the family from the ",
         "`family` argument, so it refuses this model. Pass the family ",
         "there and leave it out of brms::bf()."
       ))
@@ -932,8 +943,16 @@ fb_from_brms <- function(
         "`.\n"
       )
     },
-    "On INLA, diag(", slope_variable, "):", grouping_factor, " fits and ",
-    "us(", slope_variable, "):", grouping_factor, " is refused:\n  ",
+    "On INLA, diag(",
+    slope_variable,
+    "):",
+    grouping_factor,
+    " fits and ",
+    "us(",
+    slope_variable,
+    "):",
+    grouping_factor,
+    " is refused:\n  ",
     "flexyBayes fits estimated correlation matrices on brms only."
   )
   stop(.fb_refusal_condition(

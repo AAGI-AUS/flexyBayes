@@ -34,7 +34,11 @@
   if (spec$rank != spec$n) {
     stop(
       "`.fb_reml_vc()` needs the full-rank spectral decomposition; got ",
-      "rank ", spec$rank, " of ", spec$n, ".",
+      "rank ",
+      spec$rank,
+      " of ",
+      spec$n,
+      ".",
       call. = FALSE
     )
   }
@@ -42,14 +46,21 @@
   X <- as.matrix(X)
   p <- ncol(X)
   if (length(y) != n || nrow(X) != n) {
-    stop("`y` and `X` must have ", n, " rows (the dimension of K).",
+    stop(
+      "`y` and `X` must have ",
+      n,
+      " rows (the dimension of K).",
       call. = FALSE
     )
   }
   if (n - p < 1L) {
     stop(
-      "the relationship dimension (", n, ") must exceed the number of ",
-      "fixed-effect columns (", p, ") for REML.",
+      "the relationship dimension (",
+      n,
+      ") must exceed the number of ",
+      "fixed-effect columns (",
+      p,
+      ") for REML.",
       call. = FALSE
     )
   }
@@ -82,7 +93,9 @@
   }
 
   opt <- stats::optimize(
-    neg_ll, interval = delta_log_range, tol = 1e-8
+    neg_ll,
+    interval = delta_log_range,
+    tol = 1e-8
   )
   delta <- exp(opt$minimum)
   d <- lambda + delta
@@ -201,8 +214,11 @@ fb_gwas <- function(
   markers <- as.matrix(markers)
   if (nrow(markers) != n) {
     stop(
-      "`markers` must have one row per individual (", n, "); got ",
-      nrow(markers), ".",
+      "`markers` must have one row per individual (",
+      n,
+      "); got ",
+      nrow(markers),
+      ".",
       call. = FALSE
     )
   }
@@ -230,8 +246,15 @@ fb_gwas <- function(
     K <- as.matrix(K)
     if (nrow(K) != n || ncol(K) != n) {
       stop(
-        "`K` must be an ", n, " x ", n, " relationship matrix; got ",
-        nrow(K), " x ", ncol(K), ".",
+        "`K` must be an ",
+        n,
+        " x ",
+        n,
+        " relationship matrix; got ",
+        nrow(K),
+        " x ",
+        ncol(K),
+        ".",
         call. = FALSE
       )
     }
@@ -321,17 +344,29 @@ fb_gwas <- function(
 print.fb_gwas <- function(x, ...) {
   cat("<fb_gwas>  EMMAX / P3D genome scan\n")
   cat(
-    "  ", x$n, " individuals x ", x$n_markers, " markers; ",
-    x$n_fixed, " fixed-effect column(s)\n",
+    "  ",
+    x$n,
+    " individuals x ",
+    x$n_markers,
+    " markers; ",
+    x$n_fixed,
+    " fixed-effect column(s)\n",
     sep = ""
   )
   cat(
-    "  null REML: h^2 = ", format(round(x$h2, 3L)),
-    "  (var_g = ", format(round(x$var_g, 4L)),
-    ", var_e = ", format(round(x$var_e, 4L)), ")\n",
+    "  null REML: h^2 = ",
+    format(round(x$h2, 3L)),
+    "  (var_g = ",
+    format(round(x$var_g, 4L)),
+    ", var_e = ",
+    format(round(x$var_e, 4L)),
+    ")\n",
     sep = ""
   )
-  cat("  genomic-control lambda_GC: ", format(round(x$lambda_gc, 3L)), "\n",
+  cat(
+    "  genomic-control lambda_GC: ",
+    format(round(x$lambda_gc, 3L)),
+    "\n",
     sep = ""
   )
   n_sig <- sum(x$results$p_bonferroni < 0.05, na.rm = TRUE)
@@ -341,8 +376,13 @@ print.fb_gwas <- function(x, ...) {
   cat("  top markers:\n")
   for (i in seq_len(nrow(top))) {
     cat(
-      "    ", top$marker[i], "  p = ", format(signif(top$p_value[i], 3L)),
-      "  effect = ", format(round(top$effect[i], 3L)), "\n",
+      "    ",
+      top$marker[i],
+      "  p = ",
+      format(signif(top$p_value[i], 3L)),
+      "  effect = ",
+      format(round(top$effect[i], 3L)),
+      "\n",
       sep = ""
     )
   }
@@ -357,10 +397,14 @@ plot.fb_gwas <- function(x, type = c("manhattan", "qq"), ...) {
     obs <- -log10(sort(res$p_value))
     expd <- -log10(stats::ppoints(length(obs)))
     graphics::plot(
-      expd, obs,
-      xlab = "expected -log10(p)", ylab = "observed -log10(p)",
+      expd,
+      obs,
+      xlab = "expected -log10(p)",
+      ylab = "observed -log10(p)",
       main = paste0("QQ (lambda_GC = ", round(x$lambda_gc, 3L), ")"),
-      pch = 16L, col = "#3366aa", ...
+      pch = 16L,
+      col = "#3366aa",
+      ...
     )
     graphics::abline(0, 1, col = "grey50", lty = 2L)
     return(invisible(x))
@@ -368,12 +412,19 @@ plot.fb_gwas <- function(x, type = c("manhattan", "qq"), ...) {
   pos <- if (!is.null(res$pos)) res$pos else seq_len(nrow(res))
   chr <- if (!is.null(res$chr)) as.integer(factor(res$chr)) else 1L
   graphics::plot(
-    pos, -log10(res$p_value),
-    xlab = "position", ylab = "-log10(p)", main = "Manhattan",
-    pch = 16L, col = c("#3366aa", "#aa6633")[1L + (chr %% 2L)], ...
+    pos,
+    -log10(res$p_value),
+    xlab = "position",
+    ylab = "-log10(p)",
+    main = "Manhattan",
+    pch = 16L,
+    col = c("#3366aa", "#aa6633")[1L + (chr %% 2L)],
+    ...
   )
   graphics::abline(
-    h = -log10(0.05 / nrow(res)), col = "red", lty = 2L
+    h = -log10(0.05 / nrow(res)),
+    col = "red",
+    lty = 2L
   )
   invisible(x)
 }
