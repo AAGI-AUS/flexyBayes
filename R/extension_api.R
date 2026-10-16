@@ -153,7 +153,7 @@ fb_engine_settings <- function(engine) {
     stop(
       "`engine` contains unrecognised setting",
       if (length(unknown) == 1L) " " else "s ",
-      paste(shQuote(unknown), collapse = ", "),
+      paste(sQuote(unknown, FALSE), collapse = ", "),
       ".",
       call. = FALSE
     )

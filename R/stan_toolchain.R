@@ -23,24 +23,31 @@
     return(NA)
   }
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  src <- file.path(dir, "fb_probe.cpp")
   writeLines(
     c(
       "#include <cmath>",
       "extern \"C\" double fb_probe(double x) { return std::sqrt(x); }"
     ),
-    src
+    file.path(dir, "fb_probe.cpp")
   )
-  status <- tryCatch(
+  # SHLIB names its make targets after the path it is given, and a Windows
+  # drive letter ("C:") is a rule separator to make, so compile by bare name.
+  old_wd <- setwd(dir)
+  on.exit(setwd(old_wd), add = TRUE, after = FALSE)
+  out <- tryCatch(
     suppressWarnings(system2(
       file.path(R.home("bin"), "R"),
-      c("CMD", "SHLIB", shQuote(src)),
-      stdout = FALSE,
-      stderr = FALSE
+      c("CMD", "SHLIB", "fb_probe.cpp"),
+      stdout = TRUE,
+      stderr = TRUE
     )),
-    error = function(e) NA_integer_
+    error = function(e) NULL
   )
-  if (is.na(status)) NA else identical(as.integer(status), 0L)
+  if (is.null(out)) {
+    return(NA)
+  }
+  status <- attr(out, "status")
+  structure(is.null(status) || identical(as.integer(status), 0L), output = out)
 }
 
 # Raise the failure a brms fit ended on. When the toolchain probe says

@@ -120,7 +120,7 @@ fb_engine <- function(name, opts = list(), ...) {
       "fb_engine(): unrecognised option",
       if (length(unknown) != 1L) "s" else "",
       " ",
-      paste(shQuote(unknown), collapse = ", "),
+      paste(sQuote(unknown, FALSE), collapse = ", "),
       ". Recognised options: ",
       paste(.fb_engine_opt_names, collapse = ", "),
       ".",

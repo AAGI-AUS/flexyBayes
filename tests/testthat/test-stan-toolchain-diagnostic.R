@@ -19,7 +19,8 @@ test_that("the probe compiles a three-line program where a toolchain exists", {
     isTRUE(pkgbuild::has_build_tools(debug = FALSE)),
     "no C++ build tools on this machine"
   )
-  expect_true(.fb_cxx_toolchain_works())
+  ok <- .fb_cxx_toolchain_works()
+  expect_true(isTRUE(ok), info = paste(attr(ok, "output"), collapse = "\n"))
 })
 
 test_that("a healthy toolchain is not blamed for an unrelated failure", {
