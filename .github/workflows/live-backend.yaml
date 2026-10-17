@@ -79,10 +79,12 @@ jobs:
           # that installs less would skip, and a skip here is a failure.
           # fmesher is INLA's own dependency; installed here, pak also installs
           # the system libraries that its sf and units dependencies load.
+          # BH and RcppEigen are rstan's LinkingTo only, so a binary install
+          # leaves them out, and brms needs their headers to compile each model.
           extra-packages: >-
             any::testthat, any::withr, any::pkgload, any::lme4, any::agridat,
             any::mgcv, any::brms, any::MASS, any::posterior, any::sommer,
-            any::emmeans, any::fmesher
+            any::emmeans, any::fmesher, any::BH, any::RcppEigen
           dependencies: '"hard"'
 
       - name: Install INLA
