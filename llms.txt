@@ -5,7 +5,7 @@ ASReml or brms syntax. It fits them with INLA, or with Stan through
 brms. If the chosen engine cannot fit a model, flexyBayes stops and says
 why.
 
-Version 0.18.0. Not on CRAN, and the functions may still change.
+Version 0.18.1. Not on CRAN, and the functions may still change.
 
 ## Installation
 

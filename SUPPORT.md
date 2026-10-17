@@ -21,7 +21,7 @@ and on the documentation site, not in the package tarball.
 | Primary maintainer | Max Moldovan, Adelaide University (email in `DESCRIPTION`) |
 | Number of maintainers | Not yet set |
 | Weekly maintenance hours | Not yet set |
-| Issue response time | None committed for 0.18.0 |
+| Issue response time | None committed for 0.18.1 |
 | Security response time | Acknowledgement within 7 days (see [`SECURITY.md`](https://aagi-aus.github.io/flexyBayes/SECURITY.md)) |
 | If the package is no longer maintained | Not yet set. The default is handover to AAGI. |
 

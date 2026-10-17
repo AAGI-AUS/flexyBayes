@@ -1,6 +1,6 @@
 # API stability
 
-This document describes the stability of the flexyBayes 0.18.0
+This document describes the stability of the flexyBayes 0.18.1
 interface. Every export is at the experimental lifecycle stage, so the
 guarantees are weaker than they will be at 1.0. Bug fixes and additions
 never break callers. Renamings, default changes and changes of shape are
