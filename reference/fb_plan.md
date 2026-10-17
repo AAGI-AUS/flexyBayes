@@ -146,10 +146,10 @@ d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
 p1 <- fb_plan(y ~ x + (1 | g), data = d)
 print(p1)
 #> == flexyBayes plan ======================================
-#>   Will fit:                no  (no active route: auto_no_active_route)
+#>   Will fit:                yes
 #>   Backend requested:       auto
-#>   Backend chosen:          NA
-#>   Path:                    auto_no_active_route
+#>   Backend chosen:          inla
+#>   Path:                    auto_inla_accept
 #>   Routing policy version:  stage5a_v1
 #>   Gate outcome:            accept
 #>   Aggregation:             not eligible (continuous_cell_key_data_dependent)
@@ -157,14 +157,12 @@ print(p1)
 #>   Representation plan:
 #>     x                        -> indexed_fixed_numeric           indexed (0.0 MB); aggregation-eligible
 #>     (1 | g)                  -> indexed_random_intercept        indexed (0.0 MB); aggregation-eligible
-#>   Rejected routes:
-#>     inla     -> backend_not_installed
 #>   Memory estimate:         ~ 0.0 MB (preflight)
 #>     INLA per-term total:  ~ 0.0 MB (overhead 2.0x)
 #>       - (1 | g)                indexed_random_intercept        0.0 MB
 #>       - (fixed effects)        fixed_model_matrix              0.0 MB
 #>   Representation:          exact
-#>   Engine:                  NA
+#>   Engine:                  INLA Laplace
 #> ==========================================================
 
 # ASReml-style grammar plans the identical model.
@@ -176,5 +174,5 @@ identical(p1$backend_chosen, p2$backend_chosen)
 # plan object without ever fitting.
 as.data.frame(p1)[, c("backend_chosen", "gate_outcome")]
 #>   backend_chosen gate_outcome
-#> 1           <NA>       accept
+#> 1           inla       accept
 ```

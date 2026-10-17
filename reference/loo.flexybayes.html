@@ -47,13 +47,13 @@ Pareto-k diagnostics, unchanged."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Approximate leave-one-out cross-validation for a flexyBayes fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/loo_support.R" class="external-link"><code>R/loo_support.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/loo_support.R" class="external-link"><code>R/loo_support.R</code></a></small>
       <div class="d-none name"><code>loo.flexybayes.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>A method for the <span class="pkg">loo</span> package's <code>loo()</code> generic. On a fit from
-the <strong>brms</strong> engine the call passes through to <code>brms::loo()</code>, which
+the <strong>brms</strong> engine the call passes through to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">brms::loo()</a></code>, which
 computes PSIS-LOO from the pointwise log-likelihood Stan stored, and
 returns <span class="pkg">loo</span>'s own object, <code>elpd_loo</code>, <code>p_loo</code>, <code>looic</code> and the
 Pareto-k diagnostics, unchanged.</p>
@@ -74,13 +74,13 @@ Pareto-k diagnostics, unchanged.</p>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Passed to <code>brms::loo()</code> on the brms path. Ignored on the
+<dd><p>Passed to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">brms::loo()</a></code> on the brms path. Ignored on the
 refusal paths.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>On a brms-engine fit, the <code>loo</code> object <code>brms::loo()</code> returns.
+    <p>On a brms-engine fit, the <code>loo</code> object <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">brms::loo()</a></code> returns.
 Otherwise the method does not return: it raises a refusal of class
 <code>flexybayes_refusal_loo_requires_sampler_draws</code>, or
 <code>flexybayes_refusal_fit_lacks_posterior_draws</code> when the fit carries

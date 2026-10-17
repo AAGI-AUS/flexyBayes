@@ -8,9 +8,10 @@ and accepts the same arguments and grammars, an ASReml `fixed` /
 (see
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 for the full argument list). flexyBayes builds the intermediate
-representation, translates the prior, calls `brms::brm()`, and wraps the
-result. The live `brmsfit` is available on the `$brms` slot for brms's
-own posterior tooling (`loo()`, `posterior_predict()`,
+representation, translates the prior, calls
+[`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html), and
+wraps the result. The live `brmsfit` is available on the `$brms` slot
+for brms's own posterior tooling (`loo()`, `posterior_predict()`,
 `bayes_factor()`).
 
 ## Usage
@@ -87,5 +88,56 @@ if (requireNamespace("brms", quietly = TRUE) &&
   )
   coef(fit)
 }
+#> 
+#> -- flexyBayes: brms (Stan passthrough) fit ------------------
+#>   formula: Reaction ~ Days + (1 | Subject)
+#>   family : gaussian (identity link)
+#>   priors : 2 row(s)
+#> ------------------------------------------------------------ 
+#> 
+#> Compiling Stan program...
+#> Start sampling
+#> 
+#> SAMPLING FOR MODEL 'anon_model' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 4.2e-05 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.42 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 5000 [  0%]  (Warmup)
+#> Chain 1: Iteration:  200 / 5000 [  4%]  (Warmup)
+#> Chain 1: Iteration:  400 / 5000 [  8%]  (Warmup)
+#> Chain 1: Iteration:  600 / 5000 [ 12%]  (Warmup)
+#> Chain 1: Iteration:  800 / 5000 [ 16%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 5000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 1001 / 5000 [ 20%]  (Sampling)
+#> Chain 1: Iteration: 1200 / 5000 [ 24%]  (Sampling)
+#> Chain 1: Iteration: 1400 / 5000 [ 28%]  (Sampling)
+#> Chain 1: Iteration: 1600 / 5000 [ 32%]  (Sampling)
+#> Chain 1: Iteration: 1800 / 5000 [ 36%]  (Sampling)
+#> Chain 1: Iteration: 2000 / 5000 [ 40%]  (Sampling)
+#> Chain 1: Iteration: 2200 / 5000 [ 44%]  (Sampling)
+#> Chain 1: Iteration: 2400 / 5000 [ 48%]  (Sampling)
+#> Chain 1: Iteration: 2600 / 5000 [ 52%]  (Sampling)
+#> Chain 1: Iteration: 2800 / 5000 [ 56%]  (Sampling)
+#> Chain 1: Iteration: 3000 / 5000 [ 60%]  (Sampling)
+#> Chain 1: Iteration: 3200 / 5000 [ 64%]  (Sampling)
+#> Chain 1: Iteration: 3400 / 5000 [ 68%]  (Sampling)
+#> Chain 1: Iteration: 3600 / 5000 [ 72%]  (Sampling)
+#> Chain 1: Iteration: 3800 / 5000 [ 76%]  (Sampling)
+#> Chain 1: Iteration: 4000 / 5000 [ 80%]  (Sampling)
+#> Chain 1: Iteration: 4200 / 5000 [ 84%]  (Sampling)
+#> Chain 1: Iteration: 4400 / 5000 [ 88%]  (Sampling)
+#> Chain 1: Iteration: 4600 / 5000 [ 92%]  (Sampling)
+#> Chain 1: Iteration: 4800 / 5000 [ 96%]  (Sampling)
+#> Chain 1: Iteration: 5000 / 5000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 0.311 seconds (Warm-up)
+#> Chain 1:                0.62 seconds (Sampling)
+#> Chain 1:                0.931 seconds (Total)
+#> Chain 1: 
+#> (Intercept)        Days 
+#>   251.32745    10.47849 
 # }
 ```

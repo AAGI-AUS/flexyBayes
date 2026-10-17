@@ -53,19 +53,19 @@ brms::pp_check(), is reachable through ...."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Posterior predictive check for a flexyBayes fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/pp_check_support.R" class="external-link"><code>R/pp_check_support.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/pp_check_support.R" class="external-link"><code>R/pp_check_support.R</code></a></small>
       <div class="d-none name"><code>pp_check.flexybayes.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>A method for the <span class="pkg">bayesplot</span> package's <code>pp_check()</code> generic. On a
 fit from the <strong>brms</strong> engine the call delegates to
-<code>brms::pp_check()</code>: datasets are simulated from the posterior
+<code><a href="https://mc-stan.org/bayesplot/reference/pp_check.html" class="external-link">brms::pp_check()</a></code>: datasets are simulated from the posterior
 predictive distribution and shown against the observed response. The
 default display overlays the densities of the replicated datasets on
 the density of the response (<code>type = "dens_overlay"</code>). Every other
 <span class="pkg">bayesplot</span> check type, and every argument of
-<code>brms::pp_check()</code>, is reachable through <code>...</code>.</p>
+<code><a href="https://mc-stan.org/bayesplot/reference/pp_check.html" class="external-link">brms::pp_check()</a></code>, is reachable through <code>...</code>.</p>
     </div>
 
     <div class="section level2">
@@ -83,14 +83,14 @@ the density of the response (<code>type = "dens_overlay"</code>). Every other
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Passed to <code>brms::pp_check()</code> on the brms path, <code>type</code>,
+<dd><p>Passed to <code><a href="https://mc-stan.org/bayesplot/reference/pp_check.html" class="external-link">brms::pp_check()</a></code> on the brms path, <code>type</code>,
 <code>ndraws</code>, <code>group</code> and the rest. Ignored on the refusal path.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>On a brms-engine fit, the <span class="pkg">ggplot2</span> object
-<code>brms::pp_check()</code> returns. Otherwise the method does not return: it
+<code><a href="https://mc-stan.org/bayesplot/reference/pp_check.html" class="external-link">brms::pp_check()</a></code> returns. Otherwise the method does not return: it
 raises a refusal of class
 <code>flexybayes_refusal_pp_check_requires_predictive_draws</code>.</p>
     </div>

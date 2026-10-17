@@ -10,8 +10,8 @@ active engines. All current exports are at the experimental `lifecycle`
 stage. The same fitted object supports
 [`summary()`](https://rdrr.io/r/base/summary.html),
 [`predict()`](https://rdrr.io/r/stats/predict.html),
-`emmeans::emmeans()`, `marginaleffects::predictions()`, and the
-`bayesplot::*` family.
+[`emmeans::emmeans()`](https://rvlenth.github.io/emmeans/reference/emmeans.html),
+`marginaleffects::predictions()`, and the `bayesplot::*` family.
 
 ## Entry points
 

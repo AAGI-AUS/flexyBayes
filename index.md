@@ -65,7 +65,8 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 ```
 
 The estimates are posterior means of the three standard deviations, with
-95% credible intervals. REML estimates from `lme4::lmer()` for the same
+95% credible intervals. REML estimates from
+[`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html) for the same
 model are 0.286, 0.265 and 0.378.
 
 Heritability is computed on each posterior draw, so its interval stays

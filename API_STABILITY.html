@@ -39,7 +39,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>API stability</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/API_STABILITY.md" class="external-link"><code>API_STABILITY.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/API_STABILITY.md" class="external-link"><code>API_STABILITY.md</code></a></small>
     </div>
 
 <div id="api-stability" class="section level1">
@@ -85,8 +85,8 @@
 <td>Pins the INLA engine (approximate inference, see “Inference semantics”). Call <code>flexybayes(..., backend = "inla")</code>.</td>
 </tr><tr><td><code><a href="reference/fb_brms.html">fb_brms()</a></code></td>
 <td>deprecated in 0.13.0</td>
-<td>Pins the Stan/brms engine through <code>brms::brm()</code>. Call <code>flexybayes(..., backend = "brms")</code>.</td>
-</tr></tbody></table><p><strong>Sampler arguments.</strong> <code>seed</code> and <code>control</code> are part of the universal signature and reach <code>brms::brm()</code> unchanged, so a brms posterior can be reproduced from the call alone. <code>control = list(adapt_delta = 0.95)</code> sets <code>adapt_delta</code>, and <code>max_treedepth</code> is set the same way. Left <code>NULL</code>, they fall back to brms’s own defaults (<code>seed = NA</code>, <code>control = NULL</code>) and are not passed through. <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update()</a></code> repeats whatever the fit recorded. Both arguments have no effect on the deterministic INLA path, which says so once per session.</p>
+<td>Pins the Stan/brms engine through <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code>. Call <code>flexybayes(..., backend = "brms")</code>.</td>
+</tr></tbody></table><p><strong>Sampler arguments.</strong> <code>seed</code> and <code>control</code> are part of the universal signature and reach <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code> unchanged, so a brms posterior can be reproduced from the call alone. <code>control = list(adapt_delta = 0.95)</code> sets <code>adapt_delta</code>, and <code>max_treedepth</code> is set the same way. Left <code>NULL</code>, they fall back to brms’s own defaults (<code>seed = NA</code>, <code>control = NULL</code>) and are not passed through. <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update()</a></code> repeats whatever the fit recorded. Both arguments have no effect on the deterministic INLA path, which says so once per session.</p>
 <p><strong>Grammar adapters</strong> read a model <em>specification</em> written in another package’s syntax and return the flexyBayes internal representation (<code>fb_terms</code>), which the entry points then fit. They do not take a fitted object. Pass the formula and data, not a <code>brmsfit</code> or an <code>asreml</code> fit.</p>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Export</th>
 <th>Stage</th>
@@ -105,7 +105,7 @@
 <th>Notes</th>
 </tr></thead><tbody><tr><td><code>triangulate()</code></td>
 <td>removed in 0.14.0</td>
-<td>Internal from 0.11.0 and removed in 0.14.0, together with <code>triangulate_genomic()</code>, <code>triangulate_gwas()</code> and the refusal code <code>triangulate_incomparable_fits</code>. Nothing in the package called it, and agreement between two engines fitted from one parsed model cannot detect a translation error they share. The canonical draws it compared are still available on each fit through <code>posterior::as_draws_df()</code> and <code><a href="reference/canonical_names.html">canonical_names()</a></code>.</td>
+<td>Internal from 0.11.0 and removed in 0.14.0, together with <code>triangulate_genomic()</code>, <code>triangulate_gwas()</code> and the refusal code <code>triangulate_incomparable_fits</code>. Nothing in the package called it, and agreement between two engines fitted from one parsed model cannot detect a translation error they share. The canonical draws it compared are still available on each fit through <code><a href="https://mc-stan.org/posterior/reference/draws_df.html" class="external-link">posterior::as_draws_df()</a></code> and <code><a href="reference/canonical_names.html">canonical_names()</a></code>.</td>
 </tr></tbody></table></div>
 <div class="section level2">
 <h2 id="priors">Priors<a class="anchor" aria-label="anchor" href="#priors"></a></h2>
@@ -374,7 +374,7 @@
 </tr><tr><td><code><a href="reference/fb_met_summary.html">fb_met_summary()</a></code></td>
 <td>0.8.0</td>
 <td>
-<strong>Withdrawn at 0.10.0.</strong> Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now always abstains with <code>met_summary_not_available</code> and names what an active engine reports instead (<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> for the components, <code>brms::VarCorr()</code> for a <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> or <code>us()</code> covariance).</td>
+<strong>Withdrawn at 0.10.0.</strong> Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now always abstains with <code>met_summary_not_available</code> and names what an active engine reports instead (<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> for the components, <code><a href="https://rdrr.io/pkg/nlme/man/VarCorr.html" class="external-link">brms::VarCorr()</a></code> for a <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> or <code>us()</code> covariance).</td>
 </tr><tr><td><code><a href="reference/fb_gblup_cv.html">fb_gblup_cv()</a></code></td>
 <td>0.8.0</td>
 <td>Genomic-prediction accuracy by cross-validation.</td>

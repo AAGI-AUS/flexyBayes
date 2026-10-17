@@ -47,7 +47,7 @@ to the fixed part, or with brms prior rows and Stan code of its own."></head><bo
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Refit a model on new data, with added fixed columns</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/fb_refit.R" class="external-link"><code>R/fb_refit.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/fb_refit.R" class="external-link"><code>R/fb_refit.R</code></a></small>
       <div class="d-none name"><code>fb_refit.Rd</code></div>
     </div>
 
@@ -94,12 +94,12 @@ labels. <code>NULL</code> adds none.</p></dd>
 
 
 <dt id="arg-extra-prior">extra_prior<a class="anchor" aria-label="anchor" href="#arg-extra-prior"></a></dt>
-<dd><p>A <code>brmsprior</code> from <code>brms::set_prior()</code> with rows to add
+<dd><p>A <code>brmsprior</code> from <code><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">brms::set_prior()</a></code> with rows to add
 to the prior, or <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-stanvars">stanvars<a class="anchor" aria-label="anchor" href="#arg-stanvars"></a></dt>
-<dd><p>A <code>stanvars</code> object from <code>brms::stanvar()</code>, or <code>NULL</code>.</p></dd>
+<dd><p>A <code>stanvars</code> object from <code><a href="https://paulbuerkner.com/brms/reference/stanvar.html" class="external-link">brms::stanvar()</a></code>, or <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-formula-hook">formula_hook<a class="anchor" aria-label="anchor" href="#arg-formula-hook"></a></dt>
@@ -123,7 +123,7 @@ the default, keeps the fit's.</p></dd>
 runs, for example <code>seed</code>, <code>backend</code>, <code>n_samples</code>, <code>control</code>,
 <code>na_action</code>, <code>verbose</code>, <code>return_code</code>, <code>weights</code> or <code>known_variance</code>.
 On the brms route of "Extending the brms model", arguments that
-<code><a href="flexybayes.html">flexybayes()</a></code> does not have go to <code>brms::brm()</code>. Arguments that state
+<code><a href="flexybayes.html">flexybayes()</a></code> does not have go to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code>. Arguments that state
 the model (<code>random</code>, <code>residual</code>, <code>family</code>, <code>link</code>, <code>known_matrices</code>,
 <code>prior</code>, <code>prior_fixed_sd</code>, <code>prior_vc_sd</code>) are refused, <code><a href="https://rdrr.io/r/stats/update.html" class="external-link">update()</a></code>
 refits a changed model.</p></dd>
@@ -169,7 +169,7 @@ formula and the <code>brmsprior</code> of those rows, and returns
 non-linear formula usually moves the package's rows onto one of its
 parts, which is why the hook receives them. <code>extra_prior</code> rows are then
 merged in, replacing any row with the same <code>class</code>, <code>coef</code>, <code>group</code>,
-<code>resp</code>, <code>dpar</code> and <code>nlpar</code>, and <code>stanvars</code> is passed to <code>brms::brm()</code>.
+<code>resp</code>, <code>dpar</code> and <code>nlpar</code>, and <code>stanvars</code> is passed to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brms::brm()</a></code>.
 The fitted object reads under the linear model's names.</p>
     </div>
     <div class="section level2">
@@ -204,6 +204,8 @@ the full refit. A brms refit is always returned in full.</p>
 <span class="r-in"><span>                   verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fold</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)           x           z </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0.02529991  0.53442435  0.03127191 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

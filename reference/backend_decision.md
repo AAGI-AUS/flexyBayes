@@ -82,5 +82,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   bd$path      # the dispatch path token
   bd$reason    # why this backend was chosen
 }
+#> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 4.276) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
+#> [1] "lgm_gate() accepted, INLA dispatch."
 # }
 ```

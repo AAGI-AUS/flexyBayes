@@ -55,7 +55,7 @@ and the order in which ASReml 4.2 enters the columns."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Reading a fit, for packages that extend flexyBayes</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/extension_api.R" class="external-link"><code>R/extension_api.R</code></a>, <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/fixed_design.R" class="external-link"><code>R/fixed_design.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/extension_api.R" class="external-link"><code>R/extension_api.R</code></a>, <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/fixed_design.R" class="external-link"><code>R/fixed_design.R</code></a></small>
       <div class="d-none name"><code>fb_extension.Rd</code></div>
     </div>
 
@@ -137,7 +137,7 @@ settings.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Further arguments to <code>INLA::inla.posterior.sample()</code>, for
+<dd><p>Further arguments to <code><a href="https://rdrr.io/pkg/INLA/man/posterior.sample.html" class="external-link">INLA::inla.posterior.sample()</a></code>, for
 example <code>seed</code>, <code>num.threads</code> or <code>selection</code>.</p></dd>
 
 
@@ -174,7 +174,7 @@ index of the row effect that carries it in an INLA formula).</p></li>
 <li><p><code>fb_engine_settings()</code>: a named list, empty for <code>NULL</code>.</p></li>
 <li><p><code>fb_convergence()</code>: a list with <code>engine</code>, <code>ok</code> (<code>TRUE</code>, <code>FALSE</code> or
 <code>NA</code>), <code>reasons</code> and <code>evidence</code>.</p></li>
-<li><p><code>fb_inla_posterior_sample()</code>: the list <code>INLA::inla.posterior.sample()</code>
+<li><p><code>fb_inla_posterior_sample()</code>: the list <code><a href="https://rdrr.io/pkg/INLA/man/posterior.sample.html" class="external-link">INLA::inla.posterior.sample()</a></code>
 returns, with the linear predictor and the hyperparameters on the
 scale of the data.</p></li>
 <li><p><code>fb_check_refit()</code>: <code>fit</code>, invisibly.</p></li>

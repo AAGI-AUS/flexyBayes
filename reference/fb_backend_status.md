@@ -46,8 +46,6 @@ single-engine pins.
 fb_backend_status()
 #> flexyBayes backend readiness
 #> ----------------------------------------------------------------
-#>   [--] INLA    not installed: install.packages('INLA', repos = c(getOption('repos'), INLA = 'https://inla.r-inla-download.org/R/stable'))
-#>   [--] brms    not installed: install.packages('brms')
-#> 
-#>   No active inference backend is usable, install at least one of the above before fitting.
+#>   [ok] INLA    ready (approximate inference: integrated nested Laplace)
+#>   [ok] brms    ready (MCMC via Stan; first-call compile)
 ```

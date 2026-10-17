@@ -39,5 +39,6 @@ if (requireNamespace("INLA", quietly = TRUE)) {
                     verbose = FALSE)
   flexyBayes:::fb_structured_cov(fit)
 }
+#> flexyBayes: this fit carries no factor-analytic structured-covariance term, so there is nothing to report.
 # }
 ```

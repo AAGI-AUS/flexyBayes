@@ -88,5 +88,11 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   cn <- canonical_names(fit)
   head(cn$map)
 }
+#>                             (Intercept)                           (Intercept):1 
+#>                           "(Intercept)"                           "(Intercept)" 
+#>                                       x                                     x:1 
+#>                                     "x"                                     "x" 
+#> Precision for the Gaussian observations                         Precision for g 
+#>                                 "sigma"                                  "sd_g" 
 # }
 ```

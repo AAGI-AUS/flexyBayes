@@ -1,9 +1,10 @@
 # Approximate leave-one-out cross-validation for a flexyBayes fit
 
 A method for the loo package's `loo()` generic. On a fit from the
-**brms** engine the call passes through to `brms::loo()`, which computes
-PSIS-LOO from the pointwise log-likelihood Stan stored, and returns
-loo's own object, `elpd_loo`, `p_loo`, `looic` and the Pareto-k
+**brms** engine the call passes through to
+[`brms::loo()`](https://mc-stan.org/loo/reference/loo.html), which
+computes PSIS-LOO from the pointwise log-likelihood Stan stored, and
+returns loo's own object, `elpd_loo`, `p_loo`, `looic` and the Pareto-k
 diagnostics, unchanged.
 
 ## Usage
@@ -21,13 +22,14 @@ loo(x, ...)
 
 - ...:
 
-  Passed to `brms::loo()` on the brms path. Ignored on the refusal
-  paths.
+  Passed to [`brms::loo()`](https://mc-stan.org/loo/reference/loo.html)
+  on the brms path. Ignored on the refusal paths.
 
 ## Value
 
-On a brms-engine fit, the `loo` object `brms::loo()` returns. Otherwise
-the method does not return: it raises a refusal of class
+On a brms-engine fit, the `loo` object
+[`brms::loo()`](https://mc-stan.org/loo/reference/loo.html) returns.
+Otherwise the method does not return: it raises a refusal of class
 `flexybayes_refusal_loo_requires_sampler_draws`, or
 `flexybayes_refusal_fit_lacks_posterior_draws` when the fit carries no
 posterior.

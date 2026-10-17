@@ -76,5 +76,11 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   fit <- flexybayes(yield ~ env, random = ~ geno, data = df,
                     backend = "inla")
 }
+#> 
+#> -- flexyBayes: INLA fit ----------------------------------------
+#>   formula: fb_standardised_response ~ 1 + env + f(geno, model = "iid", <prior: half-normal-SD(5) on the standardised response = half-normal-SD(4.433) on the response>)
+#>   family:  gaussian
+#> ------------------------------------------------------------ 
+#> 
 # }
 ```

@@ -1,9 +1,10 @@
 # Log-likelihood on the brms path
 
-Delegates to `brms::log_lik()` then sums pointwise log-likelihood across
-observations and averages across draws. The `df` attribute carries the
-parameter count from `$extras$model_info`; `nobs` carries the
-observation count.
+Delegates to
+[`brms::log_lik()`](https://mc-stan.org/rstantools/reference/log_lik.html)
+then sums pointwise log-likelihood across observations and averages
+across draws. The `df` attribute carries the parameter count from
+`$extras$model_info`; `nobs` carries the observation count.
 
 ## Usage
 

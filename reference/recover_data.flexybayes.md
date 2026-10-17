@@ -21,7 +21,8 @@ recover_data(object, ...)
 
 - ...:
 
-  Passed to `emmeans::recover_data()`.
+  Passed to
+  [`emmeans::recover_data()`](https://rvlenth.github.io/emmeans/reference/extending-emmeans.html).
 
 ## Value
 

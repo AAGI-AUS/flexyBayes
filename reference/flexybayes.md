@@ -242,15 +242,15 @@ fb(
   brms. A family object
   ([`binomial()`](https://rdrr.io/r/stats/family.html),
   [`gaussian()`](https://rdrr.io/r/stats/family.html),
-  `brms::lognormal()`) is also accepted, goes through the same gate as
-  its name, and supplies its own link, so
-  [`Gamma()`](https://rdrr.io/r/stats/family.html) means the inverse
-  link it names, not the log link `family = "gamma"` defaults to.
-  Passing a family object together with a contradicting `link` is
-  refused, not resolved. A family outside this set is refused at the
-  door. Where the boundary is flexyBayes's own and not the engines', the
-  refusal says so and `inst/KNOWN_ISSUES.md` records it. A response
-  outside the family's domain (0 or negative for `"gamma"` or
+  [`brms::lognormal()`](https://paulbuerkner.com/brms/reference/brmsfamily.html))
+  is also accepted, goes through the same gate as its name, and supplies
+  its own link, so [`Gamma()`](https://rdrr.io/r/stats/family.html)
+  means the inverse link it names, not the log link `family = "gamma"`
+  defaults to. Passing a family object together with a contradicting
+  `link` is refused, not resolved. A family outside this set is refused
+  at the door. Where the boundary is flexyBayes's own and not the
+  engines', the refusal says so and `inst/KNOWN_ISSUES.md` records it. A
+  response outside the family's domain (0 or negative for `"gamma"` or
   `"lognormal"`, negative for `"hurdle_gamma"`, at or outside \[0, 1\]
   for `"beta"`) is refused by name (`family_response_domain_violation`)
   before any engine runs. A missing (`NA`) response is `na_action`'s
@@ -389,14 +389,16 @@ fb(
   when nothing else draws from the stream first. Either way the seed
   Stan ran with is kept at `fit$extras$reproducibility$seed$as_run`, and
   a refit under that value returns the same draws. Draws taken later
-  from the fitted object, such as `brms::posterior_epred()` on new
-  levels, follow R's random-number stream and not this seed.
+  from the fitted object, such as
+  [`brms::posterior_epred()`](https://mc-stan.org/rstantools/reference/posterior_epred.html)
+  on new levels, follow R's random-number stream and not this seed.
 
-  On INLA the seed has no effect: `INLA::inla()` takes no seed, and the
-  argument says once that it was not used. A refit in a fresh R session
-  can reach a different mode whatever the seed (see the section *INLA
-  threads*). The thread setting an INLA fit ran with is recorded beside
-  the engine versions, in the same record.
+  On INLA the seed has no effect:
+  [`INLA::inla()`](https://rdrr.io/pkg/INLA/man/inla.html) takes no
+  seed, and the argument says once that it was not used. A refit in a
+  fresh R session can reach a different mode whatever the seed (see the
+  section *INLA threads*). The thread setting an INLA fit ran with is
+  recorded beside the engine versions, in the same record.
 
 - control:
 
@@ -513,14 +515,14 @@ fb(
   run-immediately semantics. A session-level override is available via
   `options(flexyBayes.review_code_default = TRUE)`. The argument value
   at call time always wins. Closest published precedent:
-  `brms::stancode()` plus the `chains = 0` idiom for "do everything
-  except sampling". `review_code = TRUE` and `return_code = TRUE` are
-  mutually exclusive. brms is the only engine with a code slot, so
-  `review_code = TRUE` is available under `backend = "brms"` and under
-  `"auto"` (which resolves the code modes to brms). Under
-  `backend = "inla"` it refuses with `review_code_backend_unsupported`:
-  the deferred-execution token would need an INLA-side code slot, which
-  is queued for a later release.
+  [`brms::stancode()`](https://paulbuerkner.com/brms/reference/stancode.html)
+  plus the `chains = 0` idiom for "do everything except sampling".
+  `review_code = TRUE` and `return_code = TRUE` are mutually exclusive.
+  brms is the only engine with a code slot, so `review_code = TRUE` is
+  available under `backend = "brms"` and under `"auto"` (which resolves
+  the code modes to brms). Under `backend = "inla"` it refuses with
+  `review_code_backend_unsupported`: the deferred-execution token would
+  need an INLA-side code slot, which is queued for a later release.
 
 - backend:
 
@@ -718,7 +720,8 @@ An object of class `"flexybayes"`, a list with three components.
 
   The native backend object: a live `brmsfit` on the brms path, or
   INLA's own fitted object on the INLA path. Use with `bayesplot`,
-  `posterior::as_draws()`, and each engine's own accessors.
+  [`posterior::as_draws()`](https://mc-stan.org/posterior/reference/draws.html),
+  and each engine's own accessors.
 
 - `$extras`:
 
@@ -736,11 +739,12 @@ the formula, family and hyperparameter specification on the INLA path.
 ## INLA threads
 
 An INLA fit runs on one thread, `num.threads = "1:1"`, whatever
-`INLA::inla.setOption()` holds. With more threads, identical calls can
-return different variance components where the data inform a variance
-only weakly. On a 48-trial barley model with 22 localities, eight
-identical fits at `"4:1"` gave the locality variance from 0.58 to 42.3,
-and at `"1:1"` from 0.75 to 0.79, with the fixed effects unchanged. Set
+[`INLA::inla.setOption()`](https://rdrr.io/pkg/INLA/man/options.html)
+holds. With more threads, identical calls can return different variance
+components where the data inform a variance only weakly. On a 48-trial
+barley model with 22 localities, eight identical fits at `"4:1"` gave
+the locality variance from 0.58 to 42.3, and at `"1:1"` from 0.75 to
+0.79, with the fixed effects unchanged. Set
 `options(flexyBayes.inla_threads = "4:1")` for another plan, or `"inla"`
 for INLA's own default. The plan a fit ran with is in
 `$extras$reproducibility`.

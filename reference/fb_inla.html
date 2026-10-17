@@ -53,7 +53,7 @@ offending term, exactly as flexybayes(backend = "inla") does.'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Fit a flexyBayes model via the INLA engine</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/fb_inla.R" class="external-link"><code>R/fb_inla.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/fb_inla.R" class="external-link"><code>R/fb_inla.R</code></a></small>
       <div class="d-none name"><code>fb_inla.Rd</code></div>
     </div>
 
@@ -127,6 +127,12 @@ backend. <code><a href="fb_from_asreml.html">fb_from_asreml()</a></code> / <code
 <span class="r-in"><span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">geno</span>, data <span class="op">=</span> <span class="va">df</span>,</span></span>
 <span class="r-in"><span>                    backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -- flexyBayes: INLA fit ----------------------------------------</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   formula: fb_standardised_response ~ 1 + env + f(geno, model = "iid", &lt;prior: half-normal-SD(5) on the standardised response = half-normal-SD(4.433) on the response&gt;)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   family:  gaussian</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ------------------------------------------------------------ </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

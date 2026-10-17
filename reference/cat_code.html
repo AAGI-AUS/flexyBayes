@@ -43,13 +43,13 @@ flexybayes() / fb_brms()) to a connection."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Emit the generated backend code for a deferred review object</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/review.R" class="external-link"><code>R/review.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/review.R" class="external-link"><code>R/review.R</code></a></small>
       <div class="d-none name"><code>cat_code.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>Writes the backend code carried by a <code>&lt;flexybayes_review&gt;</code>
-object (Stan code via <code>brms::stancode()</code> for
+object (Stan code via <code><a href="https://paulbuerkner.com/brms/reference/stancode.html" class="external-link">brms::stancode()</a></code> for
 <code><a href="flexybayes.html">flexybayes()</a></code> / <code><a href="fb_brms.html">fb_brms()</a></code>) to a connection.</p>
     </div>
 
@@ -106,6 +106,69 @@ call warns with a condition of class <code>flexybayes_deprecated</code>.</p>
 <span class="r-in"><span>                     return_code <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">code</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> // generated with brms 2.23.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> functions {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> data {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int&lt;lower=1&gt; N;  // total number of observations</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   vector[N] Y;  // response variable</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int&lt;lower=1&gt; K;  // number of population-level effects</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   matrix[N, K] X;  // population-level design matrix</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int&lt;lower=1&gt; Kc;  // number of population-level effects after centering</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // data for group-level effects of ID 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int&lt;lower=1&gt; N_1;  // number of grouping levels</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int&lt;lower=1&gt; M_1;  // number of coefficients per level</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   array[N] int&lt;lower=1&gt; J_1;  // grouping indicator per observation</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // group-level predictor values</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   vector[N] Z_1_1;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   int prior_only;  // should the likelihood be ignored?</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> transformed data {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   matrix[N, Kc] Xc;  // centered version of X without an intercept</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   vector[Kc] means_X;  // column means of X before centering</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   for (i in 2:K) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     means_X[i - 1] = mean(X[, i]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Xc[, i - 1] = X[, i] - means_X[i - 1];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> parameters {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   vector[Kc] b;  // regression coefficients</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   real Intercept;  // temporary intercept for centered predictors</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   real&lt;lower=0&gt; sigma;  // dispersion parameter</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   vector&lt;lower=0&gt;[M_1] sd_1;  // group-level standard deviations</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   array[M_1] vector[N_1] z_1;  // standardized group-level effects</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> transformed parameters {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   vector[N_1] r_1_1;  // actual group-level effects</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // prior contributions to the log posterior</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   real lprior = 0;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   r_1_1 = (sd_1[1] * (z_1[1]));</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lprior += student_t_lpdf(Intercept | 3, 0.1, 2.5);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lprior += normal_lpdf(sigma | 0, 4.27584420984108)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     - 1 * normal_lccdf(0 | 0, 4.27584420984108);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lprior += normal_lpdf(sd_1 | 0, 4.27584420984108)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     - 1 * normal_lccdf(0 | 0, 4.27584420984108);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> model {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // likelihood including constants</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   if (!prior_only) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     // initialize linear predictor term</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     vector[N] mu = rep_vector(0.0, N);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     mu += Intercept;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     for (n in 1:N) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       // add more terms to the linear predictor</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       mu[n] += r_1_1[J_1[n]] * Z_1_1[n];</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     target += normal_id_glm_lpdf(Y | Xc, mu, b, sigma);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // priors including constants</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   target += lprior;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   target += std_normal_lpdf(z_1[1]);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> generated quantities {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   // actual population-level intercept</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   real b_Intercept = Intercept - dot_product(means_X, b);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

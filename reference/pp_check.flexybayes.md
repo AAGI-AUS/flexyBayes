@@ -1,12 +1,15 @@
 # Posterior predictive check for a flexyBayes fit
 
 A method for the bayesplot package's `pp_check()` generic. On a fit from
-the **brms** engine the call delegates to `brms::pp_check()`: datasets
-are simulated from the posterior predictive distribution and shown
-against the observed response. The default display overlays the
+the **brms** engine the call delegates to
+[`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html):
+datasets are simulated from the posterior predictive distribution and
+shown against the observed response. The default display overlays the
 densities of the replicated datasets on the density of the response
 (`type = "dens_overlay"`). Every other bayesplot check type, and every
-argument of `brms::pp_check()`, is reachable through `...`.
+argument of
+[`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html),
+is reachable through `...`.
 
 ## Usage
 
@@ -23,14 +26,17 @@ pp_check(object, ...)
 
 - ...:
 
-  Passed to `brms::pp_check()` on the brms path, `type`, `ndraws`,
-  `group` and the rest. Ignored on the refusal path.
+  Passed to
+  [`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html)
+  on the brms path, `type`, `ndraws`, `group` and the rest. Ignored on
+  the refusal path.
 
 ## Value
 
-On a brms-engine fit, the ggplot2 object `brms::pp_check()` returns.
-Otherwise the method does not return: it raises a refusal of class
-`flexybayes_refusal_pp_check_requires_predictive_draws`.
+On a brms-engine fit, the ggplot2 object
+[`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html)
+returns. Otherwise the method does not return: it raises a refusal of
+class `flexybayes_refusal_pp_check_requires_predictive_draws`.
 
 ## Details
 

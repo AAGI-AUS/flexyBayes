@@ -45,7 +45,7 @@ without building a model or starting a fit."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Report inference-backend readiness</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/backend_status.R" class="external-link"><code>R/backend_status.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/backend_status.R" class="external-link"><code>R/backend_status.R</code></a></small>
       <div class="d-none name"><code>fb_backend_status.Rd</code></div>
     </div>
 
@@ -93,10 +93,8 @@ records whether the backend can actually run a fit now.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">fb_backend_status</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> flexyBayes backend readiness</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ----------------------------------------------------------------</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   [--] INLA    not installed: install.packages('INLA', repos = c(getOption('repos'), INLA = 'https://inla.r-inla-download.org/R/stable'))</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   [--] brms    not installed: install.packages('brms')</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   No active inference backend is usable, install at least one of the above before fitting.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [ok] INLA    ready (approximate inference: integrated nested Laplace)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [ok] brms    ready (MCMC via Stan; first-call compile)</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

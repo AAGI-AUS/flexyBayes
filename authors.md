@@ -21,7 +21,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/AAGI-AUS/flexyBayes/blob/main/inst/CITATION)
+[`inst/CITATION`](https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/inst/CITATION)
 
 Moldovan M (2026). *flexyBayes: Bayesian Mixed Models with ASReml Syntax
 via INLA and brms*. R package version 0.18.1,

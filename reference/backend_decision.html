@@ -47,7 +47,7 @@ during dispatch (see the top of this file)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Backend dispatch trace for a flexyBayes fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/dispatch.R" class="external-link"><code>R/dispatch.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/dispatch.R" class="external-link"><code>R/dispatch.R</code></a></small>
       <div class="d-none name"><code>backend_decision.Rd</code></div>
     </div>
 
@@ -132,6 +132,8 @@ bumps this string.</p></dd>
 <span class="r-in"><span>  <span class="va">bd</span><span class="op">$</span><span class="va">path</span>      <span class="co"># the dispatch path token</span></span></span>
 <span class="r-in"><span>  <span class="va">bd</span><span class="op">$</span><span class="va">reason</span>    <span class="co"># why this backend was chosen</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 4.276) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "lgm_gate() accepted, INLA dispatch."</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

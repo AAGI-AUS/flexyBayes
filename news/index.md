@@ -175,9 +175,11 @@ release below.
   loadings of `fa(f, k):gen`. With none stated the loadings take INLA’s
   own prior on a copy scaling, `normal(mean = 1, sd = 0.316)`, which is
   named in the model manifest.
-- ASReml 4.2 reference fits of `fa(env, k):gen` on `agridat::besag.met`
-  (all genotypes and the first 30) and `agridat::dasilva.maize` ship in
-  `inst/validation/asreml-4.2/`.
+- ASReml 4.2 reference fits of `fa(env, k):gen` on
+  [`agridat::besag.met`](https://kwstat.github.io/agridat/reference/besag.met.html)
+  (all genotypes and the first 30) and
+  [`agridat::dasilva.maize`](https://kwstat.github.io/agridat/reference/dasilva.maize.html)
+  ship in `inst/validation/asreml-4.2/`.
 
 ### Other changes
 
@@ -531,7 +533,8 @@ release below.
   sum-to-zero constraint fixes, so the precision INLA stores is singular
   in that direction and rounding can make its factorisation fail. These
   calls now condition on the constraint the way
-  `INLA::inla.posterior.sample()` does, and on such a fit the
+  [`INLA::inla.posterior.sample()`](https://rdrr.io/pkg/INLA/man/posterior.sample.html)
+  does, and on such a fit the
   [`vcov()`](https://rdrr.io/r/stats/vcov.html) SDs agree with INLA’s
   `summary.fixed` to 5e-6 and with 100,000 of INLA’s own posterior draws
   to within 0.5 Monte Carlo standard errors. Fits whose precision
@@ -558,7 +561,8 @@ release below.
 - The bar grammar fits a transformed response, `log(y) ~ x + (1 | g)`,
   as the ASReml grammar does. The two fits agree to within the spread of
   two identical INLA calls (1e-8 in the coefficients), and the
-  coefficients agree with `lme4::lmer()` to 2e-4.
+  coefficients agree with
+  [`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html) to 2e-4.
 
 - `aggregate = "foo"` (`aggregate_argument_invalid`), weights that are
   not one number per row (`weights_invalid`), a `prior` that is not an
@@ -1077,12 +1081,14 @@ about INLA and brms are checked against the engines.
 
 ### Refusals and corrections
 
-- A `brms::bf()` object with a non-linear formula, a formula or fixed
-  value for a distributional parameter, or a family other than the
-  `family` argument now refuses with `brms_ingest_feature_unsupported`.
-  Before, both engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without
-  `sigma ~ x` and fitted the `family` argument in place of a family
-  named inside `bf()`, and `nl = TRUE` stopped with an untyped error.
+- A
+  [`brms::bf()`](https://paulbuerkner.com/brms/reference/brmsformula.html)
+  object with a non-linear formula, a formula or fixed value for a
+  distributional parameter, or a family other than the `family` argument
+  now refuses with `brms_ingest_feature_unsupported`. Before, both
+  engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without `sigma ~ x`
+  and fitted the `family` argument in place of a family named inside
+  `bf()`, and `nl = TRUE` stopped with an untyped error.
 - `fb_select()` refuses a base whose data have a missing response when
   the unpenalised benchmark, the penalised optimiser or
   `benchmark = TRUE` is asked for
@@ -1334,11 +1340,13 @@ is added.
   INLA’s reported interval reaches past it. A uniform prior cuts the
   posterior off at the bound, so such an interval misstates the
   posterior. This happens on a weakly identified component with few
-  levels: on `agridat::john.alpha` with `random = ~ rep + rep:block`,
-  the default bound on `rep` (three levels) is 3.05 and INLA’s interval
-  runs from 0.17 to 3.65, so the default INLA fit is refused, in 8 of 8
-  repeats. A half-normal prior on the standard deviations fits the same
-  model on INLA, and brms fits it under the default.
+  levels: on
+  [`agridat::john.alpha`](https://kwstat.github.io/agridat/reference/john.alpha.html)
+  with `random = ~ rep + rep:block`, the default bound on `rep` (three
+  levels) is 3.05 and INLA’s interval runs from 0.17 to 3.65, so the
+  default INLA fit is refused, in 8 of 8 repeats. A half-normal prior on
+  the standard deviations fits the same model on INLA, and brms fits it
+  under the default.
 
 - **`na_action = "augment"` on brms refuses a missing Student-t
   response** by name (`brms_cannot_augment_nongaussian`). 0.12.0
@@ -1430,8 +1438,8 @@ family, engine or exported function is added.
   `correlated_covariance_requires_brms`, and `backend = "auto"` routes
   both to brms. On INLA each was one field under a joint Wishart prior,
   which ties the variances to the correlations: `us(env):gen` on
-  `agridat::besag.met` returned a genetic correlation of 0.142 where
-  ASReml returns 0.930.
+  [`agridat::besag.met`](https://kwstat.github.io/agridat/reference/besag.met.html)
+  returned a genetic correlation of 0.142 where ASReml returns 0.930.
 
 - **A response containing `NaN` or an infinite value refuses** with
   `response_not_finite`, naming the rows. INLA fitted such a model
@@ -1471,10 +1479,12 @@ family, engine or exported function is added.
   default bound on an uncorrelated slope’s standard deviation is divided
   by the standard deviation of its covariate, and the default
   fixed-effect prior is scaled by each numeric column’s standard
-  deviation: on `lme4::sleepstudy` with `Days` multiplied by 0.001, 1 or
-  1000, the `Days` coefficient is 10.467285959588 at every scale,
-  7.8e-12 from lme4. Stated priors are never rescaled, and every filled
-  default is recorded on the fit and printed by
+  deviation: on
+  [`lme4::sleepstudy`](https://rdrr.io/pkg/lme4/man/sleepstudy.html)
+  with `Days` multiplied by 0.001, 1 or 1000, the `Days` coefficient is
+  10.467285959588 at every scale, 7.8e-12 from lme4. Stated priors are
+  never rescaled, and every filled default is recorded on the fit and
+  printed by
   [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md).
 
 - **The default bound reads a transformed response.** The bounded
@@ -1498,18 +1508,19 @@ family, engine or exported function is added.
 
 - **Offsets in the fixed formula fit on both engines.** `offset(z)` used
   to be dropped without a message: `Reaction ~ Days + offset(Days)` on
-  `lme4::sleepstudy` returned the coefficient of the model without the
-  offset (10.47 against lme4’s 9.47). brms receives the offset in its
-  formula and INLA through `inla()`’s `offset` argument, and on the
-  standardised Gaussian response the centre, scale and default priors
-  read `y - o`. On Poisson, `offset(log(E))` is the same model as
-  `exposure = "E"`. [`predict()`](https://rdrr.io/r/stats/predict.html)
-  evaluates the offset on the fit data or on `newdata`, and a `newdata`
-  missing an offset column refuses (`newdata_offset_missing`). A
-  binomial offset on the aggregated route, projection selection with an
-  offset, a non-finite or wrongly sized offset (`fixed_offset_invalid`)
-  and an offset in the random or residual formula refuse by name. INLA
-  agrees with lme4 on `sleepstudy` to 1e-11.
+  [`lme4::sleepstudy`](https://rdrr.io/pkg/lme4/man/sleepstudy.html)
+  returned the coefficient of the model without the offset (10.47
+  against lme4’s 9.47). brms receives the offset in its formula and INLA
+  through `inla()`’s `offset` argument, and on the standardised Gaussian
+  response the centre, scale and default priors read `y - o`. On
+  Poisson, `offset(log(E))` is the same model as `exposure = "E"`.
+  [`predict()`](https://rdrr.io/r/stats/predict.html) evaluates the
+  offset on the fit data or on `newdata`, and a `newdata` missing an
+  offset column refuses (`newdata_offset_missing`). A binomial offset on
+  the aggregated route, projection selection with an offset, a
+  non-finite or wrongly sized offset (`fixed_offset_invalid`) and an
+  offset in the random or residual formula refuse by name. INLA agrees
+  with lme4 on `sleepstudy` to 1e-11.
 
 - **Every fit carries a model manifest** at `fit$extras$manifest`: every
   stated or default prior with its source and the number of engine slots
@@ -1998,7 +2009,8 @@ prior, and it always fits on brms. The check stays as an internal guard.
 
   brms derives the horseshoe’s global scale from `par_ratio` and the
   number of fitted rows and offers no way to set it otherwise. Measured
-  against `brms::make_standata()`,
+  against
+  [`brms::make_standata()`](https://paulbuerkner.com/brms/reference/standata.html),
   `hs_scale_global = par_ratio / sqrt(N)` exactly. The calibration is
   therefore moved by moving `par_ratio`, and the certificate carries the
   canonical `p0 / (p - p0)` beside the ratio brms was handed so a reader
@@ -2031,21 +2043,21 @@ A validation run against ASReml 4.2.0.392 and lme4 found that `(x | g)`
 on INLA carries the defect the `us(f):g` row was demoted for, on a
 second route, through the `iid2d` field instead of `iidKd`.
 
-On `lme4::sleepstudy` the slope variance comes back at 46.37 at the
-posterior mode (52.10 at the mean, 50.19 at the median), against 35.076
-in ASReml and 35.072 in lme4. That is 32 per cent high at the mode,
-which is the summary a REML estimate is comparable to, while the
-intercept variance on the same fit is 7 per cent high and the residual
-0.4 per cent. Rescaling the response by ten is an exact transformation
-under which a correlation is invariant, and it moves the reported
-intercept-slope correlation from 0.02 to 0.969 while REML holds at
-0.066. The ratio of the intercept standard deviation to the residual
-doubles on the same transformation. The numerical-confirm gate does not
-separate the two: the unscaled fit reports mode status 0 and passes it
-on every call, and the rescaled fit passes it on some calls and not
-others: five identical tenfold calls returned mode status 0, 0, 0, 2 and
-6. The one protection a user has here therefore stays quiet on the fit
-that is wrong.
+On [`lme4::sleepstudy`](https://rdrr.io/pkg/lme4/man/sleepstudy.html)
+the slope variance comes back at 46.37 at the posterior mode (52.10 at
+the mean, 50.19 at the median), against 35.076 in ASReml and 35.072 in
+lme4. That is 32 per cent high at the mode, which is the summary a REML
+estimate is comparable to, while the intercept variance on the same fit
+is 7 per cent high and the residual 0.4 per cent. Rescaling the response
+by ten is an exact transformation under which a correlation is
+invariant, and it moves the reported intercept-slope correlation from
+0.02 to 0.969 while REML holds at 0.066. The ratio of the intercept
+standard deviation to the residual doubles on the same transformation.
+The numerical-confirm gate does not separate the two: the unscaled fit
+reports mode status 0 and passes it on every call, and the rescaled fit
+passes it on some calls and not others: five identical tenfold calls
+returned mode status 0, 0, 0, 2 and 6. The one protection a user has
+here therefore stays quiet on the fit that is wrong.
 
 The row is reclassified from `covariance-family` to **`analogue`** in
 the translation registry, with the measurement recorded in the row. The
@@ -2077,10 +2089,13 @@ is shared between the two routes, so a repair has to cover both.
 `ID` column as CHARACTER, which is what a plain `~ g` produces because
 INLA is handed the factor itself. Every structured term is indexed by an
 integer column the emitter builds, so `ID` came back as `1 ... n` and
-the guard never fired: `rep:block` on `agridat::john.alpha` reported
-levels `"1"` to `"18"` where ASReml reports `rep_R1:block_B1 ...`, and
-`(Days | Subject)` on `lme4::sleepstudy` reported `"1"` to `"36"` with
-the subject identifiers sitting unused on the fit.
+the guard never fired: `rep:block` on
+[`agridat::john.alpha`](https://kwstat.github.io/agridat/reference/john.alpha.html)
+reported levels `"1"` to `"18"` where ASReml reports
+`rep_R1:block_B1 ...`, and `(Days | Subject)` on
+[`lme4::sleepstudy`](https://rdrr.io/pkg/lme4/man/sleepstudy.html)
+reported `"1"` to `"36"` with the subject identifiers sitting unused on
+the fit.
 
 Two of the four BLUP comparisons in the September validation programme
 could not be made at all. Aligning by row order was not attempted:
@@ -2152,15 +2167,17 @@ provider-requiring test is gated on the provider being present.
 
 - **`us(f):g` on INLA is no longer described as covariance-family
   equivalent to ASReml’s, because it is not.** Paired against ASReml
-  4.2.0.392 on `agridat::besag.met`, the route returns a genetic
-  correlation of 0.142 where ASReml returns 0.930, and 0.198 / 0.231 /
-  0.320 against 0.898 / 0.915 / 0.955 over three environments, with
-  genotype variances four to five times larger while the residual
-  variance agrees closely. The gap reproduces across refits (three runs
-  spanned 0.141 to 0.147 over two environments), so the answer is stably
-  wrong, not noisy. A stable wrong answer is harder to notice, and a
-  repeatability screen rates it as fine. The gap is the finding. The
-  third digit belongs to one run, and the banked fixture carries it.
+  4.2.0.392 on
+  [`agridat::besag.met`](https://kwstat.github.io/agridat/reference/besag.met.html),
+  the route returns a genetic correlation of 0.142 where ASReml returns
+  0.930, and 0.198 / 0.231 / 0.320 against 0.898 / 0.915 / 0.955 over
+  three environments, with genotype variances four to five times larger
+  while the residual variance agrees closely. The gap reproduces across
+  refits (three runs spanned 0.141 to 0.147 over two environments), so
+  the answer is stably wrong, not noisy. A stable wrong answer is harder
+  to notice, and a repeatability screen rates it as fine. The gap is the
+  finding. The third digit belongs to one run, and the banked fixture
+  carries it.
 
   It also fails a check that needs no external reference. Multiplying
   the response by ten is an exact transformation under which a
@@ -2232,12 +2249,13 @@ provider-requiring test is gated on the provider being present.
 
 - **A converged INLA fit could be the wrong converged fit, and the
   package finds the better one and returns it.** Fitting
-  `random = ~ diag(env):gen` to `agridat::besag.met` returned no genetic
-  variance in any of six environments on nineteen of twenty-four runs of
-  the identical call, and substantial variance on the other five. Every
-  one of the twenty-four reported `Mode status: 0` and
-  `Numerical confirm: PASS`, because the optimiser had converged, to a
-  solution with every component pinned at zero. ASReml 4.2 on the same
+  `random = ~ diag(env):gen` to
+  [`agridat::besag.met`](https://kwstat.github.io/agridat/reference/besag.met.html)
+  returned no genetic variance in any of six environments on nineteen of
+  twenty-four runs of the identical call, and substantial variance on
+  the other five. Every one of the twenty-four reported `Mode status: 0`
+  and `Numerical confirm: PASS`, because the optimiser had converged, to
+  a solution with every component pinned at zero. ASReml 4.2 on the same
   rows returns 5.84 and 5.45 in two of those environments, stably.
 
   The cause is not a prior this package chose. The emitted INLA formula
@@ -2407,13 +2425,13 @@ provider-requiring test is gated on the provider being present.
   translate a DSL prior into, so the default was left unspliced, and
   that unit-scale prior stayed in force on data of any scale.
 
-  On `lme4::sleepstudy`, whose response has a standard deviation near
-  50, eight identical calls to `(Days | Subject)` returned intercept
-  standard deviations from 0.50 to 54.8 and correlations from -1.00 to
-  +0.75, with marginal likelihoods 31 units apart, and none near
-  `lme4`’s REML answer of 24.7. That was recorded here and in the
-  capability table as a property of INLA’s `iid2d` parameterisation. It
-  was the package’s own default.
+  On [`lme4::sleepstudy`](https://rdrr.io/pkg/lme4/man/sleepstudy.html),
+  whose response has a standard deviation near 50, eight identical calls
+  to `(Days | Subject)` returned intercept standard deviations from 0.50
+  to 54.8 and correlations from -1.00 to +0.75, with marginal
+  likelihoods 31 units apart, and none near `lme4`’s REML answer of
+  24.7. That was recorded here and in the capability table as a property
+  of INLA’s `iid2d` parameterisation. It was the package’s own default.
 
   The scale matrix is taken from the response’s own variance, the same
   basis the uniform-SD default already uses. The slope block is scaled
@@ -2430,24 +2448,25 @@ provider-requiring test is gated on the provider being present.
 - **[`vpredict()`](https://aagi-aus.github.io/flexyBayes/reference/vpredict.md)
   on INLA drew its variance components from the integration grid, not
   from the posterior.** The generic draws path uses
-  `INLA::inla.posterior.sample()`, which resamples the configurations
-  INLA assembled the fit from. Those are coherent, with each latent draw
-  paired with the hyperparameters it was drawn under. The
-  hyperparameters themselves take only as many distinct values as the
-  grid has points. On a 24-genotype alpha design, 1000 draws carried
-  **15** unique values. A heritability built on them had a posterior
-  supported on 15 atoms while its quantiles were reported as a smooth
-  interval, and its minimum *was* its 2.5th percentile.
+  [`INLA::inla.posterior.sample()`](https://rdrr.io/pkg/INLA/man/posterior.sample.html),
+  which resamples the configurations INLA assembled the fit from. Those
+  are coherent, with each latent draw paired with the hyperparameters it
+  was drawn under. The hyperparameters themselves take only as many
+  distinct values as the grid has points. On a 24-genotype alpha design,
+  1000 draws carried **15** unique values. A heritability built on them
+  had a posterior supported on 15 atoms while its quantiles were
+  reported as a smooth interval, and its minimum *was* its 2.5th
+  percentile.
 
   [`vpredict()`](https://aagi-aus.github.io/flexyBayes/reference/vpredict.md)
   draws from the fitted joint hyperparameter posterior via
-  `INLA::inla.hyperpar.sample()`, whose columns carry the same names the
-  canonical map already keys on. The point estimate barely moves (0.633
-  to 0.638 on that fit). The tails do: the interval widens from \[0.460,
-  0.800\] to \[0.426, 0.816\], and the support exceeds it. A test
-  asserts that more than half the draws are distinct and that the range
-  is wider than the central interval, which a 15-atom distribution
-  cannot be.
+  [`INLA::inla.hyperpar.sample()`](https://rdrr.io/pkg/INLA/man/sampler.html),
+  whose columns carry the same names the canonical map already keys on.
+  The point estimate barely moves (0.633 to 0.638 on that fit). The
+  tails do: the interval widens from \[0.460, 0.800\] to \[0.426,
+  0.816\], and the support exceeds it. A test asserts that more than
+  half the draws are distinct and that the range is wider than the
+  central interval, which a 15-atom distribution cannot be.
 
 - **The refusal a user reads is four lines, not sixteen.** The R Journal
   review of 0.10.0 quoted one back. It carried a per-rule diagnostic
@@ -2549,27 +2568,28 @@ provider-requiring test is gated on the provider being present.
 
   On simulated data with an intercept SD of 1.2, a slope SD of 0.6 and a
   correlation of 0.60, INLA returns 1.11, 0.66 and 0.569 with the
-  residual at 0.338 against 0.35, and agrees with `lme4::lmer()`’s REML
-  fit of the same model on all three. A crossover fixture with a
-  correlation of -0.7 comes back negative with an interval excluding
-  zero. Components are reported as `sd_<g>`, `sd_<x>_<g>` and
-  `cor_<g>__Intercept__<x>`.
+  residual at 0.338 against 0.35, and agrees with
+  [`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html)’s REML fit of
+  the same model on all three. A crossover fixture with a correlation of
+  -0.7 comes back negative with an interval excluding zero. Components
+  are reported as `sd_<g>`, `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`.
 
   **Where the design separates the intercept from the slope weakly,
   INLA’s mode for this structure is not unique, and the capability table
-  says so.** On `lme4::sleepstudy`, with 18 subjects, five identical
-  calls return intercept standard deviations between 0.5 and 4.6 against
-  `lme4`’s 24.7, and correlations spanning -0.96 to +0.99. Each reports
-  `mode.status = 0`, INLA’s own convergence flag, and each has a
-  different marginal likelihood. Hand-written INLA, with this package
-  not loaded, reproduces the same spread, so it is a property of the
-  `iid2d` parameterisation and not of the translation. INLA’s own
-  restart machinery fires on some of those runs
-  (`inla.core.safe: rerun with improved initial values`, from the `safe`
-  argument that defaults to TRUE), so the engine detects a suspect
-  solution without the answer settling. The boundary-collapse warning
-  fires on these fits. Fit such designs on brms, and refit before
-  reporting a correlation.
+  says so.** On
+  [`lme4::sleepstudy`](https://rdrr.io/pkg/lme4/man/sleepstudy.html),
+  with 18 subjects, five identical calls return intercept standard
+  deviations between 0.5 and 4.6 against `lme4`’s 24.7, and correlations
+  spanning -0.96 to +0.99. Each reports `mode.status = 0`, INLA’s own
+  convergence flag, and each has a different marginal likelihood.
+  Hand-written INLA, with this package not loaded, reproduces the same
+  spread, so it is a property of the `iid2d` parameterisation and not of
+  the translation. INLA’s own restart machinery fires on some of those
+  runs (`inla.core.safe: rerun with improved initial values`, from the
+  `safe` argument that defaults to TRUE), so the engine detects a
+  suspect solution without the answer settling. The boundary-collapse
+  warning fires on these fits. Fit such designs on brms, and refit
+  before reporting a correlation.
 
 - **The `prior` column reports the prior that reached the fit.**
   `us(f):g` and `(x | g)` are `iidKd` fields on INLA, and their
@@ -2728,7 +2748,8 @@ provider-requiring test is gated on the provider being present.
   SPDE or kronecker expansion. That was not true. The term is an iid
   field over the interaction index, which is also what brms’s
   `(1 | a:b)` means, and the alpha-design in the report that raised it
-  (`agridat::john.alpha`) fits in seconds.
+  ([`agridat::john.alpha`](https://kwstat.github.io/agridat/reference/john.alpha.html))
+  fits in seconds.
 
   The two engines and `lme4`’s REML fit of the same model agree:
   residual 0.293 against 0.286, `sd_gen` 0.397 against 0.378,
@@ -3135,8 +3156,9 @@ stand as the record of what changed between 0.8.3 and this release.
   `fa(env, k):gen` term.
   [`summary()`](https://rdrr.io/r/base/summary.html) and, on a
   [`diag()`](https://rdrr.io/r/base/diag.html) or `us()` covariance,
-  `brms::VarCorr()` remain the way to read a multi-environment trial’s
-  genotype-by-environment structure.
+  [`brms::VarCorr()`](https://rdrr.io/pkg/nlme/man/VarCorr.html) remain
+  the way to read a multi-environment trial’s genotype-by-environment
+  structure.
 - **[`fb_log_posterior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_log_posterior.md)
   abstains unconditionally** (`fb_c4_unavailable`): neither active
   engine exposes an equivalent producer.
@@ -3347,9 +3369,11 @@ stand as the record of what changed between 0.8.3 and this release.
   hyperparameter for the beta likelihood was emitted as `prec` where
   INLA declares `phi`, so a beta fit died inside the engine with a raw
   error whose own text quoted the correct alternatives. The keyword now
-  comes from a table read out of `INLA::inla.models()`, and a test
-  re-reads that declaration from the installed engine. All sixteen
-  family x backend cells the capability matrix advertises now fit.
+  comes from a table read out of
+  [`INLA::inla.models()`](https://rdrr.io/pkg/INLA/man/models.html), and
+  a test re-reads that declaration from the installed engine. All
+  sixteen family x backend cells the capability matrix advertises now
+  fit.
 
 - **`(1 | g:h)` refuses on INLA exactly as `random = ~ g:h` does.** The
   two spellings are one model, and the README says the grammar is
@@ -3621,15 +3645,17 @@ without opening `$inla` or `$brms`.
   so the plot has no fitted-variogram overlay.
 
 - **The Bayesian door.** The same fit object now answers to the generics
-  a Bayesian reaches for. `posterior::as_draws_df()`, `as_draws()` and
-  `as_draws_matrix()` return canonical parameter names with the variance
-  components on the standard-deviation scale, the same names
-  `triangulate()` compares, on either engine. `loo()` passes through to
-  `brms::loo()` on a sampled fit. `pp_check()` passes through to
-  `brms::pp_check()` on a sampled fit, replicated datasets and all. On a
-  Laplace fit each refuses by name, and the message is built from the
-  fit and names the WAIC and DIC that the fit does carry and where they
-  live.
+  a Bayesian reaches for.
+  [`posterior::as_draws_df()`](https://mc-stan.org/posterior/reference/draws_df.html),
+  `as_draws()` and `as_draws_matrix()` return canonical parameter names
+  with the variance components on the standard-deviation scale, the same
+  names `triangulate()` compares, on either engine. `loo()` passes
+  through to [`brms::loo()`](https://mc-stan.org/loo/reference/loo.html)
+  on a sampled fit. `pp_check()` passes through to
+  [`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html)
+  on a sampled fit, replicated datasets and all. On a Laplace fit each
+  refuses by name, and the message is built from the fit and names the
+  WAIC and DIC that the fit does carry and where they live.
   [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md)
   and `summary(fit)$converge` complete the door, and neither idiom is a
   wrapper around the other.
@@ -3701,8 +3727,9 @@ without opening `$inla` or `$brms`.
   does answer, `plot(fit, type = "residuals")` and, where there is a
   design index, `plot(fit, type = "variogram")`. On a brms-engine fit
   the same type now runs a real posterior predictive check through
-  `brms::pp_check()`. A script that called it on an INLA fit for the
-  picture will need one of the named alternatives.
+  [`brms::pp_check()`](https://mc-stan.org/bayesplot/reference/pp_check.html).
+  A script that called it on an INLA fit for the picture will need one
+  of the named alternatives.
 
 ### Minor improvements and fixes
 
@@ -4326,21 +4353,24 @@ entry is the one above.
   posterior predictive.** Section 5.3 simulated from the posterior-mean
   linear predictor with the group intercepts dropped, the same error
   Tutorial 08’s `loo` repair had just fixed one page over. It now uses
-  `brms::posterior_predict()` and keeps the mean surface beside it for
-  contrast: the two are five-fold apart at the upper percentile. The
-  page’s lead no longer says that INLA silently approximates outside the
-  latent-Gaussian class, since `lgm_gate()` refuses the model before
-  INLA is called. The caveat on what cross-engine agreement buys moves
-  to the start of the page.
+  [`brms::posterior_predict()`](https://mc-stan.org/rstantools/reference/posterior_predict.html)
+  and keeps the mean surface beside it for contrast: the two are
+  five-fold apart at the upper percentile. The page’s lead no longer
+  says that INLA silently approximates outside the latent-Gaussian
+  class, since `lgm_gate()` refuses the model before INLA is called. The
+  caveat on what cross-engine agreement buys moves to the start of the
+  page.
 
 - **[`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
   gains `seed` and `control`, so a brms fit is reproducible and its
   sampler is tunable.** Neither was reachable: the entry point took no
   `...`, so [`set.seed()`](https://rdrr.io/r/base/Random.html) before a
   call did not pin Stan’s stream and `adapt_delta` could only be raised
-  by dropping to `brms::brm()` directly. The gap mattered: the package’s
-  own heterogeneous-variance oracle measured 0.27 percent run-to-run
-  drift on the per-environment variances it quotes.
+  by dropping to
+  [`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html)
+  directly. The gap mattered: the package’s own heterogeneous-variance
+  oracle measured 0.27 percent run-to-run drift on the per-environment
+  variances it quotes.
 
   ``` r
 
@@ -4350,7 +4380,9 @@ entry is the one above.
   )
   ```
 
-  Both are forwarded to `brms::brm()` and recorded on the fit, so
+  Both are forwarded to
+  [`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html) and
+  recorded on the fit, so
   [`update()`](https://rdrr.io/r/stats/update.html) repeats them. `NULL`
   maps onto brms’s own defaults (`seed = NA`, `control = NULL`) instead
   of being passed through. The INLA path is a deterministic Laplace
@@ -4445,9 +4477,10 @@ entry is the one above.
 
   The summary now names the retarget explicitly, lists every parameter
   carrying the engine’s own default with the reason, and on a brms fit
-  carries `brms::prior_summary()` of the fitted model. brms is the
-  authority on what reached Stan, so the declaration is checked against
-  the engine’s own record.
+  carries
+  [`brms::prior_summary()`](https://mc-stan.org/rstantools/reference/prior_summary.html)
+  of the fitted model. brms is the authority on what reached Stan, so
+  the declaration is checked against the engine’s own record.
 
 - **[`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md)
   abstains by name.** It raised a bare
@@ -4455,7 +4488,8 @@ entry is the one above.
   the last export doing so. It now refuses with
   `met_summary_not_available`, and points at
   [`summary()`](https://rdrr.io/r/base/summary.html) and
-  `brms::VarCorr()`. It no longer points at
+  [`brms::VarCorr()`](https://rdrr.io/pkg/nlme/man/VarCorr.html). It no
+  longer points at
   [`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md),
   which abstains for every structure an active engine can fit.
   [`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md)
@@ -4653,12 +4687,13 @@ entry is the one above.
   to zero. `auto` routes such a model to brms when brms is installed and
   can fit it, instead of falling back to greta, which under-mixes them.
   brms recovers every variance component against the ASReml / lme4 REML
-  reference (validated on `agridat::besag.met`). `emit_brms()` fits
-  these interaction random effects natively as `(1 | A:B)`. INLA
-  continues to refuse them by name. The fallback-to-greta clause this
-  entry originally carried was removed by the quarantine above: when
-  brms cannot represent the model, `auto` now refuses with
-  `auto_no_active_route`.
+  reference (validated on
+  [`agridat::besag.met`](https://kwstat.github.io/agridat/reference/besag.met.html)).
+  `emit_brms()` fits these interaction random effects natively as
+  `(1 | A:B)`. INLA continues to refuse them by name. The
+  fallback-to-greta clause this entry originally carried was removed by
+  the quarantine above: when brms cannot represent the model, `auto` now
+  refuses with `auto_no_active_route`.
 
 - *(Superseded by the quarantine above.)* **The greta backend
   warm-starts the intercept from the response mean** (identity / log /

@@ -106,7 +106,10 @@ predict(
 
 - ...:
 
-  Forwarded to `brms::posterior_epred()` / `brms::posterior_linpred()`.
+  Forwarded to
+  [`brms::posterior_epred()`](https://mc-stan.org/rstantools/reference/posterior_epred.html)
+  /
+  [`brms::posterior_linpred()`](https://mc-stan.org/rstantools/reference/posterior_linpred.html).
 
 ## Value
 

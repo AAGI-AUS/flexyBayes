@@ -39,7 +39,7 @@ report for a multi-environment trial is the variance components, through
 [`summary()`](https://rdrr.io/r/base/summary.html), and on brms the
 genotype-by-environment covariance of a
 [`diag()`](https://rdrr.io/r/base/diag.html) or `us()` term through
-`brms::VarCorr()`.
+[`brms::VarCorr()`](https://rdrr.io/pkg/nlme/man/VarCorr.html).
 
 ## See also
 

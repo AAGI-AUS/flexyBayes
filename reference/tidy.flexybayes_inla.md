@@ -80,7 +80,6 @@ stops.
 ## Examples
 
 ``` r
-if (FALSE) { # requireNamespace("INLA", quietly = TRUE)
 # \donttest{
 set.seed(1)
 dat <- data.frame(yield = rnorm(40),
@@ -89,7 +88,14 @@ dat <- data.frame(yield = rnorm(40),
 fit <- flexybayes(yield ~ env, random = ~block, data = dat,
                   backend = "inla", verbose = FALSE)
 tidy(fit)
+#>          term    estimate std.error   conf.low conf.high
+#> 1 (Intercept)  0.13218419 0.3414309 -0.5413324 0.8056979
+#> 2        env2  0.11664728 0.4265600 -0.7239543 0.9572497
+#> 3        env3 -0.26582665 0.4265600 -1.1064248 0.5747792
+#> 4        env4 -0.01145265 0.4265600 -0.8520531 0.8291509
 tidy(fit, effects = "random")
+#>       term  estimate std.error   conf.low conf.high
+#> 1    sigma 0.9486288 0.1161080 0.74648476 1.2009160
+#> 2 sd_block 0.2470551 0.2176864 0.03192243 0.8227665
 # }
-}
 ```

@@ -27,7 +27,8 @@ Invisibly, `x` unchanged. Called for the one-screen summary it prints.
 ## Details
 
 Opens with the header every engine's print shares, then adds what
-belongs to this engine alone: the formula as it reached `INLA::inla()`,
-the post-fit numerical-confirm verdict, and, on a fit carrying a latent
+belongs to this engine alone: the formula as it reached
+[`INLA::inla()`](https://rdrr.io/pkg/INLA/man/inla.html), the post-fit
+numerical-confirm verdict, and, on a fit carrying a latent
 autoregressive field, the field's own parameters on the correlation and
 standard-deviation scales.

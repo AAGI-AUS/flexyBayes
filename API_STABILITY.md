@@ -39,17 +39,18 @@ refusal.
 | Export | Stage | Notes |
 |----|----|----|
 | [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) | deprecated in 0.13.0 | Pins the INLA engine (approximate inference, see “Inference semantics”). Call `flexybayes(..., backend = "inla")`. |
-| [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | deprecated in 0.13.0 | Pins the Stan/brms engine through `brms::brm()`. Call `flexybayes(..., backend = "brms")`. |
+| [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | deprecated in 0.13.0 | Pins the Stan/brms engine through [`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html). Call `flexybayes(..., backend = "brms")`. |
 
 **Sampler arguments.** `seed` and `control` are part of the universal
-signature and reach `brms::brm()` unchanged, so a brms posterior can be
-reproduced from the call alone. `control = list(adapt_delta = 0.95)`
-sets `adapt_delta`, and `max_treedepth` is set the same way. Left
-`NULL`, they fall back to brms’s own defaults (`seed = NA`,
-`control = NULL`) and are not passed through.
-[`update()`](https://rdrr.io/r/stats/update.html) repeats whatever the
-fit recorded. Both arguments have no effect on the deterministic INLA
-path, which says so once per session.
+signature and reach
+[`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html)
+unchanged, so a brms posterior can be reproduced from the call alone.
+`control = list(adapt_delta = 0.95)` sets `adapt_delta`, and
+`max_treedepth` is set the same way. Left `NULL`, they fall back to
+brms’s own defaults (`seed = NA`, `control = NULL`) and are not passed
+through. [`update()`](https://rdrr.io/r/stats/update.html) repeats
+whatever the fit recorded. Both arguments have no effect on the
+deterministic INLA path, which says so once per session.
 
 **Grammar adapters** read a model *specification* written in another
 package’s syntax and return the flexyBayes internal representation
@@ -65,7 +66,7 @@ object. Pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |----|----|----|
-| `triangulate()` | removed in 0.14.0 | Internal from 0.11.0 and removed in 0.14.0, together with `triangulate_genomic()`, `triangulate_gwas()` and the refusal code `triangulate_incomparable_fits`. Nothing in the package called it, and agreement between two engines fitted from one parsed model cannot detect a translation error they share. The canonical draws it compared are still available on each fit through `posterior::as_draws_df()` and [`canonical_names()`](https://aagi-aus.github.io/flexyBayes/reference/canonical_names.md). |
+| `triangulate()` | removed in 0.14.0 | Internal from 0.11.0 and removed in 0.14.0, together with `triangulate_genomic()`, `triangulate_gwas()` and the refusal code `triangulate_incomparable_fits`. Nothing in the package called it, and agreement between two engines fitted from one parsed model cannot detect a translation error they share. The canonical draws it compared are still available on each fit through [`posterior::as_draws_df()`](https://mc-stan.org/posterior/reference/draws_df.html) and [`canonical_names()`](https://aagi-aus.github.io/flexyBayes/reference/canonical_names.md). |
 
 ## Priors
 
@@ -302,7 +303,7 @@ remain in the package as internal functions, so calling one now gives
 | Export | Added | Notes |
 |----|----|----|
 | `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic and GWAS comparison across engines and against field-standard methods. `triangulate_gwas()` **withdrawn at 0.10.0**. Both **removed in 0.14.0**. |
-| [`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md) | 0.8.0 | **Withdrawn at 0.10.0.** Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now always abstains with `met_summary_not_available` and names what an active engine reports instead ([`summary()`](https://rdrr.io/r/base/summary.html) for the components, `brms::VarCorr()` for a [`diag()`](https://rdrr.io/r/base/diag.html) or `us()` covariance). |
+| [`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md) | 0.8.0 | **Withdrawn at 0.10.0.** Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now always abstains with `met_summary_not_available` and names what an active engine reports instead ([`summary()`](https://rdrr.io/r/base/summary.html) for the components, [`brms::VarCorr()`](https://rdrr.io/pkg/nlme/man/VarCorr.html) for a [`diag()`](https://rdrr.io/r/base/diag.html) or `us()` covariance). |
 | [`fb_gblup_cv()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gblup_cv.md) | 0.8.0 | Genomic-prediction accuracy by cross-validation. |
 | [`fb_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gwas.md) | 0.8.0 | EMMAX / P3D whole-genome scan. **Withdrawn at 0.10.0.** |
 | [`tidy()`](https://generics.r-lib.org/reference/tidy.html) / [`glance()`](https://generics.r-lib.org/reference/glance.html) / [`augment()`](https://generics.r-lib.org/reference/augment.html) | 0.8.1 | broom-style accessors (re-exported from `generics`). [`tidy()`](https://generics.r-lib.org/reference/tidy.html) has a method for every fit subclass. [`glance()`](https://generics.r-lib.org/reference/glance.html) returns a row for an INLA fit with the sampler columns `NA`, and [`augment()`](https://generics.r-lib.org/reference/augment.html) refuses by name on one. |

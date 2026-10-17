@@ -2,8 +2,9 @@
 
 Posterior means of the fixed effects, read from the INLA fit's
 `summary.fixed` slot (treatment-contrast basis). These are the
-coefficients consumed by `emmeans::emmeans()` and
-`marginaleffects::predictions()` via the flexyBayes support methods.
+coefficients consumed by
+[`emmeans::emmeans()`](https://rvlenth.github.io/emmeans/reference/emmeans.html)
+and `marginaleffects::predictions()` via the flexyBayes support methods.
 
 ## Usage
 

@@ -105,7 +105,7 @@
 <span><span class="co">#&gt; 1        sigma    0.293    0.229     0.371</span></span>
 <span><span class="co">#&gt; 2 sd_rep:block    0.288    0.163     0.467</span></span>
 <span><span class="co">#&gt; 3       sd_gen    0.397    0.274     0.561</span></span></code></pre></div>
-<p>The estimates are posterior means of the three standard deviations, with 95% credible intervals. REML estimates from <code>lme4::lmer()</code> for the same model are 0.286, 0.265 and 0.378.</p>
+<p>The estimates are posterior means of the three standard deviations, with 95% credible intervals. REML estimates from <code><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lme4::lmer()</a></code> for the same model are 0.286, 0.265 and 0.378.</p>
 <p>Heritability is computed on each posterior draw, so its interval stays between 0 and 1:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/vpredict.html">vpredict</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">h2</span> <span class="op">~</span> <span class="va">sd_gen</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="va">sd_gen</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="va">sigma</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>

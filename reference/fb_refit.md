@@ -42,12 +42,15 @@ fb_refit(
 
 - extra_prior:
 
-  A `brmsprior` from `brms::set_prior()` with rows to add to the prior,
-  or `NULL`.
+  A `brmsprior` from
+  [`brms::set_prior()`](https://paulbuerkner.com/brms/reference/set_prior.html)
+  with rows to add to the prior, or `NULL`.
 
 - stanvars:
 
-  A `stanvars` object from `brms::stanvar()`, or `NULL`.
+  A `stanvars` object from
+  [`brms::stanvar()`](https://paulbuerkner.com/brms/reference/stanvar.html),
+  or `NULL`.
 
 - formula_hook:
 
@@ -75,11 +78,12 @@ fb_refit(
   `weights` or `known_variance`. On the brms route of "Extending the
   brms model", arguments that
   [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-  does not have go to `brms::brm()`. Arguments that state the model
-  (`random`, `residual`, `family`, `link`, `known_matrices`, `prior`,
-  `prior_fixed_sd`, `prior_vc_sd`) are refused,
-  [`update()`](https://rdrr.io/r/stats/update.html) refits a changed
-  model.
+  does not have go to
+  [`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html).
+  Arguments that state the model (`random`, `residual`, `family`,
+  `link`, `known_matrices`, `prior`, `prior_fixed_sd`, `prior_vc_sd`)
+  are refused, [`update()`](https://rdrr.io/r/stats/update.html) refits
+  a changed model.
 
 ## Value
 
@@ -124,8 +128,9 @@ formula and the `brmsprior` of those rows, and returns
 non-linear formula usually moves the package's rows onto one of its
 parts, which is why the hook receives them. `extra_prior` rows are then
 merged in, replacing any row with the same `class`, `coef`, `group`,
-`resp`, `dpar` and `nlpar`, and `stanvars` is passed to `brms::brm()`.
-The fitted object reads under the linear model's names.
+`resp`, `dpar` and `nlpar`, and `stanvars` is passed to
+[`brms::brm()`](https://paulbuerkner.com/brms/reference/brm.html). The
+fitted object reads under the linear model's names.
 
 ## Readout
 
@@ -158,5 +163,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
                    verbose = FALSE)
   coef(fold)
 }
+#> (Intercept)           x           z 
+#>  0.02529991  0.53442435  0.03127191 
 # }
 ```

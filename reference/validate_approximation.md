@@ -66,6 +66,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
     message(conditionMessage(e)) # "carries no recognised approximation"
   })
 }
+#> validate_approximation(): this fit carries no recognised approximation to validate (exactness = 'exact'). validate_approximation() applies only to approximate fits (those routed through a registered approximation scheme such as low_rank_smooth); an exact fit has no bias bound to report.
 # }
 
 # The low_rank_smooth verdict shape, on a plan-only object carrying

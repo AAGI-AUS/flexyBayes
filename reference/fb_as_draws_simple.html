@@ -49,7 +49,7 @@ User-defined methods can extend the generic."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Extract per-parameter posterior draws from a model fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/fb_as_draws_simple.R" class="external-link"><code>R/fb_as_draws_simple.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/fb_as_draws_simple.R" class="external-link"><code>R/fb_as_draws_simple.R</code></a></small>
       <div class="d-none name"><code>fb_as_draws_simple.Rd</code></div>
     </div>
 
@@ -104,7 +104,7 @@ each element holding that parameter's posterior draws.</p>
     <p>On an INLA fit the draws come from the fitted approximation: each draw
 takes one of INLA's hyperparameter configurations, chosen with its
 posterior weight, and draws the latent field from that configuration's
-Gaussian approximation, as <code>INLA::inla.posterior.sample()</code> does. Every
+Gaussian approximation, as <code><a href="https://rdrr.io/pkg/INLA/man/posterior.sample.html" class="external-link">INLA::inla.posterior.sample()</a></code> does. Every
 random number comes from R's generator, so <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> before the call
 makes the draws repeatable.</p>
     </div>
@@ -121,6 +121,76 @@ makes the draws repeatable.</p>
 <span class="r-in"><span>  <span class="va">dr</span> <span class="op">&lt;-</span> <span class="fu">fb_as_draws_simple</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">dr</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] "Predictor:1"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2] "Predictor:2"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3] "Predictor:3"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4] "Predictor:4"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5] "Predictor:5"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6] "Predictor:6"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7] "Predictor:7"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8] "Predictor:8"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9] "Predictor:9"                            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10] "Predictor:10"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [11] "Predictor:11"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [12] "Predictor:12"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [13] "Predictor:13"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [14] "Predictor:14"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [15] "Predictor:15"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [16] "Predictor:16"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [17] "Predictor:17"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [18] "Predictor:18"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [19] "Predictor:19"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [20] "Predictor:20"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [21] "Predictor:21"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [22] "Predictor:22"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [23] "Predictor:23"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [24] "Predictor:24"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [25] "Predictor:25"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [26] "Predictor:26"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [27] "Predictor:27"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [28] "Predictor:28"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [29] "Predictor:29"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [30] "Predictor:30"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [31] "Predictor:31"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [32] "Predictor:32"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [33] "Predictor:33"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [34] "Predictor:34"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [35] "Predictor:35"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [36] "Predictor:36"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [37] "Predictor:37"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [38] "Predictor:38"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [39] "Predictor:39"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [40] "Predictor:40"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [41] "Predictor:41"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [42] "Predictor:42"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [43] "Predictor:43"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [44] "Predictor:44"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [45] "Predictor:45"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [46] "Predictor:46"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [47] "Predictor:47"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [48] "Predictor:48"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [49] "Predictor:49"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [50] "Predictor:50"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [51] "Predictor:51"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [52] "Predictor:52"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [53] "Predictor:53"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [54] "Predictor:54"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [55] "Predictor:55"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [56] "Predictor:56"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [57] "Predictor:57"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [58] "Predictor:58"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [59] "Predictor:59"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [60] "Predictor:60"                           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [61] "g:1"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [62] "g:2"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [63] "g:3"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [64] "g:4"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [65] "g:5"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [66] "g:6"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [67] "(Intercept):1"                          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [68] "x:1"                                    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [69] "Precision for the Gaussian observations"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [70] "Precision for g"                        </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

@@ -47,7 +47,7 @@ a draws object, in the shape those tools expect."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Posterior draws from a flexyBayes fit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/as_draws_support.R" class="external-link"><code>R/as_draws_support.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/as_draws_support.R" class="external-link"><code>R/as_draws_support.R</code></a></small>
       <div class="d-none name"><code>as_draws_df.flexybayes.Rd</code></div>
     </div>
 
@@ -117,7 +117,7 @@ number of draws was fixed when the model was sampled.</p>
 <p>On an <strong>INLA</strong> fit there is no sampler. The fit is a nested Laplace
 approximation, and the draws are sampled <em>from that fitted
 approximation</em>, from the same distribution
-<code>INLA::inla.posterior.sample()</code> samples, reading the configuration store
+<code><a href="https://rdrr.io/pkg/INLA/man/posterior.sample.html" class="external-link">INLA::inla.posterior.sample()</a></code> samples, reading the configuration store
 every flexyBayes INLA fit is built with
 (<code>control.compute = list(config = TRUE)</code>). Two consequences follow:</p>
 <ul><li><p>The <strong>fitting</strong> is deterministic. The Laplace approximation

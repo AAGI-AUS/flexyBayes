@@ -81,8 +81,9 @@ fb_fixed_design(formula, data, train_rows = NULL)
 
 - ...:
 
-  Further arguments to `INLA::inla.posterior.sample()`, for example
-  `seed`, `num.threads` or `selection`.
+  Further arguments to
+  [`INLA::inla.posterior.sample()`](https://rdrr.io/pkg/INLA/man/posterior.sample.html),
+  for example `seed`, `num.threads` or `selection`.
 
 - caller:
 
@@ -125,7 +126,8 @@ fb_fixed_design(formula, data, train_rows = NULL)
 - `fb_convergence()`: a list with `engine`, `ok` (`TRUE`, `FALSE` or
   `NA`), `reasons` and `evidence`.
 
-- `fb_inla_posterior_sample()`: the list `INLA::inla.posterior.sample()`
+- `fb_inla_posterior_sample()`: the list
+  [`INLA::inla.posterior.sample()`](https://rdrr.io/pkg/INLA/man/posterior.sample.html)
   returns, with the linear predictor and the hyperparameters on the
   scale of the data.
 

@@ -33,10 +33,11 @@ A data frame with `n` rows and one column per variance component.
 
 ## Details
 
-The draws come from `INLA::inla.hyperpar.sample()` and are mapped to the
-response's original scale. A hyperparameter held fixed, such as the
-precision of a known variance, is not drawn. With `seed`, the draws from
-a given fit are repeatable on one INLA thread
+The draws come from
+[`INLA::inla.hyperpar.sample()`](https://rdrr.io/pkg/INLA/man/sampler.html)
+and are mapped to the response's original scale. A hyperparameter held
+fixed, such as the precision of a known variance, is not drawn. With
+`seed`, the draws from a given fit are repeatable on one INLA thread
 (`options(flexyBayes.inla_threads = "1:1")`). A refit of the same model
 in another R session can reach a different mode (see
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md),
@@ -54,5 +55,12 @@ if (requireNamespace("INLA", quietly = TRUE)) {
                     verbose = FALSE)
   head(fb_variance_draws(fit, 100L, seed = 1L))
 }
+#>              sigma   sd_site
+#> sample:1 0.9760409 0.7326051
+#> sample:2 0.9228543 0.5072920
+#> sample:3 0.8607892 1.0447306
+#> sample:4 0.7977872 1.0528054
+#> sample:5 1.1249301 0.8833105
+#> sample:6 0.7732236 1.3832989
 # }
 ```

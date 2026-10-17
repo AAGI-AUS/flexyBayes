@@ -81,7 +81,6 @@ settings directly to
 ``` r
 plan <- flexybayes(y ~ x, data = data.frame(y = 1:4, x = 4:1),
                    backend = "brms", chains = 4L, plan = TRUE)
-#> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 6.455) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
 plan$backend_chosen
 #> [1] "brms"
 ```

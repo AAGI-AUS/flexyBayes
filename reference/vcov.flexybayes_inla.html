@@ -55,7 +55,7 @@ summary.fixed$sd, which comes from INLA's marginal densities."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Posterior covariance of a per-row INLA fit's fixed effects</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/methods_inla.R" class="external-link"><code>R/methods_inla.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/methods_inla.R" class="external-link"><code>R/methods_inla.R</code></a></small>
       <div class="d-none name"><code>vcov.flexybayes_inla.Rd</code></div>
     </div>
 
@@ -66,7 +66,7 @@ from the Gaussian approximations INLA stores for the fit, averaged over
 INLA's hyperparameter configurations, so it involves no random draws:
 every call on the same fit returns the same matrix and the session's
 random number stream is left untouched. It is the covariance of the
-draws <code>INLA::inla.posterior.sample()</code> would give, without their Monte
+draws <code><a href="https://rdrr.io/pkg/INLA/man/posterior.sample.html" class="external-link">INLA::inla.posterior.sample()</a></code> would give, without their Monte
 Carlo error. The standard deviations on its diagonal agree closely with
 <code>summary.fixed$sd</code>, which comes from INLA's marginal densities.</p>
     </div>

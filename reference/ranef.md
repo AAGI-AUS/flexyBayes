@@ -55,5 +55,7 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   re <- ranef(fit)
   str(re, max.level = 1)
 }
+#> List of 1
+#>  $ g:'data.frame':   6 obs. of  6 variables:
 # }
 ```

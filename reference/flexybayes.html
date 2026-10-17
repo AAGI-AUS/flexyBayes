@@ -49,7 +49,7 @@ diagnostics, and extras for secondary analyses."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Bayesian Mixed Models with ASReml Syntax</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/flexybayes.R" class="external-link"><code>R/flexybayes.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/flexybayes.R" class="external-link"><code>R/flexybayes.R</code></a></small>
       <div class="d-none name"><code>flexybayes.Rd</code></div>
     </div>
 
@@ -278,7 +278,7 @@ pointer to the random-side field described under <code>random</code> above.</p><
 has no hurdle gamma, and no INLA lognormal fit is validated, so the
 family gate refuses both there and <code>backend = "auto"</code> routes them to
 brms.
-A family object (<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial()</a></code>, <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian()</a></code>, <code>brms::lognormal()</code>) is
+A family object (<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial()</a></code>, <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian()</a></code>, <code><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">brms::lognormal()</a></code>) is
 also accepted, goes through the same gate as
 its name, and supplies its own link, so <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">Gamma()</a></code> means the inverse
 link it names, not the log link <code>family = "gamma"</code> defaults to.
@@ -419,9 +419,9 @@ follows <code><a href="https://rdrr.io/r/base/Random.html" class="external-link"
 first. Either way the seed Stan ran with is kept at
 <code>fit$extras$reproducibility$seed$as_run</code>, and a refit under that value
 returns the same draws. Draws taken later from the fitted object, such
-as <code>brms::posterior_epred()</code> on new levels, follow R's random-number
+as <code><a href="https://mc-stan.org/rstantools/reference/posterior_epred.html" class="external-link">brms::posterior_epred()</a></code> on new levels, follow R's random-number
 stream and not this seed.</p>
-<p>On INLA the seed has no effect: <code>INLA::inla()</code> takes no seed, and the
+<p>On INLA the seed has no effect: <code><a href="https://rdrr.io/pkg/INLA/man/inla.html" class="external-link">INLA::inla()</a></code> takes no seed, and the
 argument says once that it was not used. A refit in a fresh R session
 can reach a different mode whatever the seed (see the section <em>INLA
 threads</em>). The thread setting an INLA fit ran with is recorded beside
@@ -536,7 +536,7 @@ before a long MCMC run. Default <code>FALSE</code> preserves the existing
 run-immediately semantics. A session-level override is available
 via <code>options(flexyBayes.review_code_default = TRUE)</code>. The
 argument value at call time always wins. Closest published
-precedent: <code>brms::stancode()</code> plus the <code>chains = 0</code> idiom
+precedent: <code><a href="https://paulbuerkner.com/brms/reference/stancode.html" class="external-link">brms::stancode()</a></code> plus the <code>chains = 0</code> idiom
 for "do everything except sampling". <code>review_code = TRUE</code> and
 <code>return_code = TRUE</code> are mutually exclusive. brms is the only engine
 with a code slot, so <code>review_code = TRUE</code> is available under
@@ -701,7 +701,7 @@ etc. Works with <code><a href="https://rdrr.io/r/base/summary.html" class="exter
 <dt><code>$brms</code> or <code>$inla</code></dt>
 <dd><p>The native backend object: a live <code>brmsfit</code>
 on the brms path, or INLA's own fitted object on the INLA path. Use
-with <code>bayesplot</code>, <code>posterior::as_draws()</code>, and each engine's own
+with <code>bayesplot</code>, <code><a href="https://mc-stan.org/posterior/reference/draws.html" class="external-link">posterior::as_draws()</a></code>, and each engine's own
 accessors.</p></dd>
 
 <dt><code>$extras</code></dt>
@@ -721,7 +721,7 @@ the formula, family and hyperparameter specification on the INLA path.</p>
 
 
 <p>An INLA fit runs on one thread, <code>num.threads = "1:1"</code>, whatever
-<code>INLA::inla.setOption()</code> holds. With more threads, identical calls can
+<code><a href="https://rdrr.io/pkg/INLA/man/options.html" class="external-link">INLA::inla.setOption()</a></code> holds. With more threads, identical calls can
 return different variance components where the data inform a variance only
 weakly. On a 48-trial barley model with 22 localities, eight identical fits
 at <code>"4:1"</code> gave the locality variance from 0.58 to 42.3, and at <code>"1:1"</code>

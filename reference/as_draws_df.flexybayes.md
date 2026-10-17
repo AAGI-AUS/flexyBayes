@@ -62,9 +62,10 @@ was fixed when the model was sampled.
 On an **INLA** fit there is no sampler. The fit is a nested Laplace
 approximation, and the draws are sampled *from that fitted
 approximation*, from the same distribution
-`INLA::inla.posterior.sample()` samples, reading the configuration store
-every flexyBayes INLA fit is built with
-(`control.compute = list(config = TRUE)`). Two consequences follow:
+[`INLA::inla.posterior.sample()`](https://rdrr.io/pkg/INLA/man/posterior.sample.html)
+samples, reading the configuration store every flexyBayes INLA fit is
+built with (`control.compute = list(config = TRUE)`). Two consequences
+follow:
 
 - The **fitting** is deterministic. The Laplace approximation draws no
   random numbers, so a `seed` passed to

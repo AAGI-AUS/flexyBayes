@@ -6,9 +6,11 @@ from the Gaussian approximations INLA stores for the fit, averaged over
 INLA's hyperparameter configurations, so it involves no random draws:
 every call on the same fit returns the same matrix and the session's
 random number stream is left untouched. It is the covariance of the
-draws `INLA::inla.posterior.sample()` would give, without their Monte
-Carlo error. The standard deviations on its diagonal agree closely with
-`summary.fixed$sd`, which comes from INLA's marginal densities.
+draws
+[`INLA::inla.posterior.sample()`](https://rdrr.io/pkg/INLA/man/posterior.sample.html)
+would give, without their Monte Carlo error. The standard deviations on
+its diagonal agree closely with `summary.fixed$sd`, which comes from
+INLA's marginal densities.
 
 ## Usage
 
