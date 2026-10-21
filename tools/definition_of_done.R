@@ -107,13 +107,19 @@ LINT_BASELINE <- 0L
   src[!grepl("^\\s*#", src)]
 }
 
-.dod_last_commit_date <- function() {
-  out <- suppressWarnings(tryCatch(
-    system2("git", c("log", "-1", "--format=%cd", "--date=short"),
-            stdout = TRUE, stderr = FALSE),
+# Date of the commit that last changed DESCRIPTION's Version: line, i.e. the
+# release commit. A shallow clone cannot see it, so it returns NA there.
+.dod_version_commit_date <- function() {
+  git <- function(args) suppressWarnings(tryCatch(
+    system2("git", args, stdout = TRUE, stderr = FALSE),
     error = function(e) character(0)
   ))
-  if (!length(out)) NA else as.Date(out[1])
+  if (identical(git(c("rev-parse", "--is-shallow-repository")), "true")) {
+    return(as.Date(NA))
+  }
+  out <- git(c("log", "-1", "-G^Version:", "--format=%cd", "--date=short",
+               "--", "DESCRIPTION"))
+  if (!length(out)) as.Date(NA) else as.Date(out[1])
 }
 
 # Every `name =` token appearing inside a call written in roxygen prose,
@@ -396,14 +402,15 @@ LINT_BASELINE <- 0L
   ),
   list(
     id = "B6", cost = "quick", owner = "maintainer", blocking = TRUE,
-    what = "CITATION.cff date-released is not before the last commit",
+    what = "CITATION.cff date-released is not before the release commit",
     check = function() {
       cff <- grep("date-released", .dod_read("CITATION.cff"), value = TRUE)
       iso <- regmatches(cff, regexpr("[0-9]{4}-[0-9]{2}-[0-9]{2}", cff))
       d <- if (length(iso)) as.Date(iso[1]) else as.Date(NA)
-      last <- .dod_last_commit_date()
-      .dod_ok(!is.na(d) && !is.na(last) && d >= last,
-              paste0("cff=", d, " last commit=", last))
+      rel <- .dod_version_commit_date()
+      .dod_ok(!is.na(d) && !is.na(rel) && d >= rel,
+              paste0("cff=", d, " release commit=", rel,
+                     " (NA in a shallow clone)"))
     }
   ),
   list(
