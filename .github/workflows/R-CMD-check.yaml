@@ -60,11 +60,11 @@ jobs:
           # where the precompiled binaries are reliable.
           dependencies: '"hard"'
 
-      # A restored package cache can hold units without its system
-      # library, and INLA is installed outside pak's sysreqs step.
+      # A restored package cache can hold units and sf without their system
+      # libraries, and INLA is installed outside pak's sysreqs step.
       - name: System libraries for INLA's imports on Linux release leg
         if: runner.os == 'Linux' && matrix.config.r == 'release'
-        run: sudo apt-get update -y && sudo apt-get install -y libudunits2-dev
+        run: sudo apt-get update -y && sudo apt-get install -y libudunits2-dev libproj-dev libgdal-dev libgeos-dev
 
       - name: Install INLA on Linux release leg
         if: runner.os == 'Linux' && matrix.config.r == 'release'
