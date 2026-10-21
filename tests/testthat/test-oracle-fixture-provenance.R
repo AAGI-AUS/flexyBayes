@@ -43,6 +43,27 @@
   gsub("`", "", m, fixed = TRUE)
 }
 
+# A row's last SHA is its commit in history: the counterpart, or the anchor itself.
+.ofp_in_history <- function(dir) {
+  path <- file.path(dir, "ANCHORS.md")
+  if (!file.exists(path)) {
+    return(character(0))
+  }
+  txt <- readLines(path, warn = FALSE)
+  m <- regmatches(txt, gregexpr("`[0-9a-f]{40}`", txt))
+  m <- lapply(
+    m[lengths(m) > 0L],
+    gsub,
+    pattern = "`",
+    replacement = "",
+    fixed = TRUE
+  )
+  stats::setNames(
+    vapply(m, function(x) x[length(x)], character(1)),
+    vapply(m, `[`, character(1), 1L)
+  )
+}
+
 # The verdict function. Returns character(0) for a record that is sound, and
 # one message per problem otherwise.
 .ofp_verdict <- function(record, anchors) {
@@ -174,6 +195,30 @@ test_that("the provenance check rejects the records it exists to reject", {
 })
 
 
+test_that("an anchor row is read as its commit and its commit in history", {
+  dir <- withr::local_tempdir()
+  a <- strrep("a", 40L)
+  b <- strrep("b", 40L)
+  c <- strrep("c", 40L)
+  writeLines(
+    c(
+      "| Commit | In history as | Scenarios |",
+      paste0("| `", a, "` | `", b, "` | 01 |"),
+      paste0("| `", c, "` | 02 |")
+    ),
+    file.path(dir, "ANCHORS.md")
+  )
+  # The fixtures are checked against the commit they were built from ...
+  expect_identical(.ofp_anchors(dir), c(a, c))
+  # ... and the history is searched for its counterpart, or for the commit
+  # itself where the row names none.
+  expect_identical(
+    .ofp_in_history(dir),
+    c(stats::setNames(b, a), stats::setNames(c, c))
+  )
+})
+
+
 test_that("each declared anchor is an ancestor of HEAD", {
   # Maintainer-side only: a CRAN check of a tarball has no repository.
   skip_on_cran()
@@ -185,20 +230,52 @@ test_that("each declared anchor is an ancestor of HEAD", {
   )
   skip_if(is.na(root) || !dir.exists(file.path(root, ".git")))
 
-  anchors <- .ofp_anchors(file.path(root, "inst", "validation", "asreml-4.2"))
-  skip_if(length(anchors) == 0L)
+  in_history <- .ofp_in_history(file.path(
+    root,
+    "inst",
+    "validation",
+    "asreml-4.2"
+  ))
+  skip_if(length(in_history) == 0L)
 
-  for (sha in anchors) {
-    status <- suppressWarnings(system2(
+  git <- function(...) {
+    suppressWarnings(system2(
       "git",
-      c("-C", shQuote(root), "merge-base", "--is-ancestor", sha, "HEAD"),
+      c("-C", shQuote(root), ...),
       stdout = FALSE,
       stderr = FALSE
     ))
+  }
+  for (anchor in names(in_history)) {
+    sha <- in_history[[anchor]]
     expect_identical(
-      status,
+      git("merge-base", "--is-ancestor", sha, "HEAD"),
       0L,
-      label = paste0("anchor ", substr(sha, 1L, 12L), " reachable from HEAD")
+      label = paste0("anchor ", substr(anchor, 1L, 12L), " reachable from HEAD")
     )
+    # A counterpart must carry the original commit's package source.
+    if (
+      sha != anchor && git("cat-file", "-e", paste0(anchor, "^{commit}")) == 0L
+    ) {
+      expect_identical(
+        git(
+          "diff",
+          "--quiet",
+          anchor,
+          sha,
+          "--",
+          "R",
+          "src",
+          "DESCRIPTION",
+          "NAMESPACE"
+        ),
+        0L,
+        label = paste0(
+          "package source of ",
+          substr(anchor, 1L, 12L),
+          " and its counterpart"
+        )
+      )
+    }
   }
 })
