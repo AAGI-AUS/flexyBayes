@@ -281,6 +281,7 @@ test_that("backend_decision() backward-compat: legacy fits return 8-field shape"
 
 test_that("the plan says a combined MET model fits, because it does", {
   skip_if_not_installed("brms")
+  skip_if_not_installed("INLA")
   d <- .test_plan_met_data()
   p <- flexybayes(
     fixed = yield ~ env,

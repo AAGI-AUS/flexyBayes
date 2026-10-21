@@ -67,6 +67,9 @@ jobs:
             getOption("repos"),
             INLA = "https://inla.r-inla-download.org/R/stable"
           ))
+          # install.packages() only warns on failure; loading here stops the
+          # job with the cause instead of skipping every INLA test.
+          loadNamespace("INLA")
         shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2

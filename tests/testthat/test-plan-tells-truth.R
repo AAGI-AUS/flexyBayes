@@ -139,6 +139,7 @@ test_that("print.fb_plan()'s Aggregation line shows numbers on an unproductive-b
 
 test_that("the plan and the gate agree under backend = 'auto'", {
   skip_if_no_brms()
+  skip_if_no_inla()
   d <- .fs22_data()
 
   p_fb_plan <- fb_plan(
@@ -235,6 +236,7 @@ test_that("plan and live agree when INLA genuinely refuses", {
 
 test_that("fb_plan() predicts the live auto fit's backend (plan == live)", {
   skip_if_no_brms()
+  skip_if_no_inla()
   skip_on_cran()
   d <- .fs22_data()
 

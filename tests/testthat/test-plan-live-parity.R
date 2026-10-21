@@ -53,6 +53,7 @@ test_that("plan for a dsum residual names inla, never aggregated_inla", {
   # residual is still not aggregatable, and announcing that route would be
   # the original defect wearing a different verdict.
   skip_if_not_installed("brms")
+  skip_if_not_installed("INLA")
   d <- .parity_dsum_data()
   p <- flexybayes(
     y ~ env,
