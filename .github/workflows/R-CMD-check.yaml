@@ -69,7 +69,7 @@ jobs:
       - name: Install INLA on Linux release leg
         if: runner.os == 'Linux' && matrix.config.r == 'release'
         run: |
-          install.packages("INLA", repos = c(
+          install.packages(c("INLA", "sn"), repos = c(
             getOption("repos"),
             INLA = "https://inla.r-inla-download.org/R/stable"
           ))
