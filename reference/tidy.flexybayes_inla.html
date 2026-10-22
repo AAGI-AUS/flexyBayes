@@ -51,7 +51,7 @@ broom-canonical estimate, std.error, conf.low, and conf.high."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Tidy a per-row INLA fit into a one-row-per-term data frame</h1>
-      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/v0.18.1/R/tidiers.R" class="external-link"><code>R/tidiers.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/AAGI-AUS/flexyBayes/blob/main/R/tidiers.R" class="external-link"><code>R/tidiers.R</code></a></small>
       <div class="d-none name"><code>tidy.flexybayes_inla.Rd</code></div>
     </div>
 
@@ -144,14 +144,14 @@ unrecognised value now stops.</p>
 <span class="r-in"><span>                  backend <span class="op">=</span> <span class="st">"inla"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          term    estimate std.error   conf.low conf.high</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 (Intercept)  0.13218419 0.3414309 -0.5413324 0.8056979</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        env2  0.11664728 0.4265600 -0.7239543 0.9572497</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        env3 -0.26582665 0.4265600 -1.1064248 0.5747792</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        env4 -0.01145265 0.4265600 -0.8520531 0.8291509</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 (Intercept)  0.13218419 0.3414308 -0.5413323 0.8056978</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        env2  0.11664728 0.4265600 -0.7239542 0.9572496</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3        env3 -0.26582665 0.4265600 -1.1064247 0.5747791</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4        env4 -0.01145265 0.4265600 -0.8520530 0.8291508</span>
 <span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span>, effects <span class="op">=</span> <span class="st">"random"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       term  estimate std.error   conf.low conf.high</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    sigma 0.9486288 0.1161080 0.74648476 1.2009160</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 sd_block 0.2470551 0.2176864 0.03192243 0.8227665</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    sigma 0.9486288 0.1161080 0.74648474 1.2009160</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 sd_block 0.2470558 0.2176887 0.03192191 0.8227742</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
