@@ -6,7 +6,11 @@
   both with the random structures it fits for a binomial response,
   `ar1(row):ar1(col)` included, and several observations per plot. brms
   fits both without the field. Thresholds follow brms's convention on both
-  engines.
+  engines. On INLA the cumulative thresholds carry a uniform Dirichlet prior
+  on the category probabilities at a linear predictor of zero, where INLA's
+  own default is Dirichlet(3), and `prior_summary()` lists that prior as
+  INLA reports it back. The new vignette "Ordinal scores in a field
+  trial" fits both families to a split-plot trial with a spatial field.
 * On an ordinal fit, `fitted()` returns category probabilities for the
   rows fitted, and `predict()` for new rows, with the random effects at
   zero or, with `marginal = TRUE`, integrated over.

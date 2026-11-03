@@ -39,6 +39,8 @@ navbar:
           href: articles/flexyBayes-06-two-stage.html
         - text: "07: Moving from ASReml-R"
           href: articles/flexyBayes-07-from-asreml.html
+        - text: "08: Ordinal scores in a field trial"
+          href: articles/flexyBayes-08-ordinal.html
 reference:
   - title: Verbs
     desc: >
@@ -184,6 +186,7 @@ articles:
       - flexyBayes-04-illustration
       - flexyBayes-06-two-stage
       - flexyBayes-07-from-asreml
+      - flexyBayes-08-ordinal
 
 redirects:
   # The eight-page tutorial deck was retired at 0.10.0.9000 and kept under

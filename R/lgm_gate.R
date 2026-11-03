@@ -644,6 +644,35 @@ print.lgm_refusal <- function(x, ...) {
   }
 
   if (n_hyp > hard_limit) {
+    # On the cumulative family the thresholds are INLA hyperparameters; the
+    # continuation ratio fits them as fixed effects, so name it when the rest
+    # of the model is within the limit.
+    fam_name <- if (inherits(fb$family, "family")) {
+      fb$family$family
+    } else {
+      as.character(fb$family)
+    }
+    n_threshold <- if (identical(tolower(fam_name[1L]), "cumulative")) {
+      .lgm_family_hypers(fb)
+    } else {
+      0L
+    }
+    ordinal_note <- if (n_threshold > 0L) {
+      paste0(
+        " The cumulative family's ",
+        n_threshold,
+        " thresholds are INLA hyperparameters and count here",
+        if (n_hyp - n_threshold <= hard_limit) {
+          paste0(
+            "; family = \"cratio\" fits its thresholds as fixed effects, ",
+            "and the same random structure is within the limit there"
+          )
+        },
+        "."
+      )
+    } else {
+      ""
+    }
     return(.lgm_fail(
       "hyperparam_budget",
       paste0(
@@ -652,7 +681,8 @@ print.lgm_refusal <- function(x, ...) {
         " is above the ",
         hard_limit,
         " flexyBayes allows on INLA, which integrates over the ",
-        "hyperparameters numerically."
+        "hyperparameters numerically.",
+        ordinal_note
       ),
       diagnostic = paste0(
         "count = likelihood (",

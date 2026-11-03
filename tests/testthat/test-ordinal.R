@@ -233,6 +233,31 @@ test_that("both families fit the split-plot model with the AR1 x AR1 field on IN
     td <- tidy(fit)
     expect_identical(td$term, c("depth80", "depth120", names(tau)))
     expect_identical(colnames(model.matrix(fit)), c("depth80", "depth120"))
+    if (identical(fam, "cumulative")) {
+      # The threshold prior, as INLA reports it back, is the one recorded.
+      th1 <- fit$inla$all.hyper$family[[1L]]$hyper$theta1
+      expect_identical(as.character(th1$prior), "dirichlet")
+      expect_identical(as.numeric(th1$param), 1)
+      expect_match(fit$extras$ordinal$threshold_prior, "Dirichlet(1)",
+        fixed = TRUE)
+      # prior_summary() lists the slot as the package's, read back as sent.
+      ps <- prior_summary(fit)
+      slot <- ps$slots[ps$slots$engine_slot == "family INLA.Data1 theta1", ]
+      expect_identical(nrow(slot), 1L)
+      expect_identical(slot$source, "package")
+      expect_identical(slot$input_id, "threshold:INLA.Data1")
+      expect_identical(slot$readback, "dirichlet(1)")
+      expect_true(slot$readback_agrees)
+      expect_false(any(ps$slots$source == "unexpected"))
+      inp <- ps$inputs[ps$inputs$input_id == "threshold:INLA.Data1", ]
+      expect_identical(inp$source, "structure_default")
+      expect_identical(inp$n_slots, 1L)
+      expect_match(ps$fixed_sd_engine_default, "intercept is pinned at zero",
+        fixed = TRUE)
+    } else {
+      expect_match(prior_summary(fit)$fixed_sd_engine_default,
+        "on each threshold row", fixed = TRUE)
+    }
   }
 })
 

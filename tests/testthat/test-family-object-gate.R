@@ -64,7 +64,10 @@
   d <- data.frame(g = factor(rep(seq_len(6L), each = 8L)))
   eta <- 0.3 + stats::rnorm(6L, 0, 0.3)[as.integer(d$g)]
   n <- nrow(d)
-  d$y <- if (grepl("bernoulli|binomial", fam_name)) {
+  d$y <- if (grepl("cumulative|cratio|sratio|acat", fam_name)) {
+    # Four ordered categories coded 1 to 4, each one present.
+    c(seq_len(4L), sample.int(4L, n - 4L, replace = TRUE))
+  } else if (grepl("bernoulli|binomial", fam_name)) {
     stats::rbinom(n, 1L, stats::plogis(eta))
   } else if (
     grepl("poisson|negbinomial|geometric|discrete_weibull", fam_name)
@@ -160,9 +163,20 @@ test_that("every family object gets the outcome its name gets, on every entry", 
     "Gamma",
     "beta",
     "hurdle_gamma",
-    "lognormal"
+    "lognormal",
+    "cumulative",
+    "cratio"
   )
-  admit_inla <- c("gaussian", "binomial", "poisson", "gamma", "Gamma", "beta")
+  admit_inla <- c(
+    "gaussian",
+    "binomial",
+    "poisson",
+    "gamma",
+    "Gamma",
+    "beta",
+    "cumulative",
+    "cratio"
+  )
   # INLA takes each family's default link only (test-family-link-gate.R), so
   # stats::Gamma(), whose link is inverse, and binomial(link = "probit") are
   # refused there.
@@ -171,7 +185,9 @@ test_that("every family object gets the outcome its name gets, on every entry", 
     binomial = "logit",
     poisson = "log",
     gamma = "log",
-    beta = "logit"
+    beta = "logit",
+    cumulative = "logit",
+    cratio = "logit"
   )
   # flexybayes_stream() has no `link` argument: it aggregates these three
   # families on the links their names default to.

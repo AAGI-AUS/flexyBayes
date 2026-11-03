@@ -2893,6 +2893,13 @@ emit_inla <- function(
 # an empty list when no residual prior is specified, so INLA's own
 # default applies.
 .build_inla_control_family <- function(hyper_ctrl, family) {
+  # The cumulative family's threshold prior (R/ordinal.R). "pom" has no
+  # residual scale, so nothing else goes here.
+  if (identical(as.character(family)[[1L]], "pom")) {
+    return(list(
+      hyper = list(theta1 = list(param = .FB_ORDINAL_POM_DIRICHLET))
+    ))
+  }
   entry <- hyper_ctrl[["sigma"]]
   if (is.null(entry)) {
     return(list())

@@ -439,6 +439,26 @@ prior_summary.default <- function(object, ...) {
       "population-level coefficients and on the uncentred intercept"
     )
   }
+  # An ordinal INLA fit has no free intercept (R/ordinal.R): on the cumulative
+  # route the thresholds carry the location and the intercept is pinned at
+  # zero, and on the continuation-ratio route each threshold is a fixed-effect
+  # row of its own.
+  ordinal_route <- object$extras$ordinal$route
+  if (identical(backend_label, "inla") && !is.null(ordinal_route)) {
+    out$fixed_sd_engine_default <- if (identical(ordinal_route, "pom")) {
+      paste0(
+        "INLA's own control.fixed default, prec = 0.001 (a standard ",
+        "deviation near 32 on the link scale), on each coefficient; the ",
+        "intercept is pinned at zero because the thresholds carry the location"
+      )
+    } else {
+      paste0(
+        "INLA's own control.fixed default, prec = 0.001 (a standard ",
+        "deviation near 32 on the link scale), on each coefficient and ",
+        "on each threshold row"
+      )
+    }
+  }
   # Which fixed-effect coefficients an fb_prior() covers with a `b()`
   # row. The engine-default sentence below is true only of the
   # coefficients nothing names: since 0.9.2 a `b()` row reaches brms as a

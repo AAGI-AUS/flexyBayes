@@ -204,6 +204,58 @@ cell.
 of `error_untyped` and the count of `DIVERGENT`, and both are meant to
 be zero.
 
+## `ordinal_0.19.0/`
+
+**What.** The validation of the two ordinal families added in 0.19.0,
+`family = "cumulative"` and `family = "cratio"`, on the layout of Cao,
+Megirian, Nguyen and Sparks (2026): a 5 by 18 plot array, three replicates,
+sowing depth on two-column main plots, ten plants per plot scored on six
+categories. The pass rules were written down before any of these fits ran.
+Parts A to C are the sealed study. Parts D to F were added after Part B
+failed for the cumulative family, to find the cause, and are reported as
+post hoc. They do not re-score Part B.
+
+| File | Part | What it holds |
+|---|---|---|
+| `recovery_rows.csv` | A | 20 seeds per family, the model with replicate, main plot, AR1 x AR1 field and plot nugget, fitted on INLA: posterior summaries against the simulated truth |
+| `agreement_rows.csv` | B | one data set per family, the model without the field, INLA against brms (4 chains x 1,000 draws) |
+| `kfold_oracle.csv` | C | `fb_kfold()` against the held-out log likelihood at each training fold's maximum likelihood estimate, fixed effects only, n = 4,000, 5 folds |
+| `posthoc_cumulative_rows.csv` | D | the cumulative comparison rerun with a longer brms chain (D1), and without the replicate term (D2) |
+| `posthoc_threshold_prior_rows.csv` | E | INLA's threshold prior, a Dirichlet on the category probabilities, at concentration 1, 2, 3, 6 and 10, each read back from the fit |
+| `posthoc_recovery_alpha_rows.csv` | F | Part A's 20 cumulative seeds refitted at concentration 3 and at 1 |
+
+**Generating script.** `study_ordinal_0190.R`, run as
+`Rscript study_ordinal_0190.R <part>`, with the sealed rules in its plan
+(both kept outside this package). INLA 26.8.7, brms 2.23.0, R 4.6.1.
+
+**Rules and results.**
+
+- Recovery (A): each depth contrast and threshold passes when its 95%
+  interval covers the truth in at least 16 of 20 seeds and the mean error of
+  the posterior median is at most 0.75 mean posterior SD. Both families pass:
+  every contrast and threshold covered in 20 of 20 seeds, largest error 0.44
+  SD (cumulative, the last threshold).
+- Agreement (B): every contrast and threshold within 0.25 brms posterior SD in
+  mean, every SD within 0.5 brms posterior SD in median. The
+  continuation-ratio family passes, thresholds 0.21 to 0.24 SD apart, depth
+  within 0.03 SD. The cumulative family fails: thresholds about 0.7 SD apart,
+  with the brms chains unconverged (largest R-hat 1.57, 989 divergent
+  transitions).
+- K-fold (C): within 1% of the oracle. Both pass, relative gaps below 3e-6.
+- Cause of the cumulative failure (D to F): with brms converged (R-hat 1.005)
+  the gap was still 0.28 to 0.42 SD, and removing the replicate term did not
+  close it. It moved with INLA's threshold prior alone, from 0.16 SD at
+  concentration 1 to 0.42 SD at INLA's default of 3 and 0.90 SD at 10. At 1
+  the thresholds are also recovered with less bias (-0.09 to -0.11 against
+  -0.10 to -0.14) at the same 20 of 20 coverage. The package therefore sets
+  concentration 1, and `prior_summary()` lists that slot.
+
+**Reading it.** Parts A to C ran before the package set its own threshold
+prior, so their cumulative fits carry INLA's default of 3. Part F is the
+recovery at the shipped value. One row per fit or quantity, in the order the
+fits finished. Run times are not included: they were measured on a shared
+machine and are not benchmarks.
+
 ## Validation tier V2: what is declared, and what V3 would add
 
 `DESCRIPTION` declares `Config/rpkg/validationTier: V2`. V2 is what the

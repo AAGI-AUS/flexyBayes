@@ -630,7 +630,9 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("method_argument_not_supported" %in% entries)
   expect_true("inla_best_of_invalid" %in% entries)
   expect_true("pooled_prior_requires_brms" %in% entries)
-  expect_equal(length(entries), 180L)
+  expect_true("ordinal_response_unordered" %in% entries)
+  expect_true("kfold_folds_invalid" %in% entries)
+  expect_equal(length(entries), 192L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
@@ -652,8 +654,11 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # a pooled() prior sent to INLA (= 181).
   # 0.18.0 removes the selection functions themselves, and with them
   # selection_removed (= 180).
+  # 0.19.0 adds the ordinal families, with eight codes for an ordinal
+  # response or call the cumulative and continuation-ratio routes do not
+  # take, and fb_kfold(), with four for its folds and data (= 192).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 180L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 192L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

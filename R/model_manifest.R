@@ -405,6 +405,18 @@
 #' @keywords internal
 .fb_manifest_inla_family_slots <- function(hyper_ctrl, inla_family) {
   families <- as.character(inla_family)
+  # The cumulative family's threshold prior, which the package sets
+  # (R/ordinal.R, R/emit_inla.R). "pom" has no residual scale.
+  if (identical(families, "pom")) {
+    return(.fb_manifest_inla_slot(
+      tag = "INLA.Data1",
+      model = "pom",
+      key = "threshold:INLA.Data1",
+      structure = "ordinal_thresholds",
+      entry = list(prior = "dirichlet", param = .FB_ORDINAL_POM_DIRICHLET),
+      section = "family"
+    ))
+  }
   entry <- hyper_ctrl[["sigma"]]
   keyword <- .fb_inla_hyper_keyword(families[[1L]])
   carried <- !is.null(entry) && !is.null(keyword)
@@ -622,7 +634,11 @@
     return(NA_character_)
   }
   ids <- inputs$input_id
-  if (startsWith(key, "wishart:") || startsWith(key, "loading:")) {
+  if (
+    startsWith(key, "wishart:") ||
+      startsWith(key, "loading:") ||
+      startsWith(key, "threshold:")
+  ) {
     return(if (key %in% ids) key else NA_character_)
   }
   candidates <- switch(
@@ -710,6 +726,25 @@
     )
   }
 
+  # The cumulative family's threshold prior is an input of its own as well.
+  thresholds <- emitted[
+    !is.na(emitted$target_key) & startsWith(emitted$target_key, "threshold:"),
+    ,
+    drop = FALSE
+  ]
+  if (nrow(thresholds)) {
+    inputs <- rbind(
+      inputs,
+      .fb_manifest_input_frame(
+        target = "threshold",
+        target_key = thresholds$tag,
+        distribution = thresholds$emitted_prior,
+        parameters = paste0("concentration=", thresholds$emitted_param),
+        source = "structure_default"
+      )
+    )
+  }
+
   # Every read-back row, matched to what was sent ---------------------------
   first_theta <- !duplicated(paste(rb$section, rb$tag))
   slot_rows <- list()
@@ -724,10 +759,18 @@
       !isTRUE(emitted$pinned[[i]]) &&
       (!is.na(emitted$emitted_prior[[i]]) || !is.na(emitted$emitted_param[[i]]))
     # The hyperparameter a slot's prior lands on: the likelihood's residual
-    # keyword, a fixed effect's own prior, or a latent term's first theta.
+    # keyword (the first threshold hyperparameter on "pom"), a fixed effect's
+    # own prior, or a latent term's first theta.
     carries_prior <- if (identical(row$section, "family")) {
       !is.na(i) &&
-        identical(row$short_name, .fb_inla_hyper_keyword(emitted$model[[i]]))
+        identical(
+          row$short_name,
+          if (identical(emitted$model[[i]], "pom")) {
+            "theta1"
+          } else {
+            .fb_inla_hyper_keyword(emitted$model[[i]])
+          }
+        )
     } else {
       identical(row$section, "fixed") || first_theta[[j]]
     }

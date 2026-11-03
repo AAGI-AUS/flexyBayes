@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=180
+      .refusal_registry: locked=TRUE n_keys=192
         aggregate_argument_invalid
         aggregated_evidence_unavailable
         aggregation_out_of_scope
@@ -179,6 +179,10 @@
         interaction_not_representable
         isolated_process_died
         isolation_requires_callr
+        kfold_category_missing_in_training
+        kfold_family_not_supported
+        kfold_folds_invalid
+        kfold_response_not_a_column
         known_matrices_data_name_collision
         known_matrix_dim_mismatch
         known_matrix_dimnames_mismatch
@@ -204,6 +208,14 @@
         nested_variable_not_in_data
         newdata_offset_missing
         numeric_variable_in_random_interaction
+        ordinal_draws_unavailable
+        ordinal_fixed_without_intercept
+        ordinal_method_not_supported
+        ordinal_offset_not_supported
+        ordinal_response_category_unknown
+        ordinal_response_not_integer
+        ordinal_response_too_few_categories
+        ordinal_response_unordered
         plan_argument_unknown
         pol_degree_invalid
         pooled_prior_requires_brms

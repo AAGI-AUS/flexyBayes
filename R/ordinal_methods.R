@@ -96,7 +96,8 @@
     .fb_inla_posterior_sample(
       object,
       n_draws,
-      seed = if (is.null(seed)) 0L else as.integer(seed)
+      seed = if (is.null(seed)) 0L else as.integer(seed),
+      num.threads = "1:1"
     )
   )
   latent <- do.call(cbind, lapply(samples, function(z) z$latent[, 1L]))
