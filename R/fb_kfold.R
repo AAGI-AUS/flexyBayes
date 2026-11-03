@@ -238,9 +238,9 @@ print.fb_kfold <- function(x, ...) {
     refuse(paste0(
       "the rows of a group must share a fold, and ",
       sum(spread > 1L),
-      " group(s) of `",
+      if (sum(spread > 1L) == 1L) " group of `" else " groups of `",
       group,
-      "` span more than one (",
+      if (sum(spread > 1L) == 1L) "` spans more than one (" else "` span more than one (",
       paste(utils::head(names(spread)[spread > 1L], 3L), collapse = ", "),
       ")."
     ))
