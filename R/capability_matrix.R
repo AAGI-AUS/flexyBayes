@@ -88,6 +88,18 @@
       inla_basis = "INLA's likelihood list has no hurdle or zero-inflated gamma"
     ),
     list(
+      model_class = "Ordinal regression (cumulative, continuation ratio)",
+      spelling = "`family = \"cumulative\"` / `family = \"cratio\"`",
+      inla = "fits",
+      brms = "fits",
+      note = "An ordered response with thresholds in brms's convention on
+        both engines. INLA fits the cumulative family as its proportional
+        odds likelihood, with at most 11 categories, and the continuation
+        ratio as binomial steps; both take the AR1 field there. brms fits
+        the families without the field.",
+      anchor = "test-ordinal.R"
+    ),
+    list(
       model_class = "Uncorrelated random slope",
       spelling = "`(x || g)`",
       inla = "fits",
@@ -271,8 +283,9 @@
         hyperparameters, one observation per grid node. ASReml's
         three-parameter residual without a nugget is written `residual = ~
         ar1(row):ar1(col)` and fits on INLA for a Gaussian response; the 1-D
-        residual `~ ar1(t)` refuses. flexyBayes has no brms lowering for
-        either.",
+        residual `~ ar1(t)` refuses. With an ordinal family the field fits
+        on INLA as a random term, several observations per node allowed.
+        flexyBayes has no brms lowering for either.",
       anchor = "test-inla-spatial-ar1.R",
       brms_basis = "flexyBayes"
     ),

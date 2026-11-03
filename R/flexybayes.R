@@ -153,8 +153,9 @@
 #'   error. Use `residual` instead.
 #' @param data A data.frame containing all variables referenced in the formulas.
 #' @param family Character: `"gaussian"`, `"binomial"`, `"poisson"`,
-#'   `"negative_binomial"`, `"gamma"`, `"beta"`, `"hurdle_gamma"` or
-#'   `"lognormal"`. The last two are brms only: INLA's likelihood roster
+#'   `"negative_binomial"`, `"gamma"`, `"beta"`, `"cumulative"`,
+#'   `"cratio"`, `"hurdle_gamma"` or `"lognormal"`. The last two are brms
+#'   only: INLA's likelihood roster
 #'   has no hurdle gamma, and no INLA lognormal fit is validated, so the
 #'   family gate refuses both there and `backend = "auto"` routes them to
 #'   brms.
@@ -171,6 +172,21 @@
 #'   for `"beta"`) is refused by name (`family_response_domain_violation`)
 #'   before any engine runs. A missing (`NA`) response is `na_action`'s
 #'   concern, not a domain violation.
+#'   The ordinal families are `"cumulative"` (proportional odds) and
+#'   `"cratio"` (continuation ratio, the sequential model of Cao et al.
+#'   2026). The response is an ordered factor or a whole-number vector,
+#'   its categories are the values observed, in order, and thresholds
+#'   follow brms's convention: `P(Y <= k) = F(tau_k - eta)` for
+#'   `"cumulative"` and `P(Y > k | Y >= k) = F(eta - tau_k)` for
+#'   `"cratio"`. The model keeps its intercept, whose place the thresholds
+#'   take. INLA fits both families with the random structures it fits for
+#'   a binomial response, the `ar1(row):ar1(col)` field included, and the
+#'   cumulative family with at most 11 categories. brms fits both without
+#'   the field. A factor that is not ordered, or a character or logical
+#'   response, is refused (`ordinal_response_unordered`), and so is an
+#'   offset (`ordinal_offset_not_supported`). Category probabilities come
+#'   from `fitted()` and `predict()`, and [fb_kfold()] cross-validates
+#'   the fit.
 #' @param link Character or NULL: override the default link function
 #'   (e.g., `"probit"` for binomial). Leave it unset when `family` is a
 #'   family object, which carries its own link. The links fitted, default
@@ -180,7 +196,8 @@
 #'   `identity`, `sqrt`; negative_binomial `log`, `identity`, `sqrt`,
 #'   `softplus`, `squareplus`; gamma `log`, `identity`, `inverse`;
 #'   hurdle_gamma `log`, `identity`, `inverse`, `softplus`, `squareplus`;
-#'   beta `logit`; lognormal `identity`. `backend = "inla"` takes the default
+#'   beta `logit`; lognormal `identity`; cumulative `logit`, `probit`;
+#'   cratio `logit`, `probit`, `cloglog`. `backend = "inla"` takes the default
 #'   link only, refusing any other by name (`inla_gate_refused`), and
 #'   `backend = "auto"` fits another link on brms. A link outside the list
 #'   is refused by name (`unsupported_family`) on every backend.
@@ -601,6 +618,10 @@
 #' The separate process starts with an empty global environment, so the
 #' formula finds its variables in `data`. Starting the process and
 #' moving the data and the fit costs time on every call.
+#'
+#' @references Cao Z, Megirian R, Nguyen M, Sparks AH (2026). Bayesian
+#'   ordinal analysis of cereal growth stage data from oat trials in Western
+#'   Australia. arXiv:2610.37384.
 #'
 #' @examples
 #' \dontrun{

@@ -322,6 +322,8 @@ test_that("the engine-claim pattern finds the claims it exists to find", {
   d$x <- stats::rnorm(nrow(d))
   d$y <- stats::rnorm(nrow(d), 10, 2)
   d$bin <- stats::rbinom(nrow(d), 1L, 0.5)
+  d$ord <- factor(c("low", "mid", "high")[seq_len(nrow(d)) %% 3L + 1L],
+    levels = c("low", "mid", "high"), ordered = TRUE)
   d
 }
 
@@ -487,6 +489,25 @@ test_that("a hurdle gamma emits on brms and refuses on INLA", {
     r$brms,
     "brms"
   )
+})
+
+test_that("an ordinal response fits on both engines", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  r <- .cap_row("Ordinal regression (cumulative, continuation ratio)")
+  d <- .cap_data()
+  for (family in c("cumulative", "cratio")) {
+    .cap_expect(
+      .cap_emit("inla", ord ~ env, random = ~gen, data = d, family = family),
+      r$inla,
+      paste("INLA", family)
+    )
+    .cap_expect(
+      .cap_emit("brms", ord ~ env, random = ~gen, data = d, family = family),
+      r$brms,
+      paste("brms", family)
+    )
+  }
 })
 
 test_that("an uncorrelated random slope fits on brms and defers on INLA", {
@@ -979,6 +1000,7 @@ test_that("every capability row carries a behaviour anchor here", {
       "simple random effect"
     ),
     "Hurdle gamma (zero mass plus a positive gamma part)",
+    "Ordinal regression (cumulative, continuation ratio)",
     "Uncorrelated random slope",
     "Factor-by-numeric fixed interaction",
     "Correlated random slope",

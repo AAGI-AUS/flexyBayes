@@ -103,6 +103,7 @@ reference:
       - as_draws_df.flexybayes
       - loo.flexybayes
       - pp_check.flexybayes
+      - fb_kfold
   - title: Methods
     desc: >
       S3 methods on the fit objects. Most are reached through their
@@ -137,6 +138,7 @@ reference:
       - fitted.flexybayes
       - fitted.flexybayes_inla
       - fitted.flexybayes_aggregated
+      - ordinal_probabilities
       - residuals.flexybayes
       - residuals.flexybayes_inla
       - residuals.flexybayes_aggregated

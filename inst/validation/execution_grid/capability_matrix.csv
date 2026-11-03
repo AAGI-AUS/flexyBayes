@@ -5,6 +5,8 @@
 "cap-glmm-binomial-poisson-negative-binomial-gamma-beta-simple-random-effect-brms","GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect","`(1 | g)` with `family =`","brms","fits"
 "cap-hurdle-gamma-zero-mass-plus-a-positive-gamma-part-inla","Hurdle gamma (zero mass plus a positive gamma part)","`family = ""hurdle_gamma""`","inla","refuses"
 "cap-hurdle-gamma-zero-mass-plus-a-positive-gamma-part-brms","Hurdle gamma (zero mass plus a positive gamma part)","`family = ""hurdle_gamma""`","brms","fits"
+"cap-ordinal-regression-cumulative-continuation-ratio-inla","Ordinal regression (cumulative, continuation ratio)","`family = ""cumulative""` / `family = ""cratio""`","inla","fits"
+"cap-ordinal-regression-cumulative-continuation-ratio-brms","Ordinal regression (cumulative, continuation ratio)","`family = ""cumulative""` / `family = ""cratio""`","brms","fits"
 "cap-uncorrelated-random-slope-inla","Uncorrelated random slope","`(x || g)`","inla","fits"
 "cap-uncorrelated-random-slope-brms","Uncorrelated random slope","`(x || g)`","brms","fits"
 "cap-factor-by-numeric-fixed-interaction-inla","Factor-by-numeric fixed interaction","`y ~ f * x` with numeric `x`","inla","fits"

@@ -53,6 +53,11 @@
       brms = 'flexybayes(hg ~ env, random = ~ gen, data = d_cap, family = "hurdle_gamma")'
     ),
     list(
+      model_class = "Ordinal regression (cumulative, continuation ratio)",
+      inla = 'flexybayes(ord ~ env, random = ~ gen, data = d_cap, family = "cumulative")',
+      brms = 'flexybayes(ord ~ env, random = ~ gen, data = d_cap, family = "cumulative")'
+    ),
+    list(
       model_class = "Uncorrelated random slope",
       inla = 'flexybayes(y ~ x + (x || gen), data = d_cap)',
       brms = 'flexybayes(y ~ x + (x || gen), data = d_cap)'

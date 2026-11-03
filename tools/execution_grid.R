@@ -243,6 +243,9 @@ d_cap$hg <- ifelse(
   rgamma(nrow(d_cap), shape = 2, rate = 0.5),
   0
 )
+# Ordered response for the ordinal row, drawn from no random stream.
+d_cap$ord <- factor(c("low", "mid", "high")[seq_len(nrow(d_cap)) %% 3L + 1L],
+  levels = c("low", "mid", "high"), ordered = TRUE)
 w_cap <- as.numeric(seq_len(nrow(d_cap)))
 
 set.seed(12L)

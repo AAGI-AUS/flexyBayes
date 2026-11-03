@@ -42,6 +42,8 @@
     stats::rgamma(nrow(d_cap), shape = 2, rate = 0.5),
     0
   )
+  d_cap$ord <- factor(c("low", "mid", "high")[seq_len(nrow(d_cap)) %% 3L + 1L],
+    levels = c("low", "mid", "high"), ordered = TRUE)
   w_cap <- as.numeric(seq_len(nrow(d_cap)))
 
   set.seed(12L)
@@ -151,6 +153,14 @@
     "GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect" = list(
       fit = function() {
         fb_inla(bin ~ env, random = ~gen, data = f$d_cap, family = "binomial")
+      },
+      link = "logit",
+      y = NULL,
+      slots = "sd:gen"
+    ),
+    "Ordinal regression (cumulative, continuation ratio)" = list(
+      fit = function() {
+        fb_inla(ord ~ env, random = ~gen, data = f$d_cap, family = "cumulative")
       },
       link = "logit",
       y = NULL,
@@ -313,6 +323,13 @@
         )
       },
       link = "log",
+      y = NULL
+    ),
+    "Ordinal regression (cumulative, continuation ratio)" = list(
+      code = function() {
+        fb_code(ord ~ env, random = ~gen, data = f$d_cap, family = "cumulative")
+      },
+      link = "logit",
       y = NULL
     ),
     "Uncorrelated random slope" = list(
