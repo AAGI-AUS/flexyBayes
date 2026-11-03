@@ -480,6 +480,36 @@ test_that("fb_kfold() scores groups jointly and refuses folds it cannot use", {
 
 # brms -----------------------------------------------------------------------------
 
+test_that("the cumulative family carries INLA's threshold prior on brms", {
+  skip_if_not_installed("brms")
+  skip_on_cran()
+  d <- .ord_sim_trial(41L, "cumulative", field = FALSE, n_plant = 4L)
+  code_of <- function(formula, ...) {
+    .ord_quiet(flexybayes(formula, random = ~ rep + plot, data = d,
+      family = "cumulative", backend = "brms", return_code = TRUE,
+      verbose = FALSE, ...))
+  }
+  # Dirichlet(1) on the category probabilities at a linear predictor of zero
+  # is the link's density on each ordered threshold, taken where brms
+  # reports b_Intercept: its centred thresholds shifted back.
+  logit <- code_of(stage ~ depth)
+  expect_match(logit,
+    "target += logistic_lpdf(Intercept + dot_product(means_X, b) | 0, 1);",
+    fixed = TRUE)
+  expect_no_match(logit, "student_t_lpdf(Intercept", fixed = TRUE)
+  expect_match(code_of(stage ~ depth, link = "probit"),
+    "target += std_normal_lpdf(Intercept + dot_product(means_X, b));",
+    fixed = TRUE)
+  expect_match(code_of(stage ~ 1),
+    "target += logistic_lpdf(Intercept | 0, 1);", fixed = TRUE)
+  # prior_fixed_sd reaches the coefficients and leaves the thresholds alone,
+  # as on INLA, where the intercept is pinned.
+  scaled <- code_of(stage ~ depth, prior_fixed_sd = 1)
+  expect_match(scaled, "logistic_lpdf(Intercept + dot_product", fixed = TRUE)
+  expect_no_match(scaled, "normal_lpdf(Intercept", fixed = TRUE)
+  expect_match(scaled, "normal_lpdf(b | 0, 1)", fixed = TRUE)
+})
+
 test_that("both families fit on brms, and agree with INLA without the field", {
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
@@ -512,5 +542,18 @@ test_that("both families fit on brms, and agree with INLA without the field", {
     )
     expect_error(residuals(fb),
       class = "flexybayes_refusal_ordinal_method_not_supported")
+    if (identical(fam, "cumulative")) {
+      # The statement is read back from the program brms compiled.
+      expect_match(fb$extras$ordinal$threshold_prior, "Dirichlet(1)",
+        fixed = TRUE)
+      ps <- prior_summary(fb)
+      slot <- ps$slots[ps$slots$slot_id == "stan:threshold:Intercept", ]
+      expect_identical(nrow(slot), 1L)
+      expect_identical(slot$input_id, "threshold:Intercept")
+      expect_true(slot$readback_agrees)
+      input <- ps$inputs[ps$inputs$input_id == "threshold:Intercept", ]
+      expect_identical(input$distribution, "dirichlet")
+      expect_identical(input$source, "structure_default")
+    }
   }
 })

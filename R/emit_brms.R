@@ -201,6 +201,19 @@ emit_brms <- function(
     ),
     fb
   )
+  # The cumulative family's threshold prior, the Dirichlet INLA's "pom"
+  # likelihood carries, written as one Stan statement (R/ordinal.R).
+  threshold <- .fb_ordinal_brms_threshold_prior(fb, brms_specs)
+  if (!is.null(threshold)) {
+    brms_specs <- threshold$specs
+    if (!is.null(threshold$stanvars)) {
+      stanvars <- if (is.null(stanvars)) {
+        threshold$stanvars
+      } else {
+        stanvars + threshold$stanvars
+      }
+    }
+  }
   pooled <- .fb_brms_pooled_lowering(
     .fb_pooled_blocks(fb),
     brms_specs,
@@ -510,11 +523,20 @@ emit_brms <- function(
         brmsfit,
         tagged_prior,
         completion = default_completion,
-        pooled_slots = .fb_manifest_brms_pooled_slots(
-          pooled,
-          if (!is.null(pooled)) brms::stancode(brmsfit)
+        pooled_slots = c(
+          .fb_manifest_brms_pooled_slots(
+            pooled,
+            if (!is.null(pooled)) brms::stancode(brmsfit)
+          ),
+          .fb_manifest_brms_threshold_slots(
+            threshold$statement,
+            if (!is.null(threshold$statement)) brms::stancode(brmsfit)
+          )
         )
       ),
+      # The Stan statement that carries the cumulative family's threshold
+      # prior, or NULL.
+      ordinal_threshold_statement = threshold$statement,
       # NULL unless the fit carries a pooled() prior. print(), summary()
       # and prior_summary() then name it.
       pooled = .fb_brms_pooled_record(pooled, draws_mat),

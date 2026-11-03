@@ -459,6 +459,11 @@ prior_summary.default <- function(object, ...) {
       )
     }
   }
+  # On a cumulative fit the thresholds carry the Dirichlet prior flexyBayes
+  # sets on both engines, so prior_fixed_sd reaches the coefficients only.
+  out$fixed_sd_thresholds_dirichlet <-
+    identical(object$extras$ordinal$family, "cumulative") &&
+    startsWith(object$extras$ordinal$threshold_prior %||% "", "a Dirichlet")
   # Which fixed-effect coefficients an fb_prior() covers with a `b()`
   # row. The engine-default sentence below is true only of the
   # coefficients nothing names: since 0.9.2 a `b()` row reaches brms as a
@@ -558,9 +563,19 @@ prior_summary.default <- function(object, ...) {
       "    prior_fixed_sd = ",
       format(x$fixed_sd_applied),
       "  ",
-      "(every fixed effect, intercept included, ~ N(0, ",
-      format(x$fixed_sd_applied),
-      "))\n",
+      if (isTRUE(x$fixed_sd_thresholds_dirichlet)) {
+        paste0(
+          "(every coefficient ~ N(0, ",
+          format(x$fixed_sd_applied),
+          "); the thresholds keep their Dirichlet prior)\n"
+        )
+      } else {
+        paste0(
+          "(every fixed effect, intercept included, ~ N(0, ",
+          format(x$fixed_sd_applied),
+          "))\n"
+        )
+      },
       sep = ""
     )
   } else {

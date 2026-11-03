@@ -179,7 +179,7 @@ print.fb_kfold <- function(x, ...) {
 }
 
 
-# Checks ------------------------------------------------------------------------
+# Checks -----------------------------------------------------------------------
 
 #' Refuse a fit fb_kfold() does not score
 #'
@@ -240,7 +240,11 @@ print.fb_kfold <- function(x, ...) {
       sum(spread > 1L),
       if (sum(spread > 1L) == 1L) " group of `" else " groups of `",
       group,
-      if (sum(spread > 1L) == 1L) "` spans more than one (" else "` span more than one (",
+      if (sum(spread > 1L) == 1L) {
+        "` spans more than one ("
+      } else {
+        "` span more than one ("
+      },
       paste(utils::head(names(spread)[spread > 1L], 3L), collapse = ", "),
       ")."
     ))
@@ -277,7 +281,7 @@ print.fb_kfold <- function(x, ...) {
 }
 
 
-# Held-out log likelihood -------------------------------------------------------
+# Held-out log likelihood ------------------------------------------------------
 
 #' The log of a mean of exponentials, computed stably
 #'

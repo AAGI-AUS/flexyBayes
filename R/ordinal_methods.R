@@ -270,7 +270,7 @@
 }
 
 
-# Design and random-term support ------------------------------------------------
+# Design and random-term support -----------------------------------------------
 
 #' The coefficient design of new rows
 #'
@@ -327,7 +327,7 @@
 }
 
 
-# Fitted and predicted probabilities --------------------------------------------
+# Fitted and predicted probabilities -------------------------------------------
 
 #' Category probabilities of an ordinal fit
 #'
@@ -509,7 +509,7 @@ predict.flexybayes_ordinal <- function(
 }
 
 
-# Coefficients and tables -------------------------------------------------------
+# Coefficients and tables ------------------------------------------------------
 
 #' Drop the engine's threshold rows from a coefficient table
 #'
@@ -692,7 +692,7 @@ model.matrix.flexybayes_ordinal <- function(object, ...) {
 }
 
 
-# Refusals ----------------------------------------------------------------------
+# Refusals ---------------------------------------------------------------------
 
 #' Refuse a method an ordinal fit has no answer for
 #'
@@ -738,7 +738,10 @@ plot.flexybayes_ordinal <- function(x, type = NULL, ...) {
   if (type %in% c("residuals", "variogram")) {
     .fb_ordinal_refuse_method(
       paste0("plot(type = \"", type, "\")"),
-      "The displays \"effects\", \"variance\" and \"blups\" read the latent scale."
+      paste0(
+        "The displays \"effects\", \"variance\" and \"blups\" read the ",
+        "latent scale."
+      )
     )
   }
   plot.flexybayes(x, type = type, ...)

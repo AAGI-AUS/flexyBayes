@@ -170,8 +170,9 @@ The thresholds carry a prior on each engine. On INLA the cumulative family's
 thresholds are hyperparameters of the likelihood, with a uniform Dirichlet
 prior on the category probabilities at $\eta = 0$. The continuation-ratio
 family's thresholds are fixed effects with INLA's fixed-effect prior. On brms
-both carry the prior of class `Intercept`. The printed fit names the
-threshold prior.
+the cumulative thresholds carry the same Dirichlet prior, and the
+continuation-ratio thresholds the prior of class `Intercept`. The printed fit
+names the threshold prior.
 
 ```{r prior}
 fit_cum

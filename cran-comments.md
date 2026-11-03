@@ -84,7 +84,7 @@ None. This is a new submission.
 
 ## Vignettes
 
-The six vignettes ship pre-computed. Their model fits are run by the
+The seven vignettes ship pre-computed. Their model fits are run by the
 maintainer with `vignettes/_precompile.R`, and the tarball contains the
 resulting markdown with the output already in it. Building the vignettes at
 check time fits no model, so it needs neither INLA nor a Stan toolchain.

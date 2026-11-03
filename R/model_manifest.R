@@ -1123,11 +1123,22 @@
       input_ids[[i]] <- id
     }
     density <- as.character(emitted$prior[[i]])
+    # The cumulative family's thresholds: the flat row stands beside the
+    # Stan statement that carries the Dirichlet (R/ordinal.R).
+    is_threshold <- identical(id, "threshold:Intercept")
     extra_rows[[length(extra_rows) + 1L]] <- .fb_manifest_input_frame(
       target = sub(":.*$", "", id),
       target_key = sub("^[^:]*:", "", id),
-      distribution = sub("\\(.*$", "", density),
-      parameters = density,
+      distribution = if (is_threshold) {
+        "dirichlet"
+      } else {
+        sub("\\(.*$", "", density)
+      },
+      parameters = if (is_threshold) {
+        paste0("concentration=", .FB_ORDINAL_POM_DIRICHLET)
+      } else {
+        density
+      },
       source = source
     )
   }
@@ -1225,6 +1236,32 @@
     evidence = .fb_manifest_evidence_unavailable("evidence_not_computed"),
     readback_complete = all(found) && all(pooled_agree)
   )
+}
+
+
+# The manifest slot of the cumulative family's threshold statement on brms,
+# read back from the program brms compiled (R/ordinal.R). A statement
+# missing from it does not agree.
+.fb_manifest_brms_threshold_slots <- function(statement, stancode) {
+  if (is.null(statement)) {
+    return(list())
+  }
+  code_lines <- trimws(strsplit(paste(stancode, collapse = "\n"), "\n")[[1L]])
+  found <- statement %in% code_lines
+  list(data.frame(
+    slot_id = "stan:threshold:Intercept",
+    engine = "brms",
+    section = "Intercept",
+    engine_slot = "Intercept",
+    target_key = "Intercept",
+    input_id = "threshold:Intercept",
+    structure = "ordinal_thresholds",
+    emitted = statement,
+    readback = if (found) statement else NA_character_,
+    readback_agrees = found,
+    source = "package",
+    stringsAsFactors = FALSE
+  ))
 }
 
 

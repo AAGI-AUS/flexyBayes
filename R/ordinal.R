@@ -730,7 +730,16 @@
         draws,
         .fb_ordinal_threshold_names(record$levels)
       ),
-      threshold_prior = "brms's prior on class Intercept"
+      threshold_prior = if (!is.null(out$extras$ordinal_threshold_statement)) {
+        paste0(
+          "a Dirichlet(",
+          .FB_ORDINAL_POM_DIRICHLET,
+          ") prior on the category probabilities at a linear predictor of ",
+          "zero, fixed by flexyBayes"
+        )
+      } else {
+        "brms's prior on class Intercept"
+      }
     )
   )
   class(out) <- c("flexybayes_ordinal", class(out))
@@ -759,6 +768,95 @@
   engine_fb <- fb
   engine_fb$response <- .FB_ORDINAL_RESPONSE
   list(fb = engine_fb, data = data, user_fb = fb)
+}
+
+
+#' The threshold prior of a cumulative brms fit
+#'
+#' INLA's "pom" likelihood puts a Dirichlet prior on the category
+#' probabilities at a linear predictor of zero, and flexyBayes fixes its
+#' concentration at 1 (`.FB_ORDINAL_POM_DIRICHLET`). At concentration 1 the
+#' Dirichlet density is constant, so the prior it induces on the thresholds
+#' is the product of the link's densities at each threshold, on the ordered
+#' thresholds: logistic(0, 1) under the logit link, standard normal under the
+#' probit link. brms gets the same prior as one Stan statement, with its own
+#' threshold prior replaced by a flat row.
+#'
+#' brms centres the fixed-effect columns, and its `Intercept` vector holds the
+#' thresholds at the column means. The thresholds at a linear predictor of
+#' zero are `Intercept + dot_product(means_X, b)`, the `b_Intercept` brms
+#' reports. The shift does not depend on the thresholds, so its Jacobian is 1.
+#' (`bf(center = FALSE)` is not used: under brms 2.23 a cumulative model
+#' without random effects then passes thresholds of 0 to its likelihood.)
+#'
+#' A threshold prior the caller wrote (a class `Intercept` row that did not
+#' come from `prior_fixed_sd`) is kept, and no statement is added.
+#'
+#' @param fb The `fb_terms` IR the engine fits.
+#' @param specs The brms prior specifications built so far.
+#' @returns `NULL` unless the family is cumulative, otherwise a list:
+#'   `specs`, the specifications with the threshold row, `stanvars`, the
+#'   statement as a brms `stanvars` object or `NULL`, and `statement`, its
+#'   text or `NULL`.
+#' @noRd
+#' @keywords internal
+.fb_ordinal_brms_threshold_prior <- function(fb, specs) {
+  if (!identical(.fb_ordinal_family(fb$family), "cumulative")) {
+    return(NULL)
+  }
+  if (!identical(.FB_ORDINAL_POM_DIRICHLET, 1)) {
+    stop(
+      "flexyBayes internal error: the brms threshold prior is written for ",
+      "a Dirichlet concentration of 1.",
+      call. = FALSE
+    )
+  }
+  is_threshold <- vapply(
+    specs,
+    function(s) identical(s$class, "Intercept"),
+    logical(1L)
+  )
+  from_scalar <- vapply(
+    specs,
+    function(s) identical(s$input, "scalar:prior_fixed_sd"),
+    logical(1L)
+  )
+  if (any(is_threshold & !from_scalar)) {
+    return(list(specs = specs, stanvars = NULL, statement = NULL))
+  }
+  link <- fb$link %||% "logit"
+  thresholds <- if (length(fb$fixed_terms) > 0L) {
+    "Intercept + dot_product(means_X, b)"
+  } else {
+    "Intercept"
+  }
+  density <- switch(
+    link,
+    logit = paste0("logistic_lpdf(", thresholds, " | 0, 1)"),
+    probit = paste0("std_normal_lpdf(", thresholds, ")"),
+    stop(
+      "flexyBayes internal error: cumulative link \"", link, "\" on brms.",
+      call. = FALSE
+    )
+  )
+  statement <- paste0("target += ", density, ";")
+  specs <- c(
+    specs[!(is_threshold & from_scalar)],
+    list(list(
+      string = "",
+      class = "Intercept",
+      coef = NA_character_,
+      group = NA_character_,
+      lb = NA_real_,
+      ub = NA_real_,
+      input = "threshold:Intercept"
+    ))
+  )
+  list(
+    specs = specs,
+    stanvars = brms::stanvar(scode = statement, block = "model"),
+    statement = statement
+  )
 }
 
 
