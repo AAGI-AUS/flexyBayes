@@ -1038,6 +1038,9 @@
   # entry is refused here, before any route is attempted.
   .refuse_non_binary_binomial_response(fb, data)
 
+  # An ordinal model without an intercept or with an offset (R/ordinal.R).
+  .fb_ordinal_refuse_unsupported(fb)
+
   # Factor-dictionary persistence. Build a metadata-only
   # <fb_dataset> descriptor at dispatch time so every exit path can
   # attach it to fit$extras$fb_dataset for downstream

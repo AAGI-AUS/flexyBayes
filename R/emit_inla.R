@@ -602,6 +602,15 @@ emit_inla <- function(
   data <- level_map$data
   # The summed offset on the rows this fit is handed, or NULL.
   offset_values <- .fb_offset_values(fb, data)
+  # An ordinal response is fitted on the IR and rows its engine route needs
+  # (R/ordinal.R). The user's IR and rows go back on the fit at the end.
+  user_fb <- fb
+  user_data <- data
+  ordinal <- .fb_ordinal_inla_setup(fb, data)
+  if (!is.null(ordinal)) {
+    fb <- ordinal$fb
+    data <- ordinal$data
+  }
 
   # `seed` and `control` are Stan sampler settings threaded through from
   # the public entry point. INLA's nested Laplace approximation has no
@@ -706,6 +715,9 @@ emit_inla <- function(
     control_fixed,
     .fb_inla_aliased_names(fb, data)
   )
+  if (identical(ordinal$route, "pom")) {
+    control_fixed <- .fb_ordinal_pin_intercept(control_fixed)
+  }
 
   if (return_code) {
     return(invisible(list(
@@ -916,7 +928,11 @@ emit_inla <- function(
   #
   # The field is faithful only with one observation per grid node. With a
   # gap or a replicate the latent index no longer matches the design, so an
-  # incomplete or replicated grid is refused here.
+  # incomplete or replicated grid is refused here. An ordinal response is
+  # the exception to the replicate rule: several observations of one plot
+  # (plants scored within it) share its node, and the grid must still be
+  # complete.
+  sub_sampled <- !is.null(ordinal)
   for (term in fb$random_terms) {
     ttype <- term$type %||% ""
     if (!ttype %in% c("ar1", "ar1_spatial")) {
@@ -947,7 +963,11 @@ emit_inla <- function(
           data[[term$col_var]],
           drop = TRUE
         )
-        one_obs_per_node <- nrow(data) == n_nodes && !any(duplicated(combos))
+        one_obs_per_node <- if (sub_sampled) {
+          nlevels(combos) == n_nodes
+        } else {
+          nrow(data) == n_nodes && !any(duplicated(combos))
+        }
         bad_at_levels <- if (one_obs_per_node) character(0L) else "<the design>"
       } else {
         # One field per level of at_var: each level's own subset must
@@ -962,7 +982,11 @@ emit_inla <- function(
             sub[[term$col_var]],
             drop = TRUE
           )
-          ok <- nrow(sub) == n_nodes && !any(duplicated(combos))
+          ok <- if (sub_sampled) {
+            nlevels(combos) == n_nodes
+          } else {
+            nrow(sub) == n_nodes && !any(duplicated(combos))
+          }
           if (!ok) {
             bad_at_levels <- c(bad_at_levels, as.character(lev))
           }
@@ -1062,10 +1086,13 @@ emit_inla <- function(
       }
       grid <- term$level_grids[[lev]]
       cells <- paste(row_f[at_lev], col_f[at_lev], sep = "\r")
-      if (
-        sum(at_lev) != length(grid$rows) * length(grid$cols) ||
-          anyDuplicated(cells) > 0L
-      ) {
+      n_cells <- length(grid$rows) * length(grid$cols)
+      incomplete <- if (sub_sampled) {
+        length(unique(cells)) != n_cells
+      } else {
+        sum(at_lev) != n_cells || anyDuplicated(cells) > 0L
+      }
+      if (incomplete) {
         bad <- c(bad, lev)
       }
       data_inla[[idx[["row"]]]] <- ifelse(
@@ -1813,6 +1840,9 @@ emit_inla <- function(
   .fb_warn_boundary_collapse(out)
   .fb_warn_weak_identification(out)
 
+  if (!is.null(ordinal)) {
+    out <- .fb_ordinal_finish_inla(out, ordinal, user_fb, user_data)
+  }
   out
 }
 
@@ -3149,6 +3179,11 @@ emit_inla <- function(
     "beta" = "beta",
     "lognormal" = "lognormal",
     "exponential" = "exponential",
+    # Ordinal (R/ordinal.R): the cumulative family is INLA's proportional
+    # odds likelihood, the continuation ratio a binomial fit to its binary
+    # expansion.
+    "cumulative" = "pom",
+    "cratio" = "binomial",
     fam
   )
 }
@@ -3285,6 +3320,11 @@ emit_inla <- function(
   unavailable <- character(0)
 
   for (nm in rownames(hp)) {
+    # The thresholds of the cumulative likelihood are not variance
+    # components; the ordinal record carries them (R/ordinal.R).
+    if (grepl("^theta[0-9]+ for POM$", nm)) {
+      next
+    }
     canonical <- unname(mapper$map[nm] %||% NA_character_)
     if (is.na(canonical)) {
       canonical <- nm

@@ -317,7 +317,13 @@ fb_from_asreml <- function(
     }
   )
   .fb_refuse_absent_model_variables(fb, data)
-  .fb_refuse_non_numeric_response(fb, data)
+  # An ordinal family takes an ordered factor, and records its categories
+  # from these data (R/ordinal.R). Every other family takes a number.
+  if (.fb_is_ordinal(fb)) {
+    fb$ordinal <- .fb_ordinal_record(fb, data)
+  } else {
+    .fb_refuse_non_numeric_response(fb, data)
+  }
   fb
 }
 

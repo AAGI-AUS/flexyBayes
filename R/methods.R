@@ -424,7 +424,10 @@ summary.flexybayes_aggregated <- function(object, ...) {
 #'   the table of unobserved design cells, in the columns `row`,
 #'   `estimate`, `std.error`, `conf.low`, `conf.high` plus any design
 #'   index variables the fit recorded. `"all"` is the named list of all
-#'   three.
+#'   three. On a fit with `family = "cumulative"` or `"cratio"`,
+#'   `"thresholds"` is the posterior means of the thresholds, named
+#'   `threshold[<lower>|<upper>]`, and `"all"` carries them as a fourth
+#'   element.
 #' @param ... Ignored, present for compatibility with the generic.
 #' @returns For `what = "fixed"`, a named numeric vector of the fixed
 #'   effects' posterior means on the treatment-contrast basis, named for

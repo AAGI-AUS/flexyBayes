@@ -846,7 +846,8 @@
     message_template = paste0(
       "Unsupported family \"%s\". flexyBayes supports: gaussian, ",
       "binomial, binary, poisson, negative_binomial, negbinom, ",
-      "gamma, beta, hurdle_gamma, lognormal. Other families (including ",
+      "gamma, beta, hurdle_gamma, lognormal, cumulative, cratio. Other ",
+      "families (including ",
       "survival / time-to-event and multivariate responses) are planned ",
       "future work. See fb_refusals()."
     ),

@@ -157,6 +157,8 @@
   .populate_refusal_registry_inla_best_of()
   # A pooled() prior sent to INLA.
   .populate_refusal_registry_pooled_prior()
+  # Ordinal responses and exact K-fold (R/ordinal.R).
+  .populate_refusal_registry_ordinal()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the

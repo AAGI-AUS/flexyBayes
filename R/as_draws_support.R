@@ -73,7 +73,11 @@
   .fb_check_posterior("as_draws()")
   .fb_check_n_draws(n_draws)
 
-  draws <- .fb_canonical_draws(x, n_samples = as.integer(n_draws))
+  draws <- if (inherits(x, "flexybayes_ordinal")) {
+    .fb_ordinal_canonical_draws(x, as.integer(n_draws))
+  } else {
+    .fb_canonical_draws(x, n_samples = as.integer(n_draws))
+  }
 
   if (length(draws) == 0L) {
     stop(.fb_refusal_condition(

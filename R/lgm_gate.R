@@ -315,6 +315,30 @@ print.lgm_refusal <- function(x, ...) {
   # carries every one of those likelihoods.
   resolved <- .resolve_inla_family(fb)
 
+  # INLA's cumulative likelihood declares one hyperparameter per threshold,
+  # which caps the number of categories it fits (R/ordinal.R).
+  if (
+    identical(resolved, "pom") &&
+      !is.null(fb$ordinal) &&
+      fb$ordinal$K > .fb_ordinal_inla_max_categories()
+  ) {
+    return(.lgm_fail(
+      "family_allowlist",
+      paste0(
+        "family \"cumulative\" with ",
+        fb$ordinal$K,
+        " categories is fitted on brms only: INLA's cumulative likelihood ",
+        "takes at most ",
+        .fb_ordinal_inla_max_categories(),
+        "."
+      ),
+      diagnostic = paste0(
+        "fb$family = \"cumulative\"; categories = ",
+        fb$ordinal$K
+      )
+    ))
+  }
+
   allowed <- .inla_likelihood_allowlist()
   if (tolower(resolved) %in% tolower(allowed)) {
     # INLA takes each family's default link only. The INLA emit passes no
@@ -430,6 +454,8 @@ print.lgm_refusal <- function(x, ...) {
     "cbinomial",
     "zeroinflatedbinomial0",
     "zeroinflatedbinomial1",
+    # Ordinal
+    "pom",
     # Survival
     "exponentialsurv",
     "weibullsurv",
@@ -675,6 +701,10 @@ print.lgm_refusal <- function(x, ...) {
     "t" = 2L,
     "lognormal" = 1L,
     "exponential" = 0L,
+    # One hyperparameter per threshold on INLA's "pom"; the continuation
+    # ratio's thresholds are fixed effects of its expansion.
+    "cumulative" = as.integer((fb$ordinal$K %||% 2L) - 1L),
+    "cratio" = 0L,
     1L
   )
 }

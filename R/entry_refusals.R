@@ -80,9 +80,9 @@
   ))
 }
 
-# .fb_refuse_non_numeric_response(): a factor or character response.
-# No family flexyBayes fits takes one. On INLA a factor was fitted on its
-# level codes. A binomial response keeps its own refusal.
+# .fb_refuse_non_numeric_response(): a factor or character response for a
+# family that is not ordinal. On INLA a factor was fitted on its level codes.
+# A binomial response keeps its own refusal.
 .fb_refuse_non_numeric_response <- function(fb, data) {
   yv <- .fb_response_values(fb, data)
   if (!is.factor(yv) && !is.character(yv)) {
@@ -102,7 +102,8 @@
       "family = \"",
       fb$family,
       "\" takes a numeric response. Recode it ",
-      "to the numbers the family models."
+      "to the numbers the family models. An ordered category is modelled ",
+      "by family = \"cumulative\" or \"cratio\"."
     ),
     column = fb$response
   ))
@@ -150,8 +151,8 @@
   reg(
     "response_not_numeric",
     paste0(
-      "The response is a factor or character vector, which no family ",
-      "flexyBayes fits takes."
+      "The response is a factor or character vector, and the family is ",
+      "not an ordinal one."
     )
   )
   reg(

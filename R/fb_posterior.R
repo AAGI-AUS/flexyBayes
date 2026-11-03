@@ -29,9 +29,18 @@
 #
 # Value transforms (e.g. INLA precision -> SD) key on the native name and
 # apply BEFORE any rename, so a caller never double-applies them.
-.fb_canonical_draws <- function(fit, n_samples = 1000L, drop = TRUE) {
+.fb_canonical_draws <- function(
+  fit,
+  n_samples = 1000L,
+  drop = TRUE,
+  raw = NULL
+) {
   # A brms fit returns the draws its sampler stored and refuses n_samples.
-  draws <- if (inherits(fit, "flexybayes_brms")) {
+  # `raw` passes draws already taken, so a caller can read other quantities
+  # from the same draws (R/ordinal_methods.R).
+  draws <- if (!is.null(raw)) {
+    raw
+  } else if (inherits(fit, "flexybayes_brms")) {
     fb_as_draws_simple(fit)
   } else {
     fb_as_draws_simple(fit, n_samples = n_samples)

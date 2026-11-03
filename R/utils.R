@@ -196,7 +196,12 @@
     # likelihood roster does carry a lognormal, but no INLA fit of it is
     # validated, so lgm_gate() refuses `backend = "inla"` for it by name on
     # the family row.
-    lognormal = "identity"
+    lognormal = "identity",
+    # Ordinal (R/ordinal.R). brms receives each link as written. INLA fits
+    # the logit only, as "pom" and as the binary expansion of the
+    # continuation ratio.
+    cumulative = c("logit", "probit"),
+    cratio = c("logit", "probit", "cloglog")
   )
 }
 

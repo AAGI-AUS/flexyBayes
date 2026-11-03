@@ -825,7 +825,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
         "hurdle_gamma"
       )
   is_logit_link <- isTRUE(link_name == "logit") ||
-    fam %in% c("binomial", "binary", "beta")
+    fam %in% c("binomial", "binary", "beta", "cumulative", "cratio")
 
   if (is_logit_link) {
     return(list(scale = 2.5, basis = "logit_default"))
@@ -1032,7 +1032,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
         "hurdle_gamma"
       )
   is_logit_link <- isTRUE(link_name == "logit") ||
-    fam %in% c("binomial", "binary", "beta")
+    fam %in% c("binomial", "binary", "beta", "cumulative", "cratio")
 
   if (is_logit_link) {
     return("logit")

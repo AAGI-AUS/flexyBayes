@@ -128,6 +128,16 @@ emit_brms <- function(
     "extraction shim. Install via install.packages('posterior')."
   )
 
+  # An ordinal response reaches brms as its category code (R/ordinal.R).
+  # The user's IR and rows go back on the fit at the end.
+  user_data <- data
+  ordinal <- .fb_ordinal_brms_setup(fb, data)
+  if (!is.null(ordinal)) {
+    user_fb <- ordinal$user_fb
+    fb <- ordinal$fb
+    data <- ordinal$data
+  }
+
   # -- formula + family + prior ------------------------------------
   # A missing response has to be handled explicitly here: brms drops those
   # rows otherwise, silently turning augmentation into deletion.
@@ -542,6 +552,9 @@ emit_brms <- function(
   # component at the boundary is reported identically on both engines.
   .fb_warn_boundary_collapse(out)
 
+  if (!is.null(ordinal)) {
+    out <- .fb_ordinal_finish_brms(out, user_fb, user_data)
+  }
   out
 }
 
@@ -1490,6 +1503,11 @@ emit_brms <- function(
   }
   if (fam == "beta") {
     return(get("Beta", envir = ns)())
+  }
+  # Ordinal (R/ordinal.R): brms's own families, thresholds b_Intercept[k].
+  if (fam %in% c("cumulative", "cratio")) {
+    link_clean <- link_clean %||% "logit"
+    return(get(fam, envir = ns)(link = link_clean))
   }
   if (fam == "hurdle_gamma") {
     # brms-native: `brms::brmsfamily("hurdle_gamma")` declares
