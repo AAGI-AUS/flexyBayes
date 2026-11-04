@@ -5,7 +5,7 @@ ASReml or brms syntax. It fits them with INLA, or with Stan through
 brms. If the chosen engine cannot fit a model, flexyBayes stops and says
 why.
 
-Version 0.18.1. Not on CRAN, and the functions may still change.
+Version 0.19.0. Not on CRAN, and the functions may still change.
 
 ## Installation
 
@@ -90,6 +90,7 @@ and the models neither engine fits, are in
 | Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits |
 | Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits |
+| Ordinal regression (cumulative, continuation ratio) | `family = "cumulative"` / `family = "cratio"` | fits | fits |
 | Uncorrelated random slope | `(x \|\| g)` | fits | fits |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | fits | fits |
 | Correlated random slope | `(x \| g)` | refuses | fits |
@@ -298,6 +299,8 @@ Tidiers, emmeans, marginaleffects, and draws conversion.
   : Approximate leave-one-out cross-validation for a flexyBayes fit
 - [`pp_check(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/pp_check.flexybayes.md)
   : Posterior predictive check for a flexyBayes fit
+- [`fb_kfold()`](https://aagi-aus.github.io/flexyBayes/reference/fb_kfold.md)
+  : Exact K-fold cross-validation of an ordinal fit
 
 ## Methods
 
@@ -353,6 +356,7 @@ here for completeness.
   Print an `<fb_plan>` — flight-checklist form
 
 - [`coef(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md)
+  [`coef(`*`<flexybayes_ordinal>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md)
   : Extract coefficients from a flexyBayes fit
 
 - [`coef(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes_inla.md)
@@ -401,6 +405,10 @@ here for completeness.
 
 - [`fitted(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fitted.flexybayes_aggregated.md)
   : Fitted values of an aggregated count fit
+
+- [`fitted(`*`<flexybayes_ordinal>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/ordinal_probabilities.md)
+  [`predict(`*`<flexybayes_ordinal>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/ordinal_probabilities.md)
+  : Category probabilities of an ordinal fit
 
 - [`residuals(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes.md)
   : Extract residuals
@@ -501,3 +509,5 @@ stages, and a guide for ASReml-R users.
   trials](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-06-two-stage.md):
 - [Moving from
   ASReml-R](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-07-from-asreml.md):
+- [Ordinal scores in a field
+  trial](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-08-ordinal.md):

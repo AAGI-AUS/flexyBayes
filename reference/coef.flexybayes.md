@@ -12,6 +12,9 @@ calls.
 ``` r
 # S3 method for class 'flexybayes'
 coef(object, what = c("fixed", "random", "missing", "all"), ...)
+
+# S3 method for class 'flexybayes_ordinal'
+coef(object, what = c("fixed", "thresholds", "random", "missing", "all"), ...)
 ```
 
 ## Arguments
@@ -29,7 +32,10 @@ coef(object, what = c("fixed", "random", "missing", "all"), ...)
   more than one effect names the effect in `level`. `"missing"` is the
   table of unobserved design cells, in the columns `row`, `estimate`,
   `std.error`, `conf.low`, `conf.high` plus any design index variables
-  the fit recorded. `"all"` is the named list of all three.
+  the fit recorded. `"all"` is the named list of all three. On a fit
+  with `family = "cumulative"` or `"cratio"`, `"thresholds"` is the
+  posterior means of the thresholds, named `threshold[<lower>|<upper>]`,
+  and `"all"` carries them as a fourth element.
 
 - ...:
 

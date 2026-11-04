@@ -235,11 +235,11 @@ fb(
 - family:
 
   Character: `"gaussian"`, `"binomial"`, `"poisson"`,
-  `"negative_binomial"`, `"gamma"`, `"beta"`, `"hurdle_gamma"` or
-  `"lognormal"`. The last two are brms only: INLA's likelihood roster
-  has no hurdle gamma, and no INLA lognormal fit is validated, so the
-  family gate refuses both there and `backend = "auto"` routes them to
-  brms. A family object
+  `"negative_binomial"`, `"gamma"`, `"beta"`, `"cumulative"`,
+  `"cratio"`, `"hurdle_gamma"` or `"lognormal"`. The last two are brms
+  only: INLA's likelihood roster has no hurdle gamma, and no INLA
+  lognormal fit is validated, so the family gate refuses both there and
+  `backend = "auto"` routes them to brms. A family object
   ([`binomial()`](https://rdrr.io/r/stats/family.html),
   [`gaussian()`](https://rdrr.io/r/stats/family.html),
   [`brms::lognormal()`](https://paulbuerkner.com/brms/reference/brmsfamily.html))
@@ -254,7 +254,24 @@ fb(
   `"lognormal"`, negative for `"hurdle_gamma"`, at or outside \[0, 1\]
   for `"beta"`) is refused by name (`family_response_domain_violation`)
   before any engine runs. A missing (`NA`) response is `na_action`'s
-  concern, not a domain violation.
+  concern, not a domain violation. The ordinal families are
+  `"cumulative"` (proportional odds) and `"cratio"` (continuation ratio,
+  the sequential model of Cao et al. 2026). The response is an ordered
+  factor or a whole-number vector, its categories are the values
+  observed, in order, and thresholds follow brms's convention:
+  `P(Y <= k) = F(tau_k - eta)` for `"cumulative"` and
+  `P(Y > k | Y >= k) = F(eta - tau_k)` for `"cratio"`. The model keeps
+  its intercept, whose place the thresholds take. INLA fits both
+  families with the random structures it fits for a binomial response,
+  the `ar1(row):ar1(col)` field included, and the cumulative family with
+  at most 11 categories. brms fits both without the field. A factor that
+  is not ordered, or a character or logical response, is refused
+  (`ordinal_response_unordered`), and so is an offset
+  (`ordinal_offset_not_supported`). Category probabilities come from
+  [`fitted()`](https://rdrr.io/r/stats/fitted.values.html) and
+  [`predict()`](https://rdrr.io/r/stats/predict.html), and
+  [`fb_kfold()`](https://aagi-aus.github.io/flexyBayes/reference/fb_kfold.md)
+  cross-validates the fit.
 
 - link:
 
@@ -267,7 +284,8 @@ fb(
   `sqrt`; negative_binomial `log`, `identity`, `sqrt`, `softplus`,
   `squareplus`; gamma `log`, `identity`, `inverse`; hurdle_gamma `log`,
   `identity`, `inverse`, `softplus`, `squareplus`; beta `logit`;
-  lognormal `identity`. `backend = "inla"` takes the default link only,
+  lognormal `identity`; cumulative `logit`, `probit`; cratio `logit`,
+  `probit`, `cloglog`. `backend = "inla"` takes the default link only,
   refusing any other by name (`inla_gate_refused`), and
   `backend = "auto"` fits another link on brms. A link outside the list
   is refused by name (`unsupported_family`) on every backend.
@@ -555,35 +573,37 @@ fb(
 
   **What each engine represents.** INLA fits: Gaussian LMM, simple
   random intercept; GLMM (binomial, Poisson, negative binomial, gamma,
-  beta), simple random effect; Uncorrelated random slope;
-  Factor-by-numeric fixed interaction; Nested / interaction random
-  effects, multi-stratum; Heterogeneous variance by factor level;
-  Heterogeneous residual by factor level; Baseline heteroscedastic MET:
-  iid genotype, iid genotype-by-environment and a sectioned residual;
-  Known-covariance genomic / pedigree random effect; Separable AR1
-  spatial field; Per-trial separable AR1 field; Grouped temporal AR1
-  field; Univariate P-spline; Observation weights (Gaussian, identity
-  link); Exact sufficient-statistic aggregation (binomial, Poisson).
-  INLA refuses: Hurdle gamma (zero mass plus a positive gamma part);
-  Correlated random slope; Unstructured genotype-by-environment
-  covariance; Heterogeneous variances with one shared correlation;
-  Factor-analytic genotype-by-environment covariance; Multi-trait
-  covariance; Exact sufficient-statistic aggregation (Gaussian). brms
-  fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson,
-  negative binomial, gamma, beta), simple random effect; Hurdle gamma
-  (zero mass plus a positive gamma part); Uncorrelated random slope;
-  Factor-by-numeric fixed interaction; Correlated random slope; Nested /
-  interaction random effects, multi-stratum; Heterogeneous variance by
-  factor level; Unstructured genotype-by-environment covariance;
-  Heterogeneous residual by factor level; Baseline heteroscedastic MET:
-  iid genotype, iid genotype-by-environment and a sectioned residual;
-  Known-covariance genomic / pedigree random effect; Observation weights
-  (Gaussian, identity link). brms refuses: Heterogeneous variances with
-  one shared correlation; Factor-analytic genotype-by-environment
-  covariance; Multi-trait covariance; Separable AR1 spatial field;
+  beta), simple random effect; Ordinal regression (cumulative,
+  continuation ratio); Uncorrelated random slope; Factor-by-numeric
+  fixed interaction; Nested / interaction random effects, multi-stratum;
+  Heterogeneous variance by factor level; Heterogeneous residual by
+  factor level; Baseline heteroscedastic MET: iid genotype, iid
+  genotype-by-environment and a sectioned residual; Known-covariance
+  genomic / pedigree random effect; Separable AR1 spatial field;
   Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate
-  P-spline. The per-class table is in `README.md`, and with a note on
-  each row in `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
+  P-spline; Observation weights (Gaussian, identity link); Exact
+  sufficient-statistic aggregation (binomial, Poisson). INLA refuses:
+  Hurdle gamma (zero mass plus a positive gamma part); Correlated random
+  slope; Unstructured genotype-by-environment covariance; Heterogeneous
+  variances with one shared correlation; Factor-analytic
+  genotype-by-environment covariance; Multi-trait covariance; Exact
+  sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM,
+  simple random intercept; GLMM (binomial, Poisson, negative binomial,
+  gamma, beta), simple random effect; Hurdle gamma (zero mass plus a
+  positive gamma part); Ordinal regression (cumulative, continuation
+  ratio); Uncorrelated random slope; Factor-by-numeric fixed
+  interaction; Correlated random slope; Nested / interaction random
+  effects, multi-stratum; Heterogeneous variance by factor level;
+  Unstructured genotype-by-environment covariance; Heterogeneous
+  residual by factor level; Baseline heteroscedastic MET: iid genotype,
+  iid genotype-by-environment and a sectioned residual; Known-covariance
+  genomic / pedigree random effect; Observation weights (Gaussian,
+  identity link). brms refuses: Heterogeneous variances with one shared
+  correlation; Factor-analytic genotype-by-environment covariance;
+  Multi-trait covariance; Separable AR1 spatial field; Per-trial
+  separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+  The per-class table is in `README.md`, and with a note on each row in
+  `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
 
   **Caution (small-group random effects).** Both engines apply the same
   default prior, the half-normal on each standard deviation, which the
@@ -817,6 +837,12 @@ the data and the fit costs time on every call.
 `fb()` is deprecated in flexyBayes 0.13.0 and will be removed in a later
 release. Call `flexybayes()`, which takes the same arguments. A call to
 `fb()` warns with a condition of class `flexybayes_deprecated`.
+
+## References
+
+Cao Z, Megirian R, Nguyen M, Sparks AH (2026). Bayesian ordinal analysis
+of cereal growth stage data from oat trials in Western Australia.
+arXiv:2610.37384.
 
 ## Examples
 

@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.19.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
     <li><a class="dropdown-item" href="articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
     <li><a class="dropdown-item" href="articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-08-ordinal.html">08: Ordinal scores in a field trial</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -64,7 +65,7 @@
 <div class="page-header"><h1 id="flexybayes">flexyBayes<a class="anchor" aria-label="anchor" href="#flexybayes"></a>
 </h1></div>
 <p>flexyBayes fits linear and generalised linear mixed models written in ASReml or brms syntax. It fits them with INLA, or with Stan through brms. If the chosen engine cannot fit a model, flexyBayes stops and says why.</p>
-<p>Version 0.18.1. Not on CRAN, and the functions may still change.</p>
+<p>Version 0.19.0. Not on CRAN, and the functions may still change.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -152,6 +153,14 @@
 <td>Hurdle gamma (zero mass plus a positive gamma part)</td>
 <td><code>family = "hurdle_gamma"</code></td>
 <td align="center">refuses</td>
+<td align="center">fits</td>
+</tr>
+<tr>
+<td>Ordinal regression (cumulative, continuation ratio)</td>
+<td>
+<code>family = "cumulative"</code> / <code>family = "cratio"</code>
+</td>
+<td align="center">fits</td>
 <td align="center">fits</td>
 </tr>
 <tr>

@@ -138,6 +138,8 @@ Tidiers, emmeans, marginaleffects, and draws conversion.
   : Approximate leave-one-out cross-validation for a flexyBayes fit
 - [`pp_check(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/pp_check.flexybayes.md)
   : Posterior predictive check for a flexyBayes fit
+- [`fb_kfold()`](https://aagi-aus.github.io/flexyBayes/reference/fb_kfold.md)
+  : Exact K-fold cross-validation of an ordinal fit
 
 ## Methods
 
@@ -193,6 +195,7 @@ here for completeness.
   Print an `<fb_plan>` — flight-checklist form
 
 - [`coef(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md)
+  [`coef(`*`<flexybayes_ordinal>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md)
   : Extract coefficients from a flexyBayes fit
 
 - [`coef(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes_inla.md)
@@ -241,6 +244,10 @@ here for completeness.
 
 - [`fitted(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fitted.flexybayes_aggregated.md)
   : Fitted values of an aggregated count fit
+
+- [`fitted(`*`<flexybayes_ordinal>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/ordinal_probabilities.md)
+  [`predict(`*`<flexybayes_ordinal>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/ordinal_probabilities.md)
+  : Category probabilities of an ordinal fit
 
 - [`residuals(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes.md)
   : Extract residuals

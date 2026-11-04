@@ -23,7 +23,7 @@ tryCatch(fit, flexybayes_refusal_precision_not_symmetric = handler)."></head><bo
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.19.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@ tryCatch(fit, flexybayes_refusal_precision_not_symmetric = handler)."></head><bo
     <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-ordinal.html">08: Ordinal scores in a field trial</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -117,7 +118,7 @@ plug-in's name for the rest.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">fb_refusals</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> flexyBayes refusal registry: 180 reasons</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> flexyBayes refusal registry: 192 reasons</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.16.0] aggregate_argument_invalid</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       `aggregate` is not TRUE, FALSE or "auto".</span>
@@ -624,6 +625,21 @@ plug-in's name for the rest.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       request is refused before anything is fitted, so no fit runs</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       without the protection that was asked for.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] kfold_category_missing_in_training</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       A fold of fb_kfold() leaves a response category with no training</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       observation.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] kfold_family_not_supported</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       fb_kfold() was called on a fit whose family it does not score.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] kfold_folds_invalid</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       fb_kfold() was given folds or groups it cannot use: the wrong</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       length, fewer than two folds, or a group split across folds.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] kfold_response_not_a_column</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       fb_kfold() was called on a fit whose response is an expression,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       not a column it can set to missing.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.4.0] known_matrices_data_name_collision</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       INLA emit: a known-matrices / blocks carrier name collides with a</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       data column name.</span>
@@ -752,6 +768,38 @@ plug-in's name for the rest.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       ASReml user and as one independent deviation per cell to the</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       emitted model, flexyBayes refuses instead of choosing one of the</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       two readings.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_draws_unavailable</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       Category probabilities were asked of an ordinal INLA fit that</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       kept no posterior configurations to draw from.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_fixed_without_intercept</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       An ordinal model was written without an intercept, whose place</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       its thresholds take.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_method_not_supported</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       A method that reads a mean response, a residual or a per-row</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       likelihood was called on an ordinal fit.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_offset_not_supported</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       An ordinal model was given an offset, which this version does not</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       fit.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_response_category_unknown</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       A response value lies outside the categories of the ordinal model</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       it is used with.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_response_not_integer</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       An ordinal family was given a numeric response that is not whole</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       numbers.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_response_too_few_categories</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       An ordinal family was given a response with fewer than two</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       categories.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.19.0] ordinal_response_unordered</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       An ordinal family was given a response whose order is not stated:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       a factor that is not ordered, a character or a logical vector.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.15.0.9001] plan_argument_unknown</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       fb_plan() was given an argument it does not take, such as a</span>
@@ -944,8 +992,8 @@ plug-in's name for the rest.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       not a column of `data`.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.16.0] response_not_numeric</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       The response is a factor or character vector, which no family</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       flexyBayes fits takes.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       The response is a factor or character vector, and the family is</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       not an ordinal one.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [since 0.4.0] review_code_backend_unsupported</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       review_code = TRUE was requested on a backend with no code to</span>

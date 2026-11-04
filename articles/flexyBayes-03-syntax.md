@@ -82,7 +82,7 @@ Every message flexyBayes can stop with is listed by
 ``` r
 
 nrow(fb_refusals())
-#> [1] 180
+#> [1] 192
 head(fb_refusals()$reason_code)
 #> [1] "aggregate_argument_invalid"             
 #> [2] "aggregated_evidence_unavailable"        

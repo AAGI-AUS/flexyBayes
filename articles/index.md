@@ -19,3 +19,5 @@ stages, and a guide for ASReml-R users.
   trials](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-06-two-stage.md):
 - [Moving from
   ASReml-R](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-07-from-asreml.md):
+- [Ordinal scores in a field
+  trial](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-08-ordinal.md):

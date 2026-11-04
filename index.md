@@ -5,7 +5,7 @@ ASReml or brms syntax. It fits them with INLA, or with Stan through
 brms. If the chosen engine cannot fit a model, flexyBayes stops and says
 why.
 
-Version 0.18.1. Not on CRAN, and the functions may still change.
+Version 0.19.0. Not on CRAN, and the functions may still change.
 
 ## Installation
 
@@ -90,6 +90,7 @@ and the models neither engine fits, are in
 | Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits |
 | Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits |
+| Ordinal regression (cumulative, continuation ratio) | `family = "cumulative"` / `family = "cratio"` | fits | fits |
 | Uncorrelated random slope | `(x \|\| g)` | fits | fits |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | fits | fits |
 | Correlated random slope | `(x \| g)` | refuses | fits |

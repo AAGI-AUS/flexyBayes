@@ -59,7 +59,7 @@ The `package` column names the package each reason belongs to:
 
 ``` r
 fb_refusals()
-#> flexyBayes refusal registry: 180 reasons
+#> flexyBayes refusal registry: 192 reasons
 #> 
 #>   [since 0.16.0] aggregate_argument_invalid
 #>       `aggregate` is not TRUE, FALSE or "auto".
@@ -566,6 +566,21 @@ fb_refusals()
 #>       request is refused before anything is fitted, so no fit runs
 #>       without the protection that was asked for.
 #> 
+#>   [since 0.19.0] kfold_category_missing_in_training
+#>       A fold of fb_kfold() leaves a response category with no training
+#>       observation.
+#> 
+#>   [since 0.19.0] kfold_family_not_supported
+#>       fb_kfold() was called on a fit whose family it does not score.
+#> 
+#>   [since 0.19.0] kfold_folds_invalid
+#>       fb_kfold() was given folds or groups it cannot use: the wrong
+#>       length, fewer than two folds, or a group split across folds.
+#> 
+#>   [since 0.19.0] kfold_response_not_a_column
+#>       fb_kfold() was called on a fit whose response is an expression,
+#>       not a column it can set to missing.
+#> 
 #>   [since 0.4.0] known_matrices_data_name_collision
 #>       INLA emit: a known-matrices / blocks carrier name collides with a
 #>       data column name.
@@ -694,6 +709,38 @@ fb_refusals()
 #>       ASReml user and as one independent deviation per cell to the
 #>       emitted model, flexyBayes refuses instead of choosing one of the
 #>       two readings.
+#> 
+#>   [since 0.19.0] ordinal_draws_unavailable
+#>       Category probabilities were asked of an ordinal INLA fit that
+#>       kept no posterior configurations to draw from.
+#> 
+#>   [since 0.19.0] ordinal_fixed_without_intercept
+#>       An ordinal model was written without an intercept, whose place
+#>       its thresholds take.
+#> 
+#>   [since 0.19.0] ordinal_method_not_supported
+#>       A method that reads a mean response, a residual or a per-row
+#>       likelihood was called on an ordinal fit.
+#> 
+#>   [since 0.19.0] ordinal_offset_not_supported
+#>       An ordinal model was given an offset, which this version does not
+#>       fit.
+#> 
+#>   [since 0.19.0] ordinal_response_category_unknown
+#>       A response value lies outside the categories of the ordinal model
+#>       it is used with.
+#> 
+#>   [since 0.19.0] ordinal_response_not_integer
+#>       An ordinal family was given a numeric response that is not whole
+#>       numbers.
+#> 
+#>   [since 0.19.0] ordinal_response_too_few_categories
+#>       An ordinal family was given a response with fewer than two
+#>       categories.
+#> 
+#>   [since 0.19.0] ordinal_response_unordered
+#>       An ordinal family was given a response whose order is not stated:
+#>       a factor that is not ordered, a character or a logical vector.
 #> 
 #>   [since 0.15.0.9001] plan_argument_unknown
 #>       fb_plan() was given an argument it does not take, such as a
@@ -886,8 +933,8 @@ fb_refusals()
 #>       not a column of `data`.
 #> 
 #>   [since 0.16.0] response_not_numeric
-#>       The response is a factor or character vector, which no family
-#>       flexyBayes fits takes.
+#>       The response is a factor or character vector, and the family is
+#>       not an ordinal one.
 #> 
 #>   [since 0.4.0] review_code_backend_unsupported
 #>       review_code = TRUE was requested on a backend with no code to

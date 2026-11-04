@@ -17,7 +17,7 @@ diagnostics, and extras for secondary analyses."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.19.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ diagnostics, and extras for secondary analyses."></head><body>
     <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-ordinal.html">08: Ordinal scores in a field trial</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -273,8 +274,9 @@ pointer to the random-side field described under <code>random</code> above.</p><
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
 <dd><p>Character: <code>"gaussian"</code>, <code>"binomial"</code>, <code>"poisson"</code>,
-<code>"negative_binomial"</code>, <code>"gamma"</code>, <code>"beta"</code>, <code>"hurdle_gamma"</code> or
-<code>"lognormal"</code>. The last two are brms only: INLA's likelihood roster
+<code>"negative_binomial"</code>, <code>"gamma"</code>, <code>"beta"</code>, <code>"cumulative"</code>,
+<code>"cratio"</code>, <code>"hurdle_gamma"</code> or <code>"lognormal"</code>. The last two are brms
+only: INLA's likelihood roster
 has no hurdle gamma, and no INLA lognormal fit is validated, so the
 family gate refuses both there and <code>backend = "auto"</code> routes them to
 brms.
@@ -290,7 +292,22 @@ A response outside the family's domain (0 or negative for <code>"gamma"</code>
 or <code>"lognormal"</code>, negative for <code>"hurdle_gamma"</code>, at or outside [0, 1]
 for <code>"beta"</code>) is refused by name (<code>family_response_domain_violation</code>)
 before any engine runs. A missing (<code>NA</code>) response is <code>na_action</code>'s
-concern, not a domain violation.</p></dd>
+concern, not a domain violation.
+The ordinal families are <code>"cumulative"</code> (proportional odds) and
+<code>"cratio"</code> (continuation ratio, the sequential model of Cao et al.
+2026). The response is an ordered factor or a whole-number vector,
+its categories are the values observed, in order, and thresholds
+follow brms's convention: <code>P(Y &lt;= k) = F(tau_k - eta)</code> for
+<code>"cumulative"</code> and <code>P(Y &gt; k | Y &gt;= k) = F(eta - tau_k)</code> for
+<code>"cratio"</code>. The model keeps its intercept, whose place the thresholds
+take. INLA fits both families with the random structures it fits for
+a binomial response, the <code>ar1(row):ar1(col)</code> field included, and the
+cumulative family with at most 11 categories. brms fits both without
+the field. A factor that is not ordered, or a character or logical
+response, is refused (<code>ordinal_response_unordered</code>), and so is an
+offset (<code>ordinal_offset_not_supported</code>). Category probabilities come
+from <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> and <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>, and <code><a href="fb_kfold.html">fb_kfold()</a></code> cross-validates
+the fit.</p></dd>
 
 
 <dt id="arg-link">link<a class="anchor" aria-label="anchor" href="#arg-link"></a></dt>
@@ -303,7 +320,8 @@ first: gaussian <code>identity</code>, <code>log</code>, <code>inverse</code>, <
 <code>identity</code>, <code>sqrt</code>; negative_binomial <code>log</code>, <code>identity</code>, <code>sqrt</code>,
 <code>softplus</code>, <code>squareplus</code>; gamma <code>log</code>, <code>identity</code>, <code>inverse</code>;
 hurdle_gamma <code>log</code>, <code>identity</code>, <code>inverse</code>, <code>softplus</code>, <code>squareplus</code>;
-beta <code>logit</code>; lognormal <code>identity</code>. <code>backend = "inla"</code> takes the default
+beta <code>logit</code>; lognormal <code>identity</code>; cumulative <code>logit</code>, <code>probit</code>;
+cratio <code>logit</code>, <code>probit</code>, <code>cloglog</code>. <code>backend = "inla"</code> takes the default
 link only, refusing any other by name (<code>inla_gate_refused</code>), and
 <code>backend = "auto"</code> fits another link on brms. A link outside the list
 is refused by name (<code>unsupported_family</code>) on every backend.</p></dd>
@@ -569,7 +587,7 @@ silenceable via <code>options(flexyBayes.silence_auto_fallback_note = TRUE)</cod
 <code>options(flexyBayes.silence_auto_inla_missing_note = TRUE)</code> (INLA not
 installed).</p>
 <p><strong>What each engine represents.</strong>
-INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link). brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Ordinal regression (cumulative, continuation ratio); Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Ordinal regression (cumulative, continuation ratio); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link). brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
 The per-class table is in <code>README.md</code>, and with a note on each row in
 <code>system.file("KNOWN_ISSUES.md", package = "flexyBayes")</code>.</p>
 <p><strong>Caution (small-group random effects).</strong> Both engines apply the same
@@ -791,6 +809,12 @@ moving the data and the fit costs time on every call.</p>
 <p><code>fb()</code> is deprecated in flexyBayes 0.13.0 and will be removed in a later
 release. Call <code>flexybayes()</code>, which takes the same arguments. A call to
 <code>fb()</code> warns with a condition of class <code>flexybayes_deprecated</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Cao Z, Megirian R, Nguyen M, Sparks AH (2026). Bayesian
+ordinal analysis of cereal growth stage data from oat trials in Western
+Australia. arXiv:2610.37384.</p>
     </div>
 
     <div class="section level2">

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are made on the 0.18.x line (0.18.1 and later 0.18.x
+Security fixes are made on the 0.19.x line (0.19.0 and later 0.19.x
 releases) and on the latest CRAN release once there is one. Older
 versions are not patched.
 

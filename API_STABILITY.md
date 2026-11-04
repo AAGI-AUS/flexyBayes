@@ -1,6 +1,6 @@
 # API stability
 
-This document describes the stability of the flexyBayes 0.18.1
+This document describes the stability of the flexyBayes 0.19.0
 interface. Every export is at the experimental lifecycle stage, so the
 guarantees are weaker than they will be at 1.0. Bug fixes and additions
 never break callers. Renamings, default changes and changes of shape are
@@ -120,6 +120,7 @@ object. Pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | [`fb_backend_status()`](https://aagi-aus.github.io/flexyBayes/reference/fb_backend_status.md) | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
 | [`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md) | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
 | [`proceed()`](https://aagi-aus.github.io/flexyBayes/reference/proceed.md), [`cat_code()`](https://aagi-aus.github.io/flexyBayes/reference/cat_code.md) | deprecated in 0.13.0 | Companions to the `review_code = TRUE` workflow (inspect the generated engine code, then run it). brms is the only engine with generated code to review, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. The generated code is the token’s `code` element, and `flexybayes(..., return_code = TRUE)` returns it. To fit, call [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) with the same arguments and `review_code = FALSE`. |
+| [`fb_kfold()`](https://aagi-aus.github.io/flexyBayes/reference/fb_kfold.md) | experimental | Exact K-fold cross-validation of an ordinal fit (`family = "cumulative"` or `"cratio"`). Each fold is refitted with its responses held out, and each held-out group, for example a plot, is scored by the log predictive density of its rows taken jointly. Returns the summed `elpd` with its standard error and one row per group. |
 | [`fb_complete_grid()`](https://aagi-aus.github.io/flexyBayes/reference/fb_complete_grid.md) | experimental | Completes a design grid (`index = ~ row * col`) before fitting, so a structured covariance is built over the intended index set and not only over the observed rows. |
 | [`genomic_summary()`](https://aagi-aus.github.io/flexyBayes/reference/genomic_summary.md) | experimental | Turns the posterior draws of a relationship-matrix term into genomic quantities for a fitted model. |
 | [`ranef()`](https://aagi-aus.github.io/flexyBayes/reference/ranef.md) | experimental | S3 generic returning random-effect predictions (posterior summaries of the group-level effects) from a fit. |

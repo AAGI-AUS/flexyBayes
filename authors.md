@@ -24,13 +24,13 @@ Source:
 [`inst/CITATION`](https://github.com/AAGI-AUS/flexyBayes/blob/main/inst/CITATION)
 
 Moldovan M (2026). *flexyBayes: Bayesian Mixed Models with ASReml Syntax
-via INLA and brms*. R package version 0.18.1,
+via INLA and brms*. R package version 0.19.0,
 <https://github.com/AAGI-AUS/flexyBayes>.
 
     @Manual{,
       title = {flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms},
       author = {Max Moldovan},
       year = {2026},
-      note = {R package version 0.18.1},
+      note = {R package version 0.19.0},
       url = {https://github.com/AAGI-AUS/flexyBayes},
     }

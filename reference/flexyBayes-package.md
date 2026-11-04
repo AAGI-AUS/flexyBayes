@@ -48,18 +48,20 @@ The entry points share a single internal model representation
 
 ## Vignettes
 
-Six vignettes ship with the package: *Mixed models in brief*, *Bayesian
-estimation in brief*, *The ASReml syntax flexyBayes covers*, *ASReml and
-flexyBayes on the same trials*, *A two-stage analysis of a series of
-trials*, and *Moving from ASReml-R*. The first two set up the model
-class and what changes under a posterior. The third is the formula
-surface together with dispatch and the inventory of structures that are
-refused. The fourth fits the same trials through both and shows where
-the answers agree and where they do not. The fifth fits each trial of a
-series on its own, carries the first stage's variances into a second
-stage, and fits a penalised regression of trial-level covariates on the
-design whitened by the fitted covariance. The sixth gives the flexyBayes
-spelling of each ASReml construct, beside stored ASReml fits. The count
+Seven vignettes ship with the package: *Mixed models in brief*,
+*Bayesian estimation in brief*, *The ASReml syntax flexyBayes covers*,
+*ASReml and flexyBayes on the same trials*, *A two-stage analysis of a
+series of trials*, *Moving from ASReml-R*, and *Ordinal scores in a
+field trial*. The first two set up the model class and what changes
+under a posterior. The third is the formula surface together with
+dispatch and the inventory of structures that are refused. The fourth
+fits the same trials through both and shows where the answers agree and
+where they do not. The fifth fits each trial of a series on its own,
+carries the first stage's variances into a second stage, and fits a
+penalised regression of trial-level covariates on the design whitened by
+the fitted covariance. The sixth gives the flexyBayes spelling of each
+ASReml construct, beside stored ASReml fits. The seventh fits the two
+ordinal families to a split-plot trial with a spatial field. The count
 here is checked against `vignettes/` by a parity test, because a number
 written into prose is the first thing to drift.
 

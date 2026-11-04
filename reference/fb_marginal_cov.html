@@ -15,7 +15,7 @@ as.matrix() assembles it as a dense matrix."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.19.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,7 @@ as.matrix() assembles it as a dense matrix."></head><body>
     <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-ordinal.html">08: Ordinal scores in a field trial</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -184,27 +185,27 @@ components.</p></div>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">v</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]     [,3]     [,4]     [,5]     [,6]     [,7]     [,8]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 2.091745 1.178568 1.178568 1.178568 1.178568 0.000000 0.000000 0.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 1.178568 2.091745 1.178568 1.178568 1.178568 0.000000 0.000000 0.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 1.178568 1.178568 2.091745 1.178568 1.178568 0.000000 0.000000 0.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 1.178568 1.178568 1.178568 2.091745 1.178568 0.000000 0.000000 0.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 1.178568 1.178568 1.178568 1.178568 2.091745 0.000000 0.000000 0.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 0.000000 0.000000 0.000000 0.000000 0.000000 2.091745 1.178568 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178568 2.091745 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178568 1.178568 2.091745</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178568 1.178568 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178568 1.178568 1.178568</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 2.091747 1.178570 1.178570 1.178570 1.178570 0.000000 0.000000 0.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 1.178570 2.091747 1.178570 1.178570 1.178570 0.000000 0.000000 0.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 1.178570 1.178570 2.091747 1.178570 1.178570 0.000000 0.000000 0.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 1.178570 1.178570 1.178570 2.091747 1.178570 0.000000 0.000000 0.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 1.178570 1.178570 1.178570 1.178570 2.091747 0.000000 0.000000 0.000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 0.000000 0.000000 0.000000 0.000000 0.000000 2.091747 1.178570 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178570 2.091747 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178570 1.178570 2.091747</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178570 1.178570 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 0.000000 0.000000 0.000000 0.000000 0.000000 1.178570 1.178570 1.178570</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           [,9]    [,10]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 0.000000 0.000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 0.000000 0.000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 0.000000 0.000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 0.000000 0.000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 0.000000 0.000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 1.178568 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 1.178568 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 1.178568 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 2.091745 1.178568</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 1.178568 2.091745</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 1.178570 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 1.178570 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 1.178570 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 2.091747 1.178570</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 1.178570 2.091747</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

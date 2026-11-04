@@ -14,6 +14,7 @@
 <url><loc>https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-04-illustration.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-06-two-stage.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-07-from-asreml.html</loc></url>
+<url><loc>https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-08-ordinal.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/articles/index.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/authors.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/index.html</loc></url>
@@ -53,6 +54,7 @@
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_gwas.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_inla.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_isolated_lapply.html</loc></url>
+<url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_kfold.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_log_posterior.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_marginal_cov.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.html</loc></url>
@@ -91,6 +93,7 @@
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/met_example.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/model.matrix.flexybayes.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/nobs.flexybayes.html</loc></url>
+<url><loc>https://aagi-aus.github.io/flexyBayes/reference/ordinal_probabilities.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/pp_check.flexybayes.html</loc></url>
 <url><loc>https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_brms.html</loc></url>

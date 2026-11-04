@@ -1,5 +1,37 @@
 # Changelog
 
+## flexyBayes 0.19.0
+
+- Two ordinal families: `family = "cumulative"` (proportional odds) and
+  `family = "cratio"` (continuation ratio, the sequential model of Cao
+  et al. 2026). The response is an ordered factor or whole numbers. INLA
+  fits both with the random structures it fits for a binomial response,
+  `ar1(row):ar1(col)` included, and several observations per plot. brms
+  fits both without the field. Thresholds follow brms’s convention on
+  both engines. The cumulative thresholds carry a uniform Dirichlet
+  prior on the category probabilities at a linear predictor of zero on
+  both engines (INLA’s own default is Dirichlet(3), brms’s a Student-t
+  on its centred thresholds), and
+  [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md)
+  lists that prior as each engine reports it back. The new vignette
+  “Ordinal scores in a field trial” fits both families to a split-plot
+  trial with a spatial field.
+- On an ordinal fit,
+  [`fitted()`](https://rdrr.io/r/stats/fitted.values.html) returns
+  category probabilities for the rows fitted, and
+  [`predict()`](https://rdrr.io/r/stats/predict.html) for new rows, with
+  the random effects at zero or, with `marginal = TRUE`, integrated
+  over.
+- New
+  [`fb_kfold()`](https://aagi-aus.github.io/flexyBayes/reference/fb_kfold.md):
+  exact K-fold cross-validation of an ordinal fit, with each held-out
+  group, for example a plot, scored jointly.
+- Twelve new refusal codes name what the ordinal families do not take:
+  an unordered response, an offset, a model without an intercept, and
+  methods that read a mean response or a residual.
+  [`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md)
+  lists them.
+
 ## flexyBayes 0.18.1
 
 - On Windows, a brms fit that fails no longer blames a working C++

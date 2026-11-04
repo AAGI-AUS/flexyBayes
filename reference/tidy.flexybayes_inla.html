@@ -19,7 +19,7 @@ broom-canonical estimate, std.error, conf.low, and conf.high."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.18.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.19.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,7 @@ broom-canonical estimate, std.error, conf.low, and conf.high."></head><body>
     <li><a class="dropdown-item" href="../articles/flexyBayes-04-illustration.html">04: ASReml and flexyBayes side by side</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-06-two-stage.html">06: A two-stage analysis of a series of trials</a></li>
     <li><a class="dropdown-item" href="../articles/flexyBayes-07-from-asreml.html">07: Moving from ASReml-R</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-ordinal.html">08: Ordinal scores in a field trial</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -144,14 +145,14 @@ unrecognised value now stops.</p>
 <span class="r-in"><span>                  backend <span class="op">=</span> <span class="st">"inla"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          term    estimate std.error   conf.low conf.high</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 (Intercept)  0.13218419 0.3414308 -0.5413323 0.8056978</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        env2  0.11664728 0.4265600 -0.7239542 0.9572496</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        env3 -0.26582665 0.4265600 -1.1064247 0.5747791</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        env4 -0.01145265 0.4265600 -0.8520530 0.8291508</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 (Intercept)  0.13218419 0.3414309 -0.5413325 0.8056980</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        env2  0.11664728 0.4265600 -0.7239543 0.9572496</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3        env3 -0.26582665 0.4265600 -1.1064248 0.5747792</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4        env4 -0.01145265 0.4265600 -0.8520531 0.8291509</span>
 <span class="r-in"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span>, effects <span class="op">=</span> <span class="st">"random"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       term  estimate std.error   conf.low conf.high</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    sigma 0.9486288 0.1161080 0.74648474 1.2009160</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 sd_block 0.2470558 0.2176887 0.03192191 0.8227742</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    sigma 0.9486288 0.1161080 0.74648484 1.2009160</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 sd_block 0.2470543 0.2176833 0.03192318 0.8227563</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
