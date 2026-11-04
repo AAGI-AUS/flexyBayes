@@ -56,11 +56,11 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   head(fb_variance_draws(fit, 100L, seed = 1L))
 }
 #>              sigma   sd_site
-#> sample:1 0.9760409 0.7326051
-#> sample:2 0.9228543 0.5072920
-#> sample:3 0.8607892 1.0447306
-#> sample:4 0.7977872 1.0528054
-#> sample:5 1.1249301 0.8833105
-#> sample:6 0.7732236 1.3832989
+#> sample:1 0.9760407 0.7326055
+#> sample:2 0.9228542 0.5072918
+#> sample:3 0.8607892 1.0447310
+#> sample:4 0.7977873 1.0528057
+#> sample:5 1.1249300 0.8833110
+#> sample:6 0.7732238 1.3832981
 # }
 ```

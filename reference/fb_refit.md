@@ -164,6 +164,6 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   coef(fold)
 }
 #> (Intercept)           x           z 
-#>  0.02529992  0.53442436  0.03127211 
+#>  0.02529991  0.53442435  0.03127194 
 # }
 ```
